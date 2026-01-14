@@ -13,10 +13,11 @@ use uuid::Uuid;
 ///
 /// Distinguishes between manual human entries and automated system postings,
 /// which is critical for audit trail analysis and fraud detection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TransactionSource {
     /// Manual entry by human user during working hours
+    #[default]
     Manual,
     /// Automated system posting (interfaces, batch jobs, EDI)
     Automated,
@@ -28,12 +29,6 @@ pub enum TransactionSource {
     Adjustment,
     /// Statistical posting (memo only, no financial impact)
     Statistical,
-}
-
-impl Default for TransactionSource {
-    fn default() -> Self {
-        Self::Manual
-    }
 }
 
 /// Types of fraud scenarios that can be simulated.
@@ -69,7 +64,7 @@ pub enum FraudType {
 ///
 /// Aligns with standard enterprise process frameworks for process mining
 /// and analytics integration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum BusinessProcess {
     /// Order-to-Cash: sales, billing, accounts receivable
@@ -77,6 +72,7 @@ pub enum BusinessProcess {
     /// Procure-to-Pay: purchasing, accounts payable
     P2P,
     /// Record-to-Report: GL, consolidation, reporting
+    #[default]
     R2R,
     /// Hire-to-Retire: payroll, HR accounting
     H2R,
@@ -88,12 +84,6 @@ pub enum BusinessProcess {
     Tax,
     /// Intercompany transactions
     Intercompany,
-}
-
-impl Default for BusinessProcess {
-    fn default() -> Self {
-        Self::R2R
-    }
 }
 
 /// Document type classification for journal entries.
@@ -281,7 +271,11 @@ impl JournalEntryHeader {
     ///
     /// Used for reproducible generation where the document ID is derived
     /// from a seed and counter.
-    pub fn with_deterministic_id(company_code: String, posting_date: NaiveDate, document_id: Uuid) -> Self {
+    pub fn with_deterministic_id(
+        company_code: String,
+        posting_date: NaiveDate,
+        document_id: Uuid,
+    ) -> Self {
         Self {
             document_id,
             company_code,
@@ -378,12 +372,7 @@ pub struct JournalEntryLine {
 
 impl JournalEntryLine {
     /// Create a new debit line item.
-    pub fn debit(
-        document_id: Uuid,
-        line_number: u32,
-        gl_account: String,
-        amount: Decimal,
-    ) -> Self {
+    pub fn debit(document_id: Uuid, line_number: u32, gl_account: String, amount: Decimal) -> Self {
         Self {
             document_id,
             line_number,

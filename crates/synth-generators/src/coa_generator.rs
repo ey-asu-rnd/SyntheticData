@@ -53,11 +53,19 @@ impl ChartOfAccountsGenerator {
     fn generate_asset_accounts(&mut self, coa: &mut ChartOfAccounts, count: usize) {
         let sub_types = vec![
             (AccountSubType::Cash, "Cash", 0.15),
-            (AccountSubType::AccountsReceivable, "Accounts Receivable", 0.20),
+            (
+                AccountSubType::AccountsReceivable,
+                "Accounts Receivable",
+                0.20,
+            ),
             (AccountSubType::Inventory, "Inventory", 0.15),
             (AccountSubType::PrepaidExpenses, "Prepaid Expenses", 0.10),
             (AccountSubType::FixedAssets, "Fixed Assets", 0.25),
-            (AccountSubType::AccumulatedDepreciation, "Accumulated Depreciation", 0.10),
+            (
+                AccountSubType::AccumulatedDepreciation,
+                "Accumulated Depreciation",
+                0.10,
+            ),
             (AccountSubType::OtherAssets, "Other Assets", 0.05),
         ];
 
@@ -80,7 +88,11 @@ impl ChartOfAccountsGenerator {
     fn generate_liability_accounts(&mut self, coa: &mut ChartOfAccounts, count: usize) {
         let sub_types = vec![
             (AccountSubType::AccountsPayable, "Accounts Payable", 0.25),
-            (AccountSubType::AccruedLiabilities, "Accrued Liabilities", 0.20),
+            (
+                AccountSubType::AccruedLiabilities,
+                "Accrued Liabilities",
+                0.20,
+            ),
             (AccountSubType::ShortTermDebt, "Short-Term Debt", 0.15),
             (AccountSubType::LongTermDebt, "Long-Term Debt", 0.15),
             (AccountSubType::DeferredRevenue, "Deferred Revenue", 0.15),
@@ -154,9 +166,17 @@ impl ChartOfAccountsGenerator {
     fn generate_expense_accounts(&mut self, coa: &mut ChartOfAccounts, count: usize) {
         let sub_types = vec![
             (AccountSubType::CostOfGoodsSold, "COGS", 0.20),
-            (AccountSubType::OperatingExpenses, "Operating Expenses", 0.25),
+            (
+                AccountSubType::OperatingExpenses,
+                "Operating Expenses",
+                0.25,
+            ),
             (AccountSubType::SellingExpenses, "Selling Expenses", 0.15),
-            (AccountSubType::AdministrativeExpenses, "Admin Expenses", 0.15),
+            (
+                AccountSubType::AdministrativeExpenses,
+                "Admin Expenses",
+                0.15,
+            ),
             (AccountSubType::DepreciationExpense, "Depreciation", 0.10),
             (AccountSubType::InterestExpense, "Interest Expense", 0.05),
             (AccountSubType::TaxExpense, "Tax Expense", 0.05),
@@ -185,7 +205,10 @@ impl ChartOfAccountsGenerator {
             (AccountSubType::SuspenseClearing, "Suspense Clearing"),
             (AccountSubType::GoodsReceivedClearing, "GR/IR Clearing"),
             (AccountSubType::BankClearing, "Bank Clearing"),
-            (AccountSubType::IntercompanyClearing, "Intercompany Clearing"),
+            (
+                AccountSubType::IntercompanyClearing,
+                "Intercompany Clearing",
+            ),
         ];
 
         let mut account_num = 199000u32;
@@ -235,11 +258,8 @@ mod tests {
 
     #[test]
     fn test_generate_small_coa() {
-        let mut gen = ChartOfAccountsGenerator::new(
-            CoAComplexity::Small,
-            IndustrySector::Manufacturing,
-            42,
-        );
+        let mut gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
         let coa = gen.generate();
 
         assert!(coa.account_count() >= 50);

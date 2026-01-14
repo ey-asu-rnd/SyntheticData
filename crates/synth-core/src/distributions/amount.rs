@@ -103,8 +103,8 @@ impl AmountSampler {
 
     /// Create a sampler with custom configuration.
     pub fn with_config(seed: u64, config: AmountDistributionConfig) -> Self {
-        let lognormal =
-            LogNormal::new(config.lognormal_mu, config.lognormal_sigma).expect("Invalid log-normal parameters");
+        let lognormal = LogNormal::new(config.lognormal_mu, config.lognormal_sigma)
+            .expect("Invalid log-normal parameters");
         let decimal_multiplier = 10_f64.powi(config.decimal_places as i32);
 
         Self {
@@ -157,7 +157,9 @@ impl AmountSampler {
         let total_f64 = total.to_f64().unwrap_or(0.0);
 
         // Generate random weights ensuring minimum weight
-        let mut weights: Vec<f64> = (0..count).map(|_| self.rng.gen::<f64>().max(0.01)).collect();
+        let mut weights: Vec<f64> = (0..count)
+            .map(|_| self.rng.gen::<f64>().max(0.01))
+            .collect();
         let sum: f64 = weights.iter().sum();
         weights.iter_mut().for_each(|w| *w /= sum);
 
@@ -184,9 +186,9 @@ impl AmountSampler {
             let negative_amount = amounts[last_idx];
             amounts[last_idx] = Decimal::ZERO;
             // Add the negative difference to the first amount with sufficient value
-            for i in 0..last_idx {
-                if amounts[i] > negative_amount.abs() {
-                    amounts[i] += negative_amount;
+            for amt in amounts.iter_mut().take(last_idx) {
+                if *amt > negative_amount.abs() {
+                    *amt += negative_amount;
                     break;
                 }
             }
@@ -311,10 +313,18 @@ mod tests {
 
         let eur_usd = sampler.get_rate("EUR", "USD");
         let eur_f64: f64 = eur_usd.to_string().parse().unwrap();
-        assert!(eur_f64 > 0.8 && eur_f64 < 1.2, "EUR/USD rate {} out of range", eur_f64);
+        assert!(
+            eur_f64 > 0.8 && eur_f64 < 1.2,
+            "EUR/USD rate {} out of range",
+            eur_f64
+        );
 
         let usd_usd = sampler.get_rate("USD", "USD");
         let usd_f64: f64 = usd_usd.to_string().parse().unwrap();
-        assert!((usd_f64 - 1.0).abs() < 0.01, "USD/USD rate {} should be ~1.0", usd_f64);
+        assert!(
+            (usd_f64 - 1.0).abs() < 0.01,
+            "USD/USD rate {} should be ~1.0",
+            usd_f64
+        );
     }
 }

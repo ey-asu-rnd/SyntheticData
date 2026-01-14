@@ -47,7 +47,7 @@ impl Sink for CsvSink {
 
         for line in &item.lines {
             let row = format!(
-                "{},{},{},{},{},{},{},{},{},{},{},{}\n",
+                "{},{},{},{},{},{},{},{:?},{},{},{},{}\n",
                 item.header.document_id,
                 item.header.company_code,
                 item.header.fiscal_year,
@@ -55,7 +55,7 @@ impl Sink for CsvSink {
                 item.header.posting_date,
                 item.header.document_type,
                 item.header.currency,
-                format!("{:?}", item.header.source),
+                item.header.source,
                 line.line_number,
                 line.gl_account,
                 line.debit_amount,

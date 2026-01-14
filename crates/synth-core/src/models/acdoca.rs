@@ -389,11 +389,7 @@ impl AcdocaFactory {
     }
 
     /// Convert a JournalEntry into ACDOCA entries.
-    pub fn from_journal_entry(
-        &self,
-        je: &JournalEntry,
-        document_number: &str,
-    ) -> Vec<AcdocaEntry> {
+    pub fn from_journal_entry(&self, je: &JournalEntry, document_number: &str) -> Vec<AcdocaEntry> {
         let created_at = je.header.created_at;
 
         je.lines
@@ -486,10 +482,7 @@ impl AcdocaFactory {
                     sim_batch_id: je.header.batch_id,
                     sim_is_fraud: je.header.is_fraud,
                     sim_fraud_type: je.header.fraud_type.map(|ft| format!("{:?}", ft)),
-                    sim_business_process: je
-                        .header
-                        .business_process
-                        .map(|bp| format!("{:?}", bp)),
+                    sim_business_process: je.header.business_process.map(|bp| format!("{:?}", bp)),
                     sim_user_persona: Some(je.header.user_persona.clone()),
                     sim_je_uuid: Some(je.header.document_id),
                 }

@@ -238,14 +238,18 @@ impl TemporalSampler {
             // Automated systems can post any time, but prefer off-hours
             let hour = if self.rng.gen::<f64>() < 0.7 {
                 // 70% off-peak hours (night batch processing)
-                self.rng.gen_range(22..=23).min(23).max(0)
-                    + if self.rng.gen_bool(0.5) { 0 } else { self.rng.gen_range(0..=5) }
+                self.rng.gen_range(22..=23).clamp(0, 23)
+                    + if self.rng.gen_bool(0.5) {
+                        0
+                    } else {
+                        self.rng.gen_range(0..=5)
+                    }
             } else {
                 self.rng.gen_range(0..24)
             };
             let minute = self.rng.gen_range(0..60);
             let second = self.rng.gen_range(0..60);
-            return NaiveTime::from_hms_opt(hour.min(23) as u32, minute, second).unwrap();
+            return NaiveTime::from_hms_opt(hour.clamp(0, 23) as u32, minute, second).unwrap();
         }
 
         // Human users follow working hours
@@ -266,8 +270,9 @@ impl TemporalSampler {
                     .choose(&mut self.rng)
                     .unwrap()
             } else {
-                self.rng
-                    .gen_range(self.working_hours_config.day_start..self.working_hours_config.day_end)
+                self.rng.gen_range(
+                    self.working_hours_config.day_start..self.working_hours_config.day_end,
+                )
             }
         };
 
@@ -317,7 +322,7 @@ impl TimePeriod {
     pub fn months(year: u16, start_month: u8, num_months: u8) -> Self {
         let start_date = NaiveDate::from_ymd_opt(year as i32, start_month as u32, 1).unwrap();
         let end_month = ((start_month - 1 + num_months - 1) % 12) + 1;
-        let end_year = year + ((start_month as u16 - 1 + num_months as u16 - 1) / 12) as u16;
+        let end_year = year + (start_month as u16 - 1 + num_months as u16 - 1) / 12;
         let end_date = TemporalSampler::last_day_of_month(
             NaiveDate::from_ymd_opt(end_year as i32, end_month as u32, 1).unwrap(),
         );

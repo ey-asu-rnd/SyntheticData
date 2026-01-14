@@ -200,7 +200,7 @@ impl LineItemSampler {
         let p: f64 = self.rng.gen();
 
         // Find the bin using cumulative distribution
-        let count = if p < self.cumulative[0] {
+        if p < self.cumulative[0] {
             2
         } else if p < self.cumulative[1] {
             3
@@ -225,9 +225,7 @@ impl LineItemSampler {
         } else {
             // 1000+ range (cap at 10000 for practicality)
             self.rng.gen_range(1000..10000)
-        };
-
-        count
+        }
     }
 
     /// Sample whether the count should be even.

@@ -66,7 +66,8 @@ impl GenerationOrchestrator {
     pub fn calculate_total_transactions(&self) -> u64 {
         let months = self.config.global.period_months as f64;
 
-        self.config.companies
+        self.config
+            .companies
             .iter()
             .map(|c| {
                 let annual = c.annual_transaction_volume.count() as f64;
@@ -88,10 +89,9 @@ impl GenerationOrchestrator {
         let seed = self.config.global.seed.unwrap_or_else(rand::random);
 
         // Parse dates
-        let start_date = chrono::NaiveDate::parse_from_str(
-            &self.config.global.start_date,
-            "%Y-%m-%d",
-        ).map_err(|e| SynthError::config(format!("Invalid start_date: {}", e)))?;
+        let start_date =
+            chrono::NaiveDate::parse_from_str(&self.config.global.start_date, "%Y-%m-%d")
+                .map_err(|e| SynthError::config(format!("Invalid start_date: {}", e)))?;
 
         let end_date = start_date + chrono::Months::new(self.config.global.period_months);
 
@@ -105,7 +105,12 @@ impl GenerationOrchestrator {
         );
 
         // Get company codes
-        let company_codes: Vec<String> = self.config.companies.iter().map(|c| c.code.clone()).collect();
+        let company_codes: Vec<String> = self
+            .config
+            .companies
+            .iter()
+            .map(|c| c.code.clone())
+            .collect();
 
         // Generate entries
         let mut generator = JournalEntryGenerator::new_with_params(

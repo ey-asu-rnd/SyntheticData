@@ -7,12 +7,16 @@ use synth_core::error::{SynthError, SynthResult};
 pub fn validate_config(config: &GeneratorConfig) -> SynthResult<()> {
     // Validate global settings
     if config.global.period_months == 0 {
-        return Err(SynthError::validation("period_months must be greater than 0"));
+        return Err(SynthError::validation(
+            "period_months must be greater than 0",
+        ));
     }
 
     // Validate companies
     if config.companies.is_empty() {
-        return Err(SynthError::validation("At least one company must be configured"));
+        return Err(SynthError::validation(
+            "At least one company must be configured",
+        ));
     }
 
     for company in &config.companies {
@@ -59,12 +63,10 @@ pub fn validate_config(config: &GeneratorConfig) -> SynthResult<()> {
     }
 
     // Validate fraud config if enabled
-    if config.fraud.enabled {
-        if config.fraud.fraud_rate < 0.0 || config.fraud.fraud_rate > 1.0 {
-            return Err(SynthError::validation(
-                "fraud_rate must be between 0.0 and 1.0",
-            ));
-        }
+    if config.fraud.enabled && (config.fraud.fraud_rate < 0.0 || config.fraud.fraud_rate > 1.0) {
+        return Err(SynthError::validation(
+            "fraud_rate must be between 0.0 and 1.0",
+        ));
     }
 
     Ok(())

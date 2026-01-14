@@ -77,19 +77,18 @@ fn generate_companies(
         ],
     };
 
-    regions.iter()
+    regions
+        .iter()
         .take(count)
         .enumerate()
-        .map(|(i, (code, name, currency, country))| {
-            CompanyConfig {
-                code: code.to_string(),
-                name: name.to_string(),
-                currency: currency.to_string(),
-                country: country.to_string(),
-                fiscal_year_variant: "K4".to_string(),
-                annual_transaction_volume: volume,
-                volume_weight: if i == 0 { 1.0 } else { 0.5 },
-            }
+        .map(|(i, (code, name, currency, country))| CompanyConfig {
+            code: code.to_string(),
+            name: name.to_string(),
+            currency: currency.to_string(),
+            country: country.to_string(),
+            fiscal_year_variant: "K4".to_string(),
+            annual_transaction_volume: volume,
+            volume_weight: if i == 0 { 1.0 } else { 0.5 },
         })
         .collect()
 }
@@ -99,13 +98,13 @@ fn get_business_process_config(industry: IndustrySector) -> BusinessProcessConfi
     match industry {
         IndustrySector::Manufacturing => BusinessProcessConfig {
             o2c_weight: 0.25,
-            p2p_weight: 0.40,  // Heavy procurement
+            p2p_weight: 0.40, // Heavy procurement
             r2r_weight: 0.15,
             h2r_weight: 0.10,
-            a2r_weight: 0.10,  // More assets
+            a2r_weight: 0.10, // More assets
         },
         IndustrySector::Retail => BusinessProcessConfig {
-            o2c_weight: 0.50,  // Heavy sales
+            o2c_weight: 0.50, // Heavy sales
             p2p_weight: 0.30,
             r2r_weight: 0.10,
             h2r_weight: 0.07,
@@ -114,7 +113,7 @@ fn get_business_process_config(industry: IndustrySector) -> BusinessProcessConfi
         IndustrySector::FinancialServices => BusinessProcessConfig {
             o2c_weight: 0.30,
             p2p_weight: 0.15,
-            r2r_weight: 0.40,  // Heavy reporting
+            r2r_weight: 0.40, // Heavy reporting
             h2r_weight: 0.10,
             a2r_weight: 0.05,
         },
@@ -122,14 +121,14 @@ fn get_business_process_config(industry: IndustrySector) -> BusinessProcessConfi
             o2c_weight: 0.35,
             p2p_weight: 0.30,
             r2r_weight: 0.15,
-            h2r_weight: 0.15,  // Labor intensive
+            h2r_weight: 0.15, // Labor intensive
             a2r_weight: 0.05,
         },
         IndustrySector::Technology => BusinessProcessConfig {
             o2c_weight: 0.40,
             p2p_weight: 0.20,
             r2r_weight: 0.20,
-            h2r_weight: 0.15,  // Knowledge workers
+            h2r_weight: 0.15, // Knowledge workers
             a2r_weight: 0.05,
         },
         _ => BusinessProcessConfig::default(),

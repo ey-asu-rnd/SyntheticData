@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Different personas exhibit different transaction patterns, timing,
 /// error rates, and access to accounts/functions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum UserPersona {
     /// Entry-level accountant with limited access
@@ -24,6 +24,7 @@ pub enum UserPersona {
     /// CFO/Finance Director with full access
     Executive,
     /// Automated batch job or interface
+    #[default]
     AutomatedSystem,
     /// External auditor with read access
     ExternalAuditor,
@@ -82,12 +83,6 @@ impl UserPersona {
             Self::ExternalAuditor => Some(0.0), // Read-only
             Self::FraudActor => Some(10000.0),
         }
-    }
-}
-
-impl Default for UserPersona {
-    fn default() -> Self {
-        Self::AutomatedSystem
     }
 }
 
@@ -288,10 +283,7 @@ impl UserPool {
         let idx = self.users.len();
         let persona = user.persona;
         self.users.push(user);
-        self.persona_index
-            .entry(persona)
-            .or_insert_with(Vec::new)
-            .push(idx);
+        self.persona_index.entry(persona).or_default().push(idx);
     }
 
     /// Get all users of a specific persona.
@@ -314,7 +306,7 @@ impl UserPool {
         for (idx, user) in self.users.iter().enumerate() {
             self.persona_index
                 .entry(user.persona)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(idx);
         }
     }
@@ -404,6 +396,8 @@ mod tests {
     fn test_user_pool() {
         let pool = UserPool::generate_standard(&["1000".to_string()]);
         assert!(!pool.users.is_empty());
-        assert!(!pool.get_users_by_persona(UserPersona::JuniorAccountant).is_empty());
+        assert!(!pool
+            .get_users_by_persona(UserPersona::JuniorAccountant)
+            .is_empty());
     }
 }

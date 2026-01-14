@@ -2,12 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use synth_core::models::{CoAComplexity, IndustrySector};
 use synth_core::distributions::{
-    LineItemDistributionConfig, EvenOddDistributionConfig,
-    DebitCreditDistributionConfig, AmountDistributionConfig,
-    SeasonalityConfig,
+    AmountDistributionConfig, DebitCreditDistributionConfig, EvenOddDistributionConfig,
+    LineItemDistributionConfig, SeasonalityConfig,
 };
+use synth_core::models::{CoAComplexity, IndustrySector};
 
 /// Root configuration for the synthetic data generator.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,8 +57,12 @@ pub struct GlobalConfig {
     pub memory_limit_mb: usize,
 }
 
-fn default_currency() -> String { "USD".to_string() }
-fn default_true() -> bool { true }
+fn default_currency() -> String {
+    "USD".to_string()
+}
+fn default_true() -> bool {
+    true
+}
 
 /// Company code configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,8 +85,12 @@ pub struct CompanyConfig {
     pub volume_weight: f64,
 }
 
-fn default_fiscal_variant() -> String { "K4".to_string() }
-fn default_weight() -> f64 { 1.0 }
+fn default_fiscal_variant() -> String {
+    "K4".to_string()
+}
+fn default_weight() -> f64 {
+    1.0
+}
 
 /// Transaction volume presets.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -135,11 +142,15 @@ pub struct ChartOfAccountsConfig {
     pub max_hierarchy_depth: u8,
 }
 
-fn default_min_depth() -> u8 { 2 }
-fn default_max_depth() -> u8 { 5 }
+fn default_min_depth() -> u8 {
+    2
+}
+fn default_max_depth() -> u8 {
+    5
+}
 
 /// Transaction generation configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TransactionConfig {
     /// Line item distribution
     #[serde(default)]
@@ -159,19 +170,6 @@ pub struct TransactionConfig {
     /// Amount distribution
     #[serde(default)]
     pub amounts: AmountDistributionConfig,
-}
-
-impl Default for TransactionConfig {
-    fn default() -> Self {
-        Self {
-            line_item_distribution: LineItemDistributionConfig::default(),
-            debit_credit_distribution: DebitCreditDistributionConfig::default(),
-            even_odd_distribution: EvenOddDistributionConfig::default(),
-            source_distribution: SourceDistribution::default(),
-            seasonality: SeasonalityConfig::default(),
-            amounts: AmountDistributionConfig::default(),
-        }
-    }
 }
 
 /// Distribution of transaction sources.
@@ -229,8 +227,12 @@ pub struct OutputConfig {
     pub partition_by_company: bool,
 }
 
-fn default_formats() -> Vec<FileFormat> { vec![FileFormat::Parquet] }
-fn default_batch_size() -> usize { 100_000 }
+fn default_formats() -> Vec<FileFormat> {
+    vec![FileFormat::Parquet]
+}
+fn default_batch_size() -> usize {
+    100_000
+}
 
 impl Default for OutputConfig {
     fn default() -> Self {
@@ -285,7 +287,9 @@ pub struct CompressionConfig {
     pub level: u8,
 }
 
-fn default_compression_level() -> u8 { 3 }
+fn default_compression_level() -> u8 {
+    3
+}
 
 impl Default for CompressionConfig {
     fn default() -> Self {
@@ -328,8 +332,12 @@ pub struct FraudConfig {
     pub clustering_factor: f64,
 }
 
-fn default_fraud_rate() -> f64 { 0.005 }
-fn default_clustering_factor() -> f64 { 3.0 }
+fn default_fraud_rate() -> f64 {
+    0.005
+}
+fn default_clustering_factor() -> f64 {
+    3.0
+}
 
 impl Default for FraudConfig {
     fn default() -> Self {
@@ -391,11 +399,21 @@ pub struct BusinessProcessConfig {
     pub a2r_weight: f64,
 }
 
-fn default_o2c() -> f64 { 0.35 }
-fn default_p2p() -> f64 { 0.30 }
-fn default_r2r() -> f64 { 0.20 }
-fn default_h2r() -> f64 { 0.10 }
-fn default_a2r() -> f64 { 0.05 }
+fn default_o2c() -> f64 {
+    0.35
+}
+fn default_p2p() -> f64 {
+    0.30
+}
+fn default_r2r() -> f64 {
+    0.20
+}
+fn default_h2r() -> f64 {
+    0.10
+}
+fn default_a2r() -> f64 {
+    0.05
+}
 
 impl Default for BusinessProcessConfig {
     fn default() -> Self {
@@ -410,7 +428,7 @@ impl Default for BusinessProcessConfig {
 }
 
 /// User persona configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UserPersonaConfig {
     /// Distribution of user personas
     #[serde(default)]
@@ -418,15 +436,6 @@ pub struct UserPersonaConfig {
     /// Users per persona type
     #[serde(default)]
     pub users_per_persona: UsersPerPersona,
-}
-
-impl Default for UserPersonaConfig {
-    fn default() -> Self {
-        Self {
-            persona_distribution: PersonaDistribution::default(),
-            users_per_persona: UsersPerPersona::default(),
-        }
-    }
 }
 
 /// Distribution of user personas for transaction generation.

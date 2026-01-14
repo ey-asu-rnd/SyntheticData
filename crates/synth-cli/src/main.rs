@@ -77,11 +77,18 @@ fn main() -> Result<()> {
     let filter = if cli.verbose { "debug" } else { "info" };
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| filter.into()))
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| filter.into()),
+        )
         .init();
 
     match cli.command {
-        Commands::Generate { config, output, demo, seed } => {
+        Commands::Generate {
+            config,
+            output,
+            demo,
+            seed,
+        } => {
             let mut generator_config = if demo {
                 tracing::info!("Using demo preset");
                 presets::demo_preset()
@@ -133,7 +140,11 @@ fn main() -> Result<()> {
             Ok(())
         }
 
-        Commands::Init { output, industry, complexity } => {
+        Commands::Init {
+            output,
+            industry,
+            complexity,
+        } => {
             let industry_sector = match industry.to_lowercase().as_str() {
                 "manufacturing" => IndustrySector::Manufacturing,
                 "retail" => IndustrySector::Retail,

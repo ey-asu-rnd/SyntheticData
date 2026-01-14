@@ -91,10 +91,13 @@ impl JournalEntryGenerator {
         let document_id = self.generate_deterministic_uuid();
 
         // Sample posting date
-        let posting_date = self.temporal_sampler.sample_date(self.start_date, self.end_date);
+        let posting_date = self
+            .temporal_sampler
+            .sample_date(self.start_date, self.end_date);
 
         // Select company
-        let company_code = self.companies
+        let company_code = self
+            .companies
             .choose(&mut self.rng)
             .cloned()
             .unwrap_or_else(|| "1000".to_string());
@@ -115,7 +118,8 @@ impl JournalEntryGenerator {
         let created_at = posting_date.and_time(time).and_utc();
 
         // Create header with deterministic UUID
-        let mut header = JournalEntryHeader::with_deterministic_id(company_code, posting_date, document_id);
+        let mut header =
+            JournalEntryHeader::with_deterministic_id(company_code, posting_date, document_id);
         header.created_at = created_at;
         header.source = source;
         header.created_by = if is_automated {
@@ -134,7 +138,9 @@ impl JournalEntryGenerator {
         let total_amount = self.amount_sampler.sample();
 
         // Generate debit lines
-        let debit_amounts = self.amount_sampler.sample_summing_to(line_spec.debit_count, total_amount);
+        let debit_amounts = self
+            .amount_sampler
+            .sample_summing_to(line_spec.debit_count, total_amount);
         for (i, amount) in debit_amounts.into_iter().enumerate() {
             let account = self.select_debit_account();
             entry.add_line(JournalEntryLine::debit(
@@ -146,7 +152,9 @@ impl JournalEntryGenerator {
         }
 
         // Generate credit lines - use the SAME amounts to ensure balance
-        let credit_amounts = self.amount_sampler.sample_summing_to(line_spec.credit_count, total_amount);
+        let credit_amounts = self
+            .amount_sampler
+            .sample_summing_to(line_spec.credit_count, total_amount);
         for (i, amount) in credit_amounts.into_iter().enumerate() {
             let account = self.select_credit_account();
             entry.add_line(JournalEntryLine::credit(
@@ -195,7 +203,13 @@ impl JournalEntryGenerator {
 
 impl Generator for JournalEntryGenerator {
     type Item = JournalEntry;
-    type Config = (TransactionConfig, Arc<ChartOfAccounts>, Vec<String>, NaiveDate, NaiveDate);
+    type Config = (
+        TransactionConfig,
+        Arc<ChartOfAccounts>,
+        Vec<String>,
+        NaiveDate,
+        NaiveDate,
+    );
 
     fn new(config: Self::Config, seed: u64) -> Self {
         Self::new_with_params(config.0, config.1, config.2, config.3, config.4, seed)
@@ -230,11 +244,8 @@ mod tests {
 
     #[test]
     fn test_generate_balanced_entries() {
-        let mut coa_gen = ChartOfAccountsGenerator::new(
-            CoAComplexity::Small,
-            IndustrySector::Manufacturing,
-            42,
-        );
+        let mut coa_gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
         let coa = Arc::new(coa_gen.generate());
 
         let mut je_gen = JournalEntryGenerator::new_with_params(
@@ -248,18 +259,19 @@ mod tests {
 
         for _ in 0..100 {
             let entry = je_gen.generate();
-            assert!(entry.is_balanced(), "Entry {:?} is not balanced", entry.header.document_id);
+            assert!(
+                entry.is_balanced(),
+                "Entry {:?} is not balanced",
+                entry.header.document_id
+            );
             assert!(entry.line_count() >= 2, "Entry has fewer than 2 lines");
         }
     }
 
     #[test]
     fn test_deterministic_generation() {
-        let mut coa_gen = ChartOfAccountsGenerator::new(
-            CoAComplexity::Small,
-            IndustrySector::Manufacturing,
-            42,
-        );
+        let mut coa_gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
         let coa = Arc::new(coa_gen.generate());
 
         let mut gen1 = JournalEntryGenerator::new_with_params(

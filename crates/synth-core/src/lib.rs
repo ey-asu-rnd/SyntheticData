@@ -9,12 +9,12 @@
 //! - Generator and Sink traits for extensibility
 //! - Statistical distribution samplers based on empirical research
 
-pub mod models;
-pub mod traits;
 pub mod distributions;
 pub mod error;
+pub mod models;
+pub mod traits;
 
-pub use models::*;
-pub use traits::*;
 pub use distributions::*;
 pub use error::*;
+pub use models::*;
+pub use traits::*;

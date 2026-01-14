@@ -1,13 +1,13 @@
 //! Domain models for synthetic accounting data generation.
 
-mod journal_entry;
-mod chart_of_accounts;
 mod acdoca;
+mod chart_of_accounts;
 mod company;
+mod journal_entry;
 mod user;
 
-pub use journal_entry::*;
-pub use chart_of_accounts::*;
 pub use acdoca::*;
+pub use chart_of_accounts::*;
 pub use company::*;
+pub use journal_entry::*;
 pub use user::*;
