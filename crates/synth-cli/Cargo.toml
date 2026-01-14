@@ -1,0 +1,26 @@
+[package]
+name = "synth-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Command-line interface for synthetic accounting data generation"
+
+[[bin]]
+name = "synth-data"
+path = "src/main.rs"
+
+[dependencies]
+synth-core = { workspace = true }
+synth-config = { workspace = true }
+synth-generators = { workspace = true }
+synth-output = { workspace = true }
+synth-runtime = { workspace = true }
+clap = { workspace = true }
+indicatif = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }

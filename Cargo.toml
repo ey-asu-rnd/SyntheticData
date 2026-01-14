@@ -1,0 +1,85 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/synth-core",
+    "crates/synth-config",
+    "crates/synth-generators",
+    "crates/synth-output",
+    "crates/synth-runtime",
+    "crates/synth-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+rust-version = "1.75"
+authors = ["Michael Ivertowski"]
+repository = "https://github.com/mivertowski/SyntheticData"
+description = "High-performance synthetic data generator for enterprise accounting data"
+
+[workspace.dependencies]
+# Internal crates
+synth-core = { path = "crates/synth-core" }
+synth-config = { path = "crates/synth-config" }
+synth-generators = { path = "crates/synth-generators" }
+synth-output = { path = "crates/synth-output" }
+synth-runtime = { path = "crates/synth-runtime" }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Numeric - precise decimal arithmetic for financial calculations
+rust_decimal = { version = "1.36", features = ["serde", "serde-with-str", "maths"] }
+
+# Random & Statistics
+rand = "0.8"
+rand_chacha = "0.3"
+rand_distr = "0.4"
+
+# Async runtime
+tokio = { version = "1.42", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+
+# Data formats - Arrow/Parquet for analytics-ready output
+arrow = { version = "53", features = ["prettyprint"] }
+parquet = { version = "53", features = ["arrow", "async", "zstd", "lz4", "snap"] }
+csv = "1.3"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID for document identifiers
+uuid = { version = "1.11", features = ["v4", "v7", "serde"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive", "env", "string"] }
+indicatif = { version = "0.17", features = ["rayon"] }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Parallel processing
+rayon = "1.10"
+num_cpus = "1.16"
+crossbeam-channel = "0.5"
+
+# Testing
+proptest = "1.5"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[profile.bench]
+lto = true
+codegen-units = 1
