@@ -117,7 +117,7 @@ impl FraudTypeConfig {
     }
 
     /// Selects a fraud type based on weights.
-    pub fn select_weighted<R: Rng>(configs: &[Self], rng: &mut R) -> &Self {
+    pub fn select_weighted<'a, R: Rng>(configs: &'a [Self], rng: &mut R) -> &'a Self {
         let total_weight: f64 = configs.iter().map(|c| c.weight).sum();
         let mut random_weight = rng.gen::<f64>() * total_weight;
 
@@ -237,7 +237,7 @@ impl ErrorTypeConfig {
     }
 
     /// Selects an error type based on weights.
-    pub fn select_weighted<R: Rng>(configs: &[Self], rng: &mut R) -> &Self {
+    pub fn select_weighted<'a, R: Rng>(configs: &'a [Self], rng: &mut R) -> &'a Self {
         let total_weight: f64 = configs.iter().map(|c| c.weight).sum();
         let mut random_weight = rng.gen::<f64>() * total_weight;
 
@@ -321,7 +321,7 @@ impl ProcessIssueConfig {
     }
 
     /// Selects a process issue type based on weights.
-    pub fn select_weighted<R: Rng>(configs: &[Self], rng: &mut R) -> &Self {
+    pub fn select_weighted<'a, R: Rng>(configs: &'a [Self], rng: &mut R) -> &'a Self {
         let total_weight: f64 = configs.iter().map(|c| c.weight).sum();
         let mut random_weight = rng.gen::<f64>() * total_weight;
 
@@ -420,7 +420,7 @@ impl StatisticalAnomalyConfig {
     }
 
     /// Selects a statistical anomaly type based on weights.
-    pub fn select_weighted<R: Rng>(configs: &[Self], rng: &mut R) -> &Self {
+    pub fn select_weighted<'a, R: Rng>(configs: &'a [Self], rng: &mut R) -> &'a Self {
         let total_weight: f64 = configs.iter().map(|c| c.weight).sum();
         let mut random_weight = rng.gen::<f64>() * total_weight;
 
@@ -499,7 +499,7 @@ impl RelationalAnomalyConfig {
     }
 
     /// Selects a relational anomaly type based on weights.
-    pub fn select_weighted<R: Rng>(configs: &[Self], rng: &mut R) -> &Self {
+    pub fn select_weighted<'a, R: Rng>(configs: &'a [Self], rng: &mut R) -> &'a Self {
         let total_weight: f64 = configs.iter().map(|c| c.weight).sum();
         let mut random_weight = rng.gen::<f64>() * total_weight;
 

@@ -251,7 +251,7 @@ impl DepreciationRunGenerator {
             &asset.accumulated_depreciation_account
         };
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("DEPR-{}-{}", entry.run_id, asset.asset_id),
             asset.company_code.clone(),
             period.end_date,
@@ -264,41 +264,24 @@ impl DepreciationRunGenerator {
         // Debit Depreciation Expense
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: expense_account.to_string(),
-            account_description: Some("Depreciation Expense".to_string()),
+            gl_account: expense_account.to_string(),
             debit_amount: entry.depreciation_amount,
-            credit_amount: Decimal::ZERO,
             cost_center: asset.cost_center.clone(),
             profit_center: asset.profit_center.clone(),
-            project_code: None,
             reference: Some(asset.asset_id.clone()),
             assignment: Some(asset.asset_class.clone()),
             text: Some(asset.description.clone()),
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Accumulated Depreciation
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: accum_account.to_string(),
-            account_description: Some("Accumulated Depreciation".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: accum_account.to_string(),
             credit_amount: entry.depreciation_amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(asset.asset_id.clone()),
             assignment: Some(asset.asset_class.clone()),
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je

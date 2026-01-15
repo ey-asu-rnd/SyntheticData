@@ -177,7 +177,7 @@ impl CTAGenerator {
 
     /// Generates the journal entry for a CTA.
     fn generate_cta_journal_entry(&self, cta: &CTAEntry) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", cta.entry_id),
             cta.company_code.clone(),
             cta.period_end_date,
@@ -191,43 +191,23 @@ impl CTAGenerator {
             // CTA gain (credit to CTA, debit to plug)
             je.add_line(JournalEntryLine {
                 line_number: 1,
-                account_code: self.config.accumulated_cta_account.clone(),
-                account_description: Some("Accumulated CTA".to_string()),
+                gl_account: self.config.accumulated_cta_account.clone(),
                 debit_amount: cta.cta_amount,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(cta.entry_id.clone()),
-                assignment: None,
                 text: Some("CTA - Net Assets Translation".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
 
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: self.config.cta_account.clone(),
-                account_description: Some("Currency Translation Adjustment".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: self.config.cta_account.clone(),
                 credit_amount: cta.cta_amount,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(cta.entry_id.clone()),
-                assignment: None,
                 text: Some(format!(
                     "CTA: {} @ {} -> {}",
                     cta.local_currency, cta.closing_rate, cta.group_currency
                 )),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         } else {
             // CTA loss (debit to CTA, credit to plug)
@@ -235,43 +215,23 @@ impl CTAGenerator {
 
             je.add_line(JournalEntryLine {
                 line_number: 1,
-                account_code: self.config.cta_account.clone(),
-                account_description: Some("Currency Translation Adjustment".to_string()),
+                gl_account: self.config.cta_account.clone(),
                 debit_amount: abs_amount,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(cta.entry_id.clone()),
-                assignment: None,
                 text: Some(format!(
                     "CTA: {} @ {} -> {}",
                     cta.local_currency, cta.closing_rate, cta.group_currency
                 )),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
 
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: self.config.accumulated_cta_account.clone(),
-                account_description: Some("Accumulated CTA".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: self.config.accumulated_cta_account.clone(),
                 credit_amount: abs_amount,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(cta.entry_id.clone()),
-                assignment: None,
                 text: Some("CTA - Net Assets Translation".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 

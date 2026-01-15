@@ -125,7 +125,7 @@ impl AccrualGenerator {
         self.accrual_counter += 1;
         let doc_number = format!("ACCR{:08}", self.accrual_counter);
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             doc_number.clone(),
             company_code.to_string(),
             posting_date,
@@ -135,41 +135,21 @@ impl AccrualGenerator {
         // Debit Expense
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: expense_account.to_string(),
-            account_description: Some("Accrued Expense".to_string()),
+            gl_account: expense_account.to_string(),
             debit_amount: amount,
-            credit_amount: Decimal::ZERO,
             cost_center: cost_center.map(|s| s.to_string()),
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
             text: Some(description.to_string()),
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Accrued Liability
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: liability_account.to_string(),
-            account_description: Some("Accrued Liabilities".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: liability_account.to_string(),
             credit_amount: amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Generate reversal if configured
@@ -199,7 +179,7 @@ impl AccrualGenerator {
         self.accrual_counter += 1;
         let doc_number = format!("ACCR{:08}", self.accrual_counter);
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             doc_number.clone(),
             company_code.to_string(),
             posting_date,
@@ -209,41 +189,21 @@ impl AccrualGenerator {
         // Debit Accrued Revenue Receivable
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: asset_account.to_string(),
-            account_description: Some("Accrued Revenue Receivable".to_string()),
+            gl_account: asset_account.to_string(),
             debit_amount: amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
             text: Some(description.to_string()),
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Revenue
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: revenue_account.to_string(),
-            account_description: Some("Revenue".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: revenue_account.to_string(),
             credit_amount: amount,
             cost_center: cost_center.map(|s| s.to_string()),
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Generate reversal if configured
@@ -273,7 +233,7 @@ impl AccrualGenerator {
         self.accrual_counter += 1;
         let doc_number = format!("PREP{:08}", self.accrual_counter);
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             doc_number.clone(),
             company_code.to_string(),
             posting_date,
@@ -283,41 +243,21 @@ impl AccrualGenerator {
         // Debit Expense
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: expense_account.to_string(),
-            account_description: Some("Expense".to_string()),
+            gl_account: expense_account.to_string(),
             debit_amount: amount,
-            credit_amount: Decimal::ZERO,
             cost_center: cost_center.map(|s| s.to_string()),
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
             text: Some(description.to_string()),
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Prepaid Asset
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: prepaid_account.to_string(),
-            account_description: Some("Prepaid Expenses".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: prepaid_account.to_string(),
             credit_amount: amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
@@ -337,7 +277,7 @@ impl AccrualGenerator {
         self.accrual_counter += 1;
         let doc_number = format!("DEFR{:08}", self.accrual_counter);
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             doc_number.clone(),
             company_code.to_string(),
             posting_date,
@@ -347,41 +287,21 @@ impl AccrualGenerator {
         // Debit Deferred Revenue (Liability)
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: deferred_account.to_string(),
-            account_description: Some("Deferred Revenue".to_string()),
+            gl_account: deferred_account.to_string(),
             debit_amount: amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
             text: Some(description.to_string()),
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Revenue
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: revenue_account.to_string(),
-            account_description: Some("Revenue".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: revenue_account.to_string(),
             credit_amount: amount,
             cost_center: cost_center.map(|s| s.to_string()),
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
@@ -491,7 +411,7 @@ impl AccrualGenerator {
         self.accrual_counter += 1;
         let doc_number = format!("REV{:08}", self.accrual_counter);
 
-        let mut reversal = JournalEntry::new(
+        let mut reversal = JournalEntry::new_simple(
             doc_number.clone(),
             original.company_code.clone(),
             reversal_date,
@@ -502,13 +422,11 @@ impl AccrualGenerator {
         for (idx, line) in original.lines.iter().enumerate() {
             reversal.add_line(JournalEntryLine {
                 line_number: (idx + 1) as u32,
-                account_code: line.account_code.clone(),
-                account_description: line.account_description.clone(),
+                gl_account: line.gl_account.clone(),
                 debit_amount: line.credit_amount,
                 credit_amount: line.debit_amount,
                 cost_center: line.cost_center.clone(),
                 profit_center: line.profit_center.clone(),
-                project_code: line.project_code.clone(),
                 reference: Some(format!("REV-{}", original.document_number)),
                 assignment: line.assignment.clone(),
                 text: Some(format!(
@@ -520,6 +438,7 @@ impl AccrualGenerator {
                 tax_code: line.tax_code.clone(),
                 trading_partner: line.trading_partner.clone(),
                 value_date: line.value_date,
+                ..Default::default()
             });
         }
 

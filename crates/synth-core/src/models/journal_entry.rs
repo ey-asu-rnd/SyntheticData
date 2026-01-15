@@ -9,6 +9,8 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::anomaly::FraudType;
+
 /// Source of a journal entry transaction.
 ///
 /// Distinguishes between manual human entries and automated system postings,
@@ -31,34 +33,8 @@ pub enum TransactionSource {
     Statistical,
 }
 
-/// Types of fraud scenarios that can be simulated.
-///
-/// Based on common fraud patterns identified in forensic accounting research
-/// and audit practice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FraudType {
-    /// Round-tripping funds through suspense/clearing accounts
-    SuspenseAccountAbuse,
-    /// Fictitious vendors, customers, or transactions
-    FictitiousTransaction,
-    /// Premature or delayed revenue recognition
-    RevenueManipulation,
-    /// Improperly capitalizing expenses as assets
-    ExpenseCapitalization,
-    /// Splitting transactions to stay below approval thresholds
-    SplitTransaction,
-    /// Unusual timing (weekend, holiday, after-hours postings)
-    TimingAnomaly,
-    /// Posting to unauthorized accounts
-    UnauthorizedAccess,
-    /// Duplicate payment schemes
-    DuplicatePayment,
-    /// Ghost employee schemes
-    GhostEmployee,
-    /// Kickback schemes through vendor manipulation
-    KickbackScheme,
-}
+// Note: FraudType is defined in anomaly.rs and re-exported from mod.rs
+// Use `crate::models::FraudType` for fraud type classification.
 
 /// Business process that originated the transaction.
 ///
@@ -532,6 +508,40 @@ impl JournalEntryLine {
     }
 }
 
+impl Default for JournalEntryLine {
+    fn default() -> Self {
+        Self {
+            document_id: Uuid::nil(),
+            line_number: 0,
+            gl_account: String::new(),
+            account_code: String::new(),
+            account_description: None,
+            debit_amount: Decimal::ZERO,
+            credit_amount: Decimal::ZERO,
+            local_amount: Decimal::ZERO,
+            group_amount: None,
+            cost_center: None,
+            profit_center: None,
+            segment: None,
+            functional_area: None,
+            line_text: None,
+            text: None,
+            reference: None,
+            value_date: None,
+            tax_code: None,
+            tax_amount: None,
+            assignment: None,
+            offsetting_account: None,
+            is_suspense: false,
+            trading_partner: None,
+            quantity: None,
+            unit_of_measure: None,
+            unit: None,
+            project_code: None,
+        }
+    }
+}
+
 /// Complete journal entry with header and line items.
 ///
 /// Represents a balanced double-entry bookkeeping transaction where
@@ -547,6 +557,25 @@ pub struct JournalEntry {
 impl JournalEntry {
     /// Create a new journal entry with header and empty lines.
     pub fn new(header: JournalEntryHeader) -> Self {
+        Self {
+            header,
+            lines: Vec::new(),
+        }
+    }
+
+    /// Create a new journal entry with basic parameters (convenience constructor).
+    ///
+    /// This is a simplified constructor for backwards compatibility that creates
+    /// a journal entry with the specified document number, company code, posting date,
+    /// and description.
+    pub fn new_simple(
+        _document_number: String,
+        company_code: String,
+        posting_date: NaiveDate,
+        description: String,
+    ) -> Self {
+        let mut header = JournalEntryHeader::new(company_code, posting_date);
+        header.header_text = Some(description);
         Self {
             header,
             lines: Vec::new(),

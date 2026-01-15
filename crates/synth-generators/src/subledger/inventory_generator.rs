@@ -375,7 +375,7 @@ impl InventoryGenerator {
     }
 
     fn generate_goods_receipt_je(&self, movement: &InventoryMovement) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", movement.movement_id),
             movement.company_code.clone(),
             movement.posting_date,
@@ -385,48 +385,32 @@ impl InventoryGenerator {
         // Debit Inventory
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "1300".to_string(),
-            account_description: Some("Inventory".to_string()),
+            gl_account: "1300".to_string(),
             debit_amount: movement.total_value,
-            credit_amount: Decimal::ZERO,
             cost_center: movement.cost_center.clone(),
             profit_center: movement.profit_center.clone(),
-            project_code: None,
             reference: Some(movement.movement_id.clone()),
             assignment: Some(movement.material_id.clone()),
             text: Some(movement.material_description.clone()),
             quantity: Some(movement.quantity),
             unit: Some(movement.base_unit.clone()),
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit GR/IR Clearing
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "2100".to_string(),
-            account_description: Some("GR/IR Clearing".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "2100".to_string(),
             credit_amount: movement.total_value,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: movement.reference_doc_number.clone(),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
     }
 
     fn generate_goods_issue_je(&self, movement: &InventoryMovement) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", movement.movement_id),
             movement.company_code.clone(),
             movement.posting_date,
@@ -443,41 +427,28 @@ impl InventoryGenerator {
 
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: debit_account,
-            account_description: Some("Cost of Goods Sold".to_string()),
+            gl_account: debit_account,
             debit_amount: movement.total_value,
-            credit_amount: Decimal::ZERO,
             cost_center: movement.cost_center.clone(),
             profit_center: movement.profit_center.clone(),
-            project_code: None,
             reference: Some(movement.movement_id.clone()),
             assignment: Some(movement.material_id.clone()),
             text: Some(movement.material_description.clone()),
             quantity: Some(movement.quantity),
             unit: Some(movement.base_unit.clone()),
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Inventory
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "1300".to_string(),
-            account_description: Some("Inventory".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "1300".to_string(),
             credit_amount: movement.total_value,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(movement.movement_id.clone()),
             assignment: Some(movement.material_id.clone()),
-            text: None,
             quantity: Some(movement.quantity),
             unit: Some(movement.base_unit.clone()),
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
@@ -490,7 +461,7 @@ impl InventoryGenerator {
     ) -> JournalEntry {
         // For intra-company transfer with same valuation, this might be a memo entry
         // or could involve plant-specific inventory accounts
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-XFER-{}", issue.movement_id),
             issue.company_code.clone(),
             issue.posting_date,
@@ -500,41 +471,25 @@ impl InventoryGenerator {
         // Debit Inventory at destination (using same account for simplicity)
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "1300".to_string(),
-            account_description: Some("Inventory - Destination".to_string()),
+            gl_account: "1300".to_string(),
             debit_amount: issue.total_value,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(issue.movement_id.clone()),
             assignment: Some(issue.material_id.clone()),
-            text: None,
             quantity: Some(issue.quantity),
             unit: Some(issue.base_unit.clone()),
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Inventory at source
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "1300".to_string(),
-            account_description: Some("Inventory - Source".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "1300".to_string(),
             credit_amount: issue.total_value,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(issue.movement_id.clone()),
             assignment: Some(issue.material_id.clone()),
-            text: None,
             quantity: Some(issue.quantity),
             unit: Some(issue.base_unit.clone()),
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
@@ -545,7 +500,7 @@ impl InventoryGenerator {
         movement: &InventoryMovement,
         is_increase: bool,
     ) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", movement.movement_id),
             movement.company_code.clone(),
             movement.posting_date,
@@ -556,81 +511,47 @@ impl InventoryGenerator {
             // Debit Inventory
             je.add_line(JournalEntryLine {
                 line_number: 1,
-                account_code: "1300".to_string(),
-                account_description: Some("Inventory".to_string()),
+                gl_account: "1300".to_string(),
                 debit_amount: movement.total_value,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(movement.movement_id.clone()),
                 assignment: Some(movement.material_id.clone()),
                 text: Some(movement.movement_reason.clone().unwrap_or_default()),
                 quantity: Some(movement.quantity),
                 unit: Some(movement.base_unit.clone()),
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
 
             // Credit Inventory Adjustment Account
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: "4950".to_string(),
-                account_description: Some("Inventory Adjustments".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: "4950".to_string(),
                 credit_amount: movement.total_value,
                 cost_center: movement.cost_center.clone(),
-                profit_center: None,
-                project_code: None,
                 reference: Some(movement.movement_id.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         } else {
             // Debit Inventory Adjustment Account (expense)
             je.add_line(JournalEntryLine {
                 line_number: 1,
-                account_code: "6950".to_string(),
-                account_description: Some("Inventory Shrinkage".to_string()),
+                gl_account: "6950".to_string(),
                 debit_amount: movement.total_value,
-                credit_amount: Decimal::ZERO,
                 cost_center: movement.cost_center.clone(),
-                profit_center: None,
-                project_code: None,
                 reference: Some(movement.movement_id.clone()),
-                assignment: None,
                 text: Some(movement.movement_reason.clone().unwrap_or_default()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
 
             // Credit Inventory
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: "1300".to_string(),
-                account_description: Some("Inventory".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: "1300".to_string(),
                 credit_amount: movement.total_value,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(movement.movement_id.clone()),
                 assignment: Some(movement.material_id.clone()),
-                text: None,
                 quantity: Some(movement.quantity),
                 unit: Some(movement.base_unit.clone()),
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 

@@ -283,45 +283,20 @@ impl ICGenerator {
         let mut lines = vec![
             JournalEntryLine {
                 line_number: 1,
-                account_code: self.get_seller_receivable_account(&pair.buyer_company),
-                account_description: Some(format!("IC Receivable - {}", pair.buyer_company)),
-                debit_amount: Some(pair.amount),
-                credit_amount: None,
-                cost_center: None,
-                profit_center: None,
-                segment: None,
-                project: None,
-                customer: None,
-                vendor: None,
-                material: None,
-                quantity: None,
-                uom: None,
+                gl_account: self.get_seller_receivable_account(&pair.buyer_company),
+                debit_amount: pair.amount,
                 text: Some(format!("{} - {}", dr_desc, pair.description)),
                 assignment: Some(pair.ic_reference.clone()),
                 reference: Some(pair.buyer_document.clone()),
-                clearing_document: None,
-                clearing_date: None,
+                ..Default::default()
             },
             JournalEntryLine {
                 line_number: 2,
-                account_code: self.get_seller_revenue_account(pair.transaction_type),
-                account_description: Some(cr_desc.to_string()),
-                debit_amount: None,
-                credit_amount: Some(pair.amount),
-                cost_center: None,
-                profit_center: None,
-                segment: None,
-                project: None,
-                customer: None,
-                vendor: None,
-                material: None,
-                quantity: None,
-                uom: None,
+                gl_account: self.get_seller_revenue_account(pair.transaction_type),
+                credit_amount: pair.amount,
                 text: Some(format!("{} - {}", cr_desc, pair.description)),
                 assignment: Some(pair.ic_reference.clone()),
-                reference: None,
-                clearing_document: None,
-                clearing_date: None,
+                ..Default::default()
             },
         ];
 
@@ -329,28 +304,15 @@ impl ICGenerator {
         if let Some(wht) = pair.withholding_tax {
             lines.push(JournalEntryLine {
                 line_number: 3,
-                account_code: "2180".to_string(), // WHT payable
-                account_description: Some("Withholding Tax Payable".to_string()),
-                debit_amount: None,
-                credit_amount: Some(wht),
-                cost_center: None,
-                profit_center: None,
-                segment: None,
-                project: None,
-                customer: None,
-                vendor: None,
-                material: None,
-                quantity: None,
-                uom: None,
+                gl_account: "2180".to_string(), // WHT payable
+                credit_amount: wht,
                 text: Some("Withholding tax on IC transaction".to_string()),
                 assignment: Some(pair.ic_reference.clone()),
-                reference: None,
-                clearing_document: None,
-                clearing_date: None,
+                ..Default::default()
             });
 
             // Adjust receivable for net amount
-            lines[0].debit_amount = Some(pair.net_amount());
+            lines[0].debit_amount = pair.net_amount();
         }
 
         JournalEntry {
@@ -407,45 +369,21 @@ impl ICGenerator {
         let lines = vec![
             JournalEntryLine {
                 line_number: 1,
-                account_code: self.get_buyer_expense_account(pair.transaction_type),
-                account_description: Some(dr_desc.to_string()),
-                debit_amount: Some(pair.amount),
-                credit_amount: None,
+                gl_account: self.get_buyer_expense_account(pair.transaction_type),
+                debit_amount: pair.amount,
                 cost_center: Some("CC100".to_string()),
-                profit_center: None,
-                segment: None,
-                project: None,
-                customer: None,
-                vendor: None,
-                material: None,
-                quantity: None,
-                uom: None,
                 text: Some(format!("{} - {}", dr_desc, pair.description)),
                 assignment: Some(pair.ic_reference.clone()),
                 reference: Some(pair.seller_document.clone()),
-                clearing_document: None,
-                clearing_date: None,
+                ..Default::default()
             },
             JournalEntryLine {
                 line_number: 2,
-                account_code: self.get_buyer_payable_account(&pair.seller_company),
-                account_description: Some(format!("IC Payable - {}", pair.seller_company)),
-                debit_amount: None,
-                credit_amount: Some(pair.amount),
-                cost_center: None,
-                profit_center: None,
-                segment: None,
-                project: None,
-                customer: None,
-                vendor: None,
-                material: None,
-                quantity: None,
-                uom: None,
+                gl_account: self.get_buyer_payable_account(&pair.seller_company),
+                credit_amount: pair.amount,
                 text: Some(format!("{} - {}", cr_desc, pair.description)),
                 assignment: Some(pair.ic_reference.clone()),
-                reference: None,
-                clearing_document: None,
-                clearing_date: None,
+                ..Default::default()
             },
         ];
 

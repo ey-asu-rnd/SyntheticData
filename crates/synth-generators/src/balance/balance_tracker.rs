@@ -157,18 +157,18 @@ impl RunningBalanceTracker {
         // Validate entry is balanced first
         if !entry.is_balanced() {
             let error = ValidationError {
-                date: entry.posting_date,
-                company_code: entry.company_code.clone(),
-                entry_id: Some(entry.entry_id.clone()),
+                date: entry.posting_date(),
+                company_code: entry.company_code().to_string(),
+                entry_id: Some(entry.document_number().clone()),
                 error_type: ValidationErrorType::UnbalancedEntry,
                 message: format!(
                     "Entry {} is unbalanced: debits={}, credits={}",
-                    entry.entry_id, entry.total_debit, entry.total_credit
+                    entry.document_number(), entry.total_debit(), entry.total_credit()
                 ),
                 details: {
                     let mut d = HashMap::new();
-                    d.insert("total_debit".to_string(), entry.total_debit);
-                    d.insert("total_credit".to_string(), entry.total_credit);
+                    d.insert("total_debit".to_string(), entry.total_debit());
+                    d.insert("total_credit".to_string(), entry.total_credit());
                     d
                 },
             };
@@ -180,33 +180,33 @@ impl RunningBalanceTracker {
         }
 
         // Get or create company balances
-        let company_balances = self.balances.entry(entry.company_code.clone()).or_default();
+        let company_balances = self.balances.entry(entry.company_code().to_string()).or_default();
 
         // Apply each line
         for line in &entry.lines {
             self.apply_line(
                 company_balances,
                 line,
-                &entry.entry_id,
-                entry.posting_date,
-                &entry.company_code,
+                &entry.document_number(),
+                entry.posting_date(),
+                entry.company_code(),
             );
         }
 
         // Update statistics
         self.stats.entries_processed += 1;
         self.stats.lines_processed += entry.lines.len() as u64;
-        self.stats.total_debits += entry.total_debit;
-        self.stats.total_credits += entry.total_credit;
+        self.stats.total_debits += entry.total_debit();
+        self.stats.total_credits += entry.total_credit();
         self.stats.companies_tracked = self.balances.len();
         self.stats.accounts_tracked = self.balances.values().map(|b| b.len()).sum();
 
         // Validate balance sheet if configured
         if self.config.validate_on_each_entry {
             self.validate_balance_sheet(
-                &entry.company_code,
-                entry.posting_date,
-                Some(&entry.entry_id),
+                entry.company_code(),
+                entry.posting_date(),
+                Some(&entry.document_number()),
             )?;
         }
 
@@ -503,7 +503,7 @@ mod tests {
         account2: &str,
         amount: Decimal,
     ) -> JournalEntry {
-        let mut entry = JournalEntry::new(
+        let mut entry = JournalEntry::new_simple(
             "TEST001".to_string(),
             company.to_string(),
             NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
@@ -512,40 +512,16 @@ mod tests {
 
         entry.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: account1.to_string(),
-            account_description: Some("Account 1".to_string()),
+            gl_account: account1.to_string(),
             debit_amount: amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         entry.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: account2.to_string(),
-            account_description: Some("Account 2".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: account2.to_string(),
             credit_amount: amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         entry

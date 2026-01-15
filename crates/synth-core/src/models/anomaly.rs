@@ -78,6 +78,8 @@ pub enum FraudType {
     // Journal Entry Fraud
     /// Fictitious journal entry with no business purpose.
     FictitiousEntry,
+    /// Fictitious transaction (alias for FictitiousEntry).
+    FictitiousTransaction,
     /// Round-dollar amounts suggesting manual manipulation.
     RoundDollarManipulation,
     /// Entry posted just below approval threshold.
@@ -86,8 +88,18 @@ pub enum FraudType {
     RevenueManipulation,
     /// Expense capitalization fraud.
     ImproperCapitalization,
+    /// Improperly capitalizing expenses as assets.
+    ExpenseCapitalization,
     /// Cookie jar reserves manipulation.
     ReserveManipulation,
+    /// Round-tripping funds through suspense/clearing accounts.
+    SuspenseAccountAbuse,
+    /// Splitting transactions to stay below approval thresholds.
+    SplitTransaction,
+    /// Unusual timing (weekend, holiday, after-hours postings).
+    TimingAnomaly,
+    /// Posting to unauthorized accounts.
+    UnauthorizedAccess,
 
     // Approval Fraud
     /// User approving their own request.
@@ -110,6 +122,8 @@ pub enum FraudType {
     ShellCompanyPayment,
     /// Kickback scheme.
     Kickback,
+    /// Kickback scheme (alias).
+    KickbackScheme,
     /// Invoice manipulation.
     InvoiceManipulation,
 

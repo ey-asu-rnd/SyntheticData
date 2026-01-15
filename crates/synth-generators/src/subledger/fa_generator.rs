@@ -310,7 +310,7 @@ impl FAGenerator {
     }
 
     fn generate_acquisition_je(&self, asset: &FixedAssetRecord) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-ACQ-{}", asset.asset_id),
             asset.company_code.clone(),
             asset.acquisition_date,
@@ -320,41 +320,24 @@ impl FAGenerator {
         // Debit Fixed Asset
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: asset.asset_account.clone(),
-            account_description: Some("Fixed Assets".to_string()),
+            gl_account: asset.asset_account.clone(),
             debit_amount: asset.original_acquisition_cost,
-            credit_amount: Decimal::ZERO,
             cost_center: asset.cost_center.clone(),
             profit_center: asset.profit_center.clone(),
-            project_code: None,
             reference: Some(asset.asset_id.clone()),
-            assignment: None,
             text: Some(asset.description.clone()),
             quantity: Some(dec!(1)),
             unit: Some("EA".to_string()),
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Cash/AP (assuming cash purchase)
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "1000".to_string(),
-            account_description: Some("Cash".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "1000".to_string(),
             credit_amount: asset.original_acquisition_cost,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(asset.asset_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
@@ -366,7 +349,7 @@ impl FAGenerator {
         entry: &DepreciationEntry,
         posting_date: NaiveDate,
     ) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-DEP-{}-{}", entry.run_id, asset.asset_id),
             asset.company_code.clone(),
             posting_date,
@@ -379,41 +362,21 @@ impl FAGenerator {
         // Debit Depreciation Expense
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: asset.depreciation_expense_account.clone(),
-            account_description: Some("Depreciation Expense".to_string()),
+            gl_account: asset.depreciation_expense_account.clone(),
             debit_amount: entry.depreciation_amount,
-            credit_amount: Decimal::ZERO,
             cost_center: asset.cost_center.clone(),
             profit_center: asset.profit_center.clone(),
-            project_code: None,
             reference: Some(asset.asset_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Accumulated Depreciation
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: asset.accumulated_depreciation_account.clone(),
-            account_description: Some("Accumulated Depreciation".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: asset.accumulated_depreciation_account.clone(),
             credit_amount: entry.depreciation_amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(asset.asset_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
@@ -424,7 +387,7 @@ impl FAGenerator {
         asset: &FixedAssetRecord,
         disposal: &AssetDisposal,
     ) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", disposal.disposal_id),
             asset.company_code.clone(),
             disposal.disposal_date,
@@ -437,21 +400,10 @@ impl FAGenerator {
         if disposal.proceeds > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: "1000".to_string(),
-                account_description: Some("Cash".to_string()),
+                gl_account: "1000".to_string(),
                 debit_amount: disposal.proceeds,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(disposal.disposal_id.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
             line_num += 1;
         }
@@ -459,21 +411,10 @@ impl FAGenerator {
         // Debit Accumulated Depreciation
         je.add_line(JournalEntryLine {
             line_number: line_num,
-            account_code: asset.accumulated_depreciation_account.clone(),
-            account_description: Some("Accumulated Depreciation".to_string()),
+            gl_account: asset.accumulated_depreciation_account.clone(),
             debit_amount: disposal.accumulated_depreciation_at_disposal,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(disposal.disposal_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
         line_num += 1;
 
@@ -481,21 +422,12 @@ impl FAGenerator {
         if disposal.gain_loss < Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: disposal.gain_loss_account.clone(),
-                account_description: Some("Loss on Asset Disposal".to_string()),
+                gl_account: disposal.gain_loss_account.clone(),
                 debit_amount: disposal.gain_loss.abs(),
-                credit_amount: Decimal::ZERO,
                 cost_center: asset.cost_center.clone(),
                 profit_center: asset.profit_center.clone(),
-                project_code: None,
                 reference: Some(disposal.disposal_id.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
             line_num += 1;
         }
@@ -503,21 +435,10 @@ impl FAGenerator {
         // Credit Fixed Asset
         je.add_line(JournalEntryLine {
             line_number: line_num,
-            account_code: asset.asset_account.clone(),
-            account_description: Some("Fixed Assets".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: asset.asset_account.clone(),
             credit_amount: asset.current_acquisition_cost,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(disposal.disposal_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
         line_num += 1;
 
@@ -525,21 +446,12 @@ impl FAGenerator {
         if disposal.gain_loss > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: disposal.gain_loss_account.clone(),
-                account_description: Some("Gain on Asset Disposal".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: disposal.gain_loss_account.clone(),
                 credit_amount: disposal.gain_loss,
                 cost_center: asset.cost_center.clone(),
                 profit_center: asset.profit_center.clone(),
-                project_code: None,
                 reference: Some(disposal.disposal_id.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
