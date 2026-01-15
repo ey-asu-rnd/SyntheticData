@@ -689,6 +689,16 @@ impl JournalEntry {
     pub fn has_sod_violation(&self) -> bool {
         self.header.sod_violation
     }
+
+    /// Get the description (header text).
+    pub fn description(&self) -> Option<&str> {
+        self.header.header_text.as_deref()
+    }
+
+    /// Set the description (header text).
+    pub fn set_description(&mut self, description: String) {
+        self.header.header_text = Some(description);
+    }
 }
 
 #[cfg(test)]

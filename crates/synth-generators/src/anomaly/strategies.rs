@@ -425,9 +425,9 @@ impl InjectionStrategy for DescriptionAnomalyStrategy {
         _anomaly_type: &AnomalyType,
         rng: &mut R,
     ) -> InjectionResult {
-        let original = entry.description.clone();
+        let original = entry.description().unwrap_or("").to_string();
         let vague = &self.vague_descriptions[rng.gen_range(0..self.vague_descriptions.len())];
-        entry.description = vague.clone();
+        entry.set_description(vague.clone());
 
         InjectionResult::success(&format!(
             "Changed description from '{}' to '{}'",
@@ -674,6 +674,7 @@ mod tests {
         );
 
         assert!(result.success);
-        assert!(strategy.vague_descriptions.contains(&entry.description));
+        let desc = entry.description().unwrap_or("").to_string();
+        assert!(strategy.vague_descriptions.contains(&desc));
     }
 }
