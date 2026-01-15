@@ -11,7 +11,7 @@ use rand::Rng;
 use std::collections::HashMap;
 
 /// Type of typo/error.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TypoType {
     /// Substitution with nearby key.
     Substitution,
