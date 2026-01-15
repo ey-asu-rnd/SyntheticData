@@ -30,6 +30,15 @@ pub struct GeneratorConfig {
     /// User persona distribution
     #[serde(default)]
     pub user_personas: UserPersonaConfig,
+    /// Template configuration for realistic data
+    #[serde(default)]
+    pub templates: TemplateConfig,
+    /// Approval workflow configuration
+    #[serde(default)]
+    pub approval: ApprovalConfig,
+    /// Department structure configuration
+    #[serde(default)]
+    pub departments: DepartmentConfig,
 }
 
 /// Global configuration settings.
@@ -480,4 +489,266 @@ impl Default for UsersPerPersona {
             automated_system: 20,
         }
     }
+}
+
+/// Template configuration for realistic data generation.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TemplateConfig {
+    /// Name generation settings
+    #[serde(default)]
+    pub names: NameTemplateConfig,
+    /// Description generation settings
+    #[serde(default)]
+    pub descriptions: DescriptionTemplateConfig,
+    /// Reference number settings
+    #[serde(default)]
+    pub references: ReferenceTemplateConfig,
+}
+
+/// Name template configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NameTemplateConfig {
+    /// Distribution of name cultures
+    #[serde(default)]
+    pub culture_distribution: CultureDistribution,
+    /// Email domain for generated users
+    #[serde(default = "default_email_domain")]
+    pub email_domain: String,
+    /// Generate realistic display names
+    #[serde(default = "default_true")]
+    pub generate_realistic_names: bool,
+}
+
+fn default_email_domain() -> String {
+    "company.com".to_string()
+}
+
+impl Default for NameTemplateConfig {
+    fn default() -> Self {
+        Self {
+            culture_distribution: CultureDistribution::default(),
+            email_domain: default_email_domain(),
+            generate_realistic_names: true,
+        }
+    }
+}
+
+/// Distribution of name cultures for generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CultureDistribution {
+    pub western_us: f64,
+    pub hispanic: f64,
+    pub german: f64,
+    pub french: f64,
+    pub chinese: f64,
+    pub japanese: f64,
+    pub indian: f64,
+}
+
+impl Default for CultureDistribution {
+    fn default() -> Self {
+        Self {
+            western_us: 0.40,
+            hispanic: 0.20,
+            german: 0.10,
+            french: 0.05,
+            chinese: 0.10,
+            japanese: 0.05,
+            indian: 0.10,
+        }
+    }
+}
+
+/// Description template configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DescriptionTemplateConfig {
+    /// Generate header text for journal entries
+    #[serde(default = "default_true")]
+    pub generate_header_text: bool,
+    /// Generate line text for journal entry lines
+    #[serde(default = "default_true")]
+    pub generate_line_text: bool,
+}
+
+impl Default for DescriptionTemplateConfig {
+    fn default() -> Self {
+        Self {
+            generate_header_text: true,
+            generate_line_text: true,
+        }
+    }
+}
+
+/// Reference number template configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReferenceTemplateConfig {
+    /// Generate reference numbers
+    #[serde(default = "default_true")]
+    pub generate_references: bool,
+    /// Invoice prefix
+    #[serde(default = "default_invoice_prefix")]
+    pub invoice_prefix: String,
+    /// Purchase order prefix
+    #[serde(default = "default_po_prefix")]
+    pub po_prefix: String,
+    /// Sales order prefix
+    #[serde(default = "default_so_prefix")]
+    pub so_prefix: String,
+}
+
+fn default_invoice_prefix() -> String {
+    "INV".to_string()
+}
+fn default_po_prefix() -> String {
+    "PO".to_string()
+}
+fn default_so_prefix() -> String {
+    "SO".to_string()
+}
+
+impl Default for ReferenceTemplateConfig {
+    fn default() -> Self {
+        Self {
+            generate_references: true,
+            invoice_prefix: default_invoice_prefix(),
+            po_prefix: default_po_prefix(),
+            so_prefix: default_so_prefix(),
+        }
+    }
+}
+
+/// Approval workflow configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApprovalConfig {
+    /// Enable approval workflow generation
+    #[serde(default)]
+    pub enabled: bool,
+    /// Threshold below which transactions are auto-approved
+    #[serde(default = "default_auto_approve_threshold")]
+    pub auto_approve_threshold: f64,
+    /// Rate at which approvals are rejected (0.0 to 1.0)
+    #[serde(default = "default_rejection_rate")]
+    pub rejection_rate: f64,
+    /// Rate at which approvals require revision (0.0 to 1.0)
+    #[serde(default = "default_revision_rate")]
+    pub revision_rate: f64,
+    /// Average delay in hours for approval processing
+    #[serde(default = "default_approval_delay_hours")]
+    pub average_approval_delay_hours: f64,
+    /// Approval chain thresholds
+    #[serde(default)]
+    pub thresholds: Vec<ApprovalThresholdConfig>,
+}
+
+fn default_auto_approve_threshold() -> f64 {
+    1000.0
+}
+fn default_rejection_rate() -> f64 {
+    0.02
+}
+fn default_revision_rate() -> f64 {
+    0.05
+}
+fn default_approval_delay_hours() -> f64 {
+    4.0
+}
+
+impl Default for ApprovalConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            auto_approve_threshold: default_auto_approve_threshold(),
+            rejection_rate: default_rejection_rate(),
+            revision_rate: default_revision_rate(),
+            average_approval_delay_hours: default_approval_delay_hours(),
+            thresholds: vec![
+                ApprovalThresholdConfig {
+                    amount: 1000.0,
+                    level: 1,
+                    roles: vec!["senior_accountant".to_string()],
+                },
+                ApprovalThresholdConfig {
+                    amount: 10000.0,
+                    level: 2,
+                    roles: vec!["senior_accountant".to_string(), "controller".to_string()],
+                },
+                ApprovalThresholdConfig {
+                    amount: 100000.0,
+                    level: 3,
+                    roles: vec![
+                        "senior_accountant".to_string(),
+                        "controller".to_string(),
+                        "manager".to_string(),
+                    ],
+                },
+                ApprovalThresholdConfig {
+                    amount: 500000.0,
+                    level: 4,
+                    roles: vec![
+                        "senior_accountant".to_string(),
+                        "controller".to_string(),
+                        "manager".to_string(),
+                        "executive".to_string(),
+                    ],
+                },
+            ],
+        }
+    }
+}
+
+/// Configuration for a single approval threshold.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApprovalThresholdConfig {
+    /// Amount threshold
+    pub amount: f64,
+    /// Approval level required
+    pub level: u8,
+    /// Roles that can approve at this level
+    pub roles: Vec<String>,
+}
+
+/// Department configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DepartmentConfig {
+    /// Enable department assignment
+    #[serde(default)]
+    pub enabled: bool,
+    /// Multiplier for department headcounts
+    #[serde(default = "default_headcount_multiplier")]
+    pub headcount_multiplier: f64,
+    /// Custom department definitions (optional)
+    #[serde(default)]
+    pub custom_departments: Vec<CustomDepartmentConfig>,
+}
+
+fn default_headcount_multiplier() -> f64 {
+    1.0
+}
+
+impl Default for DepartmentConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            headcount_multiplier: default_headcount_multiplier(),
+            custom_departments: Vec::new(),
+        }
+    }
+}
+
+/// Custom department definition.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomDepartmentConfig {
+    /// Department code
+    pub code: String,
+    /// Department name
+    pub name: String,
+    /// Associated cost center
+    #[serde(default)]
+    pub cost_center: Option<String>,
+    /// Primary business processes
+    #[serde(default)]
+    pub primary_processes: Vec<String>,
+    /// Parent department code
+    #[serde(default)]
+    pub parent_code: Option<String>,
 }

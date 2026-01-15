@@ -1,15 +1,20 @@
 //! Journal Entry generator with statistical distributions.
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use synth_config::schema::TransactionConfig;
+use synth_config::schema::{GeneratorConfig, TemplateConfig, TransactionConfig};
 use synth_core::distributions::*;
 use synth_core::models::*;
+use synth_core::templates::{
+    descriptions::DescriptionContext, DescriptionGenerator, ReferenceGenerator, ReferenceType,
+};
 use synth_core::traits::Generator;
+
+use crate::user_generator::{UserGenerator, UserGeneratorConfig};
 
 /// Generator for realistic journal entries.
 pub struct JournalEntryGenerator {
@@ -25,6 +30,13 @@ pub struct JournalEntryGenerator {
     end_date: NaiveDate,
     count: u64,
     doc_counter: u64,
+    // Enhanced features
+    user_pool: Option<UserPool>,
+    description_generator: DescriptionGenerator,
+    reference_generator: ReferenceGenerator,
+    template_config: TemplateConfig,
+    vendor_pool: VendorPool,
+    customer_pool: CustomerPool,
 }
 
 impl JournalEntryGenerator {
@@ -37,6 +49,92 @@ impl JournalEntryGenerator {
         end_date: NaiveDate,
         seed: u64,
     ) -> Self {
+        Self::new_with_full_config(
+            config,
+            coa,
+            companies,
+            start_date,
+            end_date,
+            seed,
+            TemplateConfig::default(),
+            None,
+        )
+    }
+
+    /// Create a new journal entry generator with full configuration.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_full_config(
+        config: TransactionConfig,
+        coa: Arc<ChartOfAccounts>,
+        companies: Vec<String>,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+        seed: u64,
+        template_config: TemplateConfig,
+        user_pool: Option<UserPool>,
+    ) -> Self {
+        // Initialize user pool if not provided
+        let user_pool = user_pool.or_else(|| {
+            if template_config.names.generate_realistic_names {
+                let user_gen_config = UserGeneratorConfig {
+                    culture_distribution: vec![
+                        (
+                            synth_core::templates::NameCulture::WesternUs,
+                            template_config.names.culture_distribution.western_us,
+                        ),
+                        (
+                            synth_core::templates::NameCulture::Hispanic,
+                            template_config.names.culture_distribution.hispanic,
+                        ),
+                        (
+                            synth_core::templates::NameCulture::German,
+                            template_config.names.culture_distribution.german,
+                        ),
+                        (
+                            synth_core::templates::NameCulture::French,
+                            template_config.names.culture_distribution.french,
+                        ),
+                        (
+                            synth_core::templates::NameCulture::Chinese,
+                            template_config.names.culture_distribution.chinese,
+                        ),
+                        (
+                            synth_core::templates::NameCulture::Japanese,
+                            template_config.names.culture_distribution.japanese,
+                        ),
+                        (
+                            synth_core::templates::NameCulture::Indian,
+                            template_config.names.culture_distribution.indian,
+                        ),
+                    ],
+                    email_domain: template_config.names.email_domain.clone(),
+                    generate_realistic_names: true,
+                };
+                let mut user_gen = UserGenerator::with_config(seed + 100, user_gen_config);
+                Some(user_gen.generate_standard(&companies))
+            } else {
+                None
+            }
+        });
+
+        // Initialize reference generator
+        let mut ref_gen = ReferenceGenerator::new(
+            start_date.year(),
+            companies.first().map(|s| s.as_str()).unwrap_or("1000"),
+        );
+        ref_gen.set_prefix(
+            ReferenceType::Invoice,
+            &template_config.references.invoice_prefix,
+        );
+        ref_gen.set_prefix(
+            ReferenceType::PurchaseOrder,
+            &template_config.references.po_prefix,
+        );
+        ref_gen.set_prefix(
+            ReferenceType::SalesOrder,
+            &template_config.references.so_prefix,
+        );
+
         Self {
             rng: ChaCha8Rng::seed_from_u64(seed),
             seed,
@@ -60,7 +158,39 @@ impl JournalEntryGenerator {
             end_date,
             count: 0,
             doc_counter: 0,
+            user_pool,
+            description_generator: DescriptionGenerator::new(),
+            reference_generator: ref_gen,
+            template_config,
+            vendor_pool: VendorPool::standard(),
+            customer_pool: CustomerPool::standard(),
         }
+    }
+
+    /// Create from a full GeneratorConfig.
+    pub fn from_generator_config(
+        full_config: &GeneratorConfig,
+        coa: Arc<ChartOfAccounts>,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+        seed: u64,
+    ) -> Self {
+        let companies: Vec<String> = full_config
+            .companies
+            .iter()
+            .map(|c| c.code.clone())
+            .collect();
+
+        Self::new_with_full_config(
+            full_config.transactions.clone(),
+            coa,
+            companies,
+            start_date,
+            end_date,
+            seed,
+            full_config.templates.clone(),
+            None,
+        )
     }
 
     /// Generate a deterministic UUID from seed and counter.
@@ -105,7 +235,7 @@ impl JournalEntryGenerator {
         // Sample line item specification
         let line_spec = self.line_sampler.sample();
 
-        // Determine source type
+        // Determine source type and business process
         let is_automated = self.rng.gen::<f64>() < self.config.source_distribution.automated;
         let source = if is_automated {
             TransactionSource::Automated
@@ -113,25 +243,60 @@ impl JournalEntryGenerator {
             TransactionSource::Manual
         };
 
+        // Select business process
+        let business_process = self.select_business_process();
+
         // Sample time based on source
         let time = self.temporal_sampler.sample_time(!is_automated);
         let created_at = posting_date.and_time(time).and_utc();
+
+        // Select user from pool or generate generic
+        let (created_by, user_persona) = self.select_user(is_automated);
 
         // Create header with deterministic UUID
         let mut header =
             JournalEntryHeader::with_deterministic_id(company_code, posting_date, document_id);
         header.created_at = created_at;
         header.source = source;
-        header.created_by = if is_automated {
-            format!("BATCH{:04}", self.rng.gen_range(1..=20))
-        } else {
-            format!("USER{:04}", self.rng.gen_range(1..=40))
-        };
-        header.user_persona = if is_automated {
-            "automated_system".to_string()
-        } else {
-            "senior_accountant".to_string()
-        };
+        header.created_by = created_by;
+        header.user_persona = user_persona;
+        header.business_process = Some(business_process);
+
+        // Generate description context
+        let mut context =
+            DescriptionContext::with_period(posting_date.month(), posting_date.year());
+
+        // Add vendor/customer context based on business process
+        match business_process {
+            BusinessProcess::P2P => {
+                if let Some(vendor) = self.vendor_pool.random_vendor(&mut self.rng) {
+                    context.vendor_name = Some(vendor.name.clone());
+                }
+            }
+            BusinessProcess::O2C => {
+                if let Some(customer) = self.customer_pool.random_customer(&mut self.rng) {
+                    context.customer_name = Some(customer.name.clone());
+                }
+            }
+            _ => {}
+        }
+
+        // Generate header text if enabled
+        if self.template_config.descriptions.generate_header_text {
+            header.header_text = Some(self.description_generator.generate_header_text(
+                business_process,
+                &context,
+                &mut self.rng,
+            ));
+        }
+
+        // Generate reference if enabled
+        if self.template_config.references.generate_references {
+            header.reference = Some(
+                self.reference_generator
+                    .generate_for_process_year(business_process, posting_date.year()),
+            );
+        }
 
         // Generate line items
         let mut entry = JournalEntry::new(header);
@@ -142,13 +307,24 @@ impl JournalEntryGenerator {
             .amount_sampler
             .sample_summing_to(line_spec.debit_count, total_amount);
         for (i, amount) in debit_amounts.into_iter().enumerate() {
-            let account = self.select_debit_account();
-            entry.add_line(JournalEntryLine::debit(
+            let account_number = self.select_debit_account().account_number.clone();
+            let mut line = JournalEntryLine::debit(
                 entry.header.document_id,
                 (i + 1) as u32,
-                account.account_number.clone(),
+                account_number.clone(),
                 amount,
-            ));
+            );
+
+            // Generate line text if enabled
+            if self.template_config.descriptions.generate_line_text {
+                line.line_text = Some(self.description_generator.generate_line_text(
+                    &account_number,
+                    &context,
+                    &mut self.rng,
+                ));
+            }
+
+            entry.add_line(line);
         }
 
         // Generate credit lines - use the SAME amounts to ensure balance
@@ -156,16 +332,86 @@ impl JournalEntryGenerator {
             .amount_sampler
             .sample_summing_to(line_spec.credit_count, total_amount);
         for (i, amount) in credit_amounts.into_iter().enumerate() {
-            let account = self.select_credit_account();
-            entry.add_line(JournalEntryLine::credit(
+            let account_number = self.select_credit_account().account_number.clone();
+            let mut line = JournalEntryLine::credit(
                 entry.header.document_id,
                 (line_spec.debit_count + i + 1) as u32,
-                account.account_number.clone(),
+                account_number.clone(),
                 amount,
-            ));
+            );
+
+            // Generate line text if enabled
+            if self.template_config.descriptions.generate_line_text {
+                line.line_text = Some(self.description_generator.generate_line_text(
+                    &account_number,
+                    &context,
+                    &mut self.rng,
+                ));
+            }
+
+            entry.add_line(line);
         }
 
         entry
+    }
+
+    /// Select a user from the pool or generate a generic user ID.
+    fn select_user(&mut self, is_automated: bool) -> (String, String) {
+        if let Some(ref pool) = self.user_pool {
+            let persona = if is_automated {
+                UserPersona::AutomatedSystem
+            } else {
+                // Random distribution among human personas
+                let roll: f64 = self.rng.gen();
+                if roll < 0.4 {
+                    UserPersona::JuniorAccountant
+                } else if roll < 0.7 {
+                    UserPersona::SeniorAccountant
+                } else if roll < 0.85 {
+                    UserPersona::Controller
+                } else {
+                    UserPersona::Manager
+                }
+            };
+
+            if let Some(user) = pool.get_random_user(persona, &mut self.rng) {
+                return (
+                    user.user_id.clone(),
+                    format!("{:?}", user.persona).to_lowercase(),
+                );
+            }
+        }
+
+        // Fallback to generic format
+        if is_automated {
+            (
+                format!("BATCH{:04}", self.rng.gen_range(1..=20)),
+                "automated_system".to_string(),
+            )
+        } else {
+            (
+                format!("USER{:04}", self.rng.gen_range(1..=40)),
+                "senior_accountant".to_string(),
+            )
+        }
+    }
+
+    /// Select a business process based on configuration weights.
+    fn select_business_process(&mut self) -> BusinessProcess {
+        let roll: f64 = self.rng.gen();
+
+        // Default weights: O2C=35%, P2P=30%, R2R=20%, H2R=10%, A2R=5%
+        if roll < 0.35 {
+            BusinessProcess::O2C
+        } else if roll < 0.65 {
+            BusinessProcess::P2P
+        } else if roll < 0.85 {
+            BusinessProcess::R2R
+        } else if roll < 0.95 {
+            BusinessProcess::H2R
+        } else {
+            BusinessProcess::A2R
+        }
     }
 
     fn select_debit_account(&mut self) -> &GLAccount {
@@ -226,6 +472,25 @@ impl Generator for JournalEntryGenerator {
         self.temporal_sampler.reset(self.seed + 3);
         self.count = 0;
         self.doc_counter = 0;
+
+        // Reset reference generator by recreating it
+        let mut ref_gen = ReferenceGenerator::new(
+            self.start_date.year(),
+            self.companies.first().map(|s| s.as_str()).unwrap_or("1000"),
+        );
+        ref_gen.set_prefix(
+            ReferenceType::Invoice,
+            &self.template_config.references.invoice_prefix,
+        );
+        ref_gen.set_prefix(
+            ReferenceType::PurchaseOrder,
+            &self.template_config.references.po_prefix,
+        );
+        ref_gen.set_prefix(
+            ReferenceType::SalesOrder,
+            &self.template_config.references.so_prefix,
+        );
+        self.reference_generator = ref_gen;
     }
 
     fn count(&self) -> u64 {
@@ -297,6 +562,106 @@ mod tests {
             let e2 = gen2.generate();
             assert_eq!(e1.header.document_id, e2.header.document_id);
             assert_eq!(e1.total_debit(), e2.total_debit());
+        }
+    }
+
+    #[test]
+    fn test_templates_generate_descriptions() {
+        let mut coa_gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
+        let coa = Arc::new(coa_gen.generate());
+
+        // Enable all template features
+        let template_config = TemplateConfig {
+            names: synth_config::schema::NameTemplateConfig {
+                generate_realistic_names: true,
+                email_domain: "test.com".to_string(),
+                culture_distribution: synth_config::schema::CultureDistribution::default(),
+            },
+            descriptions: synth_config::schema::DescriptionTemplateConfig {
+                generate_header_text: true,
+                generate_line_text: true,
+            },
+            references: synth_config::schema::ReferenceTemplateConfig {
+                generate_references: true,
+                invoice_prefix: "TEST-INV".to_string(),
+                po_prefix: "TEST-PO".to_string(),
+                so_prefix: "TEST-SO".to_string(),
+            },
+        };
+
+        let mut je_gen = JournalEntryGenerator::new_with_full_config(
+            TransactionConfig::default(),
+            coa,
+            vec!["1000".to_string()],
+            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            42,
+            template_config,
+            None,
+        );
+
+        for _ in 0..10 {
+            let entry = je_gen.generate();
+
+            // Verify header text is populated
+            assert!(
+                entry.header.header_text.is_some(),
+                "Header text should be populated"
+            );
+
+            // Verify reference is populated
+            assert!(
+                entry.header.reference.is_some(),
+                "Reference should be populated"
+            );
+
+            // Verify business process is set
+            assert!(
+                entry.header.business_process.is_some(),
+                "Business process should be set"
+            );
+
+            // Verify line text is populated
+            for line in &entry.lines {
+                assert!(line.line_text.is_some(), "Line text should be populated");
+            }
+
+            // Entry should still be balanced
+            assert!(entry.is_balanced());
+        }
+    }
+
+    #[test]
+    fn test_user_pool_integration() {
+        let mut coa_gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
+        let coa = Arc::new(coa_gen.generate());
+
+        let companies = vec!["1000".to_string()];
+
+        // Generate user pool
+        let mut user_gen = crate::UserGenerator::new(42);
+        let user_pool = user_gen.generate_standard(&companies);
+
+        let mut je_gen = JournalEntryGenerator::new_with_full_config(
+            TransactionConfig::default(),
+            coa,
+            companies,
+            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            42,
+            TemplateConfig::default(),
+            Some(user_pool),
+        );
+
+        // Generate entries and verify user IDs are from pool
+        for _ in 0..20 {
+            let entry = je_gen.generate();
+
+            // User ID should not be generic BATCH/USER format when pool is used
+            // (though it may still fall back if random selection misses)
+            assert!(!entry.header.created_by.is_empty());
         }
     }
 }

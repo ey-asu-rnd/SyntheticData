@@ -37,6 +37,9 @@ pub fn create_preset(
         fraud: FraudConfig::default(),
         business_processes: get_business_process_config(industry),
         user_personas: UserPersonaConfig::default(),
+        templates: TemplateConfig::default(),
+        approval: ApprovalConfig::default(),
+        departments: DepartmentConfig::default(),
     }
 }
 
