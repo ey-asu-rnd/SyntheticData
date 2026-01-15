@@ -238,6 +238,28 @@ pub struct JournalEntryHeader {
 
     /// Simulation batch ID for traceability
     pub batch_id: Option<Uuid>,
+
+    // --- Internal Controls / SOX Compliance Fields ---
+
+    /// Internal control IDs that apply to this transaction
+    #[serde(default)]
+    pub control_ids: Vec<String>,
+
+    /// Whether this is a SOX-relevant transaction
+    #[serde(default)]
+    pub sox_relevant: bool,
+
+    /// Control status for this transaction
+    #[serde(default)]
+    pub control_status: super::internal_control::ControlStatus,
+
+    /// Whether a Segregation of Duties violation occurred
+    #[serde(default)]
+    pub sod_violation: bool,
+
+    /// Type of SoD conflict if violation occurred
+    #[serde(default)]
+    pub sod_conflict_type: Option<super::sod::SodConflictType>,
 }
 
 impl JournalEntryHeader {
@@ -264,6 +286,12 @@ impl JournalEntryHeader {
             is_fraud: false,
             fraud_type: None,
             batch_id: None,
+            // Internal Controls / SOX fields
+            control_ids: Vec::new(),
+            sox_relevant: false,
+            control_status: super::internal_control::ControlStatus::default(),
+            sod_violation: false,
+            sod_conflict_type: None,
         }
     }
 
@@ -297,6 +325,12 @@ impl JournalEntryHeader {
             is_fraud: false,
             fraud_type: None,
             batch_id: None,
+            // Internal Controls / SOX fields
+            control_ids: Vec::new(),
+            sox_relevant: false,
+            control_status: super::internal_control::ControlStatus::default(),
+            sod_violation: false,
+            sod_conflict_type: None,
         }
     }
 }

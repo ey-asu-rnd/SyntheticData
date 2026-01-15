@@ -178,6 +178,23 @@ pub struct AcdocaEntry {
     /// Original journal entry UUID
     #[serde(rename = "ZSIM_JE_UUID")]
     pub sim_je_uuid: Option<Uuid>,
+
+    // === Internal Controls / SOX Compliance Fields ===
+    /// Comma-separated list of applicable control IDs
+    #[serde(rename = "ZSIM_CONTROL_IDS")]
+    pub sim_control_ids: Option<String>,
+    /// SOX relevance indicator
+    #[serde(rename = "ZSIM_SOX_RELEVANT")]
+    pub sim_sox_relevant: bool,
+    /// Control status (Effective, Exception, NotTested, Remediated)
+    #[serde(rename = "ZSIM_CONTROL_STATUS")]
+    pub sim_control_status: Option<String>,
+    /// SoD violation indicator
+    #[serde(rename = "ZSIM_SOD_VIOLATION")]
+    pub sim_sod_violation: bool,
+    /// SoD conflict type if violation occurred
+    #[serde(rename = "ZSIM_SOD_CONFLICT")]
+    pub sim_sod_conflict: Option<String>,
 }
 
 impl Default for AcdocaEntry {
@@ -247,6 +264,12 @@ impl Default for AcdocaEntry {
             sim_business_process: None,
             sim_user_persona: None,
             sim_je_uuid: None,
+            // Internal Controls / SOX fields
+            sim_control_ids: None,
+            sim_sox_relevant: false,
+            sim_control_status: None,
+            sim_sod_violation: false,
+            sim_sod_conflict: None,
         }
     }
 }
@@ -485,6 +508,15 @@ impl AcdocaFactory {
                     sim_business_process: je.header.business_process.map(|bp| format!("{:?}", bp)),
                     sim_user_persona: Some(je.header.user_persona.clone()),
                     sim_je_uuid: Some(je.header.document_id),
+                    sim_control_ids: if je.header.control_ids.is_empty() {
+                        None
+                    } else {
+                        Some(je.header.control_ids.join(","))
+                    },
+                    sim_sox_relevant: je.header.sox_relevant,
+                    sim_control_status: Some(je.header.control_status.to_string()),
+                    sim_sod_violation: je.header.sod_violation,
+                    sim_sod_conflict: je.header.sod_conflict_type.map(|t| t.to_string()),
                 }
             })
             .collect()

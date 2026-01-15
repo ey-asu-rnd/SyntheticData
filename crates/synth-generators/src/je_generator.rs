@@ -6,7 +6,7 @@ use rand_chacha::ChaCha8Rng;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use synth_config::schema::{GeneratorConfig, TemplateConfig, TransactionConfig};
+use synth_config::schema::{FraudConfig, GeneratorConfig, TemplateConfig, TransactionConfig};
 use synth_core::distributions::*;
 use synth_core::models::*;
 use synth_core::templates::{
@@ -14,6 +14,7 @@ use synth_core::templates::{
 };
 use synth_core::traits::Generator;
 
+use crate::company_selector::WeightedCompanySelector;
 use crate::user_generator::{UserGenerator, UserGeneratorConfig};
 
 /// Generator for realistic journal entries.
@@ -23,6 +24,7 @@ pub struct JournalEntryGenerator {
     config: TransactionConfig,
     coa: Arc<ChartOfAccounts>,
     companies: Vec<String>,
+    company_selector: WeightedCompanySelector,
     line_sampler: LineItemSampler,
     amount_sampler: AmountSampler,
     temporal_sampler: TemporalSampler,
@@ -37,6 +39,8 @@ pub struct JournalEntryGenerator {
     template_config: TemplateConfig,
     vendor_pool: VendorPool,
     customer_pool: CustomerPool,
+    // Fraud generation
+    fraud_config: FraudConfig,
 }
 
 impl JournalEntryGenerator {
@@ -135,12 +139,16 @@ impl JournalEntryGenerator {
             &template_config.references.so_prefix,
         );
 
+        // Create weighted company selector (uniform weights for this constructor)
+        let company_selector = WeightedCompanySelector::uniform(companies.clone());
+
         Self {
             rng: ChaCha8Rng::seed_from_u64(seed),
             seed,
             config: config.clone(),
             coa,
             companies,
+            company_selector,
             line_sampler: LineItemSampler::with_config(
                 seed + 1,
                 config.line_item_distribution.clone(),
@@ -164,10 +172,14 @@ impl JournalEntryGenerator {
             template_config,
             vendor_pool: VendorPool::standard(),
             customer_pool: CustomerPool::standard(),
+            fraud_config: FraudConfig::default(),
         }
     }
 
     /// Create from a full GeneratorConfig.
+    ///
+    /// This constructor uses the volume_weight from company configs
+    /// for weighted company selection, and fraud config from GeneratorConfig.
     pub fn from_generator_config(
         full_config: &GeneratorConfig,
         coa: Arc<ChartOfAccounts>,
@@ -181,7 +193,10 @@ impl JournalEntryGenerator {
             .map(|c| c.code.clone())
             .collect();
 
-        Self::new_with_full_config(
+        // Create weighted selector using volume_weight from company configs
+        let company_selector = WeightedCompanySelector::from_configs(&full_config.companies);
+
+        let mut generator = Self::new_with_full_config(
             full_config.transactions.clone(),
             coa,
             companies,
@@ -190,7 +205,105 @@ impl JournalEntryGenerator {
             seed,
             full_config.templates.clone(),
             None,
-        )
+        );
+
+        // Override the uniform selector with weighted selector
+        generator.company_selector = company_selector;
+
+        // Set fraud config
+        generator.fraud_config = full_config.fraud.clone();
+
+        generator
+    }
+
+    /// Set a custom company selector.
+    pub fn set_company_selector(&mut self, selector: WeightedCompanySelector) {
+        self.company_selector = selector;
+    }
+
+    /// Get the current company selector.
+    pub fn company_selector(&self) -> &WeightedCompanySelector {
+        &self.company_selector
+    }
+
+    /// Set fraud configuration.
+    pub fn set_fraud_config(&mut self, config: FraudConfig) {
+        self.fraud_config = config;
+    }
+
+    /// Determine if this transaction should be fraudulent.
+    fn determine_fraud(&mut self) -> Option<FraudType> {
+        if !self.fraud_config.enabled {
+            return None;
+        }
+
+        // Roll for fraud based on fraud rate
+        if self.rng.gen::<f64>() >= self.fraud_config.fraud_rate {
+            return None;
+        }
+
+        // Select fraud type based on distribution
+        Some(self.select_fraud_type())
+    }
+
+    /// Select a fraud type based on the configured distribution.
+    fn select_fraud_type(&mut self) -> FraudType {
+        let dist = &self.fraud_config.fraud_type_distribution;
+        let roll: f64 = self.rng.gen();
+
+        let mut cumulative = 0.0;
+
+        cumulative += dist.suspense_account_abuse;
+        if roll < cumulative {
+            return FraudType::SuspenseAccountAbuse;
+        }
+
+        cumulative += dist.fictitious_transaction;
+        if roll < cumulative {
+            return FraudType::FictitiousTransaction;
+        }
+
+        cumulative += dist.revenue_manipulation;
+        if roll < cumulative {
+            return FraudType::RevenueManipulation;
+        }
+
+        cumulative += dist.expense_capitalization;
+        if roll < cumulative {
+            return FraudType::ExpenseCapitalization;
+        }
+
+        cumulative += dist.split_transaction;
+        if roll < cumulative {
+            return FraudType::SplitTransaction;
+        }
+
+        cumulative += dist.timing_anomaly;
+        if roll < cumulative {
+            return FraudType::TimingAnomaly;
+        }
+
+        cumulative += dist.unauthorized_access;
+        if roll < cumulative {
+            return FraudType::UnauthorizedAccess;
+        }
+
+        // Default fallback
+        FraudType::DuplicatePayment
+    }
+
+    /// Map a fraud type to an amount pattern for suspicious amounts.
+    fn fraud_type_to_amount_pattern(&self, fraud_type: FraudType) -> FraudAmountPattern {
+        match fraud_type {
+            FraudType::SplitTransaction => FraudAmountPattern::ThresholdAdjacent,
+            FraudType::FictitiousTransaction => FraudAmountPattern::ObviousRoundNumbers,
+            FraudType::SuspenseAccountAbuse => FraudAmountPattern::ObviousRoundNumbers,
+            FraudType::RevenueManipulation => FraudAmountPattern::StatisticallyImprobable,
+            FraudType::ExpenseCapitalization => FraudAmountPattern::StatisticallyImprobable,
+            FraudType::DuplicatePayment => FraudAmountPattern::Normal, // Same as original
+            FraudType::TimingAnomaly => FraudAmountPattern::Normal,
+            FraudType::UnauthorizedAccess => FraudAmountPattern::StatisticallyImprobable,
+        }
     }
 
     /// Generate a deterministic UUID from seed and counter.
@@ -225,12 +338,8 @@ impl JournalEntryGenerator {
             .temporal_sampler
             .sample_date(self.start_date, self.end_date);
 
-        // Select company
-        let company_code = self
-            .companies
-            .choose(&mut self.rng)
-            .cloned()
-            .unwrap_or_else(|| "1000".to_string());
+        // Select company using weighted selector
+        let company_code = self.company_selector.select(&mut self.rng).to_string();
 
         // Sample line item specification
         let line_spec = self.line_sampler.sample();
@@ -245,6 +354,10 @@ impl JournalEntryGenerator {
 
         // Select business process
         let business_process = self.select_business_process();
+
+        // Determine if this is a fraudulent transaction
+        let fraud_type = self.determine_fraud();
+        let is_fraud = fraud_type.is_some();
 
         // Sample time based on source
         let time = self.temporal_sampler.sample_time(!is_automated);
@@ -261,6 +374,8 @@ impl JournalEntryGenerator {
         header.created_by = created_by;
         header.user_persona = user_persona;
         header.business_process = Some(business_process);
+        header.is_fraud = is_fraud;
+        header.fraud_type = fraud_type;
 
         // Generate description context
         let mut context =
@@ -300,7 +415,14 @@ impl JournalEntryGenerator {
 
         // Generate line items
         let mut entry = JournalEntry::new(header);
-        let total_amount = self.amount_sampler.sample();
+
+        // Generate amount - use fraud pattern if this is a fraudulent transaction
+        let total_amount = if let Some(ft) = fraud_type {
+            let pattern = self.fraud_type_to_amount_pattern(ft);
+            self.amount_sampler.sample_fraud(pattern)
+        } else {
+            self.amount_sampler.sample()
+        };
 
         // Generate debit lines
         let debit_amounts = self

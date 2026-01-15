@@ -9,6 +9,8 @@ use rand_distr::{Distribution, LogNormal};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
+use super::benford::{BenfordSampler, FraudAmountGenerator, FraudAmountPattern, ThresholdConfig};
+
 /// Configuration for amount distribution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AmountDistributionConfig {
@@ -93,6 +95,12 @@ pub struct AmountSampler {
     lognormal: LogNormal<f64>,
     /// Decimal multiplier for rounding
     decimal_multiplier: f64,
+    /// Optional Benford sampler for compliant generation
+    benford_sampler: Option<BenfordSampler>,
+    /// Optional fraud amount generator
+    fraud_generator: Option<FraudAmountGenerator>,
+    /// Whether Benford's Law compliance is enabled
+    benford_enabled: bool,
 }
 
 impl AmountSampler {
@@ -112,11 +120,96 @@ impl AmountSampler {
             config,
             lognormal,
             decimal_multiplier,
+            benford_sampler: None,
+            fraud_generator: None,
+            benford_enabled: false,
         }
     }
 
+    /// Create a sampler with Benford's Law compliance enabled.
+    pub fn with_benford(seed: u64, config: AmountDistributionConfig) -> Self {
+        let lognormal = LogNormal::new(config.lognormal_mu, config.lognormal_sigma)
+            .expect("Invalid log-normal parameters");
+        let decimal_multiplier = 10_f64.powi(config.decimal_places as i32);
+
+        Self {
+            rng: ChaCha8Rng::seed_from_u64(seed),
+            benford_sampler: Some(BenfordSampler::new(seed + 100, config.clone())),
+            fraud_generator: Some(FraudAmountGenerator::new(
+                seed + 200,
+                config.clone(),
+                ThresholdConfig::default(),
+            )),
+            config,
+            lognormal,
+            decimal_multiplier,
+            benford_enabled: true,
+        }
+    }
+
+    /// Create a sampler with full fraud configuration.
+    pub fn with_fraud_config(
+        seed: u64,
+        config: AmountDistributionConfig,
+        threshold_config: ThresholdConfig,
+        benford_enabled: bool,
+    ) -> Self {
+        let lognormal = LogNormal::new(config.lognormal_mu, config.lognormal_sigma)
+            .expect("Invalid log-normal parameters");
+        let decimal_multiplier = 10_f64.powi(config.decimal_places as i32);
+
+        Self {
+            rng: ChaCha8Rng::seed_from_u64(seed),
+            benford_sampler: if benford_enabled {
+                Some(BenfordSampler::new(seed + 100, config.clone()))
+            } else {
+                None
+            },
+            fraud_generator: Some(FraudAmountGenerator::new(
+                seed + 200,
+                config.clone(),
+                threshold_config,
+            )),
+            config,
+            lognormal,
+            decimal_multiplier,
+            benford_enabled,
+        }
+    }
+
+    /// Enable or disable Benford's Law compliance.
+    pub fn set_benford_enabled(&mut self, enabled: bool) {
+        self.benford_enabled = enabled;
+        if enabled && self.benford_sampler.is_none() {
+            // Initialize Benford sampler if not already present
+            let seed = self.rng.gen();
+            self.benford_sampler = Some(BenfordSampler::new(seed, self.config.clone()));
+        }
+    }
+
+    /// Check if Benford's Law compliance is enabled.
+    pub fn is_benford_enabled(&self) -> bool {
+        self.benford_enabled
+    }
+
     /// Sample a single amount.
+    ///
+    /// If Benford's Law compliance is enabled, uses the Benford sampler.
+    /// Otherwise uses log-normal distribution with round-number bias.
     pub fn sample(&mut self) -> Decimal {
+        // Use Benford sampler if enabled
+        if self.benford_enabled {
+            if let Some(ref mut benford) = self.benford_sampler {
+                return benford.sample();
+            }
+        }
+
+        // Fall back to log-normal sampling
+        self.sample_lognormal()
+    }
+
+    /// Sample using the log-normal distribution (original behavior).
+    pub fn sample_lognormal(&mut self) -> Decimal {
         let mut amount = self.lognormal.sample(&mut self.rng);
 
         // Clamp to configured range
@@ -139,6 +232,18 @@ impl AmountSampler {
         amount = amount.max(self.config.min_amount);
 
         Decimal::from_f64_retain(amount).unwrap_or(Decimal::ONE)
+    }
+
+    /// Sample a fraud amount with the specified pattern.
+    ///
+    /// Returns a normal amount if fraud generator is not configured.
+    pub fn sample_fraud(&mut self, pattern: FraudAmountPattern) -> Decimal {
+        if let Some(ref mut fraud_gen) = self.fraud_generator {
+            fraud_gen.sample(pattern)
+        } else {
+            // Fallback to normal sampling
+            self.sample()
+        }
     }
 
     /// Sample multiple amounts that sum to a target total.

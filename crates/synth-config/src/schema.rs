@@ -24,6 +24,9 @@ pub struct GeneratorConfig {
     /// Fraud simulation settings
     #[serde(default)]
     pub fraud: FraudConfig,
+    /// Internal Controls System settings
+    #[serde(default)]
+    pub internal_controls: InternalControlsConfig,
     /// Business process mix
     #[serde(default)]
     pub business_processes: BusinessProcessConfig,
@@ -179,6 +182,51 @@ pub struct TransactionConfig {
     /// Amount distribution
     #[serde(default)]
     pub amounts: AmountDistributionConfig,
+    /// Benford's Law compliance configuration
+    #[serde(default)]
+    pub benford: BenfordConfig,
+}
+
+/// Benford's Law compliance configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BenfordConfig {
+    /// Enable Benford's Law compliance for amount generation
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Tolerance for deviation from ideal Benford distribution (0.0-1.0)
+    #[serde(default = "default_benford_tolerance")]
+    pub tolerance: f64,
+    /// Transaction sources exempt from Benford's Law (fixed amounts)
+    #[serde(default)]
+    pub exempt_sources: Vec<BenfordExemption>,
+}
+
+fn default_benford_tolerance() -> f64 {
+    0.05
+}
+
+impl Default for BenfordConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            tolerance: default_benford_tolerance(),
+            exempt_sources: vec![BenfordExemption::Recurring, BenfordExemption::Payroll],
+        }
+    }
+}
+
+/// Types of transactions exempt from Benford's Law.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BenfordExemption {
+    /// Recurring fixed amounts (rent, subscriptions)
+    Recurring,
+    /// Payroll (standardized salaries)
+    Payroll,
+    /// Fixed fees and charges
+    FixedFees,
+    /// Round number purchases (often legitimate)
+    RoundAmounts,
 }
 
 /// Distribution of transaction sources.
@@ -339,6 +387,13 @@ pub struct FraudConfig {
     /// Clustering factor
     #[serde(default = "default_clustering_factor")]
     pub clustering_factor: f64,
+    /// Approval thresholds for threshold-adjacent fraud pattern
+    #[serde(default = "default_approval_thresholds")]
+    pub approval_thresholds: Vec<f64>,
+}
+
+fn default_approval_thresholds() -> Vec<f64> {
+    vec![1000.0, 5000.0, 10000.0, 25000.0, 50000.0, 100000.0]
 }
 
 fn default_fraud_rate() -> f64 {
@@ -356,6 +411,7 @@ impl Default for FraudConfig {
             fraud_type_distribution: FraudTypeDistribution::default(),
             clustering_enabled: false,
             clustering_factor: default_clustering_factor(),
+            approval_thresholds: default_approval_thresholds(),
         }
     }
 }
@@ -384,6 +440,50 @@ impl Default for FraudTypeDistribution {
             timing_anomaly: 0.10,
             unauthorized_access: 0.10,
             duplicate_payment: 0.05,
+        }
+    }
+}
+
+/// Internal Controls System (ICS) configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InternalControlsConfig {
+    /// Enable internal controls system
+    #[serde(default)]
+    pub enabled: bool,
+    /// Rate at which controls result in exceptions (0.0 - 1.0)
+    #[serde(default = "default_exception_rate")]
+    pub exception_rate: f64,
+    /// Rate at which SoD violations occur (0.0 - 1.0)
+    #[serde(default = "default_sod_violation_rate")]
+    pub sod_violation_rate: f64,
+    /// Export control master data to separate files
+    #[serde(default = "default_true")]
+    pub export_control_master_data: bool,
+    /// SOX materiality threshold for marking transactions as SOX-relevant
+    #[serde(default = "default_sox_materiality_threshold")]
+    pub sox_materiality_threshold: f64,
+}
+
+fn default_exception_rate() -> f64 {
+    0.02
+}
+
+fn default_sod_violation_rate() -> f64 {
+    0.01
+}
+
+fn default_sox_materiality_threshold() -> f64 {
+    10000.0
+}
+
+impl Default for InternalControlsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            exception_rate: default_exception_rate(),
+            sod_violation_rate: default_sod_violation_rate(),
+            export_control_master_data: true,
+            sox_materiality_threshold: default_sox_materiality_threshold(),
         }
     }
 }

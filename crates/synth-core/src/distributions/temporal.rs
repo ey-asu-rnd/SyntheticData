@@ -8,6 +8,9 @@ use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 
+use super::holidays::HolidayCalendar;
+use super::seasonality::IndustrySeasonality;
+
 /// Configuration for seasonality patterns.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SeasonalityConfig {
@@ -82,8 +85,12 @@ pub struct TemporalSampler {
     rng: ChaCha8Rng,
     seasonality_config: SeasonalityConfig,
     working_hours_config: WorkingHoursConfig,
-    /// List of holiday dates
+    /// List of holiday dates (legacy)
     holidays: Vec<NaiveDate>,
+    /// Industry-specific seasonality patterns (optional).
+    industry_seasonality: Option<IndustrySeasonality>,
+    /// Regional holiday calendar (optional).
+    holiday_calendar: Option<HolidayCalendar>,
 }
 
 impl TemporalSampler {
@@ -109,7 +116,61 @@ impl TemporalSampler {
             seasonality_config,
             working_hours_config,
             holidays,
+            industry_seasonality: None,
+            holiday_calendar: None,
         }
+    }
+
+    /// Create a temporal sampler with full enhanced configuration.
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_full_config(
+        seed: u64,
+        seasonality_config: SeasonalityConfig,
+        working_hours_config: WorkingHoursConfig,
+        holidays: Vec<NaiveDate>,
+        industry_seasonality: Option<IndustrySeasonality>,
+        holiday_calendar: Option<HolidayCalendar>,
+    ) -> Self {
+        Self {
+            rng: ChaCha8Rng::seed_from_u64(seed),
+            seasonality_config,
+            working_hours_config,
+            holidays,
+            industry_seasonality,
+            holiday_calendar,
+        }
+    }
+
+    /// Set industry-specific seasonality.
+    pub fn with_industry_seasonality(mut self, seasonality: IndustrySeasonality) -> Self {
+        self.industry_seasonality = Some(seasonality);
+        self
+    }
+
+    /// Set regional holiday calendar.
+    pub fn with_holiday_calendar(mut self, calendar: HolidayCalendar) -> Self {
+        self.holiday_calendar = Some(calendar);
+        self
+    }
+
+    /// Set industry seasonality (mutable reference version).
+    pub fn set_industry_seasonality(&mut self, seasonality: IndustrySeasonality) {
+        self.industry_seasonality = Some(seasonality);
+    }
+
+    /// Set holiday calendar (mutable reference version).
+    pub fn set_holiday_calendar(&mut self, calendar: HolidayCalendar) {
+        self.holiday_calendar = Some(calendar);
+    }
+
+    /// Get the industry seasonality if set.
+    pub fn industry_seasonality(&self) -> Option<&IndustrySeasonality> {
+        self.industry_seasonality.as_ref()
+    }
+
+    /// Get the holiday calendar if set.
+    pub fn holiday_calendar(&self) -> Option<&HolidayCalendar> {
+        self.holiday_calendar.as_ref()
     }
 
     /// Generate US federal holidays for a given year.
@@ -140,7 +201,37 @@ impl TemporalSampler {
 
     /// Check if a date is a holiday.
     pub fn is_holiday(&self, date: NaiveDate) -> bool {
-        self.holidays.contains(&date)
+        // Check legacy holidays list
+        if self.holidays.contains(&date) {
+            return true;
+        }
+
+        // Check holiday calendar if available
+        if let Some(ref calendar) = self.holiday_calendar {
+            if calendar.is_holiday(date) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Get the holiday activity multiplier for a date.
+    fn get_holiday_multiplier(&self, date: NaiveDate) -> f64 {
+        // Check holiday calendar first (more accurate)
+        if let Some(ref calendar) = self.holiday_calendar {
+            let mult = calendar.get_multiplier(date);
+            if mult < 1.0 {
+                return mult;
+            }
+        }
+
+        // Fall back to legacy holidays with default multiplier
+        if self.holidays.contains(&date) {
+            return self.seasonality_config.holiday_activity;
+        }
+
+        1.0
     }
 
     /// Check if a date is month-end (last N days of month).
@@ -175,6 +266,12 @@ impl TemporalSampler {
     }
 
     /// Get the activity multiplier for a specific date.
+    ///
+    /// Combines:
+    /// - Base seasonality (month-end, quarter-end, year-end spikes)
+    /// - Weekend activity reduction
+    /// - Holiday activity reduction (from calendar or legacy list)
+    /// - Industry-specific seasonality (if configured)
     pub fn get_date_multiplier(&self, date: NaiveDate) -> f64 {
         let mut multiplier = 1.0;
 
@@ -183,9 +280,10 @@ impl TemporalSampler {
             multiplier *= self.seasonality_config.weekend_activity;
         }
 
-        // Holiday reduction
-        if self.is_holiday(date) {
-            multiplier *= self.seasonality_config.holiday_activity;
+        // Holiday reduction (using enhanced calendar if available)
+        let holiday_mult = self.get_holiday_multiplier(date);
+        if holiday_mult < 1.0 {
+            multiplier *= holiday_mult;
         }
 
         // Period-end spikes (take the highest applicable)
@@ -197,7 +295,47 @@ impl TemporalSampler {
             multiplier *= self.seasonality_config.month_end_multiplier;
         }
 
+        // Industry-specific seasonality
+        if let Some(ref industry) = self.industry_seasonality {
+            let industry_mult = industry.get_multiplier(date);
+            // Industry multipliers are additive to base (they represent deviations from normal)
+            // A multiplier > 1.0 increases activity, < 1.0 decreases it
+            multiplier *= industry_mult;
+        }
+
         multiplier
+    }
+
+    /// Get the base multiplier without industry seasonality.
+    pub fn get_base_date_multiplier(&self, date: NaiveDate) -> f64 {
+        let mut multiplier = 1.0;
+
+        if self.is_weekend(date) {
+            multiplier *= self.seasonality_config.weekend_activity;
+        }
+
+        let holiday_mult = self.get_holiday_multiplier(date);
+        if holiday_mult < 1.0 {
+            multiplier *= holiday_mult;
+        }
+
+        if self.seasonality_config.year_end_spike && self.is_year_end(date) {
+            multiplier *= self.seasonality_config.year_end_multiplier;
+        } else if self.seasonality_config.quarter_end_spike && self.is_quarter_end(date) {
+            multiplier *= self.seasonality_config.quarter_end_multiplier;
+        } else if self.seasonality_config.month_end_spike && self.is_month_end(date) {
+            multiplier *= self.seasonality_config.month_end_multiplier;
+        }
+
+        multiplier
+    }
+
+    /// Get only the industry seasonality multiplier for a date.
+    pub fn get_industry_multiplier(&self, date: NaiveDate) -> f64 {
+        self.industry_seasonality
+            .as_ref()
+            .map(|s| s.get_multiplier(date))
+            .unwrap_or(1.0)
     }
 
     /// Sample a posting date within a range based on seasonality.
