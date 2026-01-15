@@ -1,6 +1,6 @@
 //! Fixed Asset model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -158,7 +158,11 @@ impl FixedAssetRecord {
         self.accumulated_depreciation += amount;
         self.net_book_value = self.acquisition_cost - self.accumulated_depreciation;
 
-        if let Some(area) = self.depreciation_areas.iter_mut().find(|a| a.area_type == area_type) {
+        if let Some(area) = self
+            .depreciation_areas
+            .iter_mut()
+            .find(|a| a.area_type == area_type)
+        {
             area.accumulated_depreciation += amount;
             area.net_book_value = area.acquisition_cost - area.accumulated_depreciation;
         }
@@ -218,7 +222,10 @@ impl FixedAssetRecord {
         self.status = AssetStatus::Retired;
         self.notes = Some(format!(
             "{}Retired on {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             retirement_date
         ));
         self.modified_at = Some(Utc::now());
@@ -277,8 +284,12 @@ impl AssetClass {
     pub fn default_depreciation_method(&self) -> DepreciationMethod {
         match self {
             AssetClass::Land | AssetClass::ConstructionInProgress => DepreciationMethod::None,
-            AssetClass::ComputerEquipment | AssetClass::Software => DepreciationMethod::StraightLine,
-            AssetClass::Vehicles | AssetClass::MachineryEquipment => DepreciationMethod::DecliningBalance { rate: dec!(0.40) },
+            AssetClass::ComputerEquipment | AssetClass::Software => {
+                DepreciationMethod::StraightLine
+            }
+            AssetClass::Vehicles | AssetClass::MachineryEquipment => {
+                DepreciationMethod::DecliningBalance { rate: dec!(0.40) }
+            }
             _ => DepreciationMethod::StraightLine,
         }
     }
@@ -362,7 +373,8 @@ impl DepreciationArea {
 
     /// Gets remaining useful life in months.
     pub fn remaining_life_months(&self) -> u32 {
-        self.useful_life_months.saturating_sub(self.periods_completed)
+        self.useful_life_months
+            .saturating_sub(self.periods_completed)
     }
 
     /// Checks if fully depreciated.
@@ -396,7 +408,8 @@ impl DepreciationArea {
                 let total_years = self.useful_life_months / 12;
                 let sum_of_years = (total_years * (total_years + 1)) / 2;
                 if sum_of_years > 0 {
-                    let annual = depreciable_base * Decimal::from(remaining_years) / Decimal::from(sum_of_years);
+                    let annual = depreciable_base * Decimal::from(remaining_years)
+                        / Decimal::from(sum_of_years);
                     (annual / dec!(12)).round_dp(2)
                 } else {
                     Decimal::ZERO

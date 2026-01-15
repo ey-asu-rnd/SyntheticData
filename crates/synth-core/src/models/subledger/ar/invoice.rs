@@ -1,13 +1,13 @@
 //! AR Invoice model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 
 use crate::models::subledger::{
-    ClearingInfo, CurrencyAmount, DunningInfo, GLReference, PaymentTerms,
-    SubledgerDocumentStatus, TaxInfo,
+    ClearingInfo, CurrencyAmount, DunningInfo, GLReference, PaymentTerms, SubledgerDocumentStatus,
+    TaxInfo,
 };
 
 /// AR Invoice (customer invoice).
@@ -177,8 +177,11 @@ impl ARInvoice {
 
     /// Gets discount amount if paid by discount date.
     pub fn available_discount(&self, payment_date: NaiveDate) -> Decimal {
-        self.payment_terms
-            .calculate_discount(self.gross_amount.document_amount, payment_date, self.baseline_date)
+        self.payment_terms.calculate_discount(
+            self.gross_amount.document_amount,
+            payment_date,
+            self.baseline_date,
+        )
     }
 
     /// Sets the GL reference.
@@ -196,7 +199,10 @@ impl ARInvoice {
         self.status = SubledgerDocumentStatus::Reversed;
         self.notes = Some(format!(
             "{}Reversed on {}: {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             reversal_date,
             reason
         ));

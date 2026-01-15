@@ -1,6 +1,6 @@
 //! Inventory movement model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -280,7 +280,10 @@ impl InventoryMovement {
         reversal.reference_doc_number = Some(self.document_number.clone());
         reversal.reference_item = Some(self.item_number);
         reversal.batch_number = self.batch_number.clone();
-        reversal.notes = Some(format!("Reversal of {}/{}", self.document_number, self.item_number));
+        reversal.notes = Some(format!(
+            "Reversal of {}/{}",
+            self.document_number, self.item_number
+        ));
         reversal
     }
 

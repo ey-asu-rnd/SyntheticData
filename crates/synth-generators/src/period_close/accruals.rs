@@ -402,12 +402,17 @@ impl AccrualGenerator {
         account_balances: &HashMap<String, Decimal>,
     ) -> Decimal {
         match definition.calculation_method {
-            AccrualCalculationMethod::FixedAmount => definition.fixed_amount.unwrap_or(Decimal::ZERO),
+            AccrualCalculationMethod::FixedAmount => {
+                definition.fixed_amount.unwrap_or(Decimal::ZERO)
+            }
             AccrualCalculationMethod::PercentageOfBase => {
                 if let (Some(rate), Some(base_account)) =
                     (definition.percentage_rate, &definition.base_account)
                 {
-                    let base = account_balances.get(base_account).copied().unwrap_or(Decimal::ZERO);
+                    let base = account_balances
+                        .get(base_account)
+                        .copied()
+                        .unwrap_or(Decimal::ZERO);
                     (base * rate / dec!(100)).round_dp(2)
                 } else {
                     Decimal::ZERO
@@ -478,7 +483,11 @@ impl AccrualGenerator {
         }
     }
 
-    fn generate_reversal(&mut self, original: &JournalEntry, reversal_date: NaiveDate) -> JournalEntry {
+    fn generate_reversal(
+        &mut self,
+        original: &JournalEntry,
+        reversal_date: NaiveDate,
+    ) -> JournalEntry {
         self.accrual_counter += 1;
         let doc_number = format!("REV{:08}", self.accrual_counter);
 
@@ -502,7 +511,10 @@ impl AccrualGenerator {
                 project_code: line.project_code.clone(),
                 reference: Some(format!("REV-{}", original.document_number)),
                 assignment: line.assignment.clone(),
-                text: Some(format!("Reversal: {}", line.text.clone().unwrap_or_default())),
+                text: Some(format!(
+                    "Reversal: {}",
+                    line.text.clone().unwrap_or_default()
+                )),
                 quantity: line.quantity,
                 unit: line.unit.clone(),
                 tax_code: line.tax_code.clone(),

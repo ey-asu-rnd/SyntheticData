@@ -1621,6 +1621,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust_decimal_macros"
+version = "1.40.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74a5a6f027e892c7a035c6fddb50435a1fbf5a734ffc0c2a9fed4d0221440519"
+dependencies = [
+ "quote",
+ "syn 2.0.114",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1887,6 +1897,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rand_distr",
  "rust_decimal",
+ "rust_decimal_macros",
  "serde",
  "serde_json",
  "thiserror",
@@ -1904,11 +1915,24 @@ dependencies = [
  "rand_distr",
  "rayon",
  "rust_decimal",
+ "rust_decimal_macros",
  "serde",
  "synth-config",
  "synth-core",
  "thiserror",
  "uuid",
+]
+
+[[package]]
+name = "synth-graph"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "synth-core",
+ "tempfile",
 ]
 
 [[package]]

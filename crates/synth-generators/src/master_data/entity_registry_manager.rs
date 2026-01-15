@@ -6,9 +6,8 @@
 
 use chrono::NaiveDate;
 use synth_core::models::{
-    CustomerPool, Employee, EmployeePool, EntityEvent, EntityId, EntityRegistry,
-    EntityStatus, EntityType, FixedAsset, FixedAssetPool, Material, MaterialPool,
-    Vendor, VendorPool,
+    CustomerPool, Employee, EmployeePool, EntityEvent, EntityId, EntityRegistry, EntityStatus,
+    EntityType, FixedAsset, FixedAssetPool, Material, MaterialPool, Vendor, VendorPool,
 };
 
 use super::{
@@ -111,10 +110,19 @@ impl EntityRegistryManager {
         Self {
             seed,
             vendor_generator: VendorGenerator::with_config(seed, config.vendor_config.clone()),
-            customer_generator: CustomerGenerator::with_config(seed + 1, config.customer_config.clone()),
-            material_generator: MaterialGenerator::with_config(seed + 2, config.material_config.clone()),
+            customer_generator: CustomerGenerator::with_config(
+                seed + 1,
+                config.customer_config.clone(),
+            ),
+            material_generator: MaterialGenerator::with_config(
+                seed + 2,
+                config.material_config.clone(),
+            ),
             asset_generator: AssetGenerator::with_config(seed + 3, config.asset_config.clone()),
-            employee_generator: EmployeeGenerator::with_config(seed + 4, config.employee_config.clone()),
+            employee_generator: EmployeeGenerator::with_config(
+                seed + 4,
+                config.employee_config.clone(),
+            ),
             registry: EntityRegistry::new(),
             config,
         }
@@ -164,12 +172,7 @@ impl EntityRegistryManager {
         let mut results = Vec::new();
 
         for company_code in company_codes {
-            let data = self.generate_master_data(
-                company_code,
-                counts,
-                effective_date,
-                date_range,
-            );
+            let data = self.generate_master_data(company_code, counts, effective_date, date_range);
             results.push(data);
         }
 
@@ -188,7 +191,8 @@ impl EntityRegistryManager {
 
         for company_code in company_codes {
             // Get partner company codes (all except current)
-            let partners: Vec<String> = company_codes.iter()
+            let partners: Vec<String> = company_codes
+                .iter()
                 .filter(|c| *c != company_code)
                 .cloned()
                 .collect();
@@ -248,11 +252,9 @@ impl EntityRegistryManager {
         count: usize,
         effective_date: NaiveDate,
     ) -> VendorPool {
-        let pool = self.vendor_generator.generate_vendor_pool(
-            count,
-            company_code,
-            effective_date,
-        );
+        let pool = self
+            .vendor_generator
+            .generate_vendor_pool(count, company_code, effective_date);
 
         // Register each vendor in the entity registry
         for vendor in &pool.vendors {
@@ -269,11 +271,9 @@ impl EntityRegistryManager {
         count: usize,
         effective_date: NaiveDate,
     ) -> CustomerPool {
-        let pool = self.customer_generator.generate_customer_pool(
-            count,
-            company_code,
-            effective_date,
-        );
+        let pool =
+            self.customer_generator
+                .generate_customer_pool(count, company_code, effective_date);
 
         // Register each customer in the entity registry
         for customer in &pool.customers {
@@ -312,11 +312,9 @@ impl EntityRegistryManager {
         count: usize,
         date_range: (NaiveDate, NaiveDate),
     ) -> FixedAssetPool {
-        let pool = self.asset_generator.generate_diverse_pool(
-            count,
-            company_code,
-            date_range,
-        );
+        let pool = self
+            .asset_generator
+            .generate_diverse_pool(count, company_code, date_range);
 
         // Register each asset in the entity registry
         for asset in &pool.assets {
@@ -332,10 +330,9 @@ impl EntityRegistryManager {
         company_code: &str,
         date_range: (NaiveDate, NaiveDate),
     ) -> EmployeePool {
-        let pool = self.employee_generator.generate_company_pool(
-            company_code,
-            date_range,
-        );
+        let pool = self
+            .employee_generator
+            .generate_company_pool(company_code, date_range);
 
         // Register each employee in the entity registry
         for employee in &pool.employees {
@@ -370,7 +367,11 @@ impl EntityRegistryManager {
     }
 
     /// Register a customer in the entity registry.
-    fn register_customer(&mut self, customer: &synth_core::models::Customer, effective_date: NaiveDate) {
+    fn register_customer(
+        &mut self,
+        customer: &synth_core::models::Customer,
+        effective_date: NaiveDate,
+    ) {
         let entity_id = EntityId {
             entity_type: EntityType::Customer,
             id: customer.customer_id.clone(),
@@ -425,11 +426,7 @@ impl EntityRegistryManager {
         };
 
         // Extract company code from asset ID (format: FA-1000-000001)
-        let company_code = asset.asset_id
-            .split('-')
-            .nth(1)
-            .unwrap_or("*")
-            .to_string();
+        let company_code = asset.asset_id.split('-').nth(1).unwrap_or("*").to_string();
 
         self.registry.register_entity(
             entity_id.clone(),
@@ -490,12 +487,9 @@ impl EntityRegistryManager {
     }
 
     /// Get active entities of a type on a given date.
-    pub fn get_active_entities(
-        &self,
-        entity_type: EntityType,
-        date: NaiveDate,
-    ) -> Vec<EntityId> {
-        self.registry.get_entities_by_type(entity_type)
+    pub fn get_active_entities(&self, entity_type: EntityType, date: NaiveDate) -> Vec<EntityId> {
+        self.registry
+            .get_entities_by_type(entity_type)
             .into_iter()
             .filter(|id| self.registry.is_valid_on(id, date))
             .collect()
@@ -508,7 +502,9 @@ impl EntityRegistryManager {
         date: NaiveDate,
         rng: &mut impl rand::Rng,
     ) -> Option<String> {
-        let vendors = self.registry.get_entities_for_company(company_code)
+        let vendors = self
+            .registry
+            .get_entities_for_company(company_code)
             .into_iter()
             .filter(|id| id.entity_type == EntityType::Vendor)
             .filter(|id| self.registry.is_valid_on(id, date))
@@ -529,7 +525,9 @@ impl EntityRegistryManager {
         date: NaiveDate,
         rng: &mut impl rand::Rng,
     ) -> Option<String> {
-        let customers = self.registry.get_entities_for_company(company_code)
+        let customers = self
+            .registry
+            .get_entities_for_company(company_code)
             .into_iter()
             .filter(|id| id.entity_type == EntityType::Customer)
             .filter(|id| self.registry.is_valid_on(id, date))
@@ -675,7 +673,10 @@ mod tests {
         );
 
         // Each company should have IC vendors for the other company
-        let ic_vendors: Vec<_> = results[0].vendors.vendors.iter()
+        let ic_vendors: Vec<_> = results[0]
+            .vendors
+            .vendors
+            .iter()
             .filter(|v| v.is_intercompany)
             .collect();
         assert!(ic_vendors.len() >= 1);
@@ -683,8 +684,8 @@ mod tests {
 
     #[test]
     fn test_get_random_vendor() {
-        use rand_chacha::ChaCha8Rng;
         use rand::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
 
         let mut manager = EntityRegistryManager::new(42);
         let counts = MasterDataCounts {

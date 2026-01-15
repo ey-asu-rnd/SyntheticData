@@ -78,10 +78,7 @@ impl Graph {
         edge.id = id;
 
         // Update adjacency
-        self.adjacency
-            .entry(edge.source)
-            .or_default()
-            .push(id);
+        self.adjacency.entry(edge.source).or_default().push(id);
         self.reverse_adjacency
             .entry(edge.target)
             .or_default()
@@ -186,10 +183,7 @@ impl Graph {
 
     /// Returns the out-degree of a node.
     pub fn out_degree(&self, node_id: NodeId) -> usize {
-        self.adjacency
-            .get(&node_id)
-            .map(|e| e.len())
-            .unwrap_or(0)
+        self.adjacency.get(&node_id).map(|e| e.len()).unwrap_or(0)
     }
 
     /// Returns the in-degree of a node.

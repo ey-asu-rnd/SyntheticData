@@ -4,9 +4,7 @@ use chrono::NaiveDate;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
-use synth_core::models::{
-    BankAccount, PaymentTerms, Vendor, VendorBehavior, VendorPool,
-};
+use synth_core::models::{BankAccount, PaymentTerms, Vendor, VendorBehavior, VendorPool};
 
 /// Configuration for vendor generation.
 #[derive(Debug, Clone)]
@@ -54,66 +52,84 @@ impl Default for VendorGeneratorConfig {
 
 /// Vendor name templates by category.
 const VENDOR_NAME_TEMPLATES: &[(&str, &[&str])] = &[
-    ("Manufacturing", &[
-        "Global Manufacturing Solutions",
-        "Precision Parts Inc.",
-        "Industrial Components Ltd.",
-        "Advanced Materials Corp.",
-        "Quality Fabrication Services",
-        "Metalworks International",
-        "Polymer Technologies",
-        "Assembly Dynamics",
-    ]),
-    ("Services", &[
-        "Professional Services Group",
-        "Consulting Partners LLC",
-        "Business Solutions Inc.",
-        "Technical Services Corp.",
-        "Support Systems International",
-        "Managed Services Ltd.",
-        "Advisory Group Partners",
-        "Strategic Consulting Co.",
-    ]),
-    ("Technology", &[
-        "Tech Solutions Inc.",
-        "Digital Systems Corp.",
-        "Software Innovations LLC",
-        "Cloud Services Partners",
-        "IT Infrastructure Group",
-        "Data Systems International",
-        "Network Solutions Ltd.",
-        "Cyber Systems Corp.",
-    ]),
-    ("Logistics", &[
-        "Global Logistics Partners",
-        "Freight Solutions Inc.",
-        "Supply Chain Services",
-        "Distribution Networks LLC",
-        "Warehouse Solutions Corp.",
-        "Transportation Partners",
-        "Shipping Dynamics Ltd.",
-        "Fulfillment Services Inc.",
-    ]),
-    ("Office", &[
-        "Office Supplies Direct",
-        "Business Products Inc.",
-        "Stationery Solutions",
-        "Equipment Suppliers Ltd.",
-        "Furniture Systems Corp.",
-        "Workplace Supplies LLC",
-        "Office Essentials Inc.",
-        "Business Equipment Co.",
-    ]),
-    ("Utilities", &[
-        "Power Solutions Inc.",
-        "Energy Services Corp.",
-        "Utility Management LLC",
-        "Water Services Group",
-        "Telecom Solutions Ltd.",
-        "Communications Partners",
-        "Internet Services Inc.",
-        "Utility Systems Corp.",
-    ]),
+    (
+        "Manufacturing",
+        &[
+            "Global Manufacturing Solutions",
+            "Precision Parts Inc.",
+            "Industrial Components Ltd.",
+            "Advanced Materials Corp.",
+            "Quality Fabrication Services",
+            "Metalworks International",
+            "Polymer Technologies",
+            "Assembly Dynamics",
+        ],
+    ),
+    (
+        "Services",
+        &[
+            "Professional Services Group",
+            "Consulting Partners LLC",
+            "Business Solutions Inc.",
+            "Technical Services Corp.",
+            "Support Systems International",
+            "Managed Services Ltd.",
+            "Advisory Group Partners",
+            "Strategic Consulting Co.",
+        ],
+    ),
+    (
+        "Technology",
+        &[
+            "Tech Solutions Inc.",
+            "Digital Systems Corp.",
+            "Software Innovations LLC",
+            "Cloud Services Partners",
+            "IT Infrastructure Group",
+            "Data Systems International",
+            "Network Solutions Ltd.",
+            "Cyber Systems Corp.",
+        ],
+    ),
+    (
+        "Logistics",
+        &[
+            "Global Logistics Partners",
+            "Freight Solutions Inc.",
+            "Supply Chain Services",
+            "Distribution Networks LLC",
+            "Warehouse Solutions Corp.",
+            "Transportation Partners",
+            "Shipping Dynamics Ltd.",
+            "Fulfillment Services Inc.",
+        ],
+    ),
+    (
+        "Office",
+        &[
+            "Office Supplies Direct",
+            "Business Products Inc.",
+            "Stationery Solutions",
+            "Equipment Suppliers Ltd.",
+            "Furniture Systems Corp.",
+            "Workplace Supplies LLC",
+            "Office Essentials Inc.",
+            "Business Equipment Co.",
+        ],
+    ),
+    (
+        "Utilities",
+        &[
+            "Power Solutions Inc.",
+            "Energy Services Corp.",
+            "Utility Management LLC",
+            "Water Services Group",
+            "Telecom Solutions Ltd.",
+            "Communications Partners",
+            "Internet Services Inc.",
+            "Utility Systems Corp.",
+        ],
+    ),
 ];
 
 /// Bank name templates.
@@ -155,11 +171,7 @@ impl VendorGenerator {
     }
 
     /// Generate a single vendor.
-    pub fn generate_vendor(
-        &mut self,
-        company_code: &str,
-        effective_date: NaiveDate,
-    ) -> Vendor {
+    pub fn generate_vendor(&mut self, company_code: &str, effective_date: NaiveDate) -> Vendor {
         self.vendor_counter += 1;
 
         let vendor_id = format!("V-{:06}", self.vendor_counter);
@@ -330,8 +342,21 @@ impl VendorGenerator {
     /// Generate an address.
     fn generate_address(&mut self) -> String {
         let street_num = self.rng.gen_range(100..9999);
-        let streets = ["Main St", "Oak Ave", "Industrial Blvd", "Commerce Dr", "Business Park Way"];
-        let cities = ["Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "Dallas"];
+        let streets = [
+            "Main St",
+            "Oak Ave",
+            "Industrial Blvd",
+            "Commerce Dr",
+            "Business Park Way",
+        ];
+        let cities = [
+            "Chicago",
+            "Houston",
+            "Phoenix",
+            "Philadelphia",
+            "San Antonio",
+            "Dallas",
+        ];
         let states = ["IL", "TX", "AZ", "PA", "TX", "TX"];
 
         let idx = self.rng.gen_range(0..streets.len());
@@ -357,10 +382,7 @@ mod tests {
     #[test]
     fn test_vendor_generation() {
         let mut gen = VendorGenerator::new(42);
-        let vendor = gen.generate_vendor(
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let vendor = gen.generate_vendor("1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert!(!vendor.vendor_id.is_empty());
         assert!(!vendor.name.is_empty());
@@ -371,11 +393,8 @@ mod tests {
     #[test]
     fn test_vendor_pool_generation() {
         let mut gen = VendorGenerator::new(42);
-        let pool = gen.generate_vendor_pool(
-            10,
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let pool =
+            gen.generate_vendor_pool(10, "1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert_eq!(pool.vendors.len(), 10);
     }
@@ -398,14 +417,8 @@ mod tests {
         let mut gen1 = VendorGenerator::new(42);
         let mut gen2 = VendorGenerator::new(42);
 
-        let vendor1 = gen1.generate_vendor(
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
-        let vendor2 = gen2.generate_vendor(
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let vendor1 = gen1.generate_vendor("1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
+        let vendor2 = gen2.generate_vendor("1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert_eq!(vendor1.vendor_id, vendor2.vendor_id);
         assert_eq!(vendor1.name, vendor2.name);
@@ -423,9 +436,7 @@ mod tests {
 
         assert_eq!(pool.vendors.len(), 10);
 
-        let ic_vendors: Vec<_> = pool.vendors.iter()
-            .filter(|v| v.is_intercompany)
-            .collect();
+        let ic_vendors: Vec<_> = pool.vendors.iter().filter(|v| v.is_intercompany).collect();
         assert_eq!(ic_vendors.len(), 2);
     }
 }

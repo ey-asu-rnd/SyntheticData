@@ -241,15 +241,25 @@ impl ARGenerator {
         }
 
         // Generate receipts for older invoices
-        let payment_cutoff = end_date - chrono::Duration::days(self.config.avg_days_to_payment as i64);
+        let payment_cutoff =
+            end_date - chrono::Duration::days(self.config.avg_days_to_payment as i64);
         for invoice in &invoices {
             if invoice.invoice_date <= payment_cutoff {
                 let should_pay: f64 = self.rng.gen();
-                if should_pay < self.config.on_time_payment_rate.to_string().parse().unwrap_or(0.75) {
+                if should_pay
+                    < self
+                        .config
+                        .on_time_payment_rate
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0.75)
+                {
                     let days_to_pay = self.rng.gen_range(
-                        (self.config.avg_days_to_payment / 2)..(self.config.avg_days_to_payment * 2),
+                        (self.config.avg_days_to_payment / 2)
+                            ..(self.config.avg_days_to_payment * 2),
                     );
-                    let receipt_date = invoice.invoice_date + chrono::Duration::days(days_to_pay as i64);
+                    let receipt_date =
+                        invoice.invoice_date + chrono::Duration::days(days_to_pay as i64);
 
                     if receipt_date <= end_date {
                         let (receipt, je) = self.generate_receipt(invoice, receipt_date, None);
@@ -263,7 +273,14 @@ impl ARGenerator {
         // Generate some credit memos
         for invoice in &invoices {
             let should_credit: f64 = self.rng.gen();
-            if should_credit < self.config.credit_memo_rate.to_string().parse().unwrap_or(0.05) {
+            if should_credit
+                < self
+                    .config
+                    .credit_memo_rate
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0.05)
+            {
                 let days_after = self.rng.gen_range(5..30);
                 let memo_date = invoice.invoice_date + chrono::Duration::days(days_after);
 

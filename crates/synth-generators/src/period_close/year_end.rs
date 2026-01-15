@@ -97,8 +97,7 @@ impl YearEndCloseGenerator {
         let net_income = revenue_total - expense_total;
         result.net_income = net_income;
 
-        let income_summary_je =
-            self.close_income_summary(company_code, closing_date, net_income);
+        let income_summary_je = self.close_income_summary(company_code, closing_date, net_income);
         result.closing_entries.push(income_summary_je);
 
         // Step 4: Close dividends to retained earnings (if applicable)
@@ -716,9 +715,6 @@ mod tests {
         );
 
         assert!(result.provision.current_tax_expense > Decimal::ZERO);
-        assert!(result
-            .journal_entries
-            .iter()
-            .all(|je| je.is_balanced()));
+        assert!(result.journal_entries.iter().all(|je| je.is_balanced()));
     }
 }

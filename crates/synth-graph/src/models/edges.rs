@@ -1,6 +1,6 @@
 //! Edge models for graph representation.
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -87,12 +87,7 @@ pub struct GraphEdge {
 
 impl GraphEdge {
     /// Creates a new graph edge.
-    pub fn new(
-        id: EdgeId,
-        source: NodeId,
-        target: NodeId,
-        edge_type: EdgeType,
-    ) -> Self {
+    pub fn new(id: EdgeId, source: NodeId, target: NodeId, edge_type: EdgeType) -> Self {
         Self {
             id,
             source,
@@ -199,7 +194,7 @@ impl EdgeProperty {
         match self {
             EdgeProperty::Int(i) => Some(*i as f64),
             EdgeProperty::Float(f) => Some(*f),
-            EdgeProperty::Decimal(d) => d.try_into().ok(),
+            EdgeProperty::Decimal(d) => (*d).try_into().ok(),
             EdgeProperty::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
             _ => None,
         }
@@ -249,14 +244,10 @@ impl TransactionEdge {
             "document_number".to_string(),
             EdgeProperty::String(document_number.clone()),
         );
-        edge.properties.insert(
-            "posting_date".to_string(),
-            EdgeProperty::Date(posting_date),
-        );
-        edge.properties.insert(
-            "is_debit".to_string(),
-            EdgeProperty::Bool(is_debit),
-        );
+        edge.properties
+            .insert("posting_date".to_string(), EdgeProperty::Date(posting_date));
+        edge.properties
+            .insert("is_debit".to_string(), EdgeProperty::Bool(is_debit));
 
         Self {
             edge,
@@ -284,7 +275,9 @@ impl TransactionEdge {
         self.edge.features.push((amount.abs() + 1.0).ln());
 
         // Debit/Credit indicator
-        self.edge.features.push(if self.is_debit { 1.0 } else { 0.0 });
+        self.edge
+            .features
+            .push(if self.is_debit { 1.0 } else { 0.0 });
 
         // Temporal features
         let weekday = self.posting_date.weekday().num_days_from_monday() as f64;
@@ -298,7 +291,9 @@ impl TransactionEdge {
 
         // Is month end (last 3 days)
         let is_month_end = day >= 28.0;
-        self.edge.features.push(if is_month_end { 1.0 } else { 0.0 });
+        self.edge
+            .features
+            .push(if is_month_end { 1.0 } else { 0.0 });
 
         // Is year end (December)
         let is_year_end = month == 12.0;
@@ -390,7 +385,9 @@ impl ApprovalEdge {
         self.edge.features.push(action_code);
 
         // Within limit
-        self.edge.features.push(if self.within_limit { 1.0 } else { 0.0 });
+        self.edge
+            .features
+            .push(if self.within_limit { 1.0 } else { 0.0 });
     }
 }
 

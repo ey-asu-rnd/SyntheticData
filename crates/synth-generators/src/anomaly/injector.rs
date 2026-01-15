@@ -5,22 +5,22 @@
 
 use chrono::NaiveDate;
 use rand::Rng;
-use rand_chacha::ChaCha8Rng;
 use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 
 use synth_core::models::{
     AnomalyRateConfig, AnomalySummary, AnomalyType, ErrorType, FraudType, JournalEntry,
-    LabeledAnomaly, ProcessIssueType, StatisticalAnomalyType, RelationalAnomalyType,
+    LabeledAnomaly, ProcessIssueType, RelationalAnomalyType, StatisticalAnomalyType,
 };
 
 use super::patterns::{
-    AnomalyPatternConfig, ClusterManager, EntityTargetingManager, TemporalPattern,
-    should_inject_anomaly,
+    should_inject_anomaly, AnomalyPatternConfig, ClusterManager, EntityTargetingManager,
+    TemporalPattern,
 };
 use super::strategies::{
-    InjectionStrategy, StrategyCollection, InjectionResult, DuplicationStrategy,
+    DuplicationStrategy, InjectionResult, InjectionStrategy, StrategyCollection,
 };
 use super::types::AnomalyTypeSelector;
 
@@ -112,7 +112,8 @@ impl AnomalyInjector {
     pub fn new(config: AnomalyInjectorConfig) -> Self {
         let rng = ChaCha8Rng::seed_from_u64(config.seed);
         let cluster_manager = ClusterManager::new(config.patterns.clustering.clone());
-        let entity_targeting = EntityTargetingManager::new(config.patterns.entity_targeting.clone());
+        let entity_targeting =
+            EntityTargetingManager::new(config.patterns.entity_targeting.clone());
 
         Self {
             config,
@@ -291,10 +292,7 @@ impl AnomalyInjector {
 
         // Generate label
         if self.config.generate_labels {
-            let anomaly_id = format!(
-                "ANO{:08}",
-                self.labels.len() + 1
-            );
+            let anomaly_id = format!("ANO{:08}", self.labels.len() + 1);
 
             let mut label = LabeledAnomaly::new(
                 anomaly_id,
@@ -323,11 +321,10 @@ impl AnomalyInjector {
             }
 
             // Assign cluster
-            if let Some(cluster_id) = self.cluster_manager.assign_cluster(
-                entry.posting_date,
-                &type_name,
-                &mut self.rng,
-            ) {
+            if let Some(cluster_id) =
+                self.cluster_manager
+                    .assign_cluster(entry.posting_date, &type_name, &mut self.rng)
+            {
                 label = label.with_cluster(&cluster_id);
             }
 

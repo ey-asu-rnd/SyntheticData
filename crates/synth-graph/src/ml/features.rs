@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 
 use crate::models::{Graph, NodeId};
@@ -71,7 +71,10 @@ impl FeatureNormalizer {
         let dim = features[0].len();
         self.stats = (0..dim)
             .map(|d| {
-                let values: Vec<f64> = features.iter().map(|f| f.get(d).copied().unwrap_or(0.0)).collect();
+                let values: Vec<f64> = features
+                    .iter()
+                    .map(|f| f.get(d).copied().unwrap_or(0.0))
+                    .collect();
                 Self::compute_stats(&values)
             })
             .collect();
@@ -119,10 +122,7 @@ impl FeatureNormalizer {
 
     /// Transforms features using fitted statistics.
     pub fn transform(&self, features: &[Vec<f64>]) -> Vec<Vec<f64>> {
-        features
-            .iter()
-            .map(|f| self.transform_single(f))
-            .collect()
+        features.iter().map(|f| self.transform_single(f)).collect()
     }
 
     /// Transforms a single feature vector.
@@ -156,9 +156,7 @@ impl FeatureNormalizer {
                     (x - stats.mean) / stats.std
                 }
             }
-            NormalizationMethod::Log => {
-                (x.abs() + 1.0).ln() * x.signum()
-            }
+            NormalizationMethod::Log => (x.abs() + 1.0).ln() * x.signum(),
             NormalizationMethod::Robust => {
                 let iqr = stats.q3 - stats.q1;
                 if iqr.abs() < 1e-10 {
@@ -201,16 +199,8 @@ pub fn compute_structural_features(graph: &Graph) -> HashMap<NodeId, Vec<f64>> {
         }
 
         // Weight-based features (sum of incident edge weights)
-        let in_weight: f64 = graph
-            .incoming_edges(node_id)
-            .iter()
-            .map(|e| e.weight)
-            .sum();
-        let out_weight: f64 = graph
-            .outgoing_edges(node_id)
-            .iter()
-            .map(|e| e.weight)
-            .sum();
+        let in_weight: f64 = graph.incoming_edges(node_id).iter().map(|e| e.weight).sum();
+        let out_weight: f64 = graph.outgoing_edges(node_id).iter().map(|e| e.weight).sum();
 
         node_features.push((in_weight + 1.0).ln());
         node_features.push((out_weight + 1.0).ln());
@@ -306,7 +296,9 @@ pub fn compute_benford_features(amount: f64) -> Vec<f64> {
     features.push(benford_prob);
 
     // Deviation from expected Benford distribution
-    let expected_benford = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046];
+    let expected_benford = [
+        0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046,
+    ];
     if first_digit >= 1 && first_digit <= 9 {
         let deviation = (expected_benford[first_digit as usize - 1] - benford_prob).abs();
         features.push(deviation);

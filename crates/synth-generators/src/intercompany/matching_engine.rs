@@ -284,7 +284,9 @@ impl ICMatchingEngine {
                     let ic_ref = item.ic_reference.as_ref().unwrap();
 
                     // Look for matching item in counterparty
-                    if let Some(counterparty_items) = self.unmatched_items.get_mut(&item.counterparty) {
+                    if let Some(counterparty_items) =
+                        self.unmatched_items.get_mut(&item.counterparty)
+                    {
                         for cp_item in counterparty_items.iter_mut() {
                             if cp_item.matched {
                                 continue;
@@ -318,7 +320,9 @@ impl ICMatchingEngine {
                     }
 
                     // Look for matching amount in counterparty
-                    if let Some(counterparty_items) = self.unmatched_items.get_mut(&item.counterparty) {
+                    if let Some(counterparty_items) =
+                        self.unmatched_items.get_mut(&item.counterparty)
+                    {
                         for cp_item in counterparty_items.iter_mut() {
                             if cp_item.matched {
                                 continue;
@@ -350,15 +354,13 @@ impl ICMatchingEngine {
 
     /// Get unmatched balances.
     pub fn get_unmatched_balances(&self) -> Vec<&ICAggregatedBalance> {
-        self.balances
-            .values()
-            .filter(|b| !b.is_matched)
-            .collect()
+        self.balances.values().filter(|b| !b.is_matched).collect()
     }
 
     /// Get balance for a specific company pair.
     pub fn get_balance(&self, creditor: &str, debtor: &str) -> Option<&ICAggregatedBalance> {
-        self.balances.get(&(creditor.to_string(), debtor.to_string()))
+        self.balances
+            .get(&(creditor.to_string(), debtor.to_string()))
     }
 
     /// Generate netting arrangement.
@@ -382,10 +384,8 @@ impl ICMatchingEngine {
 
         // Calculate gross positions for each company
         for company in &companies {
-            let mut position = ICNettingPosition::new(
-                company.clone(),
-                self.config.base_currency.clone(),
-            );
+            let mut position =
+                ICNettingPosition::new(company.clone(), self.config.base_currency.clone());
 
             // Sum receivables (company is creditor)
             for ((creditor, _), balance) in &self.balances {

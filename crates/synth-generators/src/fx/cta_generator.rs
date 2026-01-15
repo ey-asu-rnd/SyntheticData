@@ -7,7 +7,9 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-use synth_core::models::{CTAComponent, CTAEntry, FxRateTable, JournalEntry, JournalEntryLine, RateType};
+use synth_core::models::{
+    CTAComponent, CTAEntry, FxRateTable, JournalEntry, JournalEntryLine, RateType,
+};
 
 use super::currency_translator::TranslatedTrialBalance;
 
@@ -354,10 +356,16 @@ impl CTASummary {
             "CTA Summary for Period {}/{} ending {}\n",
             self.fiscal_year, self.fiscal_period, self.period_end_date
         );
-        summary.push_str(&format!("Total CTA: {} {}\n", self.total_cta, self.group_currency));
+        summary.push_str(&format!(
+            "Total CTA: {} {}\n",
+            self.total_cta, self.group_currency
+        ));
         summary.push_str("By Currency:\n");
         for (currency, amount) in &self.cta_by_currency {
-            summary.push_str(&format!("  {}: {} {}\n", currency, amount, self.group_currency));
+            summary.push_str(&format!(
+                "  {}: {} {}\n",
+                currency, amount, self.group_currency
+            ));
         }
         summary
     }

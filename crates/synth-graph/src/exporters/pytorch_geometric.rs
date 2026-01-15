@@ -211,7 +211,11 @@ impl PyGExporter {
         // Create node ID to index mapping
         let mut node_ids: Vec<_> = graph.nodes.keys().copied().collect();
         node_ids.sort();
-        let id_to_idx: HashMap<_, _> = node_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+        let id_to_idx: HashMap<_, _> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, &id)| (id, i))
+            .collect();
 
         // Remap edge indices
         let sources_remapped: Vec<i64> = sources
@@ -588,7 +592,7 @@ impl SimpleRng {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{GraphEdge, GraphNode, GraphType, EdgeType, NodeType};
+    use crate::models::{EdgeType, GraphEdge, GraphNode, GraphType, NodeType};
     use tempfile::tempdir;
 
     fn create_test_graph() -> Graph {

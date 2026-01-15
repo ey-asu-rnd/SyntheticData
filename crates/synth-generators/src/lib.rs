@@ -7,10 +7,10 @@
 
 pub mod anomaly;
 pub mod balance;
-pub mod data_quality;
 pub mod coa_generator;
 pub mod company_selector;
 pub mod control_generator;
+pub mod data_quality;
 pub mod document_flow;
 pub mod fx;
 pub mod intercompany;
@@ -22,10 +22,10 @@ pub mod user_generator;
 
 pub use anomaly::*;
 pub use balance::*;
-pub use data_quality::*;
 pub use coa_generator::*;
 pub use company_selector::*;
 pub use control_generator::*;
+pub use data_quality::*;
 pub use document_flow::*;
 pub use fx::*;
 pub use intercompany::*;

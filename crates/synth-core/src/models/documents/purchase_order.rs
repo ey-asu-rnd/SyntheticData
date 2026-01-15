@@ -324,7 +324,11 @@ impl PurchaseOrder {
     }
 
     /// Set incoterms.
-    pub fn with_incoterms(mut self, incoterms: impl Into<String>, location: impl Into<String>) -> Self {
+    pub fn with_incoterms(
+        mut self,
+        incoterms: impl Into<String>,
+        location: impl Into<String>,
+    ) -> Self {
         self.incoterms = Some(incoterms.into());
         self.incoterms_location = Some(location.into());
         self
@@ -350,16 +354,20 @@ impl PurchaseOrder {
 
     /// Check if all items are fully received.
     pub fn check_complete(&mut self) {
-        self.is_complete = self.items.iter().all(|i| {
-            !i.gr_indicator || i.is_fully_received
-        }) && self.items.iter().all(|i| {
-            !i.ir_indicator || i.is_fully_invoiced
-        });
+        self.is_complete = self
+            .items
+            .iter()
+            .all(|i| !i.gr_indicator || i.is_fully_received)
+            && self
+                .items
+                .iter()
+                .all(|i| !i.ir_indicator || i.is_fully_invoiced);
     }
 
     /// Get total open amount for goods receipt.
     pub fn open_gr_amount(&self) -> Decimal {
-        self.items.iter()
+        self.items
+            .iter()
             .filter(|i| i.gr_indicator)
             .map(|i| i.open_quantity_gr() * i.base.unit_price)
             .sum()
@@ -367,7 +375,8 @@ impl PurchaseOrder {
 
     /// Get total open amount for invoice.
     pub fn open_iv_amount(&self) -> Decimal {
-        self.items.iter()
+        self.items
+            .iter()
             .filter(|i| i.ir_indicator)
             .map(|i| i.open_amount_iv())
             .sum()
@@ -418,8 +427,13 @@ mod tests {
         );
 
         po.add_item(
-            PurchaseOrderItem::new(2, "Computer Equipment", Decimal::from(5), Decimal::from(500))
-                .with_cost_center("CC-1000"),
+            PurchaseOrderItem::new(
+                2,
+                "Computer Equipment",
+                Decimal::from(5),
+                Decimal::from(500),
+            )
+            .with_cost_center("CC-1000"),
         );
 
         assert_eq!(po.items.len(), 2);
@@ -428,12 +442,8 @@ mod tests {
 
     #[test]
     fn test_goods_receipt_tracking() {
-        let mut item = PurchaseOrderItem::new(
-            1,
-            "Test Item",
-            Decimal::from(100),
-            Decimal::from(10),
-        );
+        let mut item =
+            PurchaseOrderItem::new(1, "Test Item", Decimal::from(100), Decimal::from(10));
 
         assert_eq!(item.open_quantity_gr(), Decimal::from(100));
 

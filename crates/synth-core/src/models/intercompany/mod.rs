@@ -3,12 +3,12 @@
 //! This module provides models for intercompany relationships, transactions,
 //! transfer pricing, and consolidation eliminations.
 
-mod relationship;
-mod transfer_pricing;
-mod transaction_type;
 mod elimination;
+mod relationship;
+mod transaction_type;
+mod transfer_pricing;
 
-pub use relationship::*;
-pub use transfer_pricing::*;
-pub use transaction_type::*;
 pub use elimination::*;
+pub use relationship::*;
+pub use transaction_type::*;
+pub use transfer_pricing::*;

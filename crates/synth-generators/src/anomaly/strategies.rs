@@ -134,7 +134,8 @@ impl InjectionStrategy for AmountModificationStrategy {
         };
 
         let multiplier = rng.gen_range(self.min_multiplier..self.max_multiplier);
-        let mut new_amount = original_amount * Decimal::from_f64_retain(multiplier).unwrap_or(Decimal::ONE);
+        let mut new_amount =
+            original_amount * Decimal::from_f64_retain(multiplier).unwrap_or(Decimal::ONE);
 
         // Round to nice number if preferred
         if self.prefer_round_numbers {
@@ -276,7 +277,8 @@ impl DuplicationStrategy {
         let mut duplicate = entry.clone();
 
         if self.change_doc_number {
-            duplicate.document_number = format!("{}-DUP{}", entry.document_number, rng.gen_range(1..999));
+            duplicate.document_number =
+                format!("{}-DUP{}", entry.document_number, rng.gen_range(1..999));
         }
 
         if self.vary_amounts {
@@ -332,7 +334,8 @@ impl InjectionStrategy for ApprovalAnomalyStrategy {
         match anomaly_type {
             AnomalyType::Fraud(FraudType::JustBelowThreshold) => {
                 // Set total to just below threshold
-                let target = self.approval_threshold - self.threshold_buffer
+                let target = self.approval_threshold
+                    - self.threshold_buffer
                     - Decimal::new(rng.gen_range(1..50), 0);
 
                 let current_total = entry.total_debit();
@@ -426,8 +429,11 @@ impl InjectionStrategy for DescriptionAnomalyStrategy {
         let vague = &self.vague_descriptions[rng.gen_range(0..self.vague_descriptions.len())];
         entry.description = vague.clone();
 
-        InjectionResult::success(&format!("Changed description from '{}' to '{}'", original, vague))
-            .with_metadata("original_description", &original)
+        InjectionResult::success(&format!(
+            "Changed description from '{}' to '{}'",
+            original, vague
+        ))
+        .with_metadata("original_description", &original)
     }
 }
 
@@ -539,13 +545,9 @@ impl StrategyCollection {
             AnomalyType::Error(ErrorType::BackdatedEntry)
             | AnomalyType::Error(ErrorType::FutureDatedEntry)
             | AnomalyType::Error(ErrorType::WrongPeriod)
-            | AnomalyType::ProcessIssue(ProcessIssueType::LatePosting) => {
-                &self.date_modification
-            }
+            | AnomalyType::ProcessIssue(ProcessIssueType::LatePosting) => &self.date_modification,
             AnomalyType::Fraud(FraudType::JustBelowThreshold)
-            | AnomalyType::Fraud(FraudType::ExceededApprovalLimit) => {
-                &self.approval_anomaly
-            }
+            | AnomalyType::Fraud(FraudType::ExceededApprovalLimit) => &self.approval_anomaly,
             AnomalyType::ProcessIssue(ProcessIssueType::VagueDescription) => {
                 &self.description_anomaly
             }

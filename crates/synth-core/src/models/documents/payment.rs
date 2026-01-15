@@ -321,7 +321,11 @@ impl Payment {
     }
 
     /// Set house bank.
-    pub fn with_bank(mut self, house_bank: impl Into<String>, account_id: impl Into<String>) -> Self {
+    pub fn with_bank(
+        mut self,
+        house_bank: impl Into<String>,
+        account_id: impl Into<String>,
+    ) -> Self {
         self.house_bank = house_bank.into();
         self.bank_account_id = account_id.into();
         self
@@ -343,15 +347,18 @@ impl Payment {
     /// Add an allocation.
     pub fn add_allocation(&mut self, allocation: PaymentAllocation) {
         // Add reference to the invoice
-        self.header.add_reference(DocumentReference::new(
-            allocation.invoice_type,
-            allocation.invoice_id.clone(),
-            self.header.document_type,
-            self.header.document_id.clone(),
-            ReferenceType::Payment,
-            self.header.company_code.clone(),
-            self.header.document_date,
-        ).with_amount(allocation.amount));
+        self.header.add_reference(
+            DocumentReference::new(
+                allocation.invoice_type,
+                allocation.invoice_id.clone(),
+                self.header.document_type,
+                self.header.document_id.clone(),
+                ReferenceType::Payment,
+                self.header.company_code.clone(),
+                self.header.document_date,
+            )
+            .with_amount(allocation.amount),
+        );
 
         self.allocations.push(allocation);
         self.recalculate_totals();
@@ -365,8 +372,8 @@ impl Payment {
         amount: Decimal,
         discount: Decimal,
     ) {
-        let allocation = PaymentAllocation::new(invoice_id, invoice_type, amount)
-            .with_discount(discount);
+        let allocation =
+            PaymentAllocation::new(invoice_id, invoice_type, amount).with_discount(discount);
         self.add_allocation(allocation);
     }
 
@@ -436,7 +443,8 @@ impl Payment {
             entries.push(("110000".to_string(), Decimal::ZERO, self.amount)); // Bank
 
             if self.total_discount > Decimal::ZERO {
-                entries.push(("740000".to_string(), Decimal::ZERO, self.total_discount)); // Purchase discount
+                entries.push(("740000".to_string(), Decimal::ZERO, self.total_discount));
+                // Purchase discount
             }
         } else {
             // AR Receipt: DR Bank, CR AR
@@ -444,7 +452,8 @@ impl Payment {
             entries.push(("120000".to_string(), Decimal::ZERO, self.amount)); // AR
 
             if self.total_discount > Decimal::ZERO {
-                entries.push(("440000".to_string(), self.total_discount, Decimal::ZERO)); // Sales discount
+                entries.push(("440000".to_string(), self.total_discount, Decimal::ZERO));
+                // Sales discount
             }
         }
 

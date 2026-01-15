@@ -395,14 +395,21 @@ impl Material {
     }
 
     /// Calculate the theoretical cost from BOM.
-    pub fn calculate_bom_cost(&self, component_costs: &std::collections::HashMap<String, Decimal>) -> Option<Decimal> {
+    pub fn calculate_bom_cost(
+        &self,
+        component_costs: &std::collections::HashMap<String, Decimal>,
+    ) -> Option<Decimal> {
         self.bom_components.as_ref().map(|components| {
-            components.iter().map(|c| {
-                let unit_cost = component_costs.get(&c.component_material_id)
-                    .copied()
-                    .unwrap_or(Decimal::ZERO);
-                unit_cost * c.effective_quantity()
-            }).sum()
+            components
+                .iter()
+                .map(|c| {
+                    let unit_cost = component_costs
+                        .get(&c.component_material_id)
+                        .copied()
+                        .unwrap_or(Decimal::ZERO);
+                    unit_cost * c.effective_quantity()
+                })
+                .sum()
         })
     }
 
@@ -459,7 +466,10 @@ impl MaterialPool {
         self.materials.push(material);
 
         self.type_index.entry(material_type).or_default().push(idx);
-        self.group_index.entry(material_group).or_default().push(idx);
+        self.group_index
+            .entry(material_group)
+            .or_default()
+            .push(idx);
         self.abc_index.entry(abc).or_default().push(idx);
     }
 
@@ -575,7 +585,11 @@ mod tests {
         let mut pool = MaterialPool::new();
 
         pool.add_material(Material::new("MAT-001", "Raw 1", MaterialType::RawMaterial));
-        pool.add_material(Material::new("MAT-002", "Finished 1", MaterialType::FinishedGood));
+        pool.add_material(Material::new(
+            "MAT-002",
+            "Finished 1",
+            MaterialType::FinishedGood,
+        ));
         pool.add_material(Material::new("MAT-003", "Raw 2", MaterialType::RawMaterial));
 
         assert_eq!(pool.len(), 3);
@@ -585,8 +599,8 @@ mod tests {
 
     #[test]
     fn test_bom_component_scrap() {
-        let component = BomComponent::new("COMP-001", Decimal::from(100), "EA")
-            .with_scrap(Decimal::from(5)); // 5% scrap
+        let component =
+            BomComponent::new("COMP-001", Decimal::from(100), "EA").with_scrap(Decimal::from(5)); // 5% scrap
 
         let effective = component.effective_quantity();
         assert_eq!(effective, Decimal::from(105)); // 100 * 1.05

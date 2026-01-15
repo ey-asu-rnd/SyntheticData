@@ -1,6 +1,6 @@
 //! AP Debit Memo model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -206,7 +206,10 @@ impl APDebitMemo {
         self.approval_status = APApprovalStatus::Rejected;
         self.notes = Some(format!(
             "{}Rejected: {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             reason
         ));
     }

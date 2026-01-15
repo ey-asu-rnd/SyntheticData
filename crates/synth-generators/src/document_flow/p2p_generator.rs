@@ -10,9 +10,8 @@ use rust_decimal::Decimal;
 use synth_core::models::{
     documents::{
         DocumentReference, DocumentStatus, DocumentType, GoodsReceipt, GoodsReceiptItem,
-        MovementType, Payment, PaymentAllocation, PaymentMethod, PurchaseOrder,
-        PurchaseOrderItem, PurchaseOrderType, ReferenceType, VendorInvoice,
-        VendorInvoiceItem, VendorInvoiceType,
+        MovementType, Payment, PaymentAllocation, PaymentMethod, PurchaseOrder, PurchaseOrderItem,
+        PurchaseOrderType, ReferenceType, VendorInvoice, VendorInvoiceItem, VendorInvoiceType,
     },
     Material, MaterialPool, PaymentTerms, Vendor, VendorPool,
 };
@@ -341,7 +340,7 @@ impl P2PGenerator {
         for po_item in &po.items {
             let received_qty = (po_item.base.quantity
                 * Decimal::from_f64_retain(quantity_pct).unwrap_or(Decimal::ONE))
-                .round_dp(0);
+            .round_dp(0);
 
             if received_qty > Decimal::ZERO {
                 let gr_item = GoodsReceiptItem::from_po(
@@ -426,7 +425,9 @@ impl P2PGenerator {
                     && self.rng.gen::<f64>() < self.config.price_variance_rate
                 {
                     let variance = Decimal::from_f64_retain(
-                        1.0 + (self.rng.gen::<f64>() - 0.5) * 2.0 * self.config.max_price_variance_percent,
+                        1.0 + (self.rng.gen::<f64>() - 0.5)
+                            * 2.0
+                            * self.config.max_price_variance_percent,
                     )
                     .unwrap_or(Decimal::ONE);
                     (po_item.base.unit_price * variance).round_dp(2)
@@ -499,7 +500,8 @@ impl P2PGenerator {
 
         // Determine if early payment discount applies
         let take_discount = invoice.discount_date_1.map_or(false, |disc_date| {
-            payment_date <= disc_date && self.rng.gen::<f64>() < self.config.early_payment_discount_rate
+            payment_date <= disc_date
+                && self.rng.gen::<f64>() < self.config.early_payment_discount_rate
         });
 
         let discount_amount = if take_discount {
@@ -564,15 +566,16 @@ impl P2PGenerator {
 
             // Select random materials (1-5 items per PO)
             let num_items = self.rng.gen_range(1..=5).min(materials.materials.len());
-            let selected_materials: Vec<&Material> = materials.materials
+            let selected_materials: Vec<&Material> = materials
+                .materials
                 .iter()
                 .choose_multiple(&mut self.rng, num_items)
                 .into_iter()
                 .collect();
 
             // Select random PO date
-            let po_date = start_date
-                + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
+            let po_date =
+                start_date + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
             let fiscal_period = self.get_fiscal_period(po_date);
 
             let chain = self.generate_chain(
@@ -604,7 +607,11 @@ impl P2PGenerator {
     }
 
     /// Calculate payment date based on invoice date and payment terms.
-    fn calculate_payment_date(&mut self, invoice_date: NaiveDate, payment_terms: &PaymentTerms) -> NaiveDate {
+    fn calculate_payment_date(
+        &mut self,
+        invoice_date: NaiveDate,
+        payment_terms: &PaymentTerms,
+    ) -> NaiveDate {
         let due_days = payment_terms.net_days() as i64;
 
         // Some variance around due date (-5 to +10 days)
@@ -614,7 +621,11 @@ impl P2PGenerator {
     }
 
     /// Calculate due date based on payment terms.
-    fn calculate_due_date(&self, invoice_date: NaiveDate, payment_terms: &PaymentTerms) -> NaiveDate {
+    fn calculate_due_date(
+        &self,
+        invoice_date: NaiveDate,
+        payment_terms: &PaymentTerms,
+    ) -> NaiveDate {
         invoice_date + chrono::Duration::days(payment_terms.net_days() as i64)
     }
 

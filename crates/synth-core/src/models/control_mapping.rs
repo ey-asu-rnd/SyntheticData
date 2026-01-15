@@ -60,7 +60,11 @@ impl ControlAccountMapping {
     }
 
     /// Check if this mapping applies to a given account.
-    pub fn applies_to_account(&self, account_number: &str, sub_type: Option<&AccountSubType>) -> bool {
+    pub fn applies_to_account(
+        &self,
+        account_number: &str,
+        sub_type: Option<&AccountSubType>,
+    ) -> bool {
         // Check specific account numbers first
         if !self.account_numbers.is_empty() {
             if self.account_numbers.iter().any(|a| a == account_number) {
@@ -208,17 +212,18 @@ impl ControlMappingRegistry {
         let mut registry = Self::new();
 
         // Cash controls (C001) - apply to cash accounts
-        registry.account_mappings.push(
-            ControlAccountMapping::new("C001")
-                .with_sub_types(vec![AccountSubType::Cash, AccountSubType::CashEquivalents]),
-        );
+        registry
+            .account_mappings
+            .push(ControlAccountMapping::new("C001").with_sub_types(vec![AccountSubType::Cash]));
 
         // Large transaction approval (C002) - threshold based
-        registry.threshold_mappings.push(ControlThresholdMapping::new(
-            "C002",
-            Decimal::from(10000),
-            ThresholdComparison::GreaterThanOrEqual,
-        ));
+        registry
+            .threshold_mappings
+            .push(ControlThresholdMapping::new(
+                "C002",
+                Decimal::from(10000),
+                ThresholdComparison::GreaterThanOrEqual,
+            ));
 
         // P2P controls (C010, C011) - apply to P2P process
         registry.process_mappings.push(ControlProcessMapping::new(
@@ -243,10 +248,12 @@ impl ControlMappingRegistry {
             "C021",
             vec![BusinessProcess::O2C],
         ));
-        registry.account_mappings.push(
-            ControlAccountMapping::new("C020")
-                .with_sub_types(vec![AccountSubType::Revenue]),
-        );
+        registry
+            .account_mappings
+            .push(ControlAccountMapping::new("C020").with_sub_types(vec![
+                AccountSubType::ProductRevenue,
+                AccountSubType::ServiceRevenue,
+            ]));
         registry.account_mappings.push(
             ControlAccountMapping::new("C021")
                 .with_sub_types(vec![AccountSubType::AccountsReceivable]),
@@ -266,10 +273,9 @@ impl ControlMappingRegistry {
             vec![BusinessProcess::R2R],
         ));
         // Manual JE review applies to document type SA
-        registry.doc_type_mappings.push(ControlDocTypeMapping::new(
-            "C031",
-            vec!["SA".to_string()],
-        ));
+        registry
+            .doc_type_mappings
+            .push(ControlDocTypeMapping::new("C031", vec!["SA".to_string()]));
 
         // Payroll controls (C040) - apply to H2R process
         registry.process_mappings.push(ControlProcessMapping::new(
@@ -282,10 +288,12 @@ impl ControlMappingRegistry {
             "C050",
             vec![BusinessProcess::A2R],
         ));
-        registry.account_mappings.push(
-            ControlAccountMapping::new("C050")
-                .with_sub_types(vec![AccountSubType::FixedAssets, AccountSubType::AccumulatedDepreciation]),
-        );
+        registry
+            .account_mappings
+            .push(ControlAccountMapping::new("C050").with_sub_types(vec![
+                AccountSubType::FixedAssets,
+                AccountSubType::AccumulatedDepreciation,
+            ]));
 
         // Intercompany controls (C060) - apply to Intercompany process
         registry.process_mappings.push(ControlProcessMapping::new(
@@ -364,11 +372,8 @@ mod tests {
 
     #[test]
     fn test_between_threshold() {
-        let mapping = ControlThresholdMapping::between(
-            "TEST",
-            Decimal::from(1000),
-            Decimal::from(10000),
-        );
+        let mapping =
+            ControlThresholdMapping::between("TEST", Decimal::from(1000), Decimal::from(10000));
 
         assert!(mapping.applies_to_amount(Decimal::from(5000)));
         assert!(mapping.applies_to_amount(Decimal::from(1000)));
@@ -379,8 +384,7 @@ mod tests {
 
     #[test]
     fn test_account_mapping() {
-        let mapping = ControlAccountMapping::new("C001")
-            .with_sub_types(vec![AccountSubType::Cash]);
+        let mapping = ControlAccountMapping::new("C001").with_sub_types(vec![AccountSubType::Cash]);
 
         assert!(mapping.applies_to_account("100000", Some(&AccountSubType::Cash)));
         assert!(!mapping.applies_to_account("200000", Some(&AccountSubType::AccountsPayable)));

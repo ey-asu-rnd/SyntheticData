@@ -161,16 +161,14 @@ impl CurrencyTranslator {
         date: NaiveDate,
     ) -> TranslatedAmount {
         let (rate, rate_type) = match account_type {
-            TranslationAccountType::Asset
-            | TranslationAccountType::Liability => {
+            TranslationAccountType::Asset | TranslationAccountType::Liability => {
                 let rate = rate_table
                     .get_closing_rate(local_currency, &self.config.group_currency, date)
                     .map(|r| r.rate)
                     .unwrap_or(Decimal::ONE);
                 (rate, RateType::Closing)
             }
-            TranslationAccountType::Revenue
-            | TranslationAccountType::Expense => {
+            TranslationAccountType::Revenue | TranslationAccountType::Expense => {
                 let rate = rate_table
                     .get_average_rate(local_currency, &self.config.group_currency, date)
                     .map(|r| r.rate)
@@ -202,7 +200,11 @@ impl CurrencyTranslator {
     /// Determines the account type based on account code.
     fn determine_account_type(&self, account_code: &str) -> TranslationAccountType {
         // Check for specific accounts first
-        if self.config.historical_rate_accounts.contains(&account_code.to_string()) {
+        if self
+            .config
+            .historical_rate_accounts
+            .contains(&account_code.to_string())
+        {
             if account_code.starts_with("31") {
                 return TranslationAccountType::CommonStock;
             } else if account_code.starts_with("32") {
@@ -237,10 +239,12 @@ impl CurrencyTranslator {
         match self.config.method {
             TranslationMethod::CurrentRate => {
                 match account_type {
-                    TranslationAccountType::Asset
-                    | TranslationAccountType::Liability => closing_rate,
-                    TranslationAccountType::Revenue
-                    | TranslationAccountType::Expense => average_rate,
+                    TranslationAccountType::Asset | TranslationAccountType::Liability => {
+                        closing_rate
+                    }
+                    TranslationAccountType::Revenue | TranslationAccountType::Expense => {
+                        average_rate
+                    }
                     TranslationAccountType::CommonStock
                     | TranslationAccountType::AdditionalPaidInCapital => {
                         // Use historical rate if available
@@ -249,8 +253,7 @@ impl CurrencyTranslator {
                             .copied()
                             .unwrap_or(closing_rate)
                     }
-                    TranslationAccountType::Equity
-                    | TranslationAccountType::RetainedEarnings => {
+                    TranslationAccountType::Equity | TranslationAccountType::RetainedEarnings => {
                         // These are typically calculated separately
                         closing_rate
                     }
@@ -481,7 +484,8 @@ mod tests {
         ));
 
         let historical_rates = HashMap::new();
-        let translated = translator.translate_trial_balance(&trial_balance, &rate_table, &historical_rates);
+        let translated =
+            translator.translate_trial_balance(&trial_balance, &rate_table, &historical_rates);
 
         assert!(translated.is_local_balanced());
         assert_eq!(translated.closing_rate, dec!(1.10));

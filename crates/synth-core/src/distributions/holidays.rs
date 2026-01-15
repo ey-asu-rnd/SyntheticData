@@ -136,7 +136,11 @@ impl HolidayCalendar {
 
         // New Year's Day - Jan 1 (observed)
         let new_years = NaiveDate::from_ymd_opt(year, 1, 1).unwrap();
-        cal.add_holiday(Holiday::new("New Year's Day", Self::observe_weekend(new_years), 0.02));
+        cal.add_holiday(Holiday::new(
+            "New Year's Day",
+            Self::observe_weekend(new_years),
+            0.02,
+        ));
 
         // Martin Luther King Jr. Day - 3rd Monday of January
         let mlk = Self::nth_weekday_of_month(year, 1, Weekday::Mon, 3);
@@ -152,11 +156,19 @@ impl HolidayCalendar {
 
         // Juneteenth - June 19
         let juneteenth = NaiveDate::from_ymd_opt(year, 6, 19).unwrap();
-        cal.add_holiday(Holiday::new("Juneteenth", Self::observe_weekend(juneteenth), 0.1));
+        cal.add_holiday(Holiday::new(
+            "Juneteenth",
+            Self::observe_weekend(juneteenth),
+            0.1,
+        ));
 
         // Independence Day - July 4
         let independence = NaiveDate::from_ymd_opt(year, 7, 4).unwrap();
-        cal.add_holiday(Holiday::new("Independence Day", Self::observe_weekend(independence), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Independence Day",
+            Self::observe_weekend(independence),
+            0.02,
+        ));
 
         // Labor Day - 1st Monday of September
         let labor = Self::nth_weekday_of_month(year, 9, Weekday::Mon, 1);
@@ -168,14 +180,22 @@ impl HolidayCalendar {
 
         // Veterans Day - November 11
         let veterans = NaiveDate::from_ymd_opt(year, 11, 11).unwrap();
-        cal.add_holiday(Holiday::new("Veterans Day", Self::observe_weekend(veterans), 0.1));
+        cal.add_holiday(Holiday::new(
+            "Veterans Day",
+            Self::observe_weekend(veterans),
+            0.1,
+        ));
 
         // Thanksgiving - 4th Thursday of November
         let thanksgiving = Self::nth_weekday_of_month(year, 11, Weekday::Thu, 4);
         cal.add_holiday(Holiday::new("Thanksgiving", thanksgiving, 0.02));
 
         // Day after Thanksgiving
-        cal.add_holiday(Holiday::new("Day after Thanksgiving", thanksgiving + Duration::days(1), 0.1));
+        cal.add_holiday(Holiday::new(
+            "Day after Thanksgiving",
+            thanksgiving + Duration::days(1),
+            0.1,
+        ));
 
         // Christmas Eve - December 24
         let christmas_eve = NaiveDate::from_ymd_opt(year, 12, 24).unwrap();
@@ -183,7 +203,11 @@ impl HolidayCalendar {
 
         // Christmas Day - December 25
         let christmas = NaiveDate::from_ymd_opt(year, 12, 25).unwrap();
-        cal.add_holiday(Holiday::new("Christmas Day", Self::observe_weekend(christmas), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Christmas Day",
+            Self::observe_weekend(christmas),
+            0.02,
+        ));
 
         // New Year's Eve - December 31
         let new_years_eve = NaiveDate::from_ymd_opt(year, 12, 31).unwrap();
@@ -197,33 +221,69 @@ impl HolidayCalendar {
         let mut cal = Self::new(Region::DE, year);
 
         // Neujahr - January 1
-        cal.add_holiday(Holiday::new("Neujahr", NaiveDate::from_ymd_opt(year, 1, 1).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Neujahr",
+            NaiveDate::from_ymd_opt(year, 1, 1).unwrap(),
+            0.02,
+        ));
 
         // Karfreitag - Good Friday (Easter - 2 days)
         let easter = Self::easter_date(year);
         cal.add_holiday(Holiday::new("Karfreitag", easter - Duration::days(2), 0.02));
 
         // Ostermontag - Easter Monday
-        cal.add_holiday(Holiday::new("Ostermontag", easter + Duration::days(1), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Ostermontag",
+            easter + Duration::days(1),
+            0.02,
+        ));
 
         // Tag der Arbeit - May 1
-        cal.add_holiday(Holiday::new("Tag der Arbeit", NaiveDate::from_ymd_opt(year, 5, 1).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Tag der Arbeit",
+            NaiveDate::from_ymd_opt(year, 5, 1).unwrap(),
+            0.02,
+        ));
 
         // Christi Himmelfahrt - Ascension Day (Easter + 39 days)
-        cal.add_holiday(Holiday::new("Christi Himmelfahrt", easter + Duration::days(39), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Christi Himmelfahrt",
+            easter + Duration::days(39),
+            0.02,
+        ));
 
         // Pfingstmontag - Whit Monday (Easter + 50 days)
-        cal.add_holiday(Holiday::new("Pfingstmontag", easter + Duration::days(50), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Pfingstmontag",
+            easter + Duration::days(50),
+            0.02,
+        ));
 
         // Tag der Deutschen Einheit - October 3
-        cal.add_holiday(Holiday::new("Tag der Deutschen Einheit", NaiveDate::from_ymd_opt(year, 10, 3).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Tag der Deutschen Einheit",
+            NaiveDate::from_ymd_opt(year, 10, 3).unwrap(),
+            0.02,
+        ));
 
         // Weihnachten - December 25-26
-        cal.add_holiday(Holiday::new("1. Weihnachtstag", NaiveDate::from_ymd_opt(year, 12, 25).unwrap(), 0.02));
-        cal.add_holiday(Holiday::new("2. Weihnachtstag", NaiveDate::from_ymd_opt(year, 12, 26).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "1. Weihnachtstag",
+            NaiveDate::from_ymd_opt(year, 12, 25).unwrap(),
+            0.02,
+        ));
+        cal.add_holiday(Holiday::new(
+            "2. Weihnachtstag",
+            NaiveDate::from_ymd_opt(year, 12, 26).unwrap(),
+            0.02,
+        ));
 
         // Silvester - December 31
-        cal.add_holiday(Holiday::new("Silvester", NaiveDate::from_ymd_opt(year, 12, 31).unwrap(), 0.1));
+        cal.add_holiday(Holiday::new(
+            "Silvester",
+            NaiveDate::from_ymd_opt(year, 12, 31).unwrap(),
+            0.1,
+        ));
 
         cal
     }
@@ -234,14 +294,26 @@ impl HolidayCalendar {
 
         // New Year's Day
         let new_years = NaiveDate::from_ymd_opt(year, 1, 1).unwrap();
-        cal.add_holiday(Holiday::new("New Year's Day", Self::observe_weekend(new_years), 0.02));
+        cal.add_holiday(Holiday::new(
+            "New Year's Day",
+            Self::observe_weekend(new_years),
+            0.02,
+        ));
 
         // Good Friday
         let easter = Self::easter_date(year);
-        cal.add_holiday(Holiday::new("Good Friday", easter - Duration::days(2), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Good Friday",
+            easter - Duration::days(2),
+            0.02,
+        ));
 
         // Easter Monday
-        cal.add_holiday(Holiday::new("Easter Monday", easter + Duration::days(1), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Easter Monday",
+            easter + Duration::days(1),
+            0.02,
+        ));
 
         // Early May Bank Holiday - 1st Monday of May
         let early_may = Self::nth_weekday_of_month(year, 5, Weekday::Mon, 1);
@@ -257,11 +329,19 @@ impl HolidayCalendar {
 
         // Christmas Day
         let christmas = NaiveDate::from_ymd_opt(year, 12, 25).unwrap();
-        cal.add_holiday(Holiday::new("Christmas Day", Self::observe_weekend(christmas), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Christmas Day",
+            Self::observe_weekend(christmas),
+            0.02,
+        ));
 
         // Boxing Day
         let boxing = NaiveDate::from_ymd_opt(year, 12, 26).unwrap();
-        cal.add_holiday(Holiday::new("Boxing Day", Self::observe_weekend(boxing), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Boxing Day",
+            Self::observe_weekend(boxing),
+            0.02,
+        ));
 
         cal
     }
@@ -271,41 +351,69 @@ impl HolidayCalendar {
         let mut cal = Self::new(Region::CN, year);
 
         // New Year's Day - January 1
-        cal.add_holiday(Holiday::new("New Year", NaiveDate::from_ymd_opt(year, 1, 1).unwrap(), 0.05));
+        cal.add_holiday(Holiday::new(
+            "New Year",
+            NaiveDate::from_ymd_opt(year, 1, 1).unwrap(),
+            0.05,
+        ));
 
         // Spring Festival (Chinese New Year) - approximate late Jan/early Feb
         // Using a simplified calculation - typically 7-day holiday
         let cny = Self::approximate_chinese_new_year(year);
         for i in 0..7 {
             cal.add_holiday(Holiday::new(
-                if i == 0 { "Spring Festival" } else { "Spring Festival Holiday" },
+                if i == 0 {
+                    "Spring Festival"
+                } else {
+                    "Spring Festival Holiday"
+                },
                 cny + Duration::days(i),
                 0.02,
             ));
         }
 
         // Qingming Festival - April 4-6 (approximate)
-        cal.add_holiday(Holiday::new("Qingming Festival", NaiveDate::from_ymd_opt(year, 4, 5).unwrap(), 0.05));
+        cal.add_holiday(Holiday::new(
+            "Qingming Festival",
+            NaiveDate::from_ymd_opt(year, 4, 5).unwrap(),
+            0.05,
+        ));
 
         // Labor Day - May 1 (3-day holiday)
         for i in 0..3 {
             cal.add_holiday(Holiday::new(
-                if i == 0 { "Labor Day" } else { "Labor Day Holiday" },
+                if i == 0 {
+                    "Labor Day"
+                } else {
+                    "Labor Day Holiday"
+                },
                 NaiveDate::from_ymd_opt(year, 5, 1).unwrap() + Duration::days(i),
                 0.05,
             ));
         }
 
         // Dragon Boat Festival - approximate early June
-        cal.add_holiday(Holiday::new("Dragon Boat Festival", NaiveDate::from_ymd_opt(year, 6, 10).unwrap(), 0.05));
+        cal.add_holiday(Holiday::new(
+            "Dragon Boat Festival",
+            NaiveDate::from_ymd_opt(year, 6, 10).unwrap(),
+            0.05,
+        ));
 
         // Mid-Autumn Festival - approximate late September
-        cal.add_holiday(Holiday::new("Mid-Autumn Festival", NaiveDate::from_ymd_opt(year, 9, 15).unwrap(), 0.05));
+        cal.add_holiday(Holiday::new(
+            "Mid-Autumn Festival",
+            NaiveDate::from_ymd_opt(year, 9, 15).unwrap(),
+            0.05,
+        ));
 
         // National Day - October 1 (7-day holiday)
         for i in 0..7 {
             cal.add_holiday(Holiday::new(
-                if i == 0 { "National Day" } else { "National Day Holiday" },
+                if i == 0 {
+                    "National Day"
+                } else {
+                    "National Day Holiday"
+                },
                 NaiveDate::from_ymd_opt(year, 10, 1).unwrap() + Duration::days(i),
                 0.02,
             ));
@@ -319,56 +427,112 @@ impl HolidayCalendar {
         let mut cal = Self::new(Region::JP, year);
 
         // Ganjitsu - January 1
-        cal.add_holiday(Holiday::new("Ganjitsu (New Year)", NaiveDate::from_ymd_opt(year, 1, 1).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Ganjitsu (New Year)",
+            NaiveDate::from_ymd_opt(year, 1, 1).unwrap(),
+            0.02,
+        ));
 
         // New Year holidays - January 2-3
-        cal.add_holiday(Holiday::new("New Year Holiday", NaiveDate::from_ymd_opt(year, 1, 2).unwrap(), 0.05));
-        cal.add_holiday(Holiday::new("New Year Holiday", NaiveDate::from_ymd_opt(year, 1, 3).unwrap(), 0.05));
+        cal.add_holiday(Holiday::new(
+            "New Year Holiday",
+            NaiveDate::from_ymd_opt(year, 1, 2).unwrap(),
+            0.05,
+        ));
+        cal.add_holiday(Holiday::new(
+            "New Year Holiday",
+            NaiveDate::from_ymd_opt(year, 1, 3).unwrap(),
+            0.05,
+        ));
 
         // Seijin no Hi - Coming of Age Day - 2nd Monday of January
         let seijin = Self::nth_weekday_of_month(year, 1, Weekday::Mon, 2);
         cal.add_holiday(Holiday::new("Seijin no Hi", seijin, 0.05));
 
         // Kenkoku Kinen no Hi - National Foundation Day - February 11
-        cal.add_holiday(Holiday::new("Kenkoku Kinen no Hi", NaiveDate::from_ymd_opt(year, 2, 11).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Kenkoku Kinen no Hi",
+            NaiveDate::from_ymd_opt(year, 2, 11).unwrap(),
+            0.02,
+        ));
 
         // Tenno Tanjobi - Emperor's Birthday - February 23
-        cal.add_holiday(Holiday::new("Tenno Tanjobi", NaiveDate::from_ymd_opt(year, 2, 23).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Tenno Tanjobi",
+            NaiveDate::from_ymd_opt(year, 2, 23).unwrap(),
+            0.02,
+        ));
 
         // Shunbun no Hi - Vernal Equinox - around March 20-21
-        cal.add_holiday(Holiday::new("Shunbun no Hi", NaiveDate::from_ymd_opt(year, 3, 20).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Shunbun no Hi",
+            NaiveDate::from_ymd_opt(year, 3, 20).unwrap(),
+            0.02,
+        ));
 
         // Showa no Hi - Showa Day - April 29
-        cal.add_holiday(Holiday::new("Showa no Hi", NaiveDate::from_ymd_opt(year, 4, 29).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Showa no Hi",
+            NaiveDate::from_ymd_opt(year, 4, 29).unwrap(),
+            0.02,
+        ));
 
         // Golden Week - April 29 - May 5
-        cal.add_holiday(Holiday::new("Kenpo Kinenbi", NaiveDate::from_ymd_opt(year, 5, 3).unwrap(), 0.02));
-        cal.add_holiday(Holiday::new("Midori no Hi", NaiveDate::from_ymd_opt(year, 5, 4).unwrap(), 0.02));
-        cal.add_holiday(Holiday::new("Kodomo no Hi", NaiveDate::from_ymd_opt(year, 5, 5).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Kenpo Kinenbi",
+            NaiveDate::from_ymd_opt(year, 5, 3).unwrap(),
+            0.02,
+        ));
+        cal.add_holiday(Holiday::new(
+            "Midori no Hi",
+            NaiveDate::from_ymd_opt(year, 5, 4).unwrap(),
+            0.02,
+        ));
+        cal.add_holiday(Holiday::new(
+            "Kodomo no Hi",
+            NaiveDate::from_ymd_opt(year, 5, 5).unwrap(),
+            0.02,
+        ));
 
         // Umi no Hi - Marine Day - 3rd Monday of July
         let umi = Self::nth_weekday_of_month(year, 7, Weekday::Mon, 3);
         cal.add_holiday(Holiday::new("Umi no Hi", umi, 0.05));
 
         // Yama no Hi - Mountain Day - August 11
-        cal.add_holiday(Holiday::new("Yama no Hi", NaiveDate::from_ymd_opt(year, 8, 11).unwrap(), 0.05));
+        cal.add_holiday(Holiday::new(
+            "Yama no Hi",
+            NaiveDate::from_ymd_opt(year, 8, 11).unwrap(),
+            0.05,
+        ));
 
         // Keiro no Hi - Respect for the Aged Day - 3rd Monday of September
         let keiro = Self::nth_weekday_of_month(year, 9, Weekday::Mon, 3);
         cal.add_holiday(Holiday::new("Keiro no Hi", keiro, 0.05));
 
         // Shubun no Hi - Autumnal Equinox - around September 22-23
-        cal.add_holiday(Holiday::new("Shubun no Hi", NaiveDate::from_ymd_opt(year, 9, 23).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Shubun no Hi",
+            NaiveDate::from_ymd_opt(year, 9, 23).unwrap(),
+            0.02,
+        ));
 
         // Sports Day - 2nd Monday of October
         let sports = Self::nth_weekday_of_month(year, 10, Weekday::Mon, 2);
         cal.add_holiday(Holiday::new("Sports Day", sports, 0.05));
 
         // Bunka no Hi - Culture Day - November 3
-        cal.add_holiday(Holiday::new("Bunka no Hi", NaiveDate::from_ymd_opt(year, 11, 3).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Bunka no Hi",
+            NaiveDate::from_ymd_opt(year, 11, 3).unwrap(),
+            0.02,
+        ));
 
         // Kinro Kansha no Hi - Labor Thanksgiving Day - November 23
-        cal.add_holiday(Holiday::new("Kinro Kansha no Hi", NaiveDate::from_ymd_opt(year, 11, 23).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Kinro Kansha no Hi",
+            NaiveDate::from_ymd_opt(year, 11, 23).unwrap(),
+            0.02,
+        ));
 
         cal
     }
@@ -378,23 +542,47 @@ impl HolidayCalendar {
         let mut cal = Self::new(Region::IN, year);
 
         // Republic Day - January 26
-        cal.add_holiday(Holiday::new("Republic Day", NaiveDate::from_ymd_opt(year, 1, 26).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Republic Day",
+            NaiveDate::from_ymd_opt(year, 1, 26).unwrap(),
+            0.02,
+        ));
 
         // Holi - approximate March (lunar calendar)
-        cal.add_holiday(Holiday::new("Holi", NaiveDate::from_ymd_opt(year, 3, 10).unwrap(), 0.05));
+        cal.add_holiday(Holiday::new(
+            "Holi",
+            NaiveDate::from_ymd_opt(year, 3, 10).unwrap(),
+            0.05,
+        ));
 
         // Good Friday
         let easter = Self::easter_date(year);
-        cal.add_holiday(Holiday::new("Good Friday", easter - Duration::days(2), 0.05));
+        cal.add_holiday(Holiday::new(
+            "Good Friday",
+            easter - Duration::days(2),
+            0.05,
+        ));
 
         // Independence Day - August 15
-        cal.add_holiday(Holiday::new("Independence Day", NaiveDate::from_ymd_opt(year, 8, 15).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Independence Day",
+            NaiveDate::from_ymd_opt(year, 8, 15).unwrap(),
+            0.02,
+        ));
 
         // Gandhi Jayanti - October 2
-        cal.add_holiday(Holiday::new("Gandhi Jayanti", NaiveDate::from_ymd_opt(year, 10, 2).unwrap(), 0.02));
+        cal.add_holiday(Holiday::new(
+            "Gandhi Jayanti",
+            NaiveDate::from_ymd_opt(year, 10, 2).unwrap(),
+            0.02,
+        ));
 
         // Dussehra - approximate October (lunar calendar)
-        cal.add_holiday(Holiday::new("Dussehra", NaiveDate::from_ymd_opt(year, 10, 15).unwrap(), 0.05));
+        cal.add_holiday(Holiday::new(
+            "Dussehra",
+            NaiveDate::from_ymd_opt(year, 10, 15).unwrap(),
+            0.05,
+        ));
 
         // Diwali - approximate October/November (5-day festival)
         let diwali = Self::approximate_diwali(year);
@@ -413,7 +601,11 @@ impl HolidayCalendar {
         }
 
         // Christmas - December 25
-        cal.add_holiday(Holiday::new("Christmas", NaiveDate::from_ymd_opt(year, 12, 25).unwrap(), 0.1));
+        cal.add_holiday(Holiday::new(
+            "Christmas",
+            NaiveDate::from_ymd_opt(year, 12, 25).unwrap(),
+            0.1,
+        ));
 
         cal
     }
@@ -502,11 +694,8 @@ impl HolidayCalendar {
         // Adjust year if needed
         if result.year() != year {
             let year_diff = year - result.year();
-            result = NaiveDate::from_ymd_opt(
-                year,
-                result.month(),
-                result.day().min(28),
-            ).unwrap_or_else(|| NaiveDate::from_ymd_opt(year, result.month(), 28).unwrap());
+            result = NaiveDate::from_ymd_opt(year, result.month(), result.day().min(28))
+                .unwrap_or_else(|| NaiveDate::from_ymd_opt(year, result.month(), 28).unwrap());
         }
 
         result
@@ -626,7 +815,14 @@ mod tests {
 
     #[test]
     fn test_all_regions_have_holidays() {
-        let regions = [Region::US, Region::DE, Region::GB, Region::CN, Region::JP, Region::IN];
+        let regions = [
+            Region::US,
+            Region::DE,
+            Region::GB,
+            Region::CN,
+            Region::JP,
+            Region::IN,
+        ];
 
         for region in regions {
             let cal = HolidayCalendar::for_region(region, 2024);

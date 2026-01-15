@@ -7,7 +7,10 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use super::{DocumentHeader, DocumentLineItem, DocumentReference, DocumentStatus, DocumentType, ReferenceType};
+use super::{
+    DocumentHeader, DocumentLineItem, DocumentReference, DocumentStatus, DocumentType,
+    ReferenceType,
+};
 
 /// Goods Receipt type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -65,12 +68,18 @@ impl MovementType {
 
     /// Check if this movement increases inventory.
     pub fn is_receipt(&self) -> bool {
-        matches!(self, Self::GrForPo | Self::GrForProduction | Self::InitialEntry | Self::TransferPosting)
+        matches!(
+            self,
+            Self::GrForPo | Self::GrForProduction | Self::InitialEntry | Self::TransferPosting
+        )
     }
 
     /// Check if this movement decreases inventory.
     pub fn is_issue(&self) -> bool {
-        matches!(self, Self::ReturnToVendor | Self::Scrapping | Self::Consumption)
+        matches!(
+            self,
+            Self::ReturnToVendor | Self::Scrapping | Self::Consumption
+        )
     }
 }
 
@@ -198,7 +207,11 @@ impl GoodsReceiptItem {
     }
 
     /// Set plant and storage location.
-    pub fn with_location(mut self, plant: impl Into<String>, storage_location: impl Into<String>) -> Self {
+    pub fn with_location(
+        mut self,
+        plant: impl Into<String>,
+        storage_location: impl Into<String>,
+    ) -> Self {
         self.base.plant = Some(plant.into());
         self.base.storage_location = Some(storage_location.into());
         self
@@ -402,7 +415,10 @@ impl GoodsReceipt {
         for item in &self.items {
             if item.movement_type.is_receipt() {
                 // Debit: Inventory or Expense account
-                let debit_account = item.base.gl_account.clone()
+                let debit_account = item
+                    .base
+                    .gl_account
+                    .clone()
                     .unwrap_or_else(|| "140000".to_string()); // Default inventory
 
                 // Credit: GR/IR Clearing

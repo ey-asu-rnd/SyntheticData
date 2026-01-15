@@ -136,7 +136,8 @@ impl BenfordSampler {
 
     /// Sample an amount following Benford's Law.
     pub fn sample(&mut self) -> Decimal {
-        self.sample_with_first_digit(self.sample_benford_first_digit())
+        let first_digit = self.sample_benford_first_digit();
+        self.sample_with_first_digit(first_digit)
     }
 
     /// Sample an amount with a specific first digit.
@@ -402,11 +403,7 @@ mod tests {
         for _ in 0..100 {
             let amount = gen.sample(FraudAmountPattern::ThresholdAdjacent);
             let f = amount.to_string().parse::<f64>().unwrap();
-            assert!(
-                f < 10000.0,
-                "Amount {} should be below threshold 10000",
-                f
-            );
+            assert!(f < 10000.0, "Amount {} should be below threshold 10000", f);
             assert!(
                 f >= 8500.0,
                 "Amount {} should be within 15% of threshold",

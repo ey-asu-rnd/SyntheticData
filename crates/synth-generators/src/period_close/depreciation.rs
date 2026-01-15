@@ -494,6 +494,8 @@ mod tests {
         let forecast = generator.forecast_depreciation(&assets, &period, 12);
 
         assert_eq!(forecast.len(), 12);
-        assert!(forecast.iter().all(|f| f.forecasted_depreciation == dec!(1800)));
+        assert!(forecast
+            .iter()
+            .all(|f| f.forecasted_depreciation == dec!(1800)));
     }
 }

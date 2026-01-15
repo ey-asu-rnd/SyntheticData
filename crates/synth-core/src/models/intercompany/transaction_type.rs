@@ -144,12 +144,12 @@ impl ICTransactionType {
     /// Get typical withholding tax rate (varies by jurisdiction).
     pub fn typical_withholding_rate(&self) -> Option<Decimal> {
         match self {
-            Self::Dividend => Some(Decimal::new(15, 2)),       // 15%
-            Self::Royalty => Some(Decimal::new(10, 2)),        // 10%
-            Self::LoanInterest => Some(Decimal::new(10, 2)),   // 10%
-            Self::ManagementFee => Some(Decimal::new(15, 2)),  // 15%
+            Self::Dividend => Some(Decimal::new(15, 2)),      // 15%
+            Self::Royalty => Some(Decimal::new(10, 2)),       // 10%
+            Self::LoanInterest => Some(Decimal::new(10, 2)),  // 10%
+            Self::ManagementFee => Some(Decimal::new(15, 2)), // 15%
             Self::TechnicalAssistance => Some(Decimal::new(15, 2)), // 15%
-            Self::LicenseFee => Some(Decimal::new(10, 2)),     // 10%
+            Self::LicenseFee => Some(Decimal::new(10, 2)),    // 10%
             _ => None,
         }
     }

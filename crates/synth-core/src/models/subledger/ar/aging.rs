@@ -121,12 +121,8 @@ impl ARAgingReport {
                 .map(|i| i.customer_name.clone())
                 .unwrap_or_default();
 
-            let aging = CustomerAging::from_invoices(
-                customer_id,
-                customer_name,
-                &invoices,
-                as_of_date,
-            );
+            let aging =
+                CustomerAging::from_invoices(customer_id, customer_name, &invoices, as_of_date);
 
             // Add to bucket totals
             for (bucket, amount) in &aging.bucket_amounts {
@@ -141,7 +137,10 @@ impl ARAgingReport {
 
         // Calculate totals
         let total_ar_balance: Decimal = bucket_totals.values().sum();
-        let total_current = bucket_totals.get(&AgingBucket::Current).copied().unwrap_or_default();
+        let total_current = bucket_totals
+            .get(&AgingBucket::Current)
+            .copied()
+            .unwrap_or_default();
         let total_overdue = total_ar_balance - total_current;
         let overdue_percentage = if total_ar_balance > Decimal::ZERO {
             (total_overdue / total_ar_balance * dec!(100)).round_dp(2)
@@ -163,16 +162,14 @@ impl ARAgingReport {
     }
 
     /// Gets customers with balance over threshold in specific bucket.
-    pub fn customers_in_bucket(&self, bucket: AgingBucket, min_amount: Decimal) -> Vec<&CustomerAging> {
+    pub fn customers_in_bucket(
+        &self,
+        bucket: AgingBucket,
+        min_amount: Decimal,
+    ) -> Vec<&CustomerAging> {
         self.customer_details
             .iter()
-            .filter(|c| {
-                c.bucket_amounts
-                    .get(&bucket)
-                    .copied()
-                    .unwrap_or_default()
-                    >= min_amount
-            })
+            .filter(|c| c.bucket_amounts.get(&bucket).copied().unwrap_or_default() >= min_amount)
             .collect()
     }
 
@@ -225,10 +222,8 @@ impl CustomerAging {
             .into_iter()
             .map(|b| (b, Decimal::ZERO))
             .collect();
-        let mut invoice_counts: HashMap<AgingBucket, u32> = AgingBucket::all()
-            .into_iter()
-            .map(|b| (b, 0))
-            .collect();
+        let mut invoice_counts: HashMap<AgingBucket, u32> =
+            AgingBucket::all().into_iter().map(|b| (b, 0)).collect();
 
         let mut invoice_details = Vec::new();
         let mut total_days_weighted = Decimal::ZERO;
@@ -311,7 +306,10 @@ impl CustomerAging {
 
     /// Gets amount in a specific bucket.
     pub fn amount_in_bucket(&self, bucket: AgingBucket) -> Decimal {
-        self.bucket_amounts.get(&bucket).copied().unwrap_or_default()
+        self.bucket_amounts
+            .get(&bucket)
+            .copied()
+            .unwrap_or_default()
     }
 
     /// Gets percentage in a specific bucket.
@@ -363,12 +361,19 @@ pub struct BadDebtReserve {
 
 impl BadDebtReserve {
     /// Calculates bad debt reserve from aging report.
-    pub fn calculate(aging_report: &ARAgingReport, reserve_rates: HashMap<AgingBucket, Decimal>) -> Self {
+    pub fn calculate(
+        aging_report: &ARAgingReport,
+        reserve_rates: HashMap<AgingBucket, Decimal>,
+    ) -> Self {
         let mut reserves_by_bucket = HashMap::new();
         let mut total_reserve = Decimal::ZERO;
 
         for bucket in AgingBucket::all() {
-            let balance = aging_report.bucket_totals.get(&bucket).copied().unwrap_or_default();
+            let balance = aging_report
+                .bucket_totals
+                .get(&bucket)
+                .copied()
+                .unwrap_or_default();
             let rate = reserve_rates.get(&bucket).copied().unwrap_or_default();
             let reserve = (balance * rate / dec!(100)).round_dp(2);
 

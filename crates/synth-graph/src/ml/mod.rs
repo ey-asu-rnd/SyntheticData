@@ -1,7 +1,7 @@
 //! Machine learning utilities for graph neural networks.
 
-mod splits;
 mod features;
+mod splits;
 
-pub use splits::*;
 pub use features::*;
+pub use splits::*;

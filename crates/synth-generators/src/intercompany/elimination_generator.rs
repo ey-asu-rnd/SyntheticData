@@ -93,7 +93,11 @@ impl EliminationGenerator {
     }
 
     /// Get or create consolidation journal for a period.
-    fn get_or_create_journal(&mut self, fiscal_period: &str, entry_date: NaiveDate) -> &mut ConsolidationJournal {
+    fn get_or_create_journal(
+        &mut self,
+        fiscal_period: &str,
+        entry_date: NaiveDate,
+    ) -> &mut ConsolidationJournal {
         self.journals
             .entry(fiscal_period.to_string())
             .or_insert_with(|| {
@@ -122,12 +126,20 @@ impl EliminationGenerator {
 
         // Generate IC revenue/expense eliminations
         if self.config.eliminate_ic_revenue_expense {
-            self.generate_ic_revenue_expense_eliminations(fiscal_period, entry_date, ic_transactions);
+            self.generate_ic_revenue_expense_eliminations(
+                fiscal_period,
+                entry_date,
+                ic_transactions,
+            );
         }
 
         // Generate unrealized profit eliminations
         if self.config.eliminate_unrealized_profit {
-            self.generate_unrealized_profit_eliminations(fiscal_period, entry_date, ic_transactions);
+            self.generate_unrealized_profit_eliminations(
+                fiscal_period,
+                entry_date,
+                ic_transactions,
+            );
         }
 
         // Generate investment/equity eliminations
@@ -250,9 +262,8 @@ impl EliminationGenerator {
                 let key = (tx.seller_company.clone(), tx.buyer_company.clone());
 
                 // Unrealized profit = IC sales amount * markup rate * % in inventory
-                let unrealized = tx.amount
-                    * self.config.average_markup_rate
-                    * self.config.ic_inventory_percent;
+                let unrealized =
+                    tx.amount * self.config.average_markup_rate * self.config.ic_inventory_percent;
 
                 *unrealized_by_pair.entry(key).or_insert(Decimal::ZERO) += unrealized;
             }
@@ -294,7 +305,10 @@ impl EliminationGenerator {
             }
 
             let investment = investment_amounts
-                .get(&format!("{}_{}", relationship.parent_company, relationship.subsidiary_company))
+                .get(&format!(
+                    "{}_{}",
+                    relationship.parent_company, relationship.subsidiary_company
+                ))
                 .copied()
                 .unwrap_or(Decimal::ZERO);
 
@@ -495,7 +509,11 @@ impl EliminationGenerator {
     }
 
     /// Finalize and approve a journal.
-    pub fn finalize_journal(&mut self, fiscal_period: &str, approved_by: String) -> Option<&ConsolidationJournal> {
+    pub fn finalize_journal(
+        &mut self,
+        fiscal_period: &str,
+        approved_by: String,
+    ) -> Option<&ConsolidationJournal> {
         if let Some(journal) = self.journals.get_mut(fiscal_period) {
             journal.submit();
             journal.approve(approved_by);
@@ -521,7 +539,9 @@ impl EliminationGenerator {
             let mut by_type: HashMap<EliminationType, (usize, Decimal)> = HashMap::new();
 
             for entry in &journal.entries {
-                let stats = by_type.entry(entry.elimination_type).or_insert((0, Decimal::ZERO));
+                let stats = by_type
+                    .entry(entry.elimination_type)
+                    .or_insert((0, Decimal::ZERO));
                 stats.0 += 1;
                 stats.1 += entry.total_debit;
             }

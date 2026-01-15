@@ -97,15 +97,15 @@ impl WeightedCompanySelector {
         }
 
         // Fallback to last company (should rarely happen due to floating point)
-        self.company_codes.last().map(|s| s.as_str()).unwrap_or("1000")
+        self.company_codes
+            .last()
+            .map(|s| s.as_str())
+            .unwrap_or("1000")
     }
 
     /// Get the probability of selecting a specific company.
     pub fn probability(&self, company_code: &str) -> f64 {
-        let idx = self
-            .company_codes
-            .iter()
-            .position(|c| c == company_code);
+        let idx = self.company_codes.iter().position(|c| c == company_code);
 
         match idx {
             Some(0) => self.cumulative_weights[0],

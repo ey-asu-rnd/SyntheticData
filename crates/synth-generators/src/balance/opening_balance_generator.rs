@@ -95,14 +95,10 @@ impl OpeningBalanceGenerator {
 
         // Current assets detail
         let cash = self.apply_variation(current_assets * asset_comp.cash_percent);
-        let accounts_receivable = self.calculate_ar_from_dso(
-            &spec.target_ratios,
-            current_assets - cash,
-            as_of_date,
-        );
-        let inventory = self.apply_variation(
-            (current_assets - cash - accounts_receivable) * dec!(0.6),
-        );
+        let accounts_receivable =
+            self.calculate_ar_from_dso(&spec.target_ratios, current_assets - cash, as_of_date);
+        let inventory =
+            self.apply_variation((current_assets - cash - accounts_receivable) * dec!(0.6));
         let prepaid_expenses = current_assets - cash - accounts_receivable - inventory;
 
         // Fixed assets detail
@@ -115,11 +111,8 @@ impl OpeningBalanceGenerator {
 
         // Current liabilities
         let current_liabilities = self.apply_variation(total_liabilities * dec!(0.35));
-        let accounts_payable = self.calculate_ap_from_dpo(
-            &spec.target_ratios,
-            current_liabilities,
-            as_of_date,
-        );
+        let accounts_payable =
+            self.calculate_ap_from_dpo(&spec.target_ratios, current_liabilities, as_of_date);
         let accrued_expenses = self.apply_variation(current_liabilities * dec!(0.25));
         let short_term_debt = self.apply_variation(current_liabilities * dec!(0.15));
         let other_current_liabilities =
@@ -131,7 +124,8 @@ impl OpeningBalanceGenerator {
         let other_long_term_liabilities = long_term_liabilities - long_term_debt;
 
         // Equity breakdown
-        let common_stock = self.apply_variation(total_equity * capital_struct.common_equity_percent);
+        let common_stock =
+            self.apply_variation(total_equity * capital_struct.common_equity_percent);
         let retained_earnings = total_equity - common_stock;
 
         // Create account balances using chart of accounts
@@ -283,11 +277,7 @@ impl OpeningBalanceGenerator {
         );
 
         // Create the snapshot
-        let snapshot = BalanceSnapshot::new(
-            as_of_date,
-            company_code.to_string(),
-            balances,
-        );
+        let snapshot = BalanceSnapshot::new(as_of_date, company_code.to_string(), balances);
 
         // Calculate actual ratios
         let calculated_ratios = self.calculate_ratios(&snapshot);
@@ -369,8 +359,7 @@ impl OpeningBalanceGenerator {
         // AP = (DPO * COGS) / 365
         // Estimate COGS as related to current liabilities
         let estimated_cogs = current_liabilities * dec!(8);
-        let target_ap =
-            (Decimal::from(target_ratios.target_dpo_days) * estimated_cogs) / dec!(365);
+        let target_ap = (Decimal::from(target_ratios.target_dpo_days) * estimated_cogs) / dec!(365);
 
         // Cap at reasonable percentage of current liabilities
         target_ap.min(current_liabilities * dec!(0.5))
@@ -431,14 +420,8 @@ impl OpeningBalanceGenerator {
         let totals = snapshot.calculate_totals();
 
         // Calculate current ratio
-        let current_assets = self.sum_accounts(
-            snapshot,
-            &["1000", "1100", "1200", "1300"],
-        );
-        let current_liabilities = self.sum_accounts(
-            snapshot,
-            &["2000", "2100", "2200", "2300"],
-        );
+        let current_assets = self.sum_accounts(snapshot, &["1000", "1100", "1200", "1300"]);
+        let current_liabilities = self.sum_accounts(snapshot, &["2000", "2100", "2200", "2300"]);
         let current_ratio = if current_liabilities > Decimal::ZERO {
             current_assets / current_liabilities
         } else {
@@ -540,16 +523,13 @@ impl OpeningBalanceSpecBuilder {
     }
 
     /// Adds an account override.
-    pub fn with_account_override(
-        mut self,
-        account_code: String,
-        amount: Decimal,
-    ) -> Self {
-        self.account_overrides.push(synth_core::models::balance::AccountSpec {
-            account_code,
-            amount,
-            description: None,
-        });
+    pub fn with_account_override(mut self, account_code: String, amount: Decimal) -> Self {
+        self.account_overrides
+            .push(synth_core::models::balance::AccountSpec {
+                account_code,
+                amount,
+                description: None,
+            });
         self
     }
 
@@ -560,9 +540,15 @@ impl OpeningBalanceSpecBuilder {
         OpeningBalanceSpec {
             total_assets: self.total_assets,
             industry: self.industry,
-            asset_composition: self.asset_composition.unwrap_or(industry_defaults.asset_composition),
-            capital_structure: self.capital_structure.unwrap_or(industry_defaults.capital_structure),
-            target_ratios: self.target_ratios.unwrap_or(industry_defaults.target_ratios),
+            asset_composition: self
+                .asset_composition
+                .unwrap_or(industry_defaults.asset_composition),
+            capital_structure: self
+                .capital_structure
+                .unwrap_or(industry_defaults.capital_structure),
+            target_ratios: self
+                .target_ratios
+                .unwrap_or(industry_defaults.target_ratios),
             account_overrides: self.account_overrides,
         }
     }
@@ -615,7 +601,8 @@ mod tests {
         let mut generator = OpeningBalanceGenerator::with_defaults(rng);
 
         let tech_spec = OpeningBalanceSpec::for_industry(dec!(1_000_000), IndustryType::Technology);
-        let mfg_spec = OpeningBalanceSpec::for_industry(dec!(1_000_000), IndustryType::Manufacturing);
+        let mfg_spec =
+            OpeningBalanceSpec::for_industry(dec!(1_000_000), IndustryType::Manufacturing);
 
         // Tech should have higher intangible assets
         assert!(

@@ -75,7 +75,8 @@ impl OpeningBalanceSpec {
         }
 
         // Check capital structure sums to 100%
-        let capital_total = self.capital_structure.debt_percent + self.capital_structure.equity_percent;
+        let capital_total =
+            self.capital_structure.debt_percent + self.capital_structure.equity_percent;
         if (capital_total - dec!(100)).abs() > dec!(0.01) {
             errors.push(format!(
                 "Capital structure should sum to 100%, got {}%",

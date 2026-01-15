@@ -3,7 +3,7 @@
 //! Provides fixed asset master data including depreciation schedules
 //! for realistic fixed asset accounting simulation.
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -39,16 +39,16 @@ impl AssetClass {
     /// Get default useful life in months for this asset class.
     pub fn default_useful_life_months(&self) -> u32 {
         match self {
-            Self::Buildings => 480,                 // 40 years
-            Self::Land => 0,                        // Not depreciated
-            Self::MachineryEquipment => 120,        // 10 years
-            Self::ComputerHardware => 36,           // 3 years
-            Self::FurnitureFixtures => 84,          // 7 years
-            Self::Vehicles => 60,                   // 5 years
-            Self::LeaseholdImprovements => 120,     // 10 years (or lease term)
-            Self::Intangibles => 60,                // 5 years
-            Self::ConstructionInProgress => 0,      // Not depreciated until complete
-            Self::LowValueAssets => 12,             // 1 year
+            Self::Buildings => 480,             // 40 years
+            Self::Land => 0,                    // Not depreciated
+            Self::MachineryEquipment => 120,    // 10 years
+            Self::ComputerHardware => 36,       // 3 years
+            Self::FurnitureFixtures => 84,      // 7 years
+            Self::Vehicles => 60,               // 5 years
+            Self::LeaseholdImprovements => 120, // 10 years (or lease term)
+            Self::Intangibles => 60,            // 5 years
+            Self::ConstructionInProgress => 0,  // Not depreciated until complete
+            Self::LowValueAssets => 12,         // 1 year
         }
     }
 
@@ -527,7 +527,10 @@ impl FixedAssetPool {
         self.assets.push(asset);
 
         self.class_index.entry(asset_class).or_default().push(idx);
-        self.company_index.entry(company_code).or_default().push(idx);
+        self.company_index
+            .entry(company_code)
+            .or_default()
+            .push(idx);
     }
 
     /// Get all assets requiring depreciation for a given month.

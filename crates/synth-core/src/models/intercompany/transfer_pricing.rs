@@ -1,6 +1,6 @@
 //! Transfer pricing models and policies for intercompany transactions.
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +37,7 @@ impl TransferPricingMethod {
             Self::ResalePrice => (Decimal::new(10, 2), Decimal::new(30, 2)), // 10-30%
             Self::TransactionalNetMargin => (Decimal::new(2, 2), Decimal::new(10, 2)), // 2-10%
             Self::ProfitSplit => (Decimal::new(40, 2), Decimal::new(60, 2)), // 40-60% split
-            Self::FixedFee => (Decimal::ZERO, Decimal::ZERO), // Fixed amount
+            Self::FixedFee => (Decimal::ZERO, Decimal::ZERO),            // Fixed amount
         }
     }
 
@@ -227,7 +227,9 @@ impl TransferPriceCalculation {
 
         // Check if within arm's length range
         let is_arms_length = match (policy.min_markup_percent, policy.max_markup_percent) {
-            (Some(min), Some(max)) => effective_markup_percent >= min && effective_markup_percent <= max,
+            (Some(min), Some(max)) => {
+                effective_markup_percent >= min && effective_markup_percent <= max
+            }
             _ => true, // No range specified, assume compliant
         };
 

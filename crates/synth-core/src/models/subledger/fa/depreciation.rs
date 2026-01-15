@@ -1,6 +1,6 @@
 //! Depreciation models and calculations.
 
-use chrono::{NaiveDate, DateTime, Utc, Datelike};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -132,14 +132,15 @@ impl DepreciationRun {
         let mut summary: HashMap<String, DepreciationSummary> = HashMap::new();
 
         for entry in &self.asset_entries {
-            let class_summary = summary.entry(entry.asset_class.clone()).or_insert_with(|| {
-                DepreciationSummary {
-                    category: entry.asset_class.clone(),
-                    asset_count: 0,
-                    total_depreciation: Decimal::ZERO,
-                    total_net_book_value: Decimal::ZERO,
-                }
-            });
+            let class_summary =
+                summary
+                    .entry(entry.asset_class.clone())
+                    .or_insert_with(|| DepreciationSummary {
+                        category: entry.asset_class.clone(),
+                        asset_count: 0,
+                        total_depreciation: Decimal::ZERO,
+                        total_net_book_value: Decimal::ZERO,
+                    });
 
             class_summary.asset_count += 1;
             class_summary.total_depreciation += entry.depreciation_amount;
@@ -202,10 +203,7 @@ pub struct DepreciationEntry {
 
 impl DepreciationEntry {
     /// Creates from asset record.
-    pub fn from_asset(
-        asset: &FixedAssetRecord,
-        area_type: DepreciationAreaType,
-    ) -> Option<Self> {
+    pub fn from_asset(asset: &FixedAssetRecord, area_type: DepreciationAreaType) -> Option<Self> {
         let area = asset
             .depreciation_areas
             .iter()
@@ -228,8 +226,14 @@ impl DepreciationEntry {
             accumulated_after,
             net_book_value_after: nbv_after.max(Decimal::ZERO),
             fully_depreciated,
-            expense_account: asset.account_determination.depreciation_expense_account.clone(),
-            accum_depr_account: asset.account_determination.accumulated_depreciation_account.clone(),
+            expense_account: asset
+                .account_determination
+                .depreciation_expense_account
+                .clone(),
+            accum_depr_account: asset
+                .account_determination
+                .accumulated_depreciation_account
+                .clone(),
             cost_center: asset.cost_center.clone(),
         })
     }
@@ -322,11 +326,16 @@ impl DepreciationForecast {
             let mut asset_details = Vec::new();
 
             for asset in &active_assets {
-                if let Some(area) = asset.depreciation_areas.iter().find(|a| a.area_type == area_type) {
+                if let Some(area) = asset
+                    .depreciation_areas
+                    .iter()
+                    .find(|a| a.area_type == area_type)
+                {
                     // Simulate depreciation considering fully depreciated threshold
                     let projected_accum = area.accumulated_depreciation
                         + area.calculate_monthly_depreciation() * Decimal::from(period);
-                    let remaining_nbv = (area.acquisition_cost - projected_accum).max(Decimal::ZERO);
+                    let remaining_nbv =
+                        (area.acquisition_cost - projected_accum).max(Decimal::ZERO);
 
                     if remaining_nbv > area.salvage_value {
                         let monthly = area.calculate_monthly_depreciation();

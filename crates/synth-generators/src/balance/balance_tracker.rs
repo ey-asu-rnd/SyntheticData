@@ -8,9 +8,7 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-use synth_core::models::balance::{
-    AccountBalance, AccountType, BalanceChange, BalanceSnapshot,
-};
+use synth_core::models::balance::{AccountBalance, AccountType, BalanceChange, BalanceSnapshot};
 use synth_core::models::{JournalEntry, JournalEntryLine};
 
 /// Configuration for the balance tracker.
@@ -182,10 +180,7 @@ impl RunningBalanceTracker {
         }
 
         // Get or create company balances
-        let company_balances = self
-            .balances
-            .entry(entry.company_code.clone())
-            .or_default();
+        let company_balances = self.balances.entry(entry.company_code.clone()).or_default();
 
         // Apply each line
         for line in &entry.lines {
@@ -208,7 +203,11 @@ impl RunningBalanceTracker {
 
         // Validate balance sheet if configured
         if self.config.validate_on_each_entry {
-            self.validate_balance_sheet(&entry.company_code, entry.posting_date, Some(&entry.entry_id))?;
+            self.validate_balance_sheet(
+                &entry.company_code,
+                entry.posting_date,
+                Some(&entry.entry_id),
+            )?;
         }
 
         Ok(())
@@ -370,7 +369,11 @@ impl RunningBalanceTracker {
     }
 
     /// Gets the current snapshot for a company.
-    pub fn get_snapshot(&self, company_code: &str, as_of_date: NaiveDate) -> Option<BalanceSnapshot> {
+    pub fn get_snapshot(
+        &self,
+        company_code: &str,
+        as_of_date: NaiveDate,
+    ) -> Option<BalanceSnapshot> {
         self.balances.get(company_code).map(|balances| {
             BalanceSnapshot::new(as_of_date, company_code.to_string(), balances.clone())
         })
@@ -399,7 +402,10 @@ impl RunningBalanceTracker {
 
         let mut changes_by_account: HashMap<String, BalanceChange> = HashMap::new();
 
-        for entry in history.iter().filter(|e| e.date >= from_date && e.date <= to_date) {
+        for entry in history
+            .iter()
+            .filter(|e| e.date >= from_date && e.date <= to_date)
+        {
             let change = changes_by_account
                 .entry(entry.account_code.clone())
                 .or_insert_with(|| BalanceChange {
@@ -593,25 +599,13 @@ mod tests {
     fn test_determine_account_type_from_prefix() {
         let tracker = RunningBalanceTracker::with_defaults();
 
-        assert_eq!(
-            tracker.determine_account_type("1000"),
-            AccountType::Asset
-        );
+        assert_eq!(tracker.determine_account_type("1000"), AccountType::Asset);
         assert_eq!(
             tracker.determine_account_type("2000"),
             AccountType::Liability
         );
-        assert_eq!(
-            tracker.determine_account_type("3000"),
-            AccountType::Equity
-        );
-        assert_eq!(
-            tracker.determine_account_type("4000"),
-            AccountType::Revenue
-        );
-        assert_eq!(
-            tracker.determine_account_type("5000"),
-            AccountType::Expense
-        );
+        assert_eq!(tracker.determine_account_type("3000"), AccountType::Equity);
+        assert_eq!(tracker.determine_account_type("4000"), AccountType::Revenue);
+        assert_eq!(tracker.determine_account_type("5000"), AccountType::Expense);
     }
 }

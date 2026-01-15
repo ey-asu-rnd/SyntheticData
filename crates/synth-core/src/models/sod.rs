@@ -231,21 +231,41 @@ impl SodRule {
     /// Get standard SoD rules.
     pub fn standard_rules() -> Vec<Self> {
         vec![
-            Self::new("SOD001", "Preparer-Approver Conflict", SodConflictType::PreparerApprover)
-                .with_description("User cannot approve their own journal entries")
-                .with_risk_level(RiskLevel::High),
-            Self::new("SOD002", "Payment Dual Control", SodConflictType::PaymentReleaser)
-                .with_description("User cannot both create and release the same payment")
-                .with_risk_level(RiskLevel::Critical),
-            Self::new("SOD003", "Vendor Master-Payment Conflict", SodConflictType::MasterDataMaintainer)
-                .with_description("User cannot maintain vendor master data and process payments")
-                .with_risk_level(RiskLevel::High),
-            Self::new("SOD004", "Requester-Approver Conflict", SodConflictType::RequesterApprover)
-                .with_description("User cannot approve their own requisitions or expenses")
-                .with_risk_level(RiskLevel::Critical),
-            Self::new("SOD005", "Reconciler-Poster Conflict", SodConflictType::ReconcilerPoster)
-                .with_description("User cannot both reconcile accounts and post adjusting entries")
-                .with_risk_level(RiskLevel::Medium),
+            Self::new(
+                "SOD001",
+                "Preparer-Approver Conflict",
+                SodConflictType::PreparerApprover,
+            )
+            .with_description("User cannot approve their own journal entries")
+            .with_risk_level(RiskLevel::High),
+            Self::new(
+                "SOD002",
+                "Payment Dual Control",
+                SodConflictType::PaymentReleaser,
+            )
+            .with_description("User cannot both create and release the same payment")
+            .with_risk_level(RiskLevel::Critical),
+            Self::new(
+                "SOD003",
+                "Vendor Master-Payment Conflict",
+                SodConflictType::MasterDataMaintainer,
+            )
+            .with_description("User cannot maintain vendor master data and process payments")
+            .with_risk_level(RiskLevel::High),
+            Self::new(
+                "SOD004",
+                "Requester-Approver Conflict",
+                SodConflictType::RequesterApprover,
+            )
+            .with_description("User cannot approve their own requisitions or expenses")
+            .with_risk_level(RiskLevel::Critical),
+            Self::new(
+                "SOD005",
+                "Reconciler-Poster Conflict",
+                SodConflictType::ReconcilerPoster,
+            )
+            .with_description("User cannot both reconcile accounts and post adjusting entries")
+            .with_risk_level(RiskLevel::Medium),
         ]
     }
 }

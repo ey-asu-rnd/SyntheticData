@@ -198,18 +198,18 @@ impl OCRConfusions {
         confusions.insert('Z', vec!['2', 'z', '7']);
         confusions.insert('z', vec!['2', 'Z', 's']);
         confusions.insert('n', vec!['m', 'h', 'r']);
-        confusions.insert('m', vec!['n', 'rn', 'nn']);
+        confusions.insert('m', vec!['n', 'r']);
         confusions.insert('h', vec!['n', 'b', 'k']);
         confusions.insert('c', vec!['e', 'o', '(']);
         confusions.insert('e', vec!['c', 'a', 'o']);
         confusions.insert('a', vec!['e', 'o', 'd']);
-        confusions.insert('d', vec!['a', 'o', 'cl']);
+        confusions.insert('d', vec!['a', 'o', 'c']);
         confusions.insert('g', vec!['q', '9', 'a']);
         confusions.insert('q', vec!['g', '9', 'p']);
         confusions.insert('9', vec!['g', 'q']);
         confusions.insert('v', vec!['u', 'w', 'y']);
         confusions.insert('u', vec!['v', 'n', 'w']);
-        confusions.insert('w', vec!['v', 'vv', 'u']);
+        confusions.insert('w', vec!['v', 'u', 'x']);
         confusions.insert('y', vec!['v', 'u', 'j']);
         confusions.insert('f', vec!['t', 'r']);
         confusions.insert('t', vec!['f', 'l', '+']);
@@ -244,8 +244,14 @@ impl Homophones {
         // Common business/accounting homophones
         homophones.insert("to".to_string(), vec!["two".to_string(), "too".to_string()]);
         homophones.insert("two".to_string(), vec!["to".to_string(), "too".to_string()]);
-        homophones.insert("their".to_string(), vec!["there".to_string(), "they're".to_string()]);
-        homophones.insert("there".to_string(), vec!["their".to_string(), "they're".to_string()]);
+        homophones.insert(
+            "their".to_string(),
+            vec!["there".to_string(), "they're".to_string()],
+        );
+        homophones.insert(
+            "there".to_string(),
+            vec!["their".to_string(), "they're".to_string()],
+        );
         homophones.insert("its".to_string(), vec!["it's".to_string()]);
         homophones.insert("your".to_string(), vec!["you're".to_string()]);
         homophones.insert("than".to_string(), vec!["then".to_string()]);
@@ -258,7 +264,10 @@ impl Homophones {
         homophones.insert("compliment".to_string(), vec!["complement".to_string()]);
         homophones.insert("stationary".to_string(), vec!["stationery".to_string()]);
         homophones.insert("advice".to_string(), vec!["advise".to_string()]);
-        homophones.insert("loss".to_string(), vec!["lost".to_string(), "lose".to_string()]);
+        homophones.insert(
+            "loss".to_string(),
+            vec!["lost".to_string(), "lose".to_string()],
+        );
 
         Self { homophones }
     }
@@ -527,11 +536,7 @@ pub enum EncodingIssue {
 }
 
 /// Introduces encoding issues.
-pub fn introduce_encoding_issue<R: Rng>(
-    text: &str,
-    issue: EncodingIssue,
-    rng: &mut R,
-) -> String {
+pub fn introduce_encoding_issue<R: Rng>(text: &str, issue: EncodingIssue, rng: &mut R) -> String {
     match issue {
         EncodingIssue::Mojibake => {
             // Simulate common Mojibake patterns
@@ -542,17 +547,16 @@ pub fn introduce_encoding_issue<R: Rng>(
                 .replace('ä', "Ã¤")
                 .replace('€', "â‚¬")
         }
-        EncodingIssue::MissingChars => {
-            text.chars()
-                .map(|c| {
-                    if !c.is_ascii() && rng.gen::<f64>() < 0.5 {
-                        '?'
-                    } else {
-                        c
-                    }
-                })
-                .collect()
-        }
+        EncodingIssue::MissingChars => text
+            .chars()
+            .map(|c| {
+                if !c.is_ascii() && rng.gen::<f64>() < 0.5 {
+                    '?'
+                } else {
+                    c
+                }
+            })
+            .collect(),
         EncodingIssue::BOM => {
             format!("\u{FEFF}{}", text)
         }
@@ -567,13 +571,12 @@ pub fn introduce_encoding_issue<R: Rng>(
             }
             result
         }
-        EncodingIssue::HTMLEntities => {
-            text.replace('&', "&amp;")
-                .replace('<', "&lt;")
-                .replace('>', "&gt;")
-                .replace('"', "&quot;")
-                .replace(' ', "&nbsp;")
-        }
+        EncodingIssue::HTMLEntities => text
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+            .replace(' ', "&nbsp;"),
     }
 }
 

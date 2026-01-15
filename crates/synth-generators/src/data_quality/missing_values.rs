@@ -248,7 +248,11 @@ impl MissingValueInjector {
             MissingValueStrategy::MCAR { probability } => {
                 // Use field-specific rate if available
                 let base = self.config.get_rate(field);
-                if base > 0.0 { base } else { *probability }
+                if base > 0.0 {
+                    base
+                } else {
+                    *probability
+                }
             }
             MissingValueStrategy::MAR {
                 base_probability,
@@ -303,30 +307,32 @@ impl MissingValueInjector {
                 // Simple pattern matching (could use regex)
                 value.contains(pattern)
             }
-            ConditionType::GreaterThan(threshold) => {
-                value.parse::<f64>().map(|v| v > *threshold).unwrap_or(false)
-            }
-            ConditionType::LessThan(threshold) => {
-                value.parse::<f64>().map(|v| v < *threshold).unwrap_or(false)
-            }
+            ConditionType::GreaterThan(threshold) => value
+                .parse::<f64>()
+                .map(|v| v > *threshold)
+                .unwrap_or(false),
+            ConditionType::LessThan(threshold) => value
+                .parse::<f64>()
+                .map(|v| v < *threshold)
+                .unwrap_or(false),
         }
     }
 
     /// Checks if a value matches an MNAR pattern.
     fn check_value_pattern(&self, pattern: &PatternType, value: &str) -> bool {
         match pattern {
-            PatternType::HighValues { threshold } => {
-                value.parse::<f64>().map(|v| v > *threshold).unwrap_or(false)
-            }
-            PatternType::LowValues { threshold } => {
-                value.parse::<f64>().map(|v| v < *threshold).unwrap_or(false)
-            }
-            PatternType::ExtremeValues { low, high } => {
-                value
-                    .parse::<f64>()
-                    .map(|v| v < *low || v > *high)
-                    .unwrap_or(false)
-            }
+            PatternType::HighValues { threshold } => value
+                .parse::<f64>()
+                .map(|v| v > *threshold)
+                .unwrap_or(false),
+            PatternType::LowValues { threshold } => value
+                .parse::<f64>()
+                .map(|v| v < *threshold)
+                .unwrap_or(false),
+            PatternType::ExtremeValues { low, high } => value
+                .parse::<f64>()
+                .map(|v| v < *low || v > *high)
+                .unwrap_or(false),
             PatternType::SensitivePatterns { patterns } => {
                 patterns.iter().any(|p| value.contains(p))
             }

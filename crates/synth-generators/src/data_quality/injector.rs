@@ -5,19 +5,19 @@
 
 use chrono::NaiveDate;
 use rand::Rng;
-use rand_chacha::ChaCha8Rng;
 use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 
-use super::duplicates::{DuplicateConfig, DuplicateGenerator, DuplicateStats, Duplicatable};
+use super::duplicates::{Duplicatable, DuplicateConfig, DuplicateGenerator, DuplicateStats};
 use super::format_variations::{
-    DateFormat, AmountFormat, FormatVariationConfig, FormatVariationInjector, FormatVariationStats,
+    AmountFormat, DateFormat, FormatVariationConfig, FormatVariationInjector, FormatVariationStats,
 };
 use super::missing_values::{
-    MissingValueConfig, MissingValueInjector, MissingValueStats, MissingValue,
+    MissingValue, MissingValueConfig, MissingValueInjector, MissingValueStats,
 };
-use super::typos::{TypoConfig, TypoGenerator, TypoStats, EncodingIssue, introduce_encoding_issue};
+use super::typos::{introduce_encoding_issue, EncodingIssue, TypoConfig, TypoGenerator, TypoStats};
 
 /// Configuration for the data quality injector.
 #[derive(Debug, Clone)]
@@ -155,12 +155,17 @@ impl DataQualityStats {
     /// Returns a summary of issues.
     pub fn summary(&self) -> HashMap<String, usize> {
         let mut summary = HashMap::new();
-        summary.insert("missing_values".to_string(), self.missing_values.total_missing);
-        summary.insert("format_variations".to_string(),
+        summary.insert(
+            "missing_values".to_string(),
+            self.missing_values.total_missing,
+        );
+        summary.insert(
+            "format_variations".to_string(),
             self.format_variations.date_variations
-            + self.format_variations.amount_variations
-            + self.format_variations.identifier_variations
-            + self.format_variations.text_variations);
+                + self.format_variations.amount_variations
+                + self.format_variations.identifier_variations
+                + self.format_variations.text_variations,
+        );
         summary.insert("duplicates".to_string(), self.duplicates.total_duplicates);
         summary.insert("typos".to_string(), self.typos.total_typos);
         summary.insert("encoding_issues".to_string(), self.encoding_issues);
@@ -316,7 +321,9 @@ impl DataQualityInjector {
         }
 
         // Apply encoding issues
-        if self.config.enable_encoding_issues && self.rng.gen::<f64>() < self.config.encoding_issue_rate {
+        if self.config.enable_encoding_issues
+            && self.rng.gen::<f64>() < self.config.encoding_issue_rate
+        {
             let issues = [
                 EncodingIssue::Mojibake,
                 EncodingIssue::MissingChars,
@@ -670,12 +677,8 @@ mod tests {
         let mut injector = DataQualityInjector::new(config);
         let context = HashMap::new();
 
-        let result = injector.process_text_field(
-            "description",
-            "Test Entry Description",
-            "JE001",
-            &context,
-        );
+        let result =
+            injector.process_text_field("description", "Test Entry Description", "JE001", &context);
 
         assert!(result.is_some());
     }

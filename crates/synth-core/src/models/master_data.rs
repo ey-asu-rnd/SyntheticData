@@ -380,13 +380,8 @@ impl Vendor {
     }
 
     /// Create an intercompany vendor.
-    pub fn new_intercompany(
-        vendor_id: &str,
-        name: &str,
-        related_company_code: &str,
-    ) -> Self {
-        Self::new(vendor_id, name, VendorType::Supplier)
-            .with_intercompany(related_company_code)
+    pub fn new_intercompany(vendor_id: &str, name: &str, related_company_code: &str) -> Self {
+        Self::new(vendor_id, name, VendorType::Supplier).with_intercompany(related_company_code)
     }
 
     /// Set country.
@@ -463,7 +458,9 @@ impl Vendor {
 
     /// Get the primary bank account.
     pub fn primary_bank_account(&self) -> Option<&BankAccount> {
-        self.bank_accounts.iter().find(|a| a.is_primary)
+        self.bank_accounts
+            .iter()
+            .find(|a| a.is_primary)
             .or_else(|| self.bank_accounts.first())
     }
 
@@ -614,11 +611,7 @@ impl Customer {
     }
 
     /// Create an intercompany customer.
-    pub fn new_intercompany(
-        customer_id: &str,
-        name: &str,
-        related_company_code: &str,
-    ) -> Self {
+    pub fn new_intercompany(customer_id: &str, name: &str, related_company_code: &str) -> Self {
         Self::new(customer_id, name, CustomerType::Intercompany)
             .with_intercompany(related_company_code)
     }
@@ -1187,7 +1180,9 @@ mod tests {
 
     #[test]
     fn test_credit_rating() {
-        assert!(CreditRating::AAA.credit_limit_multiplier() > CreditRating::B.credit_limit_multiplier());
+        assert!(
+            CreditRating::AAA.credit_limit_multiplier() > CreditRating::B.credit_limit_multiplier()
+        );
         assert!(CreditRating::D.is_credit_blocked());
         assert!(!CreditRating::A.is_credit_blocked());
     }
@@ -1235,7 +1230,8 @@ mod tests {
     fn test_payment_behavior() {
         assert!(CustomerPaymentBehavior::Excellent.on_time_probability() > 0.95);
         assert!(CustomerPaymentBehavior::VeryPoor.on_time_probability() < 0.25);
-        assert!(CustomerPaymentBehavior::Excellent.average_days_past_due() < 0); // Pays early
+        assert!(CustomerPaymentBehavior::Excellent.average_days_past_due() < 0);
+        // Pays early
     }
 
     #[test]
@@ -1246,6 +1242,9 @@ mod tests {
         let invoice_date = chrono::NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
         let due_date = vendor.calculate_due_date(invoice_date);
 
-        assert_eq!(due_date, chrono::NaiveDate::from_ymd_opt(2024, 2, 14).unwrap());
+        assert_eq!(
+            due_date,
+            chrono::NaiveDate::from_ymd_opt(2024, 2, 14).unwrap()
+        );
     }
 }

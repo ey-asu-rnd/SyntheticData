@@ -1,6 +1,6 @@
 //! AP Invoice (vendor invoice) model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -177,8 +177,11 @@ impl APInvoice {
 
     /// Gets discount amount if paid by discount date.
     pub fn available_discount(&self, payment_date: NaiveDate) -> Decimal {
-        self.payment_terms
-            .calculate_discount(self.gross_amount.document_amount, payment_date, self.baseline_date)
+        self.payment_terms.calculate_discount(
+            self.gross_amount.document_amount,
+            payment_date,
+            self.baseline_date,
+        )
     }
 
     /// Sets purchase order reference.
@@ -210,8 +213,12 @@ impl APInvoice {
 
     /// Sets three-way match status.
     pub fn set_match_status(&mut self, status: MatchStatus) {
+        let should_block = matches!(
+            &status,
+            MatchStatus::MatchedWithVariance { .. } | MatchStatus::NotMatched
+        );
         self.match_status = status;
-        if matches!(status, MatchStatus::MatchedWithVariance { .. } | MatchStatus::NotMatched) {
+        if should_block {
             self.payment_block = Some(PaymentBlockReason::MatchException);
         }
     }
@@ -220,7 +227,10 @@ impl APInvoice {
     pub fn is_payable(&self) -> bool {
         !self.is_blocked()
             && self.status == SubledgerDocumentStatus::Open
-            && matches!(self.match_status, MatchStatus::Matched | MatchStatus::NotRequired)
+            && matches!(
+                self.match_status,
+                MatchStatus::Matched | MatchStatus::NotRequired
+            )
     }
 
     /// Sets withholding tax.
@@ -244,7 +254,10 @@ impl APInvoice {
         self.status = SubledgerDocumentStatus::Reversed;
         self.notes = Some(format!(
             "{}Reversed on {}: {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             reversal_date,
             reason
         ));
@@ -600,12 +613,11 @@ mod tests {
 
     #[test]
     fn test_withholding_tax() {
-        let invoice = create_test_invoice()
-            .with_withholding_tax(WithholdingTax::new(
-                "WHT10".to_string(),
-                dec!(10),
-                dec!(1000),
-            ));
+        let invoice = create_test_invoice().with_withholding_tax(WithholdingTax::new(
+            "WHT10".to_string(),
+            dec!(10),
+            dec!(1000),
+        ));
 
         assert_eq!(invoice.withholding_tax.as_ref().unwrap().amount, dec!(100));
         assert_eq!(invoice.net_payable(), dec!(1000)); // 1100 - 100 WHT

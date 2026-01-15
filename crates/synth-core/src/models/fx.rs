@@ -203,7 +203,11 @@ impl FxRateTable {
         }
 
         let key = (
-            format!("{}_{}", from_currency.to_uppercase(), to_currency.to_uppercase()),
+            format!(
+                "{}_{}",
+                from_currency.to_uppercase(),
+                to_currency.to_uppercase()
+            ),
             rate_type.to_string(),
         );
 
@@ -289,7 +293,12 @@ impl FxRateTable {
         self.rates
             .iter()
             .filter(|((pair, _), _)| {
-                *pair == format!("{}_{}", from_currency.to_uppercase(), to_currency.to_uppercase())
+                *pair
+                    == format!(
+                        "{}_{}",
+                        from_currency.to_uppercase(),
+                        to_currency.to_uppercase()
+                    )
             })
             .flat_map(|(_, rates)| rates.iter())
             .collect()

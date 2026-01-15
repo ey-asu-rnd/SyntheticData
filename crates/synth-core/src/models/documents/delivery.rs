@@ -7,7 +7,10 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use super::{DocumentHeader, DocumentLineItem, DocumentReference, DocumentStatus, DocumentType, ReferenceType};
+use super::{
+    DocumentHeader, DocumentLineItem, DocumentReference, DocumentStatus, DocumentType,
+    ReferenceType,
+};
 
 /// Delivery type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -166,7 +169,11 @@ impl DeliveryItem {
     }
 
     /// Set location.
-    pub fn with_location(mut self, plant: impl Into<String>, storage_location: impl Into<String>) -> Self {
+    pub fn with_location(
+        mut self,
+        plant: impl Into<String>,
+        storage_location: impl Into<String>,
+    ) -> Self {
         self.base.plant = Some(plant.into());
         self.base.storage_location = Some(storage_location.into());
         self
@@ -436,12 +443,8 @@ impl Delivery {
     /// Recalculate totals.
     pub fn recalculate_totals(&mut self) {
         self.total_quantity = self.items.iter().map(|i| i.base.quantity).sum();
-        self.total_weight = self.items.iter()
-            .filter_map(|i| i.weight)
-            .sum();
-        self.total_volume = self.items.iter()
-            .filter_map(|i| i.volume)
-            .sum();
+        self.total_weight = self.items.iter().filter_map(|i| i.weight).sum();
+        self.total_volume = self.items.iter().filter_map(|i| i.volume).sum();
         self.total_cogs = self.items.iter().map(|i| i.cogs_amount).sum();
     }
 
@@ -495,14 +498,15 @@ impl Delivery {
         self.pod_date = Some(pod_date);
         self.pod_signed_by = Some(signed_by.into());
         self.is_complete = true;
-        self.header.update_status(DocumentStatus::Completed, "SYSTEM");
+        self.header
+            .update_status(DocumentStatus::Completed, "SYSTEM");
     }
 
     /// Cancel the delivery.
     pub fn cancel(&mut self, user: impl Into<String>, reason: impl Into<String>) {
         self.is_cancelled = true;
         self.delivery_status = DeliveryStatus::Cancelled;
-        self.header.notes = Some(reason.into());
+        self.header.header_text = Some(reason.into());
         self.header.update_status(DocumentStatus::Cancelled, user);
     }
 
@@ -518,7 +522,10 @@ impl Delivery {
         for item in &self.items {
             if item.cogs_amount > Decimal::ZERO {
                 // Debit: COGS
-                let cogs_account = item.base.gl_account.clone()
+                let cogs_account = item
+                    .base
+                    .gl_account
+                    .clone()
                     .unwrap_or_else(|| "500000".to_string());
 
                 // Credit: Inventory
@@ -584,7 +591,10 @@ mod tests {
             "JSMITH",
         );
 
-        assert_eq!(delivery.sales_order_id, Some("SO-1000-0000000001".to_string()));
+        assert_eq!(
+            delivery.sales_order_id,
+            Some("SO-1000-0000000001".to_string())
+        );
         assert_eq!(delivery.header.document_references.len(), 1);
     }
 
@@ -620,12 +630,7 @@ mod tests {
 
     #[test]
     fn test_pick_process() {
-        let mut item = DeliveryItem::new(
-            1,
-            "Product A",
-            Decimal::from(100),
-            Decimal::from(50),
-        );
+        let mut item = DeliveryItem::new(1, "Product A", Decimal::from(100), Decimal::from(50));
 
         assert_eq!(item.open_quantity_pick(), Decimal::from(100));
 
@@ -650,13 +655,8 @@ mod tests {
             "JSMITH",
         );
 
-        let mut item = DeliveryItem::new(
-            1,
-            "Product A",
-            Decimal::from(100),
-            Decimal::from(50),
-        )
-        .with_cogs(Decimal::from(3000));
+        let mut item = DeliveryItem::new(1, "Product A", Decimal::from(100), Decimal::from(50))
+            .with_cogs(Decimal::from(3000));
 
         item.record_pick(Decimal::from(100));
         delivery.add_item(item);
@@ -684,13 +684,8 @@ mod tests {
             "JSMITH",
         );
 
-        let mut item = DeliveryItem::new(
-            1,
-            "Product A",
-            Decimal::from(100),
-            Decimal::from(50),
-        )
-        .with_cogs(Decimal::from(3000));
+        let mut item = DeliveryItem::new(1, "Product A", Decimal::from(100), Decimal::from(50))
+            .with_cogs(Decimal::from(3000));
 
         item.record_pick(Decimal::from(100));
         delivery.add_item(item);

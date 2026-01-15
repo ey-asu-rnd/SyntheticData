@@ -67,8 +67,11 @@ impl CloseEngine {
         for scheduled_task in &schedule.tasks {
             // Skip year-end tasks if not year-end
             if scheduled_task.task.is_year_end_only() && !fiscal_period.is_year_end {
-                let mut result =
-                    CloseTaskResult::new(scheduled_task.task.clone(), company_code.to_string(), fiscal_period.clone());
+                let mut result = CloseTaskResult::new(
+                    scheduled_task.task.clone(),
+                    company_code.to_string(),
+                    fiscal_period.clone(),
+                );
                 result.status = CloseTaskStatus::Skipped("Not year-end period".to_string());
                 run.task_results.push(result);
                 continue;
@@ -82,25 +85,25 @@ impl CloseEngine {
             });
 
             if !deps_met {
-                let mut result =
-                    CloseTaskResult::new(scheduled_task.task.clone(), company_code.to_string(), fiscal_period.clone());
+                let mut result = CloseTaskResult::new(
+                    scheduled_task.task.clone(),
+                    company_code.to_string(),
+                    fiscal_period.clone(),
+                );
                 result.status = CloseTaskStatus::Skipped("Dependencies not met".to_string());
                 run.task_results.push(result);
                 continue;
             }
 
             // Execute the task
-            let result = self.execute_task(
-                &scheduled_task.task,
-                company_code,
-                &fiscal_period,
-                context,
-            );
+            let result =
+                self.execute_task(&scheduled_task.task, company_code, &fiscal_period, context);
 
             run.total_journal_entries += result.journal_entries_created;
 
             if let CloseTaskStatus::Failed(ref err) = result.status {
-                run.errors.push(format!("{}: {}", scheduled_task.task.name(), err));
+                run.errors
+                    .push(format!("{}: {}", scheduled_task.task.name(), err));
                 if self.config.stop_on_error {
                     run.task_results.push(result);
                     run.status = PeriodCloseStatus::Failed;
@@ -131,7 +134,11 @@ impl CloseEngine {
         fiscal_period: &FiscalPeriod,
         context: &mut CloseContext,
     ) -> CloseTaskResult {
-        let mut result = CloseTaskResult::new(task.clone(), company_code.to_string(), fiscal_period.clone());
+        let mut result = CloseTaskResult::new(
+            task.clone(),
+            company_code.to_string(),
+            fiscal_period.clone(),
+        );
         result.status = CloseTaskStatus::InProgress;
         result.started_at = Some(fiscal_period.end_date);
 
@@ -185,9 +192,11 @@ impl CloseEngine {
                                     diff
                                 ));
                             } else {
-                                result.status = CloseTaskStatus::CompletedWithWarnings(vec![
-                                    format!("Reconciliation difference: {}", diff),
-                                ]);
+                                result.status =
+                                    CloseTaskStatus::CompletedWithWarnings(vec![format!(
+                                        "Reconciliation difference: {}",
+                                        diff
+                                    )]);
                             }
                             result.total_amount = diff;
                         }
@@ -196,7 +205,8 @@ impl CloseEngine {
                         }
                     }
                 } else {
-                    result.status = CloseTaskStatus::Skipped("No reconciliation handler".to_string());
+                    result.status =
+                        CloseTaskStatus::Skipped("No reconciliation handler".to_string());
                 }
             }
             CloseTask::RevalueForeignCurrency => {
@@ -207,7 +217,8 @@ impl CloseEngine {
                     context.journal_entries.extend(entries);
                     result.status = CloseTaskStatus::Completed;
                 } else {
-                    result.status = CloseTaskStatus::Skipped("No FX revaluation handler".to_string());
+                    result.status =
+                        CloseTaskStatus::Skipped("No FX revaluation handler".to_string());
                 }
             }
             CloseTask::AllocateCorporateOverhead => {
@@ -229,7 +240,8 @@ impl CloseEngine {
                     context.journal_entries.extend(entries);
                     result.status = CloseTaskStatus::Completed;
                 } else {
-                    result.status = CloseTaskStatus::Skipped("No IC settlement handler".to_string());
+                    result.status =
+                        CloseTaskStatus::Skipped("No IC settlement handler".to_string());
                 }
             }
             CloseTask::TranslateForeignSubsidiaries => {
@@ -262,7 +274,8 @@ impl CloseEngine {
                     context.journal_entries.extend(entries);
                     result.status = CloseTaskStatus::Completed;
                 } else {
-                    result.status = CloseTaskStatus::Skipped("No tax provision handler".to_string());
+                    result.status =
+                        CloseTaskStatus::Skipped("No tax provision handler".to_string());
                 }
             }
             CloseTask::CloseIncomeStatement => {
@@ -301,11 +314,13 @@ impl CloseEngine {
                     context.journal_entries.extend(entries);
                     result.status = CloseTaskStatus::Completed;
                 } else {
-                    result.status = CloseTaskStatus::Skipped("No inventory reval handler".to_string());
+                    result.status =
+                        CloseTaskStatus::Skipped("No inventory reval handler".to_string());
                 }
             }
             CloseTask::Custom(name) => {
-                result.status = CloseTaskStatus::Skipped(format!("Custom task '{}' not implemented", name));
+                result.status =
+                    CloseTaskStatus::Skipped(format!("Custom task '{}' not implemented", name));
             }
         }
 
@@ -336,16 +351,22 @@ impl CloseEngine {
 
         if fiscal_period.status == PeriodStatus::Locked {
             result.is_ready = false;
-            result.blockers.push("Period is locked for audit".to_string());
+            result
+                .blockers
+                .push("Period is locked for audit".to_string());
         }
 
         // Check for required handlers
         if context.depreciation_handler.is_none() {
-            result.warnings.push("No depreciation handler configured".to_string());
+            result
+                .warnings
+                .push("No depreciation handler configured".to_string());
         }
 
         if context.accrual_handler.is_none() {
-            result.warnings.push("No accrual handler configured".to_string());
+            result
+                .warnings
+                .push("No accrual handler configured".to_string());
         }
 
         if self.config.require_reconciliation && context.reconciliation_handler.is_none() {
@@ -364,7 +385,8 @@ pub struct CloseContext {
     /// Journal entries generated during close.
     pub journal_entries: Vec<JournalEntry>,
     /// Handler for depreciation.
-    pub depreciation_handler: Option<Box<dyn Fn(&str, &FiscalPeriod) -> (Vec<JournalEntry>, Decimal)>>,
+    pub depreciation_handler:
+        Option<Box<dyn Fn(&str, &FiscalPeriod) -> (Vec<JournalEntry>, Decimal)>>,
     /// Handler for accruals.
     pub accrual_handler:
         Option<Box<dyn Fn(&str, &FiscalPeriod, &CloseTask) -> (Vec<JournalEntry>, Decimal)>>,

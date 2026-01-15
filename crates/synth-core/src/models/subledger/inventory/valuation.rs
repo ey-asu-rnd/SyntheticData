@@ -1,6 +1,6 @@
 //! Inventory valuation models.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -285,7 +285,13 @@ impl FIFOTracker {
     }
 
     /// Adds a receipt.
-    pub fn receive(&mut self, date: NaiveDate, document: String, quantity: Decimal, unit_cost: Decimal) {
+    pub fn receive(
+        &mut self,
+        date: NaiveDate,
+        document: String,
+        quantity: Decimal,
+        unit_cost: Decimal,
+    ) {
         self.layers.push_back(FIFOLayer {
             receipt_date: date,
             receipt_document: document,
@@ -604,9 +610,9 @@ mod tests {
         let variance = MaterialCostVariance::new(
             "MAT001".to_string(),
             "Test Material".to_string(),
-            dec!(10),   // Standard
-            dec!(11),   // Actual (higher)
-            dec!(100),  // Quantity
+            dec!(10),  // Standard
+            dec!(11),  // Actual (higher)
+            dec!(100), // Quantity
         );
 
         // Variance = (10 - 11) * 100 = -100 (unfavorable)

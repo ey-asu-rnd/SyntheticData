@@ -11,9 +11,9 @@
 //! 2. Generate corresponding GL journal entries
 //! 3. Reconcile to GL control accounts
 
-mod common;
-pub mod ar;
 pub mod ap;
+pub mod ar;
+mod common;
 pub mod fa;
 pub mod inventory;
 

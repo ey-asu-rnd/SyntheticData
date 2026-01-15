@@ -11,7 +11,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::{Graph, NodeType, EdgeType};
+use crate::models::{EdgeType, Graph, NodeType};
 
 /// Configuration for Neo4j export.
 #[derive(Debug, Clone)]
@@ -137,12 +137,14 @@ impl Neo4jExporter {
             let mut writer = BufWriter::new(file);
 
             // Determine properties from first node
-            let sample_node = node_ids
-                .first()
-                .and_then(|id| graph.nodes.get(id));
+            let sample_node = node_ids.first().and_then(|id| graph.nodes.get(id));
 
             // Write header
-            let mut header = vec!["nodeId:ID".to_string(), "code".to_string(), "name".to_string()];
+            let mut header = vec![
+                "nodeId:ID".to_string(),
+                "code".to_string(),
+                "name".to_string(),
+            ];
 
             if self.config.export_node_properties {
                 if let Some(node) = sample_node {
@@ -170,13 +172,16 @@ impl Neo4jExporter {
                 if let Some(node) = graph.nodes.get(&node_id) {
                     let mut row = vec![
                         node_id.to_string(),
-                        escape_csv(&node.code),
-                        escape_csv(&node.name),
+                        escape_csv(&node.external_id),
+                        escape_csv(&node.label),
                     ];
 
                     if self.config.export_node_properties {
                         for key in &header[3..] {
-                            if key.starts_with("feature_") || key == "isAnomaly:boolean" || key == ":LABEL" {
+                            if key.starts_with("feature_")
+                                || key == "isAnomaly:boolean"
+                                || key == ":LABEL"
+                            {
                                 break;
                             }
                             let value = node
@@ -226,9 +231,7 @@ impl Neo4jExporter {
             let mut writer = BufWriter::new(file);
 
             // Determine properties from first edge
-            let sample_edge = edge_ids
-                .first()
-                .and_then(|id| graph.edges.get(id));
+            let sample_edge = edge_ids.first().and_then(|id| graph.edges.get(id));
 
             // Write header
             let mut header = vec![
@@ -340,8 +343,14 @@ impl Neo4jExporter {
             let filename = format!("edges_{}.csv", rel_type.to_lowercase());
             writeln!(writer, "LOAD CSV WITH HEADERS FROM 'file:///{}'", filename)?;
             writeln!(writer, "AS row")?;
-            writeln!(writer, "MATCH (source) WHERE source.nodeId = toInteger(row.`:START_ID`)")?;
-            writeln!(writer, "MATCH (target) WHERE target.nodeId = toInteger(row.`:END_ID`)")?;
+            writeln!(
+                writer,
+                "MATCH (source) WHERE source.nodeId = toInteger(row.`:START_ID`)"
+            )?;
+            writeln!(
+                writer,
+                "MATCH (target) WHERE target.nodeId = toInteger(row.`:END_ID`)"
+            )?;
             writeln!(
                 writer,
                 "CREATE (source)-[:{}{{weight: toFloat(row.`weight:double`), isAnomaly: toBoolean(row.`isAnomaly:boolean`)}}]->(target);",
@@ -353,7 +362,10 @@ impl Neo4jExporter {
         // Summary query
         writeln!(writer, "// Verification query")?;
         writeln!(writer, "CALL db.labels() YIELD label")?;
-        writeln!(writer, "CALL apoc.cypher.run('MATCH (n:`' + label + '`) RETURN count(n) as count', {{}})")?;
+        writeln!(
+            writer,
+            "CALL apoc.cypher.run('MATCH (n:`' + label + '`) RETURN count(n) as count', {{}})"
+        )?;
         writeln!(writer, "YIELD value")?;
         writeln!(writer, "RETURN label, value.count as nodeCount;")?;
 
@@ -444,11 +456,8 @@ impl CypherQueryBuilder {
             .map(|(k, v)| format!("{}: '{}'", k, v.replace('\'', "\\'")))
             .collect();
 
-        self.queries.push(format!(
-            "CREATE (:{} {{{}}})",
-            label,
-            props.join(", ")
-        ));
+        self.queries
+            .push(format!("CREATE (:{} {{{}}})", label, props.join(", ")));
         self
     }
 

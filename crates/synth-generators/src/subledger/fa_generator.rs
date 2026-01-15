@@ -246,18 +246,24 @@ impl FAGenerator {
         match &asset.depreciation_method {
             DepreciationMethod::StraightLine => {
                 let monthly = depreciable_amount / Decimal::from(asset.useful_life_months);
-                monthly.min(asset.net_book_value - asset.salvage_value).round_dp(2)
+                monthly
+                    .min(asset.net_book_value - asset.salvage_value)
+                    .round_dp(2)
             }
             DepreciationMethod::DecliningBalance { rate } => {
                 let annual = asset.net_book_value * rate;
                 let monthly = annual / dec!(12);
-                monthly.min(asset.net_book_value - asset.salvage_value).round_dp(2)
+                monthly
+                    .min(asset.net_book_value - asset.salvage_value)
+                    .round_dp(2)
             }
             DepreciationMethod::DoubleDecliningBalance => {
                 let rate = dec!(2) / Decimal::from(asset.useful_life_months) * dec!(12);
                 let annual = asset.net_book_value * rate;
                 let monthly = annual / dec!(12);
-                monthly.min(asset.net_book_value - asset.salvage_value).round_dp(2)
+                monthly
+                    .min(asset.net_book_value - asset.salvage_value)
+                    .round_dp(2)
             }
             DepreciationMethod::SumOfYearsDigits => {
                 // Simplified calculation
@@ -273,7 +279,9 @@ impl FAGenerator {
                 let remaining = (total_months - elapsed).max(1);
                 let factor = Decimal::from(remaining) / Decimal::from(sum_of_digits);
                 let annual = depreciable_amount * factor;
-                (annual / dec!(12)).min(asset.net_book_value - asset.salvage_value).round_dp(2)
+                (annual / dec!(12))
+                    .min(asset.net_book_value - asset.salvage_value)
+                    .round_dp(2)
             }
             DepreciationMethod::UnitsOfProduction {
                 total_units,
@@ -362,7 +370,10 @@ impl FAGenerator {
             format!("JE-DEP-{}-{}", entry.run_id, asset.asset_id),
             asset.company_code.clone(),
             posting_date,
-            format!("Depreciation {} Period {}", asset.asset_id, entry.fiscal_period),
+            format!(
+                "Depreciation {} Period {}",
+                asset.asset_id, entry.fiscal_period
+            ),
         );
 
         // Debit Depreciation Expense
@@ -408,7 +419,11 @@ impl FAGenerator {
         je
     }
 
-    fn generate_disposal_je(&self, asset: &FixedAssetRecord, disposal: &AssetDisposal) -> JournalEntry {
+    fn generate_disposal_je(
+        &self,
+        asset: &FixedAssetRecord,
+        disposal: &AssetDisposal,
+    ) -> JournalEntry {
         let mut je = JournalEntry::new(
             format!("JE-{}", disposal.disposal_id),
             asset.company_code.clone(),

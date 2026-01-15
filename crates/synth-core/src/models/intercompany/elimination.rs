@@ -178,10 +178,7 @@ impl EliminationEntry {
         );
 
         entry.related_companies = vec![company1.to_string(), company2.to_string()];
-        entry.description = format!(
-            "Eliminate IC balance between {} and {}",
-            company1, company2
-        );
+        entry.description = format!("Eliminate IC balance between {} and {}", company1, company2);
 
         // Debit the payable (reduce liability)
         entry.add_line(EliminationLine {
@@ -326,6 +323,7 @@ impl EliminationEntry {
         minority_interest: Option<Decimal>,
         currency: String,
     ) -> Self {
+        let consol_entity = consolidation_entity.clone();
         let mut entry = Self::new(
             entry_id,
             EliminationType::InvestmentEquity,
@@ -337,10 +335,7 @@ impl EliminationEntry {
 
         entry.related_companies = vec![parent.to_string(), subsidiary.to_string()];
         entry.is_permanent = true;
-        entry.description = format!(
-            "Eliminate investment in {} against equity",
-            subsidiary
-        );
+        entry.description = format!("Eliminate investment in {} against equity", subsidiary);
 
         let mut line_number = 1;
 
@@ -362,7 +357,7 @@ impl EliminationEntry {
         if let Some(goodwill_amount) = goodwill {
             entry.add_line(EliminationLine {
                 line_number,
-                company: consolidation_entity.clone(),
+                company: consol_entity.clone(),
                 account: "1800".to_string(), // Goodwill account
                 is_debit: true,
                 amount: goodwill_amount,
@@ -388,7 +383,7 @@ impl EliminationEntry {
         if let Some(mi_amount) = minority_interest {
             entry.add_line(EliminationLine {
                 line_number,
-                company: consolidation_entity.clone(),
+                company: consol_entity.clone(),
                 account: "3500".to_string(), // Non-controlling interest
                 is_debit: false,
                 amount: mi_amount,
@@ -573,7 +568,11 @@ pub struct ConsolidationJournal {
 
 impl ConsolidationJournal {
     /// Create a new consolidation journal.
-    pub fn new(consolidation_entity: String, fiscal_period: String, created_date: NaiveDate) -> Self {
+    pub fn new(
+        consolidation_entity: String,
+        fiscal_period: String,
+        created_date: NaiveDate,
+    ) -> Self {
         Self {
             consolidation_entity,
             fiscal_period,

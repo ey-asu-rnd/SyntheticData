@@ -504,9 +504,20 @@ impl LabeledAnomaly {
         let mut features = Vec::new();
 
         // Category one-hot encoding
-        let categories = ["Fraud", "Error", "ProcessIssue", "Statistical", "Relational", "Custom"];
+        let categories = [
+            "Fraud",
+            "Error",
+            "ProcessIssue",
+            "Statistical",
+            "Relational",
+            "Custom",
+        ];
         for cat in &categories {
-            features.push(if self.anomaly_type.category() == *cat { 1.0 } else { 0.0 });
+            features.push(if self.anomaly_type.category() == *cat {
+                1.0
+            } else {
+                0.0
+            });
         }
 
         // Severity (normalized)
@@ -516,7 +527,11 @@ impl LabeledAnomaly {
         features.push(self.confidence);
 
         // Has monetary impact
-        features.push(if self.monetary_impact.is_some() { 1.0 } else { 0.0 });
+        features.push(if self.monetary_impact.is_some() {
+            1.0
+        } else {
+            0.0
+        });
 
         // Monetary impact (log-scaled)
         if let Some(impact) = self.monetary_impact {
@@ -527,7 +542,11 @@ impl LabeledAnomaly {
         }
 
         // Is intentional
-        features.push(if self.anomaly_type.is_intentional() { 1.0 } else { 0.0 });
+        features.push(if self.anomaly_type.is_intentional() {
+            1.0
+        } else {
+            0.0
+        });
 
         // Number of related entities
         features.push(self.related_entities.len() as f64);
@@ -643,12 +662,12 @@ pub struct AnomalyRateConfig {
 impl Default for AnomalyRateConfig {
     fn default() -> Self {
         Self {
-            total_rate: 0.02,      // 2% of transactions are anomalous
-            fraud_rate: 0.25,      // 25% of anomalies are fraud
-            error_rate: 0.35,      // 35% of anomalies are errors
-            process_issue_rate: 0.20,  // 20% are process issues
-            statistical_rate: 0.15,    // 15% are statistical
-            relational_rate: 0.05,     // 5% are relational
+            total_rate: 0.02,         // 2% of transactions are anomalous
+            fraud_rate: 0.25,         // 25% of anomalies are fraud
+            error_rate: 0.35,         // 35% of anomalies are errors
+            process_issue_rate: 0.20, // 20% are process issues
+            statistical_rate: 0.15,   // 15% are statistical
+            relational_rate: 0.05,    // 5% are relational
         }
     }
 }

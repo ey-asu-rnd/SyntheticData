@@ -271,7 +271,10 @@ impl TrialBalanceGenerator {
             .unwrap_or_else(|| chrono::Local::now().date_naive());
 
         let fiscal_year = trial_balances.first().map(|tb| tb.fiscal_year).unwrap_or(0);
-        let fiscal_period = trial_balances.first().map(|tb| tb.fiscal_period).unwrap_or(0);
+        let fiscal_period = trial_balances
+            .first()
+            .map(|tb| tb.fiscal_period)
+            .unwrap_or(0);
 
         TrialBalance {
             company_code: consolidated_company_code.to_string(),
@@ -360,13 +363,15 @@ impl TrialBalanceGenerator {
         let mut summaries: HashMap<AccountCategory, CategorySummary> = HashMap::new();
 
         for line in lines {
-            let summary = summaries.entry(line.category).or_insert_with(|| CategorySummary {
-                category: line.category,
-                account_count: 0,
-                total_debits: Decimal::ZERO,
-                total_credits: Decimal::ZERO,
-                net_balance: Decimal::ZERO,
-            });
+            let summary = summaries
+                .entry(line.category)
+                .or_insert_with(|| CategorySummary {
+                    category: line.category,
+                    account_count: 0,
+                    total_debits: Decimal::ZERO,
+                    total_credits: Decimal::ZERO,
+                    net_balance: Decimal::ZERO,
+                });
 
             summary.account_count += 1;
             summary.total_debits += line.debit_balance;
@@ -437,7 +442,10 @@ impl TrialBalanceGenerator {
         trial_balance.status = TrialBalanceStatus::Approved;
         trial_balance.notes = Some(format!(
             "{}Approved by {} on {}",
-            trial_balance.notes.map(|n| format!("{}. ", n)).unwrap_or_default(),
+            trial_balance
+                .notes
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             approver,
             chrono::Local::now().format("%Y-%m-%d %H:%M")
         ));
@@ -481,8 +489,11 @@ impl TrialBalanceBuilder {
         self.snapshots
             .iter()
             .map(|(_, snapshot)| {
-                self.generator
-                    .generate_from_snapshot(snapshot, self.fiscal_year, self.fiscal_period)
+                self.generator.generate_from_snapshot(
+                    snapshot,
+                    self.fiscal_year,
+                    self.fiscal_period,
+                )
             })
             .collect()
     }
@@ -493,12 +504,16 @@ impl TrialBalanceBuilder {
             .snapshots
             .iter()
             .map(|(_, snapshot)| {
-                self.generator
-                    .generate_from_snapshot(snapshot, self.fiscal_year, self.fiscal_period)
+                self.generator.generate_from_snapshot(
+                    snapshot,
+                    self.fiscal_year,
+                    self.fiscal_period,
+                )
             })
             .collect::<Vec<_>>();
 
-        self.generator.generate_consolidated(&individual, consolidated_code)
+        self.generator
+            .generate_consolidated(&individual, consolidated_code)
     }
 }
 

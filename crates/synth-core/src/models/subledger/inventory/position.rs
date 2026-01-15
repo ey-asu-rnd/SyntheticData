@@ -1,6 +1,6 @@
 //! Inventory position model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -451,16 +451,17 @@ impl InventorySummary {
         let mut out_of_stock_count = 0u32;
 
         for pos in positions.iter().filter(|p| p.company_code == company_code) {
-            let plant_summary = by_plant.entry(pos.plant.clone()).or_insert_with(|| {
-                PlantInventorySummary {
-                    plant: pos.plant.clone(),
-                    total_value: Decimal::ZERO,
-                    sku_count: 0,
-                    below_reorder_count: 0,
-                    out_of_stock_count: 0,
-                    total_quantity: Decimal::ZERO,
-                }
-            });
+            let plant_summary =
+                by_plant
+                    .entry(pos.plant.clone())
+                    .or_insert_with(|| PlantInventorySummary {
+                        plant: pos.plant.clone(),
+                        total_value: Decimal::ZERO,
+                        sku_count: 0,
+                        below_reorder_count: 0,
+                        out_of_stock_count: 0,
+                        total_quantity: Decimal::ZERO,
+                    });
 
             let value = pos.total_value();
             plant_summary.total_value += value;
@@ -541,8 +542,8 @@ mod tests {
 
     #[test]
     fn test_stock_status() {
-        let mut pos = create_test_position()
-            .with_stock_levels(dec!(10), dec!(200), dec!(50), dec!(20));
+        let mut pos =
+            create_test_position().with_stock_levels(dec!(10), dec!(200), dec!(50), dec!(20));
 
         pos.quantity_on_hand = dec!(100);
         pos.calculate_available();

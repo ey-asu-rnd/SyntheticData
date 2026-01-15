@@ -108,8 +108,13 @@ impl ICGenerator {
     }
 
     /// Add a transfer pricing policy.
-    pub fn add_transfer_pricing_policy(&mut self, relationship_id: String, policy: TransferPricingPolicy) {
-        self.transfer_pricing_policies.insert(relationship_id, policy);
+    pub fn add_transfer_pricing_policy(
+        &mut self,
+        relationship_id: String,
+        policy: TransferPricingPolicy,
+    ) {
+        self.transfer_pricing_policies
+            .insert(relationship_id, policy);
     }
 
     /// Generate IC reference number.
@@ -240,10 +245,22 @@ impl ICGenerator {
         let (buyer_dr_desc, buyer_cr_desc) = pair.transaction_type.buyer_accounts();
 
         // Seller entry: DR IC Receivable, CR Revenue/Income
-        let seller_entry = self.create_seller_entry(pair, fiscal_year, fiscal_period, seller_dr_desc, seller_cr_desc);
+        let seller_entry = self.create_seller_entry(
+            pair,
+            fiscal_year,
+            fiscal_period,
+            seller_dr_desc,
+            seller_cr_desc,
+        );
 
         // Buyer entry: DR Expense/Asset, CR IC Payable
-        let buyer_entry = self.create_buyer_entry(pair, fiscal_year, fiscal_period, buyer_dr_desc, buyer_cr_desc);
+        let buyer_entry = self.create_buyer_entry(
+            pair,
+            fiscal_year,
+            fiscal_period,
+            buyer_dr_desc,
+            buyer_cr_desc,
+        );
 
         (seller_entry, buyer_entry)
     }
@@ -526,7 +543,11 @@ impl ICGenerator {
             .checked_add_months(chrono::Months::new(term_months))
             .unwrap_or(start_date);
 
-        let loan_id = format!("LOAN{}{:04}", start_date.format("%Y"), self.active_loans.len() + 1);
+        let loan_id = format!(
+            "LOAN{}{:04}",
+            start_date.format("%Y"),
+            self.active_loans.len() + 1
+        );
 
         let loan = ICLoan::new(
             loan_id,
@@ -559,10 +580,19 @@ impl ICGenerator {
 
             // Calculate interest for the period
             let period_start = NaiveDate::from_ymd_opt(
-                if fiscal_period == 1 { fiscal_year - 1 } else { fiscal_year },
-                if fiscal_period == 1 { 12 } else { fiscal_period - 1 },
+                if fiscal_period == 1 {
+                    fiscal_year - 1
+                } else {
+                    fiscal_year
+                },
+                if fiscal_period == 1 {
+                    12
+                } else {
+                    fiscal_period - 1
+                },
                 1,
-            ).unwrap_or(as_of_date);
+            )
+            .unwrap_or(as_of_date);
 
             let interest = loan.calculate_interest(period_start, as_of_date);
 
@@ -580,7 +610,8 @@ impl ICGenerator {
                 pair.buyer_document = self.generate_doc_number("INT");
                 pair.description = format!("Interest on loan {}", loan.loan_id);
 
-                let (seller_je, buyer_je) = self.generate_journal_entries(&pair, fiscal_year, fiscal_period);
+                let (seller_je, buyer_je) =
+                    self.generate_journal_entries(&pair, fiscal_year, fiscal_period);
                 entries.push((seller_je, buyer_je));
             }
         }
@@ -595,10 +626,7 @@ impl ICGenerator {
 
     /// Get open (unsettled) matched pairs.
     pub fn get_open_pairs(&self) -> Vec<&ICMatchedPair> {
-        self.matched_pairs
-            .iter()
-            .filter(|p| p.is_open())
-            .collect()
+        self.matched_pairs.iter().filter(|p| p.is_open()).collect()
     }
 
     /// Get active loans.

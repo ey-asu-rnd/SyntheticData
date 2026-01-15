@@ -36,7 +36,8 @@ impl FraudTypeConfig {
                 min_amount: Some(Decimal::new(10000, 0)),
                 max_amount: Some(Decimal::new(500000, 0)),
                 requires_conditions: false,
-                description_template: "Fictitious journal entry with no supporting documentation".to_string(),
+                description_template: "Fictitious journal entry with no supporting documentation"
+                    .to_string(),
             },
             Self {
                 fraud_type: FraudType::RoundDollarManipulation,
@@ -44,7 +45,8 @@ impl FraudTypeConfig {
                 min_amount: Some(Decimal::new(1000, 0)),
                 max_amount: Some(Decimal::new(100000, 0)),
                 requires_conditions: false,
-                description_template: "Suspicious round-dollar amount suggesting manual manipulation".to_string(),
+                description_template:
+                    "Suspicious round-dollar amount suggesting manual manipulation".to_string(),
             },
             Self {
                 fraud_type: FraudType::JustBelowThreshold,
@@ -52,7 +54,8 @@ impl FraudTypeConfig {
                 min_amount: None,
                 max_amount: None,
                 requires_conditions: true,
-                description_template: "Transaction amount just below approval threshold of {}".to_string(),
+                description_template: "Transaction amount just below approval threshold of {}"
+                    .to_string(),
             },
             Self {
                 fraud_type: FraudType::SelfApproval,
@@ -366,13 +369,15 @@ impl StatisticalAnomalyConfig {
                 anomaly_type: StatisticalAnomalyType::BenfordViolation,
                 weight: 2.5,
                 amount_multiplier: None,
-                description_template: "First digit {} violates Benford's Law (expected probability: {})".to_string(),
+                description_template:
+                    "First digit {} violates Benford's Law (expected probability: {})".to_string(),
             },
             Self {
                 anomaly_type: StatisticalAnomalyType::ExactDuplicateAmount,
                 weight: 2.0,
                 amount_multiplier: None,
-                description_template: "Exact duplicate amount {} found in {} transactions".to_string(),
+                description_template: "Exact duplicate amount {} found in {} transactions"
+                    .to_string(),
             },
             Self {
                 anomaly_type: StatisticalAnomalyType::RepeatingAmount,
@@ -384,7 +389,8 @@ impl StatisticalAnomalyConfig {
                 anomaly_type: StatisticalAnomalyType::UnusualFrequency,
                 weight: 2.0,
                 amount_multiplier: None,
-                description_template: "Unusual transaction frequency: {} vs expected {}".to_string(),
+                description_template: "Unusual transaction frequency: {} vs expected {}"
+                    .to_string(),
             },
             Self {
                 anomaly_type: StatisticalAnomalyType::TransactionBurst,
@@ -567,12 +573,16 @@ impl AnomalyTypeSelector {
 
     /// Gets the fraud config for a specific type.
     pub fn get_fraud_config(&self, fraud_type: FraudType) -> Option<&FraudTypeConfig> {
-        self.fraud_configs.iter().find(|c| c.fraud_type == fraud_type)
+        self.fraud_configs
+            .iter()
+            .find(|c| c.fraud_type == fraud_type)
     }
 
     /// Gets the error config for a specific type.
     pub fn get_error_config(&self, error_type: ErrorType) -> Option<&ErrorTypeConfig> {
-        self.error_configs.iter().find(|c| c.error_type == error_type)
+        self.error_configs
+            .iter()
+            .find(|c| c.error_type == error_type)
     }
 
     /// Gets the statistical config for a specific type.

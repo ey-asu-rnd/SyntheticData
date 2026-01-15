@@ -90,11 +90,19 @@ impl AccountBalance {
         // Asset and Expense accounts: Debit increases, Credit decreases
         // Liability, Equity, Revenue accounts: Credit increases, Debit decreases
         match self.account_type {
-            AccountType::Asset | AccountType::Expense | AccountType::ContraLiability | AccountType::ContraEquity => {
-                self.closing_balance = self.opening_balance + self.period_debits - self.period_credits;
+            AccountType::Asset
+            | AccountType::Expense
+            | AccountType::ContraLiability
+            | AccountType::ContraEquity => {
+                self.closing_balance =
+                    self.opening_balance + self.period_debits - self.period_credits;
             }
-            AccountType::Liability | AccountType::Equity | AccountType::Revenue | AccountType::ContraAsset => {
-                self.closing_balance = self.opening_balance - self.period_debits + self.period_credits;
+            AccountType::Liability
+            | AccountType::Equity
+            | AccountType::Revenue
+            | AccountType::ContraAsset => {
+                self.closing_balance =
+                    self.opening_balance - self.period_debits + self.period_credits;
             }
         }
         self.last_updated = chrono::Utc::now().naive_utc();
@@ -109,12 +117,14 @@ impl AccountBalance {
     /// Get the net change for the period.
     pub fn net_change(&self) -> Decimal {
         match self.account_type {
-            AccountType::Asset | AccountType::Expense | AccountType::ContraLiability | AccountType::ContraEquity => {
-                self.period_debits - self.period_credits
-            }
-            AccountType::Liability | AccountType::Equity | AccountType::Revenue | AccountType::ContraAsset => {
-                self.period_credits - self.period_debits
-            }
+            AccountType::Asset
+            | AccountType::Expense
+            | AccountType::ContraLiability
+            | AccountType::ContraEquity => self.period_debits - self.period_credits,
+            AccountType::Liability
+            | AccountType::Equity
+            | AccountType::Revenue
+            | AccountType::ContraAsset => self.period_credits - self.period_debits,
         }
     }
 
@@ -122,7 +132,10 @@ impl AccountBalance {
     pub fn is_debit_normal(&self) -> bool {
         matches!(
             self.account_type,
-            AccountType::Asset | AccountType::Expense | AccountType::ContraLiability | AccountType::ContraEquity
+            AccountType::Asset
+                | AccountType::Expense
+                | AccountType::ContraLiability
+                | AccountType::ContraEquity
         )
     }
 
@@ -167,7 +180,10 @@ impl AccountBalance {
 
     /// Check if this is an income statement account.
     pub fn is_income_statement(&self) -> bool {
-        matches!(self.account_type, AccountType::Revenue | AccountType::Expense)
+        matches!(
+            self.account_type,
+            AccountType::Revenue | AccountType::Expense
+        )
     }
 }
 
@@ -313,7 +329,8 @@ impl BalanceSnapshot {
         // Balance sheet equation: Assets = Liabilities + Equity
         // For current period, equity includes net income
         let total_equity_with_income = self.total_equity + self.net_income;
-        self.balance_difference = self.total_assets - self.total_liabilities - total_equity_with_income;
+        self.balance_difference =
+            self.total_assets - self.total_liabilities - total_equity_with_income;
         self.is_balanced = self.balance_difference.abs() < dec!(0.01);
     }
 
@@ -326,7 +343,12 @@ impl BalanceSnapshot {
     pub fn get_asset_balances(&self) -> Vec<&AccountBalance> {
         self.balances
             .values()
-            .filter(|b| matches!(b.account_type, AccountType::Asset | AccountType::ContraAsset))
+            .filter(|b| {
+                matches!(
+                    b.account_type,
+                    AccountType::Asset | AccountType::ContraAsset
+                )
+            })
             .collect()
     }
 
@@ -334,7 +356,12 @@ impl BalanceSnapshot {
     pub fn get_liability_balances(&self) -> Vec<&AccountBalance> {
         self.balances
             .values()
-            .filter(|b| matches!(b.account_type, AccountType::Liability | AccountType::ContraLiability))
+            .filter(|b| {
+                matches!(
+                    b.account_type,
+                    AccountType::Liability | AccountType::ContraLiability
+                )
+            })
             .collect()
     }
 
@@ -342,7 +369,12 @@ impl BalanceSnapshot {
     pub fn get_equity_balances(&self) -> Vec<&AccountBalance> {
         self.balances
             .values()
-            .filter(|b| matches!(b.account_type, AccountType::Equity | AccountType::ContraEquity))
+            .filter(|b| {
+                matches!(
+                    b.account_type,
+                    AccountType::Equity | AccountType::ContraEquity
+                )
+            })
             .collect()
     }
 
@@ -355,7 +387,11 @@ impl BalanceSnapshot {
     }
 
     /// Get current ratio (Current Assets / Current Liabilities).
-    pub fn current_ratio(&self, current_asset_accounts: &[&str], current_liability_accounts: &[&str]) -> Option<Decimal> {
+    pub fn current_ratio(
+        &self,
+        current_asset_accounts: &[&str],
+        current_liability_accounts: &[&str],
+    ) -> Option<Decimal> {
         let current_assets: Decimal = current_asset_accounts
             .iter()
             .filter_map(|code| self.balances.get(*code))
@@ -680,7 +716,10 @@ mod tests {
     #[test]
     fn test_account_type_from_code() {
         assert_eq!(AccountType::from_account_code("1100"), AccountType::Asset);
-        assert_eq!(AccountType::from_account_code("2100"), AccountType::Liability);
+        assert_eq!(
+            AccountType::from_account_code("2100"),
+            AccountType::Liability
+        );
         assert_eq!(AccountType::from_account_code("3100"), AccountType::Equity);
         assert_eq!(AccountType::from_account_code("4100"), AccountType::Revenue);
         assert_eq!(AccountType::from_account_code("5100"), AccountType::Expense);

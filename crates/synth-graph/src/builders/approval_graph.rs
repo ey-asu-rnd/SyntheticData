@@ -65,20 +65,8 @@ impl ApprovalGraphBuilder {
             self.get_or_create_user_node(user);
         }
 
-        // Add hierarchy edges if configured
-        if self.config.include_hierarchy {
-            for user in users {
-                if let Some(manager_id) = &user.manager_id {
-                    if let (Some(&user_node), Some(&manager_node)) = (
-                        self.user_nodes.get(&user.user_id),
-                        self.user_nodes.get(manager_id),
-                    ) {
-                        let edge = GraphEdge::new(0, user_node, manager_node, EdgeType::ReportsTo);
-                        self.graph.add_edge(edge);
-                    }
-                }
-            }
-        }
+        // Note: hierarchy edges require manager_id which is not in the User model
+        // To enable hierarchy, extend the User model with manager_id field
     }
 
     /// Adds an approval record to the graph.
@@ -139,11 +127,8 @@ impl ApprovalGraphBuilder {
             return id;
         }
 
-        let mut user_node = UserNode::new(0, user.user_id.clone(), user.name.clone());
+        let mut user_node = UserNode::new(0, user.user_id.clone(), user.display_name.clone());
         user_node.department = user.department.clone();
-        user_node.role = user.role.clone();
-        user_node.manager_id = user.manager_id.clone();
-        user_node.approval_limit = user.approval_limit;
         user_node.is_active = user.is_active;
         user_node.compute_features();
 

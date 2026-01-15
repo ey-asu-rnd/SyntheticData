@@ -5,8 +5,8 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-use synth_core::models::subledger::ar::ARInvoice;
 use synth_core::models::subledger::ap::APInvoice;
+use synth_core::models::subledger::ar::ARInvoice;
 use synth_core::models::subledger::fa::FixedAssetRecord;
 use synth_core::models::subledger::inventory::InventoryPosition;
 use synth_core::models::subledger::{ReconciliationStatus, SubledgerType, UnreconciledItem};
@@ -102,10 +102,7 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let reconciliation_id = format!("RECON-AR-{:08}", self.reconciliation_counter);
 
-        let subledger_balance: Decimal = ar_invoices
-            .iter()
-            .map(|inv| inv.amount_remaining)
-            .sum();
+        let subledger_balance: Decimal = ar_invoices.iter().map(|inv| inv.amount_remaining).sum();
 
         let difference = gl_balance - subledger_balance;
 
@@ -165,10 +162,7 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let reconciliation_id = format!("RECON-AP-{:08}", self.reconciliation_counter);
 
-        let subledger_balance: Decimal = ap_invoices
-            .iter()
-            .map(|inv| inv.amount_remaining)
-            .sum();
+        let subledger_balance: Decimal = ap_invoices.iter().map(|inv| inv.amount_remaining).sum();
 
         let difference = gl_balance - subledger_balance;
 
@@ -228,10 +222,8 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let asset_recon_id = format!("RECON-FA-{:08}", self.reconciliation_counter);
 
-        let subledger_asset_balance: Decimal = assets
-            .iter()
-            .map(|a| a.current_acquisition_cost)
-            .sum();
+        let subledger_asset_balance: Decimal =
+            assets.iter().map(|a| a.current_acquisition_cost).sum();
 
         let asset_difference = gl_asset_balance - subledger_asset_balance;
 
@@ -261,10 +253,7 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let depr_recon_id = format!("RECON-FA-{:08}", self.reconciliation_counter);
 
-        let subledger_accum_depr: Decimal = assets
-            .iter()
-            .map(|a| a.accumulated_depreciation)
-            .sum();
+        let subledger_accum_depr: Decimal = assets.iter().map(|a| a.accumulated_depreciation).sum();
 
         let depr_difference = gl_accum_depr_balance - subledger_accum_depr;
 
@@ -304,10 +293,7 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let reconciliation_id = format!("RECON-INV-{:08}", self.reconciliation_counter);
 
-        let subledger_balance: Decimal = positions
-            .iter()
-            .map(|p| p.valuation.total_value)
-            .sum();
+        let subledger_balance: Decimal = positions.iter().map(|p| p.valuation.total_value).sum();
 
         let difference = gl_balance - subledger_balance;
 
@@ -371,14 +357,18 @@ impl ReconciliationEngine {
         let ar_result = self.reconcile_ar(
             company_code,
             as_of_date,
-            *gl_balances.get(&self.config.ar_control_account).unwrap_or(&Decimal::ZERO),
+            *gl_balances
+                .get(&self.config.ar_control_account)
+                .unwrap_or(&Decimal::ZERO),
             ar_invoices,
         );
 
         let ap_result = self.reconcile_ap(
             company_code,
             as_of_date,
-            *gl_balances.get(&self.config.ap_control_account).unwrap_or(&Decimal::ZERO),
+            *gl_balances
+                .get(&self.config.ap_control_account)
+                .unwrap_or(&Decimal::ZERO),
             ap_invoices,
         );
 
@@ -400,7 +390,9 @@ impl ReconciliationEngine {
         let inventory_result = self.reconcile_inventory(
             company_code,
             as_of_date,
-            *gl_balances.get(&self.config.inventory_control_account).unwrap_or(&Decimal::ZERO),
+            *gl_balances
+                .get(&self.config.inventory_control_account)
+                .unwrap_or(&Decimal::ZERO),
             inventory_positions,
         );
 
@@ -476,7 +468,11 @@ impl FullReconciliationReport {
             self.fa_depreciation.difference,
             status_str(&self.inventory.status),
             self.inventory.difference,
-            if self.all_reconciled { "RECONCILED" } else { "UNRECONCILED" },
+            if self.all_reconciled {
+                "RECONCILED"
+            } else {
+                "UNRECONCILED"
+            },
             self.total_difference
         )
     }

@@ -172,7 +172,10 @@ impl InventoryGenerator {
         let total_value = (quantity * unit_cost).round_dp(2);
 
         let (ref_type, ref_num) = if let Some(po) = production_order {
-            (Some(ReferenceDocType::ProductionOrder), Some(po.to_string()))
+            (
+                Some(ReferenceDocType::ProductionOrder),
+                Some(po.to_string()),
+            )
         } else {
             (None, None)
         };
@@ -431,11 +434,12 @@ impl InventoryGenerator {
         );
 
         // Debit Cost of Goods Sold or WIP
-        let debit_account = if movement.reference_doc_type == Some(ReferenceDocType::ProductionOrder) {
-            "1350".to_string() // WIP
-        } else {
-            "5100".to_string() // COGS
-        };
+        let debit_account =
+            if movement.reference_doc_type == Some(ReferenceDocType::ProductionOrder) {
+                "1350".to_string() // WIP
+            } else {
+                "5100".to_string() // COGS
+            };
 
         je.add_line(JournalEntryLine {
             line_number: 1,
@@ -536,7 +540,11 @@ impl InventoryGenerator {
         je
     }
 
-    fn generate_adjustment_je(&self, movement: &InventoryMovement, is_increase: bool) -> JournalEntry {
+    fn generate_adjustment_je(
+        &self,
+        movement: &InventoryMovement,
+        is_increase: bool,
+    ) -> JournalEntry {
         let mut je = JournalEntry::new(
             format!("JE-{}", movement.movement_id),
             movement.company_code.clone(),

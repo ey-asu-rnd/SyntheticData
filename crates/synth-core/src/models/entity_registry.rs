@@ -167,11 +167,7 @@ pub struct EntityRecord {
 
 impl EntityRecord {
     /// Create a new entity record.
-    pub fn new(
-        entity_id: EntityId,
-        name: impl Into<String>,
-        created_date: NaiveDate,
-    ) -> Self {
+    pub fn new(entity_id: EntityId, name: impl Into<String>, created_date: NaiveDate) -> Self {
         Self {
             entity_id,
             name: name.into(),
@@ -352,7 +348,11 @@ impl EntityRegistry {
     }
 
     /// Get all entities of a given type that are valid on a date.
-    pub fn get_valid_by_type(&self, entity_type: EntityType, date: NaiveDate) -> Vec<&EntityRecord> {
+    pub fn get_valid_by_type(
+        &self,
+        entity_type: EntityType,
+        date: NaiveDate,
+    ) -> Vec<&EntityRecord> {
         self.get_by_type(entity_type)
             .into_iter()
             .filter(|r| r.is_valid_on(date))
@@ -610,12 +610,10 @@ mod tests {
         let entity3 = EntityId::customer("C-001");
 
         registry.register(
-            EntityRecord::new(entity1.clone(), "Vendor 1", test_date(0))
-                .with_company_code("1000"),
+            EntityRecord::new(entity1.clone(), "Vendor 1", test_date(0)).with_company_code("1000"),
         );
         registry.register(
-            EntityRecord::new(entity2.clone(), "Vendor 2", test_date(0))
-                .with_company_code("2000"),
+            EntityRecord::new(entity2.clone(), "Vendor 2", test_date(0)).with_company_code("2000"),
         );
         registry.register(
             EntityRecord::new(entity3.clone(), "Customer 1", test_date(0))
@@ -637,16 +635,24 @@ mod tests {
         registry.register(record);
 
         // Before validity
-        assert!(registry.validate_reference(&entity_id, test_date(5)).is_err());
+        assert!(registry
+            .validate_reference(&entity_id, test_date(5))
+            .is_err());
 
         // During validity
-        assert!(registry.validate_reference(&entity_id, test_date(50)).is_ok());
+        assert!(registry
+            .validate_reference(&entity_id, test_date(50))
+            .is_ok());
 
         // After validity
-        assert!(registry.validate_reference(&entity_id, test_date(150)).is_err());
+        assert!(registry
+            .validate_reference(&entity_id, test_date(150))
+            .is_err());
 
         // Non-existent entity
         let fake_id = EntityId::vendor("V-999");
-        assert!(registry.validate_reference(&fake_id, test_date(50)).is_err());
+        assert!(registry
+            .validate_reference(&fake_id, test_date(50))
+            .is_err());
     }
 }

@@ -8,11 +8,10 @@ use std::collections::HashMap;
 
 use rust_decimal::Decimal;
 
-use synth_core::models::{Company, IntercompanyRelationship};
+use synth_core::models::intercompany::IntercompanyRelationship;
+use synth_core::models::Company;
 
-use crate::models::{
-    CompanyNode, EdgeType, Graph, GraphEdge, GraphType, NodeId, OwnershipEdge,
-};
+use crate::models::{CompanyNode, EdgeType, Graph, GraphEdge, GraphType, NodeId, OwnershipEdge};
 
 /// Configuration for entity graph building.
 #[derive(Debug, Clone)]
@@ -135,14 +134,12 @@ impl EntityGraphBuilder {
             0,
             company.company_code.clone(),
             company.company_name.clone(),
-            company.country.clone(),
-            company.local_currency.clone(),
         );
+        company_node.country = company.country.clone();
+        company_node.currency = company.local_currency.clone();
         company_node.is_parent = company.is_parent;
-        company_node.parent_company = company.parent_company.clone();
-        company_node.ownership_percentage = company.ownership_percentage;
-        company_node.consolidation_method = company.consolidation_method.as_str().to_string();
-        company_node.functional_currency = company.functional_currency.clone();
+        company_node.parent_code = company.parent_company.clone();
+        company_node.ownership_percent = company.ownership_percentage;
         company_node.compute_features();
 
         let id = self.graph.add_node(company_node.node);
@@ -156,13 +153,8 @@ impl EntityGraphBuilder {
             return id;
         }
 
-        let mut company_node = CompanyNode::new(
-            0,
-            company_code.to_string(),
-            company_name.to_string(),
-            "Unknown".to_string(),
-            "USD".to_string(),
-        );
+        let mut company_node =
+            CompanyNode::new(0, company_code.to_string(), company_name.to_string());
         company_node.compute_features();
 
         let id = self.graph.add_node(company_node.node);
@@ -309,10 +301,7 @@ pub struct OwnershipHierarchyNode {
 
 impl OwnershipHierarchy {
     /// Builds hierarchy from relationships.
-    pub fn from_relationships(
-        root: &str,
-        relationships: &[IntercompanyRelationship],
-    ) -> Self {
+    pub fn from_relationships(root: &str, relationships: &[IntercompanyRelationship]) -> Self {
         let children = Self::build_children(root, Decimal::ONE_HUNDRED, relationships);
         Self {
             root: root.to_string(),
@@ -352,10 +341,7 @@ impl OwnershipHierarchy {
         result
     }
 
-    fn collect_companies(
-        nodes: &[OwnershipHierarchyNode],
-        result: &mut Vec<(String, Decimal)>,
-    ) {
+    fn collect_companies(nodes: &[OwnershipHierarchyNode], result: &mut Vec<(String, Decimal)>) {
         for node in nodes {
             result.push((node.company_code.clone(), node.effective_ownership));
             Self::collect_companies(&node.children, result);
@@ -368,7 +354,7 @@ mod tests {
     use super::*;
     use chrono::NaiveDate;
     use rust_decimal_macros::dec;
-    use synth_core::models::ConsolidationMethod;
+    use synth_core::models::intercompany::ConsolidationMethod;
 
     fn create_test_relationship(
         parent: &str,

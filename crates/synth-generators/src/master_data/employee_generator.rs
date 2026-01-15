@@ -96,8 +96,12 @@ impl DepartmentDefinition {
                 SystemRole::FinancialAnalyst,
             ],
             transaction_codes: vec![
-                "FB01".to_string(), "FB02".to_string(), "FB03".to_string(),
-                "F-28".to_string(), "F-53".to_string(), "FBL1N".to_string(),
+                "FB01".to_string(),
+                "FB02".to_string(),
+                "FB03".to_string(),
+                "F-28".to_string(),
+                "F-53".to_string(),
+                "FBL1N".to_string(),
             ],
         }
     }
@@ -109,13 +113,13 @@ impl DepartmentDefinition {
             name: "Procurement".to_string(),
             cost_center: format!("CC-{}-PROC", company_code),
             headcount: 10,
-            system_roles: vec![
-                SystemRole::Buyer,
-                SystemRole::ProcurementManager,
-            ],
+            system_roles: vec![SystemRole::Buyer, SystemRole::ProcurementManager],
             transaction_codes: vec![
-                "ME21N".to_string(), "ME22N".to_string(), "ME23N".to_string(),
-                "MIGO".to_string(), "ME2M".to_string(),
+                "ME21N".to_string(),
+                "ME22N".to_string(),
+                "ME23N".to_string(),
+                "MIGO".to_string(),
+                "ME2M".to_string(),
             ],
         }
     }
@@ -127,13 +131,13 @@ impl DepartmentDefinition {
             name: "Sales".to_string(),
             cost_center: format!("CC-{}-SALES", company_code),
             headcount: 20,
-            system_roles: vec![
-                SystemRole::SalesRep,
-                SystemRole::SalesManager,
-            ],
+            system_roles: vec![SystemRole::SalesRep, SystemRole::SalesManager],
             transaction_codes: vec![
-                "VA01".to_string(), "VA02".to_string(), "VA03".to_string(),
-                "VL01N".to_string(), "VF01".to_string(),
+                "VA01".to_string(),
+                "VA02".to_string(),
+                "VA03".to_string(),
+                "VL01N".to_string(),
+                "VF01".to_string(),
             ],
         }
     }
@@ -145,12 +149,11 @@ impl DepartmentDefinition {
             name: "Warehouse".to_string(),
             cost_center: format!("CC-{}-WH", company_code),
             headcount: 12,
-            system_roles: vec![
-                SystemRole::WarehouseClerk,
-                SystemRole::InventoryManager,
-            ],
+            system_roles: vec![SystemRole::WarehouseClerk, SystemRole::InventoryManager],
             transaction_codes: vec![
-                "MIGO".to_string(), "MB51".to_string(), "MMBE".to_string(),
+                "MIGO".to_string(),
+                "MB51".to_string(),
+                "MMBE".to_string(),
                 "LT01".to_string(),
             ],
         }
@@ -163,12 +166,8 @@ impl DepartmentDefinition {
             name: "Information Technology".to_string(),
             cost_center: format!("CC-{}-IT", company_code),
             headcount: 8,
-            system_roles: vec![
-                SystemRole::SystemAdmin,
-            ],
-            transaction_codes: vec![
-                "SU01".to_string(), "PFCG".to_string(), "SM21".to_string(),
-            ],
+            system_roles: vec![SystemRole::SystemAdmin],
+            transaction_codes: vec!["SU01".to_string(), "PFCG".to_string(), "SM21".to_string()],
         }
     }
 
@@ -253,7 +252,11 @@ impl EmployeeGenerator {
         );
         employee.can_approve_po = matches!(
             job_level,
-            JobLevel::Senior | JobLevel::Manager | JobLevel::Director | JobLevel::VicePresident | JobLevel::Executive
+            JobLevel::Senior
+                | JobLevel::Manager
+                | JobLevel::Director
+                | JobLevel::VicePresident
+                | JobLevel::Executive
         );
         employee.can_approve_je = matches!(
             job_level,
@@ -263,7 +266,9 @@ impl EmployeeGenerator {
         // Assign system roles
         if !department.system_roles.is_empty() {
             let role_idx = self.rng.gen_range(0..department.system_roles.len());
-            employee.system_roles.push(department.system_roles[role_idx]);
+            employee
+                .system_roles
+                .push(department.system_roles[role_idx]);
         }
 
         // Assign transaction codes
@@ -278,9 +283,8 @@ impl EmployeeGenerator {
         // Set status
         employee.status = self.select_status();
         if employee.status == EmployeeStatus::Terminated {
-            employee.termination_date = Some(hire_date + chrono::Duration::days(
-                self.rng.gen_range(365..1825) as i64
-            ));
+            employee.termination_date =
+                Some(hire_date + chrono::Duration::days(self.rng.gen_range(365..1825) as i64));
         }
 
         employee
@@ -303,7 +307,11 @@ impl EmployeeGenerator {
         );
         employee.can_approve_po = matches!(
             job_level,
-            JobLevel::Senior | JobLevel::Manager | JobLevel::Director | JobLevel::VicePresident | JobLevel::Executive
+            JobLevel::Senior
+                | JobLevel::Manager
+                | JobLevel::Director
+                | JobLevel::VicePresident
+                | JobLevel::Executive
         );
         employee.can_approve_je = matches!(
             job_level,
@@ -330,21 +338,17 @@ impl EmployeeGenerator {
         } else {
             JobLevel::Manager
         };
-        let hire_date = start_date
-            + chrono::Duration::days(self.rng.gen_range(0..=days_range / 2) as i64);
-        let dept_head = self.generate_employee_with_level(
-            company_code,
-            department,
-            head_level,
-            hire_date,
-        );
+        let hire_date =
+            start_date + chrono::Duration::days(self.rng.gen_range(0..=days_range / 2) as i64);
+        let dept_head =
+            self.generate_employee_with_level(company_code, department, head_level, hire_date);
         let dept_head_id = dept_head.employee_id.clone();
         pool.add_employee(dept_head);
 
         // Generate remaining employees
         for _ in 1..department.headcount {
-            let hire_date = start_date
-                + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
+            let hire_date =
+                start_date + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
             let mut employee = self.generate_employee(company_code, department, hire_date);
 
             // Assign manager (department head)
@@ -354,8 +358,14 @@ impl EmployeeGenerator {
         }
 
         // Update direct reports for department head
-        if let Some(head) = pool.employees.iter_mut().find(|e| e.employee_id == dept_head_id) {
-            head.direct_reports = pool.employees.iter()
+        if let Some(head) = pool
+            .employees
+            .iter_mut()
+            .find(|e| e.employee_id == dept_head_id)
+        {
+            head.direct_reports = pool
+                .employees
+                .iter()
                 .filter(|e| e.manager_id.as_ref() == Some(&dept_head_id))
                 .map(|e| e.employee_id.clone())
                 .collect();
@@ -526,11 +536,8 @@ mod tests {
     fn test_employee_generation() {
         let mut gen = EmployeeGenerator::new(42);
         let dept = DepartmentDefinition::finance("1000");
-        let employee = gen.generate_employee(
-            "1000",
-            &dept,
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let employee =
+            gen.generate_employee("1000", &dept, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert!(!employee.employee_id.is_empty());
         assert!(!employee.name.is_empty());
@@ -554,7 +561,9 @@ mod tests {
         assert_eq!(pool.employees.len(), dept.headcount);
 
         // Should have at least one manager
-        let managers: Vec<_> = pool.employees.iter()
+        let managers: Vec<_> = pool
+            .employees
+            .iter()
             .filter(|e| matches!(e.job_level, JobLevel::Manager | JobLevel::Director))
             .collect();
         assert!(!managers.is_empty());
@@ -576,13 +585,17 @@ mod tests {
         );
 
         // Should have executives
-        let executives: Vec<_> = pool.employees.iter()
+        let executives: Vec<_> = pool
+            .employees
+            .iter()
             .filter(|e| e.job_level == JobLevel::Executive)
             .collect();
         assert!(executives.len() >= 3); // CEO, CFO, COO
 
         // Executives should have direct reports
-        let cfo = pool.employees.iter()
+        let cfo = pool
+            .employees
+            .iter()
             .find(|e| e.title.as_ref().map_or(false, |t| t == "CFO"));
         assert!(cfo.is_some());
     }
@@ -599,7 +612,9 @@ mod tests {
         );
 
         // Every non-CEO employee should have a manager
-        let non_ceo_without_manager: Vec<_> = pool.employees.iter()
+        let non_ceo_without_manager: Vec<_> = pool
+            .employees
+            .iter()
             .filter(|e| e.title.as_ref().map_or(true, |t| t != "CEO"))
             .filter(|e| e.manager_id.is_none())
             .collect();
@@ -614,16 +629,10 @@ mod tests {
         let mut gen2 = EmployeeGenerator::new(42);
 
         let dept = DepartmentDefinition::finance("1000");
-        let employee1 = gen1.generate_employee(
-            "1000",
-            &dept,
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
-        let employee2 = gen2.generate_employee(
-            "1000",
-            &dept,
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let employee1 =
+            gen1.generate_employee("1000", &dept, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
+        let employee2 =
+            gen2.generate_employee("1000", &dept, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert_eq!(employee1.employee_id, employee2.employee_id);
         assert_eq!(employee1.name, employee2.name);
