@@ -1,13 +1,247 @@
 //! Master data models for vendors and customers.
 //!
 //! Provides realistic vendor and customer entities for transaction
-//! attribution and header/line text generation.
+//! attribution and header/line text generation. Includes payment terms,
+//! behavioral patterns, and intercompany support for enterprise simulation.
 
 use rand::seq::SliceRandom;
 use rand::Rng;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Payment terms for vendor/customer relationships.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum PaymentTerms {
+    /// Due immediately
+    Immediate,
+    /// Net 10 days
+    Net10,
+    /// Net 15 days
+    Net15,
+    /// Net 30 days (most common)
+    #[default]
+    Net30,
+    /// Net 45 days
+    Net45,
+    /// Net 60 days
+    Net60,
+    /// Net 90 days
+    Net90,
+    /// 2% discount if paid within 10 days, otherwise net 30
+    TwoTenNet30,
+    /// 1% discount if paid within 10 days, otherwise net 30
+    OneTenNet30,
+    /// 2% discount if paid within 15 days, otherwise net 45
+    TwoFifteenNet45,
+    /// End of month
+    EndOfMonth,
+    /// End of month plus 30 days
+    EndOfMonthPlus30,
+    /// Cash on delivery
+    CashOnDelivery,
+    /// Prepayment required
+    Prepayment,
+}
+
+impl PaymentTerms {
+    /// Get the due date offset in days from invoice date.
+    pub fn due_days(&self) -> u16 {
+        match self {
+            Self::Immediate | Self::CashOnDelivery => 0,
+            Self::Prepayment => 0,
+            Self::Net10 | Self::TwoTenNet30 | Self::OneTenNet30 => 30, // Final due date
+            Self::Net15 | Self::TwoFifteenNet45 => 45,
+            Self::Net30 => 30,
+            Self::Net45 => 45,
+            Self::Net60 => 60,
+            Self::Net90 => 90,
+            Self::EndOfMonth => 30,       // Approximate
+            Self::EndOfMonthPlus30 => 60, // Approximate
+        }
+    }
+
+    /// Get discount percentage if paid early.
+    pub fn early_payment_discount(&self) -> Option<(u16, Decimal)> {
+        match self {
+            Self::TwoTenNet30 => Some((10, Decimal::from(2))),
+            Self::OneTenNet30 => Some((10, Decimal::from(1))),
+            Self::TwoFifteenNet45 => Some((15, Decimal::from(2))),
+            _ => None,
+        }
+    }
+
+    /// Check if this requires prepayment.
+    pub fn requires_prepayment(&self) -> bool {
+        matches!(self, Self::Prepayment | Self::CashOnDelivery)
+    }
+}
+
+/// Vendor payment behavior for simulation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum VendorBehavior {
+    /// Strict - expects payment exactly on due date
+    Strict,
+    /// Flexible - accepts some late payments
+    #[default]
+    Flexible,
+    /// Very flexible - rarely follows up on late payments
+    VeryFlexible,
+    /// Aggressive - immediate follow-up on overdue
+    Aggressive,
+}
+
+impl VendorBehavior {
+    /// Get typical grace period in days beyond due date.
+    pub fn grace_period_days(&self) -> u16 {
+        match self {
+            Self::Strict => 0,
+            Self::Flexible => 7,
+            Self::VeryFlexible => 30,
+            Self::Aggressive => 0,
+        }
+    }
+}
+
+/// Customer payment behavior for simulation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomerPaymentBehavior {
+    /// Excellent - always pays early or on time
+    Excellent,
+    /// Good - usually pays on time
+    #[default]
+    Good,
+    /// Fair - sometimes late
+    Fair,
+    /// Poor - frequently late
+    Poor,
+    /// Very Poor - chronically delinquent
+    VeryPoor,
+}
+
+impl CustomerPaymentBehavior {
+    /// Get average days past due for this behavior.
+    pub fn average_days_past_due(&self) -> i16 {
+        match self {
+            Self::Excellent => -5, // Pays early
+            Self::Good => 0,
+            Self::Fair => 10,
+            Self::Poor => 30,
+            Self::VeryPoor => 60,
+        }
+    }
+
+    /// Get probability of payment on time.
+    pub fn on_time_probability(&self) -> f64 {
+        match self {
+            Self::Excellent => 0.98,
+            Self::Good => 0.90,
+            Self::Fair => 0.70,
+            Self::Poor => 0.40,
+            Self::VeryPoor => 0.20,
+        }
+    }
+
+    /// Get probability of taking early payment discount.
+    pub fn discount_probability(&self) -> f64 {
+        match self {
+            Self::Excellent => 0.80,
+            Self::Good => 0.50,
+            Self::Fair => 0.20,
+            Self::Poor => 0.05,
+            Self::VeryPoor => 0.01,
+        }
+    }
+}
+
+/// Customer credit rating.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CreditRating {
+    /// Excellent credit
+    AAA,
+    /// Very good credit
+    AA,
+    /// Good credit
+    #[default]
+    A,
+    /// Satisfactory credit
+    BBB,
+    /// Fair credit
+    BB,
+    /// Marginal credit
+    B,
+    /// Poor credit
+    CCC,
+    /// Very poor credit
+    CC,
+    /// Extremely poor credit
+    C,
+    /// Default/no credit
+    D,
+}
+
+impl CreditRating {
+    /// Get credit limit multiplier for this rating.
+    pub fn credit_limit_multiplier(&self) -> Decimal {
+        match self {
+            Self::AAA => Decimal::from(5),
+            Self::AA => Decimal::from(4),
+            Self::A => Decimal::from(3),
+            Self::BBB => Decimal::from(2),
+            Self::BB => Decimal::from_str_exact("1.5").unwrap_or(Decimal::from(1)),
+            Self::B => Decimal::from(1),
+            Self::CCC => Decimal::from_str_exact("0.5").unwrap_or(Decimal::from(1)),
+            Self::CC => Decimal::from_str_exact("0.25").unwrap_or(Decimal::from(0)),
+            Self::C => Decimal::from_str_exact("0.1").unwrap_or(Decimal::from(0)),
+            Self::D => Decimal::ZERO,
+        }
+    }
+
+    /// Check if credit should be blocked.
+    pub fn is_credit_blocked(&self) -> bool {
+        matches!(self, Self::D)
+    }
+}
+
+/// Bank account information for payments.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BankAccount {
+    /// Bank name
+    pub bank_name: String,
+    /// Bank country
+    pub bank_country: String,
+    /// Account number or IBAN
+    pub account_number: String,
+    /// Routing number / BIC / SWIFT
+    pub routing_code: String,
+    /// Account holder name
+    pub holder_name: String,
+    /// Is this the primary account?
+    pub is_primary: bool,
+}
+
+impl BankAccount {
+    /// Create a new bank account.
+    pub fn new(
+        bank_name: impl Into<String>,
+        account_number: impl Into<String>,
+        routing_code: impl Into<String>,
+        holder_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            bank_name: bank_name.into(),
+            bank_country: "US".to_string(),
+            account_number: account_number.into(),
+            routing_code: routing_code.into(),
+            holder_name: holder_name.into(),
+            is_primary: true,
+        }
+    }
+}
 
 /// Type of vendor relationship.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -69,7 +303,10 @@ pub struct Vendor {
     /// Country code (ISO 3166-1 alpha-2)
     pub country: String,
 
-    /// Payment terms in days
+    /// Payment terms (structured)
+    pub payment_terms: PaymentTerms,
+
+    /// Payment terms in days (legacy, computed from payment_terms)
     pub payment_terms_days: u8,
 
     /// Typical invoice amount range (min, max)
@@ -83,6 +320,36 @@ pub struct Vendor {
 
     /// Tax ID / VAT number
     pub tax_id: Option<String>,
+
+    /// Bank accounts for payment
+    pub bank_accounts: Vec<BankAccount>,
+
+    /// Is this an intercompany vendor?
+    pub is_intercompany: bool,
+
+    /// Related company code (if intercompany)
+    pub intercompany_code: Option<String>,
+
+    /// Vendor behavior for payment follow-up
+    pub behavior: VendorBehavior,
+
+    /// Currency for transactions
+    pub currency: String,
+
+    /// Reconciliation account in GL
+    pub reconciliation_account: Option<String>,
+
+    /// Withholding tax applicable
+    pub withholding_tax_applicable: bool,
+
+    /// Withholding tax rate
+    pub withholding_tax_rate: Option<Decimal>,
+
+    /// One-time vendor (no master data)
+    pub is_one_time: bool,
+
+    /// Purchasing organization
+    pub purchasing_org: Option<String>,
 }
 
 impl Vendor {
@@ -93,12 +360,33 @@ impl Vendor {
             name: name.to_string(),
             vendor_type,
             country: "US".to_string(),
+            payment_terms: PaymentTerms::Net30,
             payment_terms_days: 30,
             typical_amount_range: (Decimal::from(100), Decimal::from(10000)),
             is_active: true,
             account_number: None,
             tax_id: None,
+            bank_accounts: Vec::new(),
+            is_intercompany: false,
+            intercompany_code: None,
+            behavior: VendorBehavior::default(),
+            currency: "USD".to_string(),
+            reconciliation_account: None,
+            withholding_tax_applicable: false,
+            withholding_tax_rate: None,
+            is_one_time: false,
+            purchasing_org: None,
         }
+    }
+
+    /// Create an intercompany vendor.
+    pub fn new_intercompany(
+        vendor_id: &str,
+        name: &str,
+        related_company_code: &str,
+    ) -> Self {
+        Self::new(vendor_id, name, VendorType::Supplier)
+            .with_intercompany(related_company_code)
     }
 
     /// Set country.
@@ -107,9 +395,25 @@ impl Vendor {
         self
     }
 
-    /// Set payment terms.
+    /// Set structured payment terms.
+    pub fn with_payment_terms_structured(mut self, terms: PaymentTerms) -> Self {
+        self.payment_terms = terms;
+        self.payment_terms_days = terms.due_days() as u8;
+        self
+    }
+
+    /// Set payment terms (legacy, by days).
     pub fn with_payment_terms(mut self, days: u8) -> Self {
         self.payment_terms_days = days;
+        // Map to closest structured terms
+        self.payment_terms = match days {
+            0 => PaymentTerms::Immediate,
+            1..=15 => PaymentTerms::Net15,
+            16..=35 => PaymentTerms::Net30,
+            36..=50 => PaymentTerms::Net45,
+            51..=70 => PaymentTerms::Net60,
+            _ => PaymentTerms::Net90,
+        };
         self
     }
 
@@ -119,12 +423,61 @@ impl Vendor {
         self
     }
 
+    /// Set as intercompany vendor.
+    pub fn with_intercompany(mut self, related_company_code: &str) -> Self {
+        self.is_intercompany = true;
+        self.intercompany_code = Some(related_company_code.to_string());
+        self
+    }
+
+    /// Add a bank account.
+    pub fn with_bank_account(mut self, account: BankAccount) -> Self {
+        self.bank_accounts.push(account);
+        self
+    }
+
+    /// Set vendor behavior.
+    pub fn with_behavior(mut self, behavior: VendorBehavior) -> Self {
+        self.behavior = behavior;
+        self
+    }
+
+    /// Set currency.
+    pub fn with_currency(mut self, currency: &str) -> Self {
+        self.currency = currency.to_string();
+        self
+    }
+
+    /// Set reconciliation account.
+    pub fn with_reconciliation_account(mut self, account: &str) -> Self {
+        self.reconciliation_account = Some(account.to_string());
+        self
+    }
+
+    /// Set withholding tax.
+    pub fn with_withholding_tax(mut self, rate: Decimal) -> Self {
+        self.withholding_tax_applicable = true;
+        self.withholding_tax_rate = Some(rate);
+        self
+    }
+
+    /// Get the primary bank account.
+    pub fn primary_bank_account(&self) -> Option<&BankAccount> {
+        self.bank_accounts.iter().find(|a| a.is_primary)
+            .or_else(|| self.bank_accounts.first())
+    }
+
     /// Generate a random amount within the typical range.
     pub fn generate_amount(&self, rng: &mut impl Rng) -> Decimal {
         let (min, max) = self.typical_amount_range;
         let range = max - min;
         let random_fraction = Decimal::from_f64_retain(rng.gen::<f64>()).unwrap_or(Decimal::ZERO);
         min + range * random_fraction
+    }
+
+    /// Calculate due date for an invoice.
+    pub fn calculate_due_date(&self, invoice_date: chrono::NaiveDate) -> chrono::NaiveDate {
+        invoice_date + chrono::Duration::days(self.payment_terms.due_days() as i64)
     }
 }
 
@@ -164,11 +517,23 @@ pub struct Customer {
     /// Country code (ISO 3166-1 alpha-2)
     pub country: String,
 
+    /// Credit rating
+    pub credit_rating: CreditRating,
+
     /// Credit limit
     pub credit_limit: Decimal,
 
-    /// Payment terms in days
+    /// Current credit exposure (outstanding AR)
+    pub credit_exposure: Decimal,
+
+    /// Payment terms (structured)
+    pub payment_terms: PaymentTerms,
+
+    /// Payment terms in days (legacy)
     pub payment_terms_days: u8,
+
+    /// Payment behavior pattern
+    pub payment_behavior: CustomerPaymentBehavior,
 
     /// Is this customer active
     pub is_active: bool,
@@ -178,6 +543,42 @@ pub struct Customer {
 
     /// Typical order amount range (min, max)
     pub typical_order_range: (Decimal, Decimal),
+
+    /// Is this an intercompany customer?
+    pub is_intercompany: bool,
+
+    /// Related company code (if intercompany)
+    pub intercompany_code: Option<String>,
+
+    /// Currency for transactions
+    pub currency: String,
+
+    /// Reconciliation account in GL
+    pub reconciliation_account: Option<String>,
+
+    /// Sales organization
+    pub sales_org: Option<String>,
+
+    /// Distribution channel
+    pub distribution_channel: Option<String>,
+
+    /// Tax ID / VAT number
+    pub tax_id: Option<String>,
+
+    /// Is credit blocked?
+    pub credit_blocked: bool,
+
+    /// Credit block reason
+    pub credit_block_reason: Option<String>,
+
+    /// Dunning procedure
+    pub dunning_procedure: Option<String>,
+
+    /// Last dunning date
+    pub last_dunning_date: Option<chrono::NaiveDate>,
+
+    /// Dunning level (0-4)
+    pub dunning_level: u8,
 }
 
 impl Customer {
@@ -188,17 +589,55 @@ impl Customer {
             name: name.to_string(),
             customer_type,
             country: "US".to_string(),
+            credit_rating: CreditRating::default(),
             credit_limit: Decimal::from(100000),
+            credit_exposure: Decimal::ZERO,
+            payment_terms: PaymentTerms::Net30,
             payment_terms_days: 30,
+            payment_behavior: CustomerPaymentBehavior::default(),
             is_active: true,
             account_number: None,
             typical_order_range: (Decimal::from(500), Decimal::from(50000)),
+            is_intercompany: false,
+            intercompany_code: None,
+            currency: "USD".to_string(),
+            reconciliation_account: None,
+            sales_org: None,
+            distribution_channel: None,
+            tax_id: None,
+            credit_blocked: false,
+            credit_block_reason: None,
+            dunning_procedure: None,
+            last_dunning_date: None,
+            dunning_level: 0,
         }
+    }
+
+    /// Create an intercompany customer.
+    pub fn new_intercompany(
+        customer_id: &str,
+        name: &str,
+        related_company_code: &str,
+    ) -> Self {
+        Self::new(customer_id, name, CustomerType::Intercompany)
+            .with_intercompany(related_company_code)
     }
 
     /// Set country.
     pub fn with_country(mut self, country: &str) -> Self {
         self.country = country.to_string();
+        self
+    }
+
+    /// Set credit rating.
+    pub fn with_credit_rating(mut self, rating: CreditRating) -> Self {
+        self.credit_rating = rating;
+        // Adjust credit limit based on rating
+        self.credit_limit = self.credit_limit * rating.credit_limit_multiplier();
+        if rating.is_credit_blocked() {
+            self.credit_blocked = true;
+            self.credit_block_reason = Some("Credit rating D".to_string());
+        }
         self
     }
 
@@ -208,10 +647,97 @@ impl Customer {
         self
     }
 
-    /// Set payment terms.
+    /// Set structured payment terms.
+    pub fn with_payment_terms_structured(mut self, terms: PaymentTerms) -> Self {
+        self.payment_terms = terms;
+        self.payment_terms_days = terms.due_days() as u8;
+        self
+    }
+
+    /// Set payment terms (legacy, by days).
     pub fn with_payment_terms(mut self, days: u8) -> Self {
         self.payment_terms_days = days;
+        self.payment_terms = match days {
+            0 => PaymentTerms::Immediate,
+            1..=15 => PaymentTerms::Net15,
+            16..=35 => PaymentTerms::Net30,
+            36..=50 => PaymentTerms::Net45,
+            51..=70 => PaymentTerms::Net60,
+            _ => PaymentTerms::Net90,
+        };
         self
+    }
+
+    /// Set payment behavior.
+    pub fn with_payment_behavior(mut self, behavior: CustomerPaymentBehavior) -> Self {
+        self.payment_behavior = behavior;
+        self
+    }
+
+    /// Set as intercompany customer.
+    pub fn with_intercompany(mut self, related_company_code: &str) -> Self {
+        self.is_intercompany = true;
+        self.intercompany_code = Some(related_company_code.to_string());
+        self.customer_type = CustomerType::Intercompany;
+        // Intercompany customers typically have excellent credit
+        self.credit_rating = CreditRating::AAA;
+        self.payment_behavior = CustomerPaymentBehavior::Excellent;
+        self
+    }
+
+    /// Set currency.
+    pub fn with_currency(mut self, currency: &str) -> Self {
+        self.currency = currency.to_string();
+        self
+    }
+
+    /// Set sales organization.
+    pub fn with_sales_org(mut self, org: &str) -> Self {
+        self.sales_org = Some(org.to_string());
+        self
+    }
+
+    /// Block credit.
+    pub fn block_credit(&mut self, reason: &str) {
+        self.credit_blocked = true;
+        self.credit_block_reason = Some(reason.to_string());
+    }
+
+    /// Unblock credit.
+    pub fn unblock_credit(&mut self) {
+        self.credit_blocked = false;
+        self.credit_block_reason = None;
+    }
+
+    /// Check if order can be placed (credit check).
+    pub fn can_place_order(&self, order_amount: Decimal) -> bool {
+        if self.credit_blocked {
+            return false;
+        }
+        if !self.is_active {
+            return false;
+        }
+        // Check credit limit
+        self.credit_exposure + order_amount <= self.credit_limit
+    }
+
+    /// Available credit.
+    pub fn available_credit(&self) -> Decimal {
+        if self.credit_blocked {
+            Decimal::ZERO
+        } else {
+            (self.credit_limit - self.credit_exposure).max(Decimal::ZERO)
+        }
+    }
+
+    /// Update credit exposure.
+    pub fn add_credit_exposure(&mut self, amount: Decimal) {
+        self.credit_exposure += amount;
+    }
+
+    /// Reduce credit exposure (payment received).
+    pub fn reduce_credit_exposure(&mut self, amount: Decimal) {
+        self.credit_exposure = (self.credit_exposure - amount).max(Decimal::ZERO);
     }
 
     /// Generate a random order amount within typical range.
@@ -220,6 +746,24 @@ impl Customer {
         let range = max - min;
         let random_fraction = Decimal::from_f64_retain(rng.gen::<f64>()).unwrap_or(Decimal::ZERO);
         min + range * random_fraction
+    }
+
+    /// Calculate due date for an invoice.
+    pub fn calculate_due_date(&self, invoice_date: chrono::NaiveDate) -> chrono::NaiveDate {
+        invoice_date + chrono::Duration::days(self.payment_terms.due_days() as i64)
+    }
+
+    /// Simulate payment date based on payment behavior.
+    pub fn simulate_payment_date(
+        &self,
+        due_date: chrono::NaiveDate,
+        rng: &mut impl Rng,
+    ) -> chrono::NaiveDate {
+        let days_offset = self.payment_behavior.average_days_past_due();
+        // Add some random variation
+        let variation: i16 = rng.gen_range(-5..=10);
+        let total_offset = days_offset + variation;
+        due_date + chrono::Duration::days(total_offset as i64)
     }
 }
 
@@ -626,5 +1170,82 @@ mod tests {
         let amount = vendor.generate_amount(&mut rng);
         assert!(amount >= Decimal::from(100));
         assert!(amount <= Decimal::from(1000));
+    }
+
+    #[test]
+    fn test_payment_terms() {
+        assert_eq!(PaymentTerms::Net30.due_days(), 30);
+        assert_eq!(PaymentTerms::Net60.due_days(), 60);
+        assert!(PaymentTerms::Prepayment.requires_prepayment());
+
+        let discount = PaymentTerms::TwoTenNet30.early_payment_discount();
+        assert!(discount.is_some());
+        let (days, percent) = discount.unwrap();
+        assert_eq!(days, 10);
+        assert_eq!(percent, Decimal::from(2));
+    }
+
+    #[test]
+    fn test_credit_rating() {
+        assert!(CreditRating::AAA.credit_limit_multiplier() > CreditRating::B.credit_limit_multiplier());
+        assert!(CreditRating::D.is_credit_blocked());
+        assert!(!CreditRating::A.is_credit_blocked());
+    }
+
+    #[test]
+    fn test_customer_credit_check() {
+        let mut customer = Customer::new("C-001", "Test", CustomerType::Corporate)
+            .with_credit_limit(Decimal::from(10000));
+
+        // Should be able to place order within limit
+        assert!(customer.can_place_order(Decimal::from(5000)));
+
+        // Add some exposure
+        customer.add_credit_exposure(Decimal::from(8000));
+
+        // Now should fail for large order
+        assert!(!customer.can_place_order(Decimal::from(5000)));
+
+        // But small order should work
+        assert!(customer.can_place_order(Decimal::from(2000)));
+
+        // Block credit
+        customer.block_credit("Testing");
+        assert!(!customer.can_place_order(Decimal::from(100)));
+    }
+
+    #[test]
+    fn test_intercompany_vendor() {
+        let vendor = Vendor::new_intercompany("V-IC-001", "Subsidiary Co", "2000");
+
+        assert!(vendor.is_intercompany);
+        assert_eq!(vendor.intercompany_code, Some("2000".to_string()));
+    }
+
+    #[test]
+    fn test_intercompany_customer() {
+        let customer = Customer::new_intercompany("C-IC-001", "Parent Co", "1000");
+
+        assert!(customer.is_intercompany);
+        assert_eq!(customer.customer_type, CustomerType::Intercompany);
+        assert_eq!(customer.credit_rating, CreditRating::AAA);
+    }
+
+    #[test]
+    fn test_payment_behavior() {
+        assert!(CustomerPaymentBehavior::Excellent.on_time_probability() > 0.95);
+        assert!(CustomerPaymentBehavior::VeryPoor.on_time_probability() < 0.25);
+        assert!(CustomerPaymentBehavior::Excellent.average_days_past_due() < 0); // Pays early
+    }
+
+    #[test]
+    fn test_vendor_due_date() {
+        let vendor = Vendor::new("V-001", "Test", VendorType::Supplier)
+            .with_payment_terms_structured(PaymentTerms::Net30);
+
+        let invoice_date = chrono::NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
+        let due_date = vendor.calculate_due_date(invoice_date);
+
+        assert_eq!(due_date, chrono::NaiveDate::from_ymd_opt(2024, 2, 14).unwrap());
     }
 }

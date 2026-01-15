@@ -1,0 +1,19 @@
+//! Balance coherence generators.
+//!
+//! This module provides generators for:
+//! - Opening balances with industry-specific compositions
+//! - Running balance tracking with real-time validation
+//! - Trial balance generation at period end
+//!
+//! The generators ensure that all account balances maintain:
+//! - Balance sheet equation: Assets = Liabilities + Equity
+//! - Financial ratio coherence (DSO, DPO, margins)
+//! - Subledger-to-GL reconciliation
+
+mod opening_balance_generator;
+mod balance_tracker;
+mod trial_balance_generator;
+
+pub use opening_balance_generator::*;
+pub use balance_tracker::*;
+pub use trial_balance_generator::*;

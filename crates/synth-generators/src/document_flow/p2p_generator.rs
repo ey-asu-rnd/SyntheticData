@@ -1,0 +1,804 @@
+//! Procure-to-Pay (P2P) flow generator.
+//!
+//! Generates complete P2P document chains:
+//! PurchaseOrder → GoodsReceipt → VendorInvoice → Payment
+
+use chrono::NaiveDate;
+use rand::prelude::*;
+use rand_chacha::ChaCha8Rng;
+use rust_decimal::Decimal;
+use synth_core::models::{
+    documents::{
+        DocumentReference, DocumentStatus, DocumentType, GoodsReceipt, GoodsReceiptItem,
+        MovementType, Payment, PaymentAllocation, PaymentMethod, PurchaseOrder,
+        PurchaseOrderItem, PurchaseOrderType, ReferenceType, VendorInvoice,
+        VendorInvoiceItem, VendorInvoiceType,
+    },
+    Material, MaterialPool, PaymentTerms, Vendor, VendorPool,
+};
+
+/// Configuration for P2P flow generation.
+#[derive(Debug, Clone)]
+pub struct P2PGeneratorConfig {
+    /// Three-way match success rate (PO-GR-Invoice match)
+    pub three_way_match_rate: f64,
+    /// Rate of partial deliveries
+    pub partial_delivery_rate: f64,
+    /// Rate of over-delivery (quantity exceeds PO)
+    pub over_delivery_rate: f64,
+    /// Rate of price variance (invoice price differs from PO)
+    pub price_variance_rate: f64,
+    /// Max price variance percentage
+    pub max_price_variance_percent: f64,
+    /// Average days between PO and GR
+    pub avg_days_po_to_gr: u32,
+    /// Average days between GR and Invoice
+    pub avg_days_gr_to_invoice: u32,
+    /// Average days between Invoice and Payment
+    pub avg_days_invoice_to_payment: u32,
+    /// Payment method distribution
+    pub payment_method_distribution: Vec<(PaymentMethod, f64)>,
+    /// Probability of early payment discount being taken
+    pub early_payment_discount_rate: f64,
+}
+
+impl Default for P2PGeneratorConfig {
+    fn default() -> Self {
+        Self {
+            three_way_match_rate: 0.95,
+            partial_delivery_rate: 0.10,
+            over_delivery_rate: 0.02,
+            price_variance_rate: 0.05,
+            max_price_variance_percent: 0.05,
+            avg_days_po_to_gr: 7,
+            avg_days_gr_to_invoice: 5,
+            avg_days_invoice_to_payment: 30,
+            payment_method_distribution: vec![
+                (PaymentMethod::BankTransfer, 0.60),
+                (PaymentMethod::Check, 0.25),
+                (PaymentMethod::Wire, 0.10),
+                (PaymentMethod::CreditCard, 0.05),
+            ],
+            early_payment_discount_rate: 0.30,
+        }
+    }
+}
+
+/// A complete P2P document chain.
+#[derive(Debug, Clone)]
+pub struct P2PDocumentChain {
+    /// Purchase Order
+    pub purchase_order: PurchaseOrder,
+    /// Goods Receipts (may be multiple for partial deliveries)
+    pub goods_receipts: Vec<GoodsReceipt>,
+    /// Vendor Invoice
+    pub vendor_invoice: Option<VendorInvoice>,
+    /// Payment
+    pub payment: Option<Payment>,
+    /// Chain completion status
+    pub is_complete: bool,
+    /// Three-way match status
+    pub three_way_match_passed: bool,
+}
+
+/// Generator for P2P document flows.
+pub struct P2PGenerator {
+    rng: ChaCha8Rng,
+    seed: u64,
+    config: P2PGeneratorConfig,
+    po_counter: usize,
+    gr_counter: usize,
+    vi_counter: usize,
+    pay_counter: usize,
+}
+
+impl P2PGenerator {
+    /// Create a new P2P generator.
+    pub fn new(seed: u64) -> Self {
+        Self::with_config(seed, P2PGeneratorConfig::default())
+    }
+
+    /// Create a new P2P generator with custom configuration.
+    pub fn with_config(seed: u64, config: P2PGeneratorConfig) -> Self {
+        Self {
+            rng: ChaCha8Rng::seed_from_u64(seed),
+            seed,
+            config,
+            po_counter: 0,
+            gr_counter: 0,
+            vi_counter: 0,
+            pay_counter: 0,
+        }
+    }
+
+    /// Generate a complete P2P chain.
+    pub fn generate_chain(
+        &mut self,
+        company_code: &str,
+        vendor: &Vendor,
+        materials: &[&Material],
+        po_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+    ) -> P2PDocumentChain {
+        // Generate PO
+        let po = self.generate_purchase_order(
+            company_code,
+            vendor,
+            materials,
+            po_date,
+            fiscal_year,
+            fiscal_period,
+            created_by,
+        );
+
+        // Calculate GR date
+        let gr_date = self.calculate_gr_date(po_date);
+        let gr_fiscal_period = self.get_fiscal_period(gr_date);
+
+        // Generate GR(s)
+        let goods_receipts = self.generate_goods_receipts(
+            &po,
+            company_code,
+            gr_date,
+            fiscal_year,
+            gr_fiscal_period,
+            created_by,
+        );
+
+        // Calculate invoice date
+        let invoice_date = self.calculate_invoice_date(gr_date);
+        let invoice_fiscal_period = self.get_fiscal_period(invoice_date);
+
+        // Perform three-way match
+        let three_way_match_passed = self.rng.gen::<f64>() < self.config.three_way_match_rate;
+
+        // Generate invoice
+        let vendor_invoice = self.generate_vendor_invoice(
+            &po,
+            &goods_receipts,
+            company_code,
+            vendor,
+            invoice_date,
+            fiscal_year,
+            invoice_fiscal_period,
+            created_by,
+            three_way_match_passed,
+        );
+
+        // Calculate payment date based on payment terms
+        let payment_date = self.calculate_payment_date(invoice_date, &vendor.payment_terms);
+        let payment_fiscal_period = self.get_fiscal_period(payment_date);
+
+        // Generate payment
+        let payment = vendor_invoice.as_ref().map(|invoice| {
+            self.generate_payment(
+                invoice,
+                company_code,
+                vendor,
+                payment_date,
+                fiscal_year,
+                payment_fiscal_period,
+                created_by,
+            )
+        });
+
+        let is_complete = payment.is_some();
+
+        P2PDocumentChain {
+            purchase_order: po,
+            goods_receipts,
+            vendor_invoice,
+            payment,
+            is_complete,
+            three_way_match_passed,
+        }
+    }
+
+    /// Generate a purchase order.
+    pub fn generate_purchase_order(
+        &mut self,
+        company_code: &str,
+        vendor: &Vendor,
+        materials: &[&Material],
+        po_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+    ) -> PurchaseOrder {
+        self.po_counter += 1;
+
+        let po_id = format!("PO-{}-{:010}", company_code, self.po_counter);
+
+        let mut po = PurchaseOrder::new(
+            po_id,
+            company_code,
+            &vendor.vendor_id,
+            fiscal_year,
+            fiscal_period,
+            po_date,
+            created_by,
+        )
+        .with_payment_terms(&vendor.payment_terms.code());
+
+        // Add line items
+        for (idx, material) in materials.iter().enumerate() {
+            let quantity = Decimal::from(self.rng.gen_range(1..100));
+            let unit_price = material.standard_cost;
+
+            let item = PurchaseOrderItem::new(
+                (idx + 1) as u16 * 10,
+                &material.description,
+                quantity,
+                unit_price,
+            )
+            .with_material(&material.material_id);
+
+            po.add_item(item);
+        }
+
+        // Release the PO
+        po.release(created_by);
+
+        po
+    }
+
+    /// Generate goods receipt(s) for a PO.
+    fn generate_goods_receipts(
+        &mut self,
+        po: &PurchaseOrder,
+        company_code: &str,
+        gr_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+    ) -> Vec<GoodsReceipt> {
+        let mut receipts = Vec::new();
+
+        // Determine if partial delivery
+        let is_partial = self.rng.gen::<f64>() < self.config.partial_delivery_rate;
+
+        if is_partial {
+            // First partial delivery (60-80% of quantity)
+            let first_pct = 0.6 + self.rng.gen::<f64>() * 0.2;
+            let gr1 = self.create_goods_receipt(
+                po,
+                company_code,
+                gr_date,
+                fiscal_year,
+                fiscal_period,
+                created_by,
+                first_pct,
+            );
+            receipts.push(gr1);
+
+            // Second delivery (remaining quantity)
+            let second_date = gr_date + chrono::Duration::days(self.rng.gen_range(3..10) as i64);
+            let second_period = self.get_fiscal_period(second_date);
+            let gr2 = self.create_goods_receipt(
+                po,
+                company_code,
+                second_date,
+                fiscal_year,
+                second_period,
+                created_by,
+                1.0 - first_pct,
+            );
+            receipts.push(gr2);
+        } else {
+            // Full delivery
+            let delivery_pct = if self.rng.gen::<f64>() < self.config.over_delivery_rate {
+                1.0 + self.rng.gen::<f64>() * 0.1 // Up to 10% over
+            } else {
+                1.0
+            };
+
+            let gr = self.create_goods_receipt(
+                po,
+                company_code,
+                gr_date,
+                fiscal_year,
+                fiscal_period,
+                created_by,
+                delivery_pct,
+            );
+            receipts.push(gr);
+        }
+
+        receipts
+    }
+
+    /// Create a single goods receipt.
+    fn create_goods_receipt(
+        &mut self,
+        po: &PurchaseOrder,
+        company_code: &str,
+        gr_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+        quantity_pct: f64,
+    ) -> GoodsReceipt {
+        self.gr_counter += 1;
+
+        let gr_id = format!("GR-{}-{:010}", company_code, self.gr_counter);
+
+        let mut gr = GoodsReceipt::from_purchase_order(
+            gr_id,
+            company_code,
+            &po.header.document_id,
+            &po.vendor_id,
+            format!("P{}", company_code),
+            "0001",
+            fiscal_year,
+            fiscal_period,
+            gr_date,
+            created_by,
+        );
+
+        // Add items based on PO items
+        for po_item in &po.items {
+            let received_qty = (po_item.base.quantity
+                * Decimal::from_f64_retain(quantity_pct).unwrap_or(Decimal::ONE))
+                .round_dp(0);
+
+            if received_qty > Decimal::ZERO {
+                let gr_item = GoodsReceiptItem::from_po(
+                    po_item.base.line_number,
+                    &po_item.base.description,
+                    received_qty,
+                    po_item.base.unit_price,
+                    &po.header.document_id,
+                    po_item.base.line_number,
+                )
+                .with_movement_type(MovementType::GrForPo);
+
+                gr.add_item(gr_item);
+            }
+        }
+
+        // Post the GR
+        gr.post(created_by, gr_date);
+
+        gr
+    }
+
+    /// Generate vendor invoice.
+    fn generate_vendor_invoice(
+        &mut self,
+        po: &PurchaseOrder,
+        goods_receipts: &[GoodsReceipt],
+        company_code: &str,
+        vendor: &Vendor,
+        invoice_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+        three_way_match_passed: bool,
+    ) -> Option<VendorInvoice> {
+        if goods_receipts.is_empty() {
+            return None;
+        }
+
+        self.vi_counter += 1;
+
+        let invoice_id = format!("VI-{}-{:010}", company_code, self.vi_counter);
+        let vendor_invoice_number = format!("INV-{:08}", self.rng.gen_range(10000000..99999999));
+
+        // Calculate due date based on payment terms
+        let due_date = self.calculate_due_date(invoice_date, &vendor.payment_terms);
+
+        let mut invoice = VendorInvoice::new(
+            invoice_id,
+            company_code,
+            &vendor.vendor_id,
+            fiscal_year,
+            fiscal_period,
+            invoice_date,
+            due_date,
+            created_by,
+        )
+        .with_vendor_invoice_number(vendor_invoice_number)
+        .with_payment_terms(
+            vendor.payment_terms.code(),
+            vendor.payment_terms.discount_days(),
+            vendor.payment_terms.discount_percent(),
+        );
+
+        // Calculate total received quantity per item
+        let mut received_quantities: std::collections::HashMap<u16, Decimal> =
+            std::collections::HashMap::new();
+
+        for gr in goods_receipts {
+            for gr_item in &gr.items {
+                *received_quantities
+                    .entry(gr_item.base.line_number)
+                    .or_insert(Decimal::ZERO) += gr_item.base.quantity;
+            }
+        }
+
+        // Add invoice items based on received quantities
+        for po_item in &po.items {
+            if let Some(&qty) = received_quantities.get(&po_item.base.line_number) {
+                // Apply price variance if configured
+                let unit_price = if !three_way_match_passed
+                    && self.rng.gen::<f64>() < self.config.price_variance_rate
+                {
+                    let variance = Decimal::from_f64_retain(
+                        1.0 + (self.rng.gen::<f64>() - 0.5) * 2.0 * self.config.max_price_variance_percent,
+                    )
+                    .unwrap_or(Decimal::ONE);
+                    (po_item.base.unit_price * variance).round_dp(2)
+                } else {
+                    po_item.base.unit_price
+                };
+
+                let item = VendorInvoiceItem::from_purchase_order(
+                    po_item.base.line_number,
+                    &po_item.base.description,
+                    qty,
+                    unit_price,
+                    &po.header.document_id,
+                    po_item.base.line_number,
+                );
+
+                invoice.add_item(item);
+            }
+        }
+
+        // Link to PO
+        invoice.header.add_reference(DocumentReference::new(
+            DocumentType::PurchaseOrder,
+            &po.header.document_id,
+            DocumentType::VendorInvoice,
+            &invoice.header.document_id,
+            ReferenceType::FollowOn,
+            company_code,
+            invoice_date,
+        ));
+
+        // Link to GRs
+        for gr in goods_receipts {
+            invoice.header.add_reference(DocumentReference::new(
+                DocumentType::GoodsReceipt,
+                &gr.header.document_id,
+                DocumentType::VendorInvoice,
+                &invoice.header.document_id,
+                ReferenceType::FollowOn,
+                company_code,
+                invoice_date,
+            ));
+        }
+
+        // Verify three-way match
+        if three_way_match_passed {
+            invoice.verify_three_way_match(&po.header.document_id, true);
+        }
+
+        // Post the invoice
+        invoice.post(created_by, invoice_date);
+
+        Some(invoice)
+    }
+
+    /// Generate payment for an invoice.
+    fn generate_payment(
+        &mut self,
+        invoice: &VendorInvoice,
+        company_code: &str,
+        vendor: &Vendor,
+        payment_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+    ) -> Payment {
+        self.pay_counter += 1;
+
+        let payment_id = format!("PAY-{}-{:010}", company_code, self.pay_counter);
+
+        // Determine if early payment discount applies
+        let take_discount = invoice.discount_date_1.map_or(false, |disc_date| {
+            payment_date <= disc_date && self.rng.gen::<f64>() < self.config.early_payment_discount_rate
+        });
+
+        let discount_amount = if take_discount {
+            invoice.cash_discount_available(payment_date)
+        } else {
+            Decimal::ZERO
+        };
+
+        let payment_amount = invoice.amount_open - discount_amount;
+
+        let mut payment = Payment::new_ap_payment(
+            payment_id,
+            company_code,
+            &vendor.vendor_id,
+            payment_amount,
+            fiscal_year,
+            fiscal_period,
+            payment_date,
+            created_by,
+        )
+        .with_payment_method(self.select_payment_method())
+        .with_value_date(payment_date + chrono::Duration::days(1));
+
+        // Allocate to invoice
+        payment.allocate_to_invoice(
+            &invoice.header.document_id,
+            DocumentType::VendorInvoice,
+            payment_amount,
+            discount_amount,
+        );
+
+        // Approve and send to bank
+        payment.approve(created_by);
+        payment.send_to_bank(created_by);
+
+        // Post the payment
+        payment.post(created_by, payment_date);
+
+        payment
+    }
+
+    /// Generate multiple P2P chains.
+    pub fn generate_chains(
+        &mut self,
+        count: usize,
+        company_code: &str,
+        vendors: &VendorPool,
+        materials: &MaterialPool,
+        date_range: (NaiveDate, NaiveDate),
+        fiscal_year: u16,
+        created_by: &str,
+    ) -> Vec<P2PDocumentChain> {
+        let mut chains = Vec::new();
+
+        let (start_date, end_date) = date_range;
+        let days_range = (end_date - start_date).num_days() as u64;
+
+        for _ in 0..count {
+            // Select random vendor
+            let vendor_idx = self.rng.gen_range(0..vendors.vendors.len());
+            let vendor = &vendors.vendors[vendor_idx];
+
+            // Select random materials (1-5 items per PO)
+            let num_items = self.rng.gen_range(1..=5).min(materials.materials.len());
+            let selected_materials: Vec<&Material> = materials.materials
+                .iter()
+                .choose_multiple(&mut self.rng, num_items)
+                .into_iter()
+                .collect();
+
+            // Select random PO date
+            let po_date = start_date
+                + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
+            let fiscal_period = self.get_fiscal_period(po_date);
+
+            let chain = self.generate_chain(
+                company_code,
+                vendor,
+                &selected_materials,
+                po_date,
+                fiscal_year,
+                fiscal_period,
+                created_by,
+            );
+
+            chains.push(chain);
+        }
+
+        chains
+    }
+
+    /// Calculate GR date based on PO date.
+    fn calculate_gr_date(&mut self, po_date: NaiveDate) -> NaiveDate {
+        let variance = self.rng.gen_range(0..5) as i64;
+        po_date + chrono::Duration::days(self.config.avg_days_po_to_gr as i64 + variance)
+    }
+
+    /// Calculate invoice date based on GR date.
+    fn calculate_invoice_date(&mut self, gr_date: NaiveDate) -> NaiveDate {
+        let variance = self.rng.gen_range(0..3) as i64;
+        gr_date + chrono::Duration::days(self.config.avg_days_gr_to_invoice as i64 + variance)
+    }
+
+    /// Calculate payment date based on invoice date and payment terms.
+    fn calculate_payment_date(&mut self, invoice_date: NaiveDate, payment_terms: &PaymentTerms) -> NaiveDate {
+        let due_days = payment_terms.net_days() as i64;
+
+        // Some variance around due date (-5 to +10 days)
+        let variance = self.rng.gen_range(-5..=10) as i64;
+
+        invoice_date + chrono::Duration::days(due_days + variance)
+    }
+
+    /// Calculate due date based on payment terms.
+    fn calculate_due_date(&self, invoice_date: NaiveDate, payment_terms: &PaymentTerms) -> NaiveDate {
+        invoice_date + chrono::Duration::days(payment_terms.net_days() as i64)
+    }
+
+    /// Select payment method based on distribution.
+    fn select_payment_method(&mut self) -> PaymentMethod {
+        let roll: f64 = self.rng.gen();
+        let mut cumulative = 0.0;
+
+        for (method, prob) in &self.config.payment_method_distribution {
+            cumulative += prob;
+            if roll < cumulative {
+                return *method;
+            }
+        }
+
+        PaymentMethod::BankTransfer
+    }
+
+    /// Get fiscal period from date (simple month-based).
+    fn get_fiscal_period(&self, date: NaiveDate) -> u8 {
+        date.month() as u8
+    }
+
+    /// Reset the generator.
+    pub fn reset(&mut self) {
+        self.rng = ChaCha8Rng::seed_from_u64(self.seed);
+        self.po_counter = 0;
+        self.gr_counter = 0;
+        self.vi_counter = 0;
+        self.pay_counter = 0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use synth_core::models::{MaterialType, ValuationMethod};
+
+    fn create_test_vendor() -> Vendor {
+        Vendor::new("V-000001", "Test Vendor Inc.", "1000")
+    }
+
+    fn create_test_materials() -> Vec<Material> {
+        vec![
+            Material::new("MAT-001", "Test Material 1", MaterialType::RawMaterial),
+            Material::new("MAT-002", "Test Material 2", MaterialType::RawMaterial),
+        ]
+    }
+
+    #[test]
+    fn test_p2p_chain_generation() {
+        let mut gen = P2PGenerator::new(42);
+        let vendor = create_test_vendor();
+        let materials = create_test_materials();
+        let material_refs: Vec<&Material> = materials.iter().collect();
+
+        let chain = gen.generate_chain(
+            "1000",
+            &vendor,
+            &material_refs,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            2024,
+            1,
+            "JSMITH",
+        );
+
+        assert!(!chain.purchase_order.items.is_empty());
+        assert!(!chain.goods_receipts.is_empty());
+        assert!(chain.vendor_invoice.is_some());
+        assert!(chain.payment.is_some());
+        assert!(chain.is_complete);
+    }
+
+    #[test]
+    fn test_purchase_order_generation() {
+        let mut gen = P2PGenerator::new(42);
+        let vendor = create_test_vendor();
+        let materials = create_test_materials();
+        let material_refs: Vec<&Material> = materials.iter().collect();
+
+        let po = gen.generate_purchase_order(
+            "1000",
+            &vendor,
+            &material_refs,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            2024,
+            1,
+            "JSMITH",
+        );
+
+        assert_eq!(po.vendor_id, "V-000001");
+        assert_eq!(po.items.len(), 2);
+        assert!(po.total_net_amount > Decimal::ZERO);
+        assert_eq!(po.header.status, DocumentStatus::Released);
+    }
+
+    #[test]
+    fn test_document_references() {
+        let mut gen = P2PGenerator::new(42);
+        let vendor = create_test_vendor();
+        let materials = create_test_materials();
+        let material_refs: Vec<&Material> = materials.iter().collect();
+
+        let chain = gen.generate_chain(
+            "1000",
+            &vendor,
+            &material_refs,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            2024,
+            1,
+            "JSMITH",
+        );
+
+        // GR should reference PO
+        let gr = &chain.goods_receipts[0];
+        assert!(!gr.header.document_references.is_empty());
+
+        // Invoice should reference PO and GR
+        if let Some(invoice) = &chain.vendor_invoice {
+            assert!(invoice.header.document_references.len() >= 2);
+        }
+    }
+
+    #[test]
+    fn test_deterministic_generation() {
+        let vendor = create_test_vendor();
+        let materials = create_test_materials();
+        let material_refs: Vec<&Material> = materials.iter().collect();
+
+        let mut gen1 = P2PGenerator::new(42);
+        let mut gen2 = P2PGenerator::new(42);
+
+        let chain1 = gen1.generate_chain(
+            "1000",
+            &vendor,
+            &material_refs,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            2024,
+            1,
+            "JSMITH",
+        );
+        let chain2 = gen2.generate_chain(
+            "1000",
+            &vendor,
+            &material_refs,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            2024,
+            1,
+            "JSMITH",
+        );
+
+        assert_eq!(
+            chain1.purchase_order.header.document_id,
+            chain2.purchase_order.header.document_id
+        );
+        assert_eq!(
+            chain1.purchase_order.total_net_amount,
+            chain2.purchase_order.total_net_amount
+        );
+    }
+
+    #[test]
+    fn test_partial_delivery_config() {
+        let config = P2PGeneratorConfig {
+            partial_delivery_rate: 1.0, // Force partial delivery
+            ..Default::default()
+        };
+
+        let mut gen = P2PGenerator::with_config(42, config);
+        let vendor = create_test_vendor();
+        let materials = create_test_materials();
+        let material_refs: Vec<&Material> = materials.iter().collect();
+
+        let chain = gen.generate_chain(
+            "1000",
+            &vendor,
+            &material_refs,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            2024,
+            1,
+            "JSMITH",
+        );
+
+        // Should have multiple goods receipts due to partial delivery
+        assert!(chain.goods_receipts.len() >= 2);
+    }
+}

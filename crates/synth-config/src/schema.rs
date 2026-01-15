@@ -42,6 +42,18 @@ pub struct GeneratorConfig {
     /// Department structure configuration
     #[serde(default)]
     pub departments: DepartmentConfig,
+    /// Master data generation settings
+    #[serde(default)]
+    pub master_data: MasterDataConfig,
+    /// Document flow generation settings
+    #[serde(default)]
+    pub document_flows: DocumentFlowConfig,
+    /// Intercompany transaction settings
+    #[serde(default)]
+    pub intercompany: IntercompanyConfig,
+    /// Balance and trial balance settings
+    #[serde(default)]
+    pub balance: BalanceConfig,
 }
 
 /// Global configuration settings.
@@ -851,4 +863,1060 @@ pub struct CustomDepartmentConfig {
     /// Parent department code
     #[serde(default)]
     pub parent_code: Option<String>,
+}
+
+// ============================================================================
+// Master Data Configuration
+// ============================================================================
+
+/// Master data generation configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MasterDataConfig {
+    /// Vendor master data settings
+    #[serde(default)]
+    pub vendors: VendorMasterConfig,
+    /// Customer master data settings
+    #[serde(default)]
+    pub customers: CustomerMasterConfig,
+    /// Material master data settings
+    #[serde(default)]
+    pub materials: MaterialMasterConfig,
+    /// Fixed asset master data settings
+    #[serde(default)]
+    pub fixed_assets: FixedAssetMasterConfig,
+    /// Employee master data settings
+    #[serde(default)]
+    pub employees: EmployeeMasterConfig,
+    /// Cost center master data settings
+    #[serde(default)]
+    pub cost_centers: CostCenterMasterConfig,
+}
+
+impl Default for MasterDataConfig {
+    fn default() -> Self {
+        Self {
+            vendors: VendorMasterConfig::default(),
+            customers: CustomerMasterConfig::default(),
+            materials: MaterialMasterConfig::default(),
+            fixed_assets: FixedAssetMasterConfig::default(),
+            employees: EmployeeMasterConfig::default(),
+            cost_centers: CostCenterMasterConfig::default(),
+        }
+    }
+}
+
+/// Vendor master data configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VendorMasterConfig {
+    /// Number of vendors to generate
+    #[serde(default = "default_vendor_count")]
+    pub count: usize,
+    /// Percentage of vendors that are intercompany (0.0 to 1.0)
+    #[serde(default = "default_intercompany_percent")]
+    pub intercompany_percent: f64,
+    /// Payment terms distribution
+    #[serde(default)]
+    pub payment_terms_distribution: PaymentTermsDistribution,
+    /// Vendor behavior distribution
+    #[serde(default)]
+    pub behavior_distribution: VendorBehaviorDistribution,
+    /// Generate bank account details
+    #[serde(default = "default_true")]
+    pub generate_bank_accounts: bool,
+    /// Generate tax IDs
+    #[serde(default = "default_true")]
+    pub generate_tax_ids: bool,
+}
+
+fn default_vendor_count() -> usize {
+    500
+}
+
+fn default_intercompany_percent() -> f64 {
+    0.05
+}
+
+impl Default for VendorMasterConfig {
+    fn default() -> Self {
+        Self {
+            count: default_vendor_count(),
+            intercompany_percent: default_intercompany_percent(),
+            payment_terms_distribution: PaymentTermsDistribution::default(),
+            behavior_distribution: VendorBehaviorDistribution::default(),
+            generate_bank_accounts: true,
+            generate_tax_ids: true,
+        }
+    }
+}
+
+/// Payment terms distribution for vendors.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentTermsDistribution {
+    /// Net 30 days
+    pub net_30: f64,
+    /// Net 60 days
+    pub net_60: f64,
+    /// Net 90 days
+    pub net_90: f64,
+    /// 2% 10 Net 30 (early payment discount)
+    pub two_ten_net_30: f64,
+    /// Due on receipt
+    pub due_on_receipt: f64,
+    /// End of month
+    pub end_of_month: f64,
+}
+
+impl Default for PaymentTermsDistribution {
+    fn default() -> Self {
+        Self {
+            net_30: 0.40,
+            net_60: 0.20,
+            net_90: 0.10,
+            two_ten_net_30: 0.15,
+            due_on_receipt: 0.05,
+            end_of_month: 0.10,
+        }
+    }
+}
+
+/// Vendor behavior distribution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VendorBehaviorDistribution {
+    /// Reliable vendors (consistent delivery, quality)
+    pub reliable: f64,
+    /// Sometimes late vendors
+    pub sometimes_late: f64,
+    /// Inconsistent quality vendors
+    pub inconsistent_quality: f64,
+    /// Premium vendors (high quality, premium pricing)
+    pub premium: f64,
+    /// Budget vendors (lower quality, lower pricing)
+    pub budget: f64,
+}
+
+impl Default for VendorBehaviorDistribution {
+    fn default() -> Self {
+        Self {
+            reliable: 0.50,
+            sometimes_late: 0.20,
+            inconsistent_quality: 0.10,
+            premium: 0.10,
+            budget: 0.10,
+        }
+    }
+}
+
+/// Customer master data configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerMasterConfig {
+    /// Number of customers to generate
+    #[serde(default = "default_customer_count")]
+    pub count: usize,
+    /// Percentage of customers that are intercompany (0.0 to 1.0)
+    #[serde(default = "default_intercompany_percent")]
+    pub intercompany_percent: f64,
+    /// Credit rating distribution
+    #[serde(default)]
+    pub credit_rating_distribution: CreditRatingDistribution,
+    /// Payment behavior distribution
+    #[serde(default)]
+    pub payment_behavior_distribution: PaymentBehaviorDistribution,
+    /// Generate credit limits based on rating
+    #[serde(default = "default_true")]
+    pub generate_credit_limits: bool,
+}
+
+fn default_customer_count() -> usize {
+    2000
+}
+
+impl Default for CustomerMasterConfig {
+    fn default() -> Self {
+        Self {
+            count: default_customer_count(),
+            intercompany_percent: default_intercompany_percent(),
+            credit_rating_distribution: CreditRatingDistribution::default(),
+            payment_behavior_distribution: PaymentBehaviorDistribution::default(),
+            generate_credit_limits: true,
+        }
+    }
+}
+
+/// Credit rating distribution for customers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreditRatingDistribution {
+    /// AAA rating
+    pub aaa: f64,
+    /// AA rating
+    pub aa: f64,
+    /// A rating
+    pub a: f64,
+    /// BBB rating
+    pub bbb: f64,
+    /// BB rating
+    pub bb: f64,
+    /// B rating
+    pub b: f64,
+    /// Below B rating
+    pub below_b: f64,
+}
+
+impl Default for CreditRatingDistribution {
+    fn default() -> Self {
+        Self {
+            aaa: 0.05,
+            aa: 0.10,
+            a: 0.20,
+            bbb: 0.30,
+            bb: 0.20,
+            b: 0.10,
+            below_b: 0.05,
+        }
+    }
+}
+
+/// Payment behavior distribution for customers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentBehaviorDistribution {
+    /// Always pays early
+    pub early_payer: f64,
+    /// Pays on time
+    pub on_time: f64,
+    /// Occasionally late
+    pub occasional_late: f64,
+    /// Frequently late
+    pub frequent_late: f64,
+    /// Takes early payment discounts
+    pub discount_taker: f64,
+}
+
+impl Default for PaymentBehaviorDistribution {
+    fn default() -> Self {
+        Self {
+            early_payer: 0.10,
+            on_time: 0.50,
+            occasional_late: 0.25,
+            frequent_late: 0.10,
+            discount_taker: 0.05,
+        }
+    }
+}
+
+/// Material master data configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MaterialMasterConfig {
+    /// Number of materials to generate
+    #[serde(default = "default_material_count")]
+    pub count: usize,
+    /// Material type distribution
+    #[serde(default)]
+    pub type_distribution: MaterialTypeDistribution,
+    /// Valuation method distribution
+    #[serde(default)]
+    pub valuation_distribution: ValuationMethodDistribution,
+    /// Percentage of materials with BOM (bill of materials)
+    #[serde(default = "default_bom_percent")]
+    pub bom_percent: f64,
+    /// Maximum BOM depth
+    #[serde(default = "default_max_bom_depth")]
+    pub max_bom_depth: u8,
+}
+
+fn default_material_count() -> usize {
+    5000
+}
+
+fn default_bom_percent() -> f64 {
+    0.20
+}
+
+fn default_max_bom_depth() -> u8 {
+    3
+}
+
+impl Default for MaterialMasterConfig {
+    fn default() -> Self {
+        Self {
+            count: default_material_count(),
+            type_distribution: MaterialTypeDistribution::default(),
+            valuation_distribution: ValuationMethodDistribution::default(),
+            bom_percent: default_bom_percent(),
+            max_bom_depth: default_max_bom_depth(),
+        }
+    }
+}
+
+/// Material type distribution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MaterialTypeDistribution {
+    /// Raw materials
+    pub raw_material: f64,
+    /// Semi-finished goods
+    pub semi_finished: f64,
+    /// Finished goods
+    pub finished_good: f64,
+    /// Trading goods (purchased for resale)
+    pub trading_good: f64,
+    /// Operating supplies
+    pub operating_supply: f64,
+    /// Services
+    pub service: f64,
+}
+
+impl Default for MaterialTypeDistribution {
+    fn default() -> Self {
+        Self {
+            raw_material: 0.30,
+            semi_finished: 0.15,
+            finished_good: 0.25,
+            trading_good: 0.15,
+            operating_supply: 0.10,
+            service: 0.05,
+        }
+    }
+}
+
+/// Valuation method distribution for materials.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValuationMethodDistribution {
+    /// Standard cost
+    pub standard_cost: f64,
+    /// Moving average
+    pub moving_average: f64,
+    /// FIFO (First In, First Out)
+    pub fifo: f64,
+    /// LIFO (Last In, First Out)
+    pub lifo: f64,
+}
+
+impl Default for ValuationMethodDistribution {
+    fn default() -> Self {
+        Self {
+            standard_cost: 0.50,
+            moving_average: 0.30,
+            fifo: 0.15,
+            lifo: 0.05,
+        }
+    }
+}
+
+/// Fixed asset master data configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FixedAssetMasterConfig {
+    /// Number of fixed assets to generate
+    #[serde(default = "default_asset_count")]
+    pub count: usize,
+    /// Asset class distribution
+    #[serde(default)]
+    pub class_distribution: AssetClassDistribution,
+    /// Depreciation method distribution
+    #[serde(default)]
+    pub depreciation_distribution: DepreciationMethodDistribution,
+    /// Percentage of assets that are fully depreciated
+    #[serde(default = "default_fully_depreciated_percent")]
+    pub fully_depreciated_percent: f64,
+    /// Generate acquisition history
+    #[serde(default = "default_true")]
+    pub generate_acquisition_history: bool,
+}
+
+fn default_asset_count() -> usize {
+    800
+}
+
+fn default_fully_depreciated_percent() -> f64 {
+    0.15
+}
+
+impl Default for FixedAssetMasterConfig {
+    fn default() -> Self {
+        Self {
+            count: default_asset_count(),
+            class_distribution: AssetClassDistribution::default(),
+            depreciation_distribution: DepreciationMethodDistribution::default(),
+            fully_depreciated_percent: default_fully_depreciated_percent(),
+            generate_acquisition_history: true,
+        }
+    }
+}
+
+/// Asset class distribution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssetClassDistribution {
+    /// Buildings and structures
+    pub buildings: f64,
+    /// Machinery and equipment
+    pub machinery: f64,
+    /// Vehicles
+    pub vehicles: f64,
+    /// IT equipment
+    pub it_equipment: f64,
+    /// Furniture and fixtures
+    pub furniture: f64,
+    /// Land (non-depreciable)
+    pub land: f64,
+    /// Leasehold improvements
+    pub leasehold: f64,
+}
+
+impl Default for AssetClassDistribution {
+    fn default() -> Self {
+        Self {
+            buildings: 0.15,
+            machinery: 0.30,
+            vehicles: 0.15,
+            it_equipment: 0.20,
+            furniture: 0.10,
+            land: 0.05,
+            leasehold: 0.05,
+        }
+    }
+}
+
+/// Depreciation method distribution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DepreciationMethodDistribution {
+    /// Straight line
+    pub straight_line: f64,
+    /// Declining balance
+    pub declining_balance: f64,
+    /// Double declining balance
+    pub double_declining: f64,
+    /// Sum of years' digits
+    pub sum_of_years: f64,
+    /// Units of production
+    pub units_of_production: f64,
+}
+
+impl Default for DepreciationMethodDistribution {
+    fn default() -> Self {
+        Self {
+            straight_line: 0.60,
+            declining_balance: 0.20,
+            double_declining: 0.10,
+            sum_of_years: 0.05,
+            units_of_production: 0.05,
+        }
+    }
+}
+
+/// Employee master data configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmployeeMasterConfig {
+    /// Number of employees to generate
+    #[serde(default = "default_employee_count")]
+    pub count: usize,
+    /// Generate organizational hierarchy
+    #[serde(default = "default_true")]
+    pub generate_hierarchy: bool,
+    /// Maximum hierarchy depth
+    #[serde(default = "default_hierarchy_depth")]
+    pub max_hierarchy_depth: u8,
+    /// Average span of control (direct reports per manager)
+    #[serde(default = "default_span_of_control")]
+    pub average_span_of_control: f64,
+    /// Approval limit distribution by job level
+    #[serde(default)]
+    pub approval_limits: ApprovalLimitDistribution,
+    /// Department distribution
+    #[serde(default)]
+    pub department_distribution: EmployeeDepartmentDistribution,
+}
+
+fn default_employee_count() -> usize {
+    1500
+}
+
+fn default_hierarchy_depth() -> u8 {
+    6
+}
+
+fn default_span_of_control() -> f64 {
+    5.0
+}
+
+impl Default for EmployeeMasterConfig {
+    fn default() -> Self {
+        Self {
+            count: default_employee_count(),
+            generate_hierarchy: true,
+            max_hierarchy_depth: default_hierarchy_depth(),
+            average_span_of_control: default_span_of_control(),
+            approval_limits: ApprovalLimitDistribution::default(),
+            department_distribution: EmployeeDepartmentDistribution::default(),
+        }
+    }
+}
+
+/// Approval limit distribution by job level.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApprovalLimitDistribution {
+    /// Staff level approval limit
+    #[serde(default = "default_staff_limit")]
+    pub staff: f64,
+    /// Senior staff approval limit
+    #[serde(default = "default_senior_limit")]
+    pub senior: f64,
+    /// Manager approval limit
+    #[serde(default = "default_manager_limit")]
+    pub manager: f64,
+    /// Director approval limit
+    #[serde(default = "default_director_limit")]
+    pub director: f64,
+    /// VP approval limit
+    #[serde(default = "default_vp_limit")]
+    pub vp: f64,
+    /// Executive approval limit
+    #[serde(default = "default_executive_limit")]
+    pub executive: f64,
+}
+
+fn default_staff_limit() -> f64 {
+    1000.0
+}
+fn default_senior_limit() -> f64 {
+    5000.0
+}
+fn default_manager_limit() -> f64 {
+    25000.0
+}
+fn default_director_limit() -> f64 {
+    100000.0
+}
+fn default_vp_limit() -> f64 {
+    500000.0
+}
+fn default_executive_limit() -> f64 {
+    f64::INFINITY
+}
+
+impl Default for ApprovalLimitDistribution {
+    fn default() -> Self {
+        Self {
+            staff: default_staff_limit(),
+            senior: default_senior_limit(),
+            manager: default_manager_limit(),
+            director: default_director_limit(),
+            vp: default_vp_limit(),
+            executive: default_executive_limit(),
+        }
+    }
+}
+
+/// Employee distribution across departments.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmployeeDepartmentDistribution {
+    /// Finance and Accounting
+    pub finance: f64,
+    /// Procurement
+    pub procurement: f64,
+    /// Sales
+    pub sales: f64,
+    /// Warehouse and Logistics
+    pub warehouse: f64,
+    /// IT
+    pub it: f64,
+    /// Human Resources
+    pub hr: f64,
+    /// Operations
+    pub operations: f64,
+    /// Executive
+    pub executive: f64,
+}
+
+impl Default for EmployeeDepartmentDistribution {
+    fn default() -> Self {
+        Self {
+            finance: 0.12,
+            procurement: 0.10,
+            sales: 0.25,
+            warehouse: 0.15,
+            it: 0.10,
+            hr: 0.05,
+            operations: 0.20,
+            executive: 0.03,
+        }
+    }
+}
+
+/// Cost center master data configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CostCenterMasterConfig {
+    /// Number of cost centers to generate
+    #[serde(default = "default_cost_center_count")]
+    pub count: usize,
+    /// Generate cost center hierarchy
+    #[serde(default = "default_true")]
+    pub generate_hierarchy: bool,
+    /// Maximum hierarchy depth
+    #[serde(default = "default_cc_hierarchy_depth")]
+    pub max_hierarchy_depth: u8,
+}
+
+fn default_cost_center_count() -> usize {
+    50
+}
+
+fn default_cc_hierarchy_depth() -> u8 {
+    3
+}
+
+impl Default for CostCenterMasterConfig {
+    fn default() -> Self {
+        Self {
+            count: default_cost_center_count(),
+            generate_hierarchy: true,
+            max_hierarchy_depth: default_cc_hierarchy_depth(),
+        }
+    }
+}
+
+// ============================================================================
+// Document Flow Configuration
+// ============================================================================
+
+/// Document flow generation configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentFlowConfig {
+    /// P2P (Procure-to-Pay) flow configuration
+    #[serde(default)]
+    pub p2p: P2PFlowConfig,
+    /// O2C (Order-to-Cash) flow configuration
+    #[serde(default)]
+    pub o2c: O2CFlowConfig,
+    /// Generate document reference chains
+    #[serde(default = "default_true")]
+    pub generate_document_references: bool,
+    /// Export document flow graph
+    #[serde(default)]
+    pub export_flow_graph: bool,
+}
+
+impl Default for DocumentFlowConfig {
+    fn default() -> Self {
+        Self {
+            p2p: P2PFlowConfig::default(),
+            o2c: O2CFlowConfig::default(),
+            generate_document_references: true,
+            export_flow_graph: false,
+        }
+    }
+}
+
+/// P2P (Procure-to-Pay) flow configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct P2PFlowConfig {
+    /// Enable P2P document flow generation
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Three-way match success rate (PO-GR-Invoice)
+    #[serde(default = "default_three_way_match_rate")]
+    pub three_way_match_rate: f64,
+    /// Rate of partial deliveries
+    #[serde(default = "default_partial_delivery_rate")]
+    pub partial_delivery_rate: f64,
+    /// Rate of price variances between PO and Invoice
+    #[serde(default = "default_price_variance_rate")]
+    pub price_variance_rate: f64,
+    /// Maximum price variance percentage
+    #[serde(default = "default_max_price_variance")]
+    pub max_price_variance_percent: f64,
+    /// Rate of quantity variances between PO/GR and Invoice
+    #[serde(default = "default_quantity_variance_rate")]
+    pub quantity_variance_rate: f64,
+    /// Average days from PO to goods receipt
+    #[serde(default = "default_po_to_gr_days")]
+    pub average_po_to_gr_days: u32,
+    /// Average days from GR to invoice
+    #[serde(default = "default_gr_to_invoice_days")]
+    pub average_gr_to_invoice_days: u32,
+    /// Average days from invoice to payment
+    #[serde(default = "default_invoice_to_payment_days")]
+    pub average_invoice_to_payment_days: u32,
+    /// PO line count distribution
+    #[serde(default)]
+    pub line_count_distribution: DocumentLineCountDistribution,
+}
+
+fn default_three_way_match_rate() -> f64 {
+    0.95
+}
+
+fn default_partial_delivery_rate() -> f64 {
+    0.15
+}
+
+fn default_price_variance_rate() -> f64 {
+    0.08
+}
+
+fn default_max_price_variance() -> f64 {
+    0.05
+}
+
+fn default_quantity_variance_rate() -> f64 {
+    0.05
+}
+
+fn default_po_to_gr_days() -> u32 {
+    14
+}
+
+fn default_gr_to_invoice_days() -> u32 {
+    5
+}
+
+fn default_invoice_to_payment_days() -> u32 {
+    30
+}
+
+impl Default for P2PFlowConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            three_way_match_rate: default_three_way_match_rate(),
+            partial_delivery_rate: default_partial_delivery_rate(),
+            price_variance_rate: default_price_variance_rate(),
+            max_price_variance_percent: default_max_price_variance(),
+            quantity_variance_rate: default_quantity_variance_rate(),
+            average_po_to_gr_days: default_po_to_gr_days(),
+            average_gr_to_invoice_days: default_gr_to_invoice_days(),
+            average_invoice_to_payment_days: default_invoice_to_payment_days(),
+            line_count_distribution: DocumentLineCountDistribution::default(),
+        }
+    }
+}
+
+/// O2C (Order-to-Cash) flow configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct O2CFlowConfig {
+    /// Enable O2C document flow generation
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Credit check failure rate
+    #[serde(default = "default_credit_check_failure_rate")]
+    pub credit_check_failure_rate: f64,
+    /// Rate of partial shipments
+    #[serde(default = "default_partial_shipment_rate")]
+    pub partial_shipment_rate: f64,
+    /// Rate of returns
+    #[serde(default = "default_return_rate")]
+    pub return_rate: f64,
+    /// Bad debt write-off rate
+    #[serde(default = "default_bad_debt_rate")]
+    pub bad_debt_rate: f64,
+    /// Average days from SO to delivery
+    #[serde(default = "default_so_to_delivery_days")]
+    pub average_so_to_delivery_days: u32,
+    /// Average days from delivery to invoice
+    #[serde(default = "default_delivery_to_invoice_days")]
+    pub average_delivery_to_invoice_days: u32,
+    /// Average days from invoice to receipt
+    #[serde(default = "default_invoice_to_receipt_days")]
+    pub average_invoice_to_receipt_days: u32,
+    /// SO line count distribution
+    #[serde(default)]
+    pub line_count_distribution: DocumentLineCountDistribution,
+    /// Cash discount configuration
+    #[serde(default)]
+    pub cash_discount: CashDiscountConfig,
+}
+
+fn default_credit_check_failure_rate() -> f64 {
+    0.02
+}
+
+fn default_partial_shipment_rate() -> f64 {
+    0.10
+}
+
+fn default_return_rate() -> f64 {
+    0.03
+}
+
+fn default_bad_debt_rate() -> f64 {
+    0.01
+}
+
+fn default_so_to_delivery_days() -> u32 {
+    7
+}
+
+fn default_delivery_to_invoice_days() -> u32 {
+    1
+}
+
+fn default_invoice_to_receipt_days() -> u32 {
+    45
+}
+
+impl Default for O2CFlowConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            credit_check_failure_rate: default_credit_check_failure_rate(),
+            partial_shipment_rate: default_partial_shipment_rate(),
+            return_rate: default_return_rate(),
+            bad_debt_rate: default_bad_debt_rate(),
+            average_so_to_delivery_days: default_so_to_delivery_days(),
+            average_delivery_to_invoice_days: default_delivery_to_invoice_days(),
+            average_invoice_to_receipt_days: default_invoice_to_receipt_days(),
+            line_count_distribution: DocumentLineCountDistribution::default(),
+            cash_discount: CashDiscountConfig::default(),
+        }
+    }
+}
+
+/// Document line count distribution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentLineCountDistribution {
+    /// Minimum number of lines
+    #[serde(default = "default_min_lines")]
+    pub min_lines: u32,
+    /// Maximum number of lines
+    #[serde(default = "default_max_lines")]
+    pub max_lines: u32,
+    /// Most common line count (mode)
+    #[serde(default = "default_mode_lines")]
+    pub mode_lines: u32,
+}
+
+fn default_min_lines() -> u32 {
+    1
+}
+
+fn default_max_lines() -> u32 {
+    20
+}
+
+fn default_mode_lines() -> u32 {
+    3
+}
+
+impl Default for DocumentLineCountDistribution {
+    fn default() -> Self {
+        Self {
+            min_lines: default_min_lines(),
+            max_lines: default_max_lines(),
+            mode_lines: default_mode_lines(),
+        }
+    }
+}
+
+/// Cash discount configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CashDiscountConfig {
+    /// Percentage of invoices eligible for cash discount
+    #[serde(default = "default_discount_eligible_rate")]
+    pub eligible_rate: f64,
+    /// Rate at which customers take the discount
+    #[serde(default = "default_discount_taken_rate")]
+    pub taken_rate: f64,
+    /// Standard discount percentage
+    #[serde(default = "default_discount_percent")]
+    pub discount_percent: f64,
+    /// Days within which discount must be taken
+    #[serde(default = "default_discount_days")]
+    pub discount_days: u32,
+}
+
+fn default_discount_eligible_rate() -> f64 {
+    0.30
+}
+
+fn default_discount_taken_rate() -> f64 {
+    0.60
+}
+
+fn default_discount_percent() -> f64 {
+    0.02
+}
+
+fn default_discount_days() -> u32 {
+    10
+}
+
+impl Default for CashDiscountConfig {
+    fn default() -> Self {
+        Self {
+            eligible_rate: default_discount_eligible_rate(),
+            taken_rate: default_discount_taken_rate(),
+            discount_percent: default_discount_percent(),
+            discount_days: default_discount_days(),
+        }
+    }
+}
+
+// ============================================================================
+// Intercompany Configuration
+// ============================================================================
+
+/// Intercompany transaction configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntercompanyConfig {
+    /// Enable intercompany transaction generation
+    #[serde(default)]
+    pub enabled: bool,
+    /// Rate of transactions that are intercompany
+    #[serde(default = "default_ic_transaction_rate")]
+    pub ic_transaction_rate: f64,
+    /// Transfer pricing method
+    #[serde(default)]
+    pub transfer_pricing_method: TransferPricingMethod,
+    /// Transfer pricing markup percentage (for cost-plus)
+    #[serde(default = "default_markup_percent")]
+    pub markup_percent: f64,
+    /// Generate matched IC pairs (offsetting entries)
+    #[serde(default = "default_true")]
+    pub generate_matched_pairs: bool,
+    /// IC transaction type distribution
+    #[serde(default)]
+    pub transaction_type_distribution: ICTransactionTypeDistribution,
+    /// Generate elimination entries for consolidation
+    #[serde(default)]
+    pub generate_eliminations: bool,
+}
+
+fn default_ic_transaction_rate() -> f64 {
+    0.15
+}
+
+fn default_markup_percent() -> f64 {
+    0.05
+}
+
+impl Default for IntercompanyConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            ic_transaction_rate: default_ic_transaction_rate(),
+            transfer_pricing_method: TransferPricingMethod::default(),
+            markup_percent: default_markup_percent(),
+            generate_matched_pairs: true,
+            transaction_type_distribution: ICTransactionTypeDistribution::default(),
+            generate_eliminations: false,
+        }
+    }
+}
+
+/// Transfer pricing method.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransferPricingMethod {
+    /// Cost plus a markup
+    #[default]
+    CostPlus,
+    /// Comparable uncontrolled price
+    ComparableUncontrolled,
+    /// Resale price method
+    ResalePrice,
+    /// Transactional net margin method
+    TransactionalNetMargin,
+    /// Profit split method
+    ProfitSplit,
+}
+
+/// IC transaction type distribution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ICTransactionTypeDistribution {
+    /// Goods sales between entities
+    pub goods_sale: f64,
+    /// Services provided
+    pub service_provided: f64,
+    /// Intercompany loans
+    pub loan: f64,
+    /// Dividends
+    pub dividend: f64,
+    /// Management fees
+    pub management_fee: f64,
+    /// Royalties
+    pub royalty: f64,
+    /// Cost sharing
+    pub cost_sharing: f64,
+}
+
+impl Default for ICTransactionTypeDistribution {
+    fn default() -> Self {
+        Self {
+            goods_sale: 0.35,
+            service_provided: 0.20,
+            loan: 0.10,
+            dividend: 0.05,
+            management_fee: 0.15,
+            royalty: 0.10,
+            cost_sharing: 0.05,
+        }
+    }
+}
+
+// ============================================================================
+// Balance Configuration
+// ============================================================================
+
+/// Balance and trial balance configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BalanceConfig {
+    /// Generate opening balances
+    #[serde(default)]
+    pub generate_opening_balances: bool,
+    /// Generate trial balances
+    #[serde(default = "default_true")]
+    pub generate_trial_balances: bool,
+    /// Target gross margin (for revenue/COGS coherence)
+    #[serde(default = "default_gross_margin")]
+    pub target_gross_margin: f64,
+    /// Target DSO (Days Sales Outstanding)
+    #[serde(default = "default_dso")]
+    pub target_dso_days: u32,
+    /// Target DPO (Days Payable Outstanding)
+    #[serde(default = "default_dpo")]
+    pub target_dpo_days: u32,
+    /// Target current ratio
+    #[serde(default = "default_current_ratio")]
+    pub target_current_ratio: f64,
+    /// Target debt-to-equity ratio
+    #[serde(default = "default_debt_equity")]
+    pub target_debt_to_equity: f64,
+    /// Validate balance sheet equation (A = L + E)
+    #[serde(default = "default_true")]
+    pub validate_balance_equation: bool,
+    /// Reconcile subledgers to GL control accounts
+    #[serde(default = "default_true")]
+    pub reconcile_subledgers: bool,
+}
+
+fn default_gross_margin() -> f64 {
+    0.35
+}
+
+fn default_dso() -> u32 {
+    45
+}
+
+fn default_dpo() -> u32 {
+    30
+}
+
+fn default_current_ratio() -> f64 {
+    1.5
+}
+
+fn default_debt_equity() -> f64 {
+    0.5
+}
+
+impl Default for BalanceConfig {
+    fn default() -> Self {
+        Self {
+            generate_opening_balances: false,
+            generate_trial_balances: true,
+            target_gross_margin: default_gross_margin(),
+            target_dso_days: default_dso(),
+            target_dpo_days: default_dpo(),
+            target_current_ratio: default_current_ratio(),
+            target_debt_to_equity: default_debt_equity(),
+            validate_balance_equation: true,
+            reconcile_subledgers: true,
+        }
+    }
 }

@@ -14,6 +14,7 @@ cargo test
 # Run tests for a specific crate
 cargo test -p synth-core
 cargo test -p synth-generators
+cargo test -p synth-graph
 
 # Run a single test by name
 cargo test test_name
@@ -48,14 +49,16 @@ synth-data generate --config config.yaml --output ./output
 
 ## Architecture
 
-This is a Rust workspace with 6 crates following a layered architecture:
+This is a Rust workspace with 7 crates following a layered architecture:
 
 ```
 synth-cli          → Binary entry point (commands: generate, validate, init, info)
     ↓
 synth-runtime      → Orchestration layer (GenerationOrchestrator coordinates workflow)
     ↓
-synth-generators   → Data generators (CoA, JournalEntry, User, Control, CompanySelector)
+synth-generators   → Data generators (JE, Document Flows, Subledgers, Anomalies, etc.)
+    ↓
+synth-graph        → Graph/network export (PyTorch Geometric, Neo4j, DGL)
     ↓
 synth-config       → Configuration schema, validation, industry presets
     ↓
@@ -66,31 +69,176 @@ synth-output       → Output sinks (CSV, JSON, Parquet, ControlExport)
 
 ### Key Domain Models (synth-core/src/models/)
 
+**Core Accounting:**
+
 - **JournalEntry**: Header + balanced line items (debits must equal credits)
 - **ChartOfAccounts**: Hierarchical GL accounts with AccountType/AccountSubType
 - **ACDOCA**: SAP HANA Universal Journal format with ZSIM_ simulation fields
-- **User**: Persona-based users (junior_accountant, senior_accountant, controller, automated_system)
-- **ApprovalWorkflow**: Threshold-based approval chains
-- **MasterData**: Vendor/Customer pools for realistic references
+
+**Master Data:**
+
+- **Vendor**: Enhanced with PaymentTerms, BankAccount, tax_id, intercompany flags, VendorBehavior
+- **Customer**: Enhanced with CreditRating, credit_limit, PaymentBehavior, intercompany flags
+- **Material**: Material/Product with BOM, valuation method, standard cost, account determination
+- **FixedAsset**: Asset with depreciation schedule, useful life, acquisition/disposal tracking
+- **Employee**: User with manager hierarchy, approval limits, system roles, transaction codes
+- **EntityRegistry**: Central registry with temporal validity for all master data
+
+**Document Flow:**
+
+- **PurchaseOrder**: P2P flow starting document
+- **GoodsReceipt**: Inventory receipt with GR/IR clearing
+- **VendorInvoice**: AP invoice with three-way match support
+- **Payment**: AP/AR payment documents
+- **SalesOrder**: O2C flow starting document
+- **Delivery**: Inventory issue with COGS recognition
+- **CustomerInvoice**: AR invoice
+- **CustomerReceipt**: AR receipt/cash application
+- **DocumentReference**: Chain linking documents (FollowOn, Payment, Reversal)
+
+**Intercompany:**
+
+- **IntercompanyRelationship**: Parent-subsidiary with ownership percentage
+- **ICTransactionType**: GoodsSale, ServiceProvided, Loan, Dividend, ManagementFee, Royalty
+- **ICMatchedPair**: Matched IC entry pairs (seller/buyer)
+- **TransferPricingMethod**: CostPlus, ResaleMinus, ComparableUncontrolled
+
+**Balance & Subledger:**
+
+- **AccountBalance**: Running balance with period tracking
+- **TrialBalance**: Period-end trial balance structure
+- **ARInvoice/ARReceipt/ARCreditMemo**: AR subledger records
+- **APInvoice/APPayment/APDebitMemo**: AP subledger records
+- **AssetRegister/DepreciationSchedule**: FA subledger
+- **InventoryPosition/InventoryMovement**: Inventory subledger
+
+**FX & Period Close:**
+
+- **FxRate**: Exchange rate with rate type (Spot, Closing, Average)
+- **CurrencyTranslation**: Foreign subsidiary translation
+- **FiscalPeriod**: Period close status tracking
+- **AccrualEntry**: Month-end accrual entries
+
+**Anomalies & Quality:**
+
+- **AnomalyType**: Fraud, Error, ProcessIssue, Statistical, Relational
+- **LabeledAnomaly**: Anomaly with full metadata for ML training
+- **QualityIssue**: Data quality issue record (missing, typo, duplicate, format)
+
+**Controls:**
+
 - **InternalControl**: SOX 404 control definitions with control types and assertions
-- **ControlMapping**: Control-to-entity mappings (accounts, processes, thresholds, document types)
+- **ControlMapping**: Control-to-entity mappings (accounts, processes, thresholds)
 - **SoD**: Segregation of Duties conflict types and violation records
+
+### Generator Modules (synth-generators/src/)
+
+**Core Generators:**
+
+- `je_generator.rs`: Journal Entry generator
+- `coa_generator.rs`: Chart of Accounts generator
+- `company_selector.rs`: Weighted company selection
+- `user_generator.rs`: User/persona generator
+- `control_generator.rs`: Internal controls generator
+
+**Master Data (master_data/):**
+
+- `vendor_generator.rs`: Enhanced vendor generation
+- `customer_generator.rs`: Enhanced customer generation
+- `material_generator.rs`: Material/product generation
+- `asset_generator.rs`: Fixed asset generation
+- `employee_generator.rs`: Employee with hierarchy
+- `entity_registry_manager.rs`: Central entity registry
+
+**Document Flow (document_flow/):**
+
+- `p2p_generator.rs`: Procure-to-Pay flow (PO → GR → Invoice → Payment)
+- `o2c_generator.rs`: Order-to-Cash flow (SO → Delivery → Invoice → Receipt)
+- `document_chain_manager.rs`: Document reference chain management
+- `three_way_match.rs`: PO/GR/Invoice matching engine
+
+**Intercompany (intercompany/):**
+
+- `ic_generator.rs`: Generate matched IC JE pairs
+- `matching_engine.rs`: IC matching and reconciliation
+- `elimination_generator.rs`: Consolidation elimination entries
+
+**Balance (balance/):**
+
+- `opening_balance_generator.rs`: Coherent opening balance sheet
+- `balance_tracker.rs`: Running balance tracker
+- `trial_balance_generator.rs`: Period-end trial balance
+
+**Subledger (subledger/):**
+
+- `ar_generator.rs`: AR invoices, receipts, credit memos, aging
+- `ap_generator.rs`: AP invoices, payments, debit memos
+- `fa_generator.rs`: Fixed assets, depreciation, disposals
+- `inventory_generator.rs`: Inventory positions, movements, valuation
+- `reconciliation.rs`: GL-to-subledger reconciliation
+
+**FX (fx/):**
+
+- `fx_rate_service.rs`: FX rate generation (Ornstein-Uhlenbeck process)
+- `currency_translator.rs`: Trial balance translation
+- `cta_generator.rs`: Currency Translation Adjustment entries
+
+**Period Close (period_close/):**
+
+- `close_engine.rs`: Main orchestration
+- `accruals.rs`: Accrual entry generation
+- `depreciation.rs`: Monthly depreciation runs
+- `year_end.rs`: Year-end closing entries
+
+**Anomaly (anomaly/):**
+
+- `injector.rs`: Main anomaly injection engine
+- `types.rs`: Weighted anomaly type configurations
+- `strategies.rs`: Injection strategies (amount, date, duplication, approval)
+- `patterns.rs`: Temporal patterns, clustering, entity targeting
+
+**Data Quality (data_quality/):**
+
+- `injector.rs`: Main data quality injector
+- `missing_values.rs`: MCAR, MAR, MNAR, Systematic missing patterns
+- `format_variations.rs`: Date, amount, identifier format variations
+- `duplicates.rs`: Exact, near, fuzzy duplicate generation
+- `typos.rs`: Keyboard-aware typos, OCR errors, homophones
+
+### Graph Module (synth-graph/src/)
+
+**Models:**
+
+- `nodes.rs`: Node types (Account, Entity, User, Transaction)
+- `edges.rs`: Edge types (Transaction, Approval, Ownership)
+- `graph.rs`: Graph container with node/edge collections
+
+**Builders:**
+
+- `transaction_graph.rs`: Accounts/entities as nodes, transactions as edges
+- `approval_graph.rs`: Users as nodes, approvals as edges
+- `entity_graph.rs`: Legal entities with ownership edges
+
+**Exporters:**
+
+- `pytorch_geometric.rs`: .pt files (node_features, edge_index, edge_attr, masks)
+- `neo4j.rs`: CSV files with Cypher import scripts
+- `dgl.rs`: Deep Graph Library format
+
+**ML:**
+
+- `features.rs`: Feature computation (temporal, amount, structural, categorical)
+- `splits.rs`: Train/validation/test split generation
 
 ### Statistical Distributions (synth-core/src/distributions/)
 
 - **LineItemSampler**: Empirical distribution (60.68% two-line entries, 88% even line counts)
-- **AmountSampler**: Log-normal with round-number bias (25% chance of .00 endings), Benford's Law compliance
+- **AmountSampler**: Log-normal with round-number bias, Benford's Law compliance
 - **TemporalSampler**: Seasonality patterns with industry and holiday integration
 - **BenfordSampler**: First-digit distribution following Benford's Law P(d) = log10(1 + 1/d)
-- **FraudAmountGenerator**: Suspicious amount patterns (threshold-adjacent, round numbers, anti-Benford)
+- **FraudAmountGenerator**: Suspicious amount patterns (threshold-adjacent, round numbers)
 - **IndustrySeasonality**: Industry-specific volume patterns for 10 sectors
 - **HolidayCalendar**: Regional holidays for US, DE, GB, CN, JP, IN
-
-### Templates (synth-core/src/templates/)
-
-- **MultiCultureNameGenerator**: 7 cultures, 50+ names each for realistic user pools
-- **DescriptionGenerator**: Business process-specific header/line text
-- **ReferenceGenerator**: Invoice, PO, check number formats
 
 ### Core Traits (synth-core/src/traits/)
 
@@ -104,130 +252,189 @@ synth-output       → Output sinks (CSV, JSON, Parquet, ControlExport)
 3. **Balanced Entries**: JournalEntry enforces debits = credits at construction time
 4. **Empirical Distributions**: Based on academic research on real GL data patterns
 5. **Benford's Law**: Amount distribution follows first-digit law with fraud pattern exceptions
-6. **Weighted Company Selection**: Companies selected based on volume_weight for realistic distribution
+6. **Weighted Company Selection**: Companies selected based on volume_weight
+7. **Document Chain Integrity**: All documents maintain proper reference chains
+8. **Balance Coherence**: Running balance tracker validates Assets = Liabilities + Equity
+9. **Subledger Reconciliation**: Automatic GL-to-subledger control account reconciliation
+10. **ML-Ready Output**: Graph exports with train/val/test splits and computed features
 
 ## Configuration Schema
 
-Config files use YAML with sections: `global`, `companies`, `chart_of_accounts`, `transactions`, `output`, `fraud`, `internal_controls`, `business_processes`, `templates`, `approval`, `departments`.
+Config files use YAML with sections:
+
+**Core:** `global`, `companies`, `chart_of_accounts`, `transactions`, `output`
+
+**Compliance:** `fraud`, `internal_controls`
+
+**Enterprise:** `enterprise`, `master_data`, `document_flows`, `intercompany`
+
+**Financial:** `balance`, `subledger`, `fx`, `period_close`
+
+**ML/Analytics:** `graph_export`, `anomaly_injection`, `data_quality`
+
+**Supporting:** `business_processes`, `templates`, `approval`, `departments`
 
 Industry presets: manufacturing, retail, financial_services, healthcare, technology
 Complexity levels: small (~100 accounts), medium (~400), large (~2500)
 
-## New Features (Audit/Fraud/Compliance)
+## Anomaly Injection Framework
 
-### Benford's Law Compliance
+### Anomaly Categories
 
-```yaml
-transactions:
-  benford:
-    enabled: true
-    tolerance: 0.1
-    exempt_sources: [recurring, payroll]
+**Fraud Types (20+):**
+
+- FictitiousTransaction, RevenueManipulation, ExpenseCapitalization
+- SplitTransaction, RoundTripping, KickbackScheme, GhostEmployee
+- DuplicatePayment, SuspenseAccountAbuse, UnauthorizedDiscount
+
+**Error Types:**
+
+- DuplicateEntry, ReversedAmount, WrongPeriod, WrongAccount
+- MissingReference, IncorrectTaxCode, Misclassification
+
+**Process Issues:**
+
+- LatePosting, SkippedApproval, ThresholdManipulation
+- MissingDocumentation, OutOfSequence
+
+**Statistical Anomalies:**
+
+- UnusualAmount, TrendBreak, BenfordViolation, OutlierValue
+
+**Relational Anomalies:**
+
+- CircularTransaction, DormantAccountActivity, UnusualCounterparty
+
+### Injection Features
+
+- Configurable rates per category
+- Temporal patterns (year-end spikes)
+- Anomaly clustering (realistic batch patterns)
+- Entity targeting (random, repeat offender, volume-weighted)
+- Full labeling for supervised learning
+
+## Data Quality Variations
+
+### Missing Value Strategies
+
+- **MCAR**: Missing Completely At Random (equal probability)
+- **MAR**: Missing At Random (depends on other observed values)
+- **MNAR**: Missing Not At Random (depends on value itself)
+- **Systematic**: Entire field groups missing together
+
+### Format Variations
+
+- **Dates**: ISO (2024-01-15), US (01/15/2024), EU (15.01.2024), Long (January 15, 2024)
+- **Amounts**: Plain, US comma (1,234.56), EU format (1.234,56), Currency prefix/suffix
+- **Identifiers**: Case variations, padding, separator variations
+
+### Typo Generation
+
+- Keyboard-aware substitution (QWERTY layout)
+- Transposition, insertion, deletion
+- OCR errors (0/O, 1/l, 5/S confusion)
+- Homophones (their/there, affect/effect)
+
+### Encoding Issues
+
+- Mojibake (UTF-8/Latin-1 confusion)
+- Missing characters, BOM issues
+- HTML entity corruption
+
+## Graph Export Formats
+
+### PyTorch Geometric
+
+```
+output/graphs/transaction_network/pytorch_geometric/
+├── node_features.pt    # [num_nodes, num_features]
+├── edge_index.pt       # [2, num_edges]
+├── edge_attr.pt        # [num_edges, num_edge_features]
+├── labels.pt           # [num_nodes] or [num_edges]
+├── train_mask.pt       # Boolean mask
+├── val_mask.pt
+└── test_mask.pt
 ```
 
-- Amounts follow Benford's Law first-digit distribution
-- Smart exemptions for payroll, recurring transactions
-- Fraud patterns intentionally deviate for detection testing
+### Neo4j
 
-### Fraud Amount Patterns
-
-- **Normal**: Standard Benford-compliant amounts
-- **StatisticallyImprobable**: Anti-Benford distribution (excess 5s, 7s, 9s)
-- **ObviousRoundNumbers**: $50,000.00, $99,999.99
-- **ThresholdAdjacent**: Just below approval limits ($9,999, $49,999)
-
-### Internal Controls System (ICS)
-
-```yaml
-internal_controls:
-  enabled: true
-  exception_rate: 0.02      # 2% control exceptions
-  sod_violation_rate: 0.01  # 1% SoD violations
-  export_control_master_data: true
-  sox_materiality_threshold: 10000
+```
+output/graphs/entity_relationship/neo4j/
+├── nodes_account.csv
+├── nodes_entity.csv
+├── edges_transaction.csv
+├── edges_ownership.csv
+└── import.cypher
 ```
 
-**Control Types**: Preventive, Detective, Monitoring
-**SOX Assertions**: Existence, Completeness, Valuation, RightsAndObligations, PresentationAndDisclosure
-**Control Status**: Effective, Exception, NotTested
+### ML Features
 
-Standard controls (C001-C060):
-- C001: Cash reconciliation
-- C002: Large transaction approval
-- C010/C011: P2P controls
-- C020/C021: O2C controls
-- C030/C031/C032: GL controls
-- C040: Payroll controls
-- C050: Fixed asset controls
-- C060: Intercompany controls
+**Temporal:** weekday, period, is_month_end, is_quarter_end, is_year_end
 
-### Segregation of Duties (SoD)
+**Amount:** log(amount), benford_probability, is_round_number
 
-**Conflict Types**:
-- PreparerApprover: Same person prepared and approved
-- RequesterApprover: Self-approved requests
-- ReconcilerPoster: Reconciled and posted adjustments
-- MasterDataMaintainer: Maintains vendor data and processes payments
-- PaymentReleaser: Created and released payment
-- JournalEntryPoster: Posted to sensitive accounts without review
-- SystemAccessConflict: Multiple conflicting access roles
+**Structural:** line_count, unique_accounts, has_intercompany
 
-### Industry Seasonality
-
-10 industries with specific seasonal patterns:
-
-**Retail**: Black Friday 8x, Christmas 6x, Summer 0.7x
-**Manufacturing**: Year-end 4x, Q4 buildup 2x, Summer shutdown 0.6x
-**Financial Services**: Year-end 8x, Quarter-ends 5x, Tax deadline 3x
-**Healthcare**: Year-end 3x, Open enrollment 2x, Summer 0.8x
-**Technology**: Q4 enterprise deals 4x, Holiday sales 2x, Summer 0.7x
-
-### Regional Holiday Calendars
-
-Supported regions: US, DE (Germany), GB (UK), CN (China), JP (Japan), IN (India)
-
-- Bank holidays with activity multipliers
-- Lunar calendar holidays (Chinese New Year, Diwali)
-- Proper calculation of floating holidays (Easter, Thanksgiving)
-
-### Weighted Company Selection
-
-```yaml
-companies:
-  - code: "1000"
-    name: "US HQ"
-    volume_weight: 1.0    # 50% of transactions
-  - code: "2000"
-    name: "EU Sub"
-    volume_weight: 0.5    # 25% of transactions
-  - code: "3000"
-    name: "APAC"
-    volume_weight: 0.5    # 25% of transactions
-```
-
-## Fraud Scenarios
-
-10 configurable fraud types: SuspenseAccountAbuse, FictitiousTransaction, RevenueManipulation, ExpenseCapitalization, SplitTransaction, TimingAnomaly, UnauthorizedAccess, DuplicatePayment, GhostEmployee, KickbackScheme
-
-Each fraud type maps to an amount pattern:
-- SplitTransaction → ThresholdAdjacent (just below limits)
-- FictitiousTransaction → ObviousRoundNumbers
-- RevenueManipulation → StatisticallyImprobable (anti-Benford)
+**Categorical:** business_process (one-hot), source_type (one-hot)
 
 ## Export Files
 
 ### Transaction Data
+
 - `journal_entries.parquet` / `.csv` / `.json`
 - `acdoca.parquet` - SAP HANA Universal Journal format
 
-### Control Master Data (when `export_control_master_data: true`)
-- `internal_controls.csv` - Control definitions
-- `control_account_mappings.csv` - Control ↔ Account
-- `control_process_mappings.csv` - Control ↔ Business Process
-- `control_threshold_mappings.csv` - Control ↔ Amount thresholds
-- `control_doctype_mappings.csv` - Control ↔ Document types
-- `sod_conflict_pairs.csv` - SoD conflict definitions
-- `sod_rules.csv` - SoD rule definitions
+### Master Data
+
+- `vendors.parquet`, `customers.parquet`
+- `materials.parquet`, `fixed_assets.parquet`
+- `employees.parquet`, `cost_centers.parquet`
+
+### Document Flow
+
+- `purchase_orders.parquet`, `goods_receipts.parquet`
+- `vendor_invoices.parquet`, `payments.parquet`
+- `sales_orders.parquet`, `deliveries.parquet`
+- `customer_invoices.parquet`, `customer_receipts.parquet`
+- `document_references.parquet`
+
+### Subledgers
+
+- `ar_open_items.parquet`, `ar_aging.parquet`
+- `ap_open_items.parquet`, `ap_aging.parquet`
+- `fa_register.parquet`, `fa_depreciation.parquet`
+- `inventory_positions.parquet`, `inventory_movements.parquet`
+
+### Period Close
+
+- `trial_balances/*.parquet`
+- `accruals.parquet`, `depreciation.parquet`
+- `closing_entries.parquet`
+
+### Consolidation
+
+- `eliminations.parquet`
+- `currency_translation.parquet`
+- `consolidated_trial_balance.parquet`
+
+### FX
+
+- `daily_rates.parquet`, `period_rates.parquet`
+- `cta_adjustments.parquet`
+
+### Labels (for ML)
+
+- `anomaly_labels.parquet`
+- `fraud_labels.parquet`
+- `quality_issues.parquet`
+
+### Control Master Data
+
+- `internal_controls.csv`
+- `control_account_mappings.csv`
+- `control_process_mappings.csv`
+- `sod_conflict_pairs.csv`
+- `sod_rules.csv`
 
 ## Journal Entry Header Fields
 
@@ -244,30 +451,59 @@ pub struct JournalEntryHeader {
     pub source: TransactionSource,
     pub business_process: Option<BusinessProcess>,
 
+    // Document flow references
+    pub source_document_type: Option<DocumentType>,
+    pub source_document_id: Option<String>,
+
     // Fraud markers
     pub is_fraud: bool,
     pub fraud_type: Option<FraudType>,
 
-    // Control markers (NEW)
+    // Control markers
     pub control_ids: Vec<String>,
     pub sox_relevant: bool,
     pub control_status: ControlStatus,
     pub sod_violation: bool,
     pub sod_conflict_type: Option<SodConflictType>,
+
+    // Anomaly markers
+    pub is_anomaly: bool,
+    pub anomaly_type: Option<AnomalyType>,
+    pub anomaly_id: Option<String>,
 }
 ```
 
-## ACDOCA ZSIM_ Fields
+## Implementation Phases (Completed)
 
-Simulation metadata fields in ACDOCA output:
-- `sim_batch_id`: Generation batch identifier
-- `sim_is_fraud`: Fraud flag
-- `sim_fraud_type`: Type of fraud if applicable
-- `sim_business_process`: Business process category
-- `sim_user_persona`: User persona who created entry
-- `sim_je_uuid`: Original journal entry UUID
-- `sim_control_ids`: Comma-separated control IDs
-- `sim_sox_relevant`: SOX 404 relevance flag
-- `sim_control_status`: Control effectiveness status
-- `sim_sod_violation`: SoD violation flag
-- `sim_sod_conflict`: SoD conflict type if violated
+The enterprise simulation was implemented in 10 phases:
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Master Data Foundation | Complete |
+| 2 | Document Flow Engine | Complete |
+| 3 | Intercompany Transactions | Complete |
+| 4 | Balance Coherence | Complete |
+| 5 | Subledger Simulation | Complete |
+| 6 | Currency & FX | Complete |
+| 7 | Period Close Engine | Complete |
+| 8 | Graph/Network Export | Complete |
+| 9 | Anomaly Injection | Complete |
+| 10 | Data Quality Variations | Complete |
+
+## Coherence Validation
+
+The generator validates:
+
+- All transactions reference existing master data entities
+- Document references form valid chains (PO→GR→Invoice→Payment)
+- Trial balance always balanced (debits = credits)
+- Subledgers reconcile to GL control accounts
+- IC balances match between entities
+- FX rates consistent across transactions
+- Amounts follow Benford's Law (where applicable)
+
+## Performance
+
+- Single-threaded: ~100K+ entries/second
+- Parallel: Scales with available cores
+- Memory-efficient streaming for large volumes

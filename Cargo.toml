@@ -7,6 +7,7 @@ members = [
     "crates/synth-output",
     "crates/synth-runtime",
     "crates/synth-cli",
+    "crates/synth-graph",
 ]
 
 [workspace.package]
@@ -25,6 +26,7 @@ synth-config = { path = "crates/synth-config" }
 synth-generators = { path = "crates/synth-generators" }
 synth-output = { path = "crates/synth-output" }
 synth-runtime = { path = "crates/synth-runtime" }
+synth-graph = { path = "crates/synth-graph" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
