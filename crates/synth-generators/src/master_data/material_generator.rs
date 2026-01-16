@@ -278,11 +278,12 @@ impl MaterialGenerator {
 
             let quantity = Decimal::from(self.rng.gen_range(1..10));
             components.push(BomComponent {
-                component_id: component.material_id.clone(),
+                component_material_id: component.material_id.clone(),
                 quantity,
                 uom: component.base_uom.code.clone(),
                 position: (i + 1) as u16 * 10,
-                is_phantom: false,
+                scrap_percentage: Decimal::ZERO,
+                is_optional: false,
             });
         }
 
@@ -382,13 +383,14 @@ impl MaterialGenerator {
         let mut components = Vec::new();
 
         for i in 0..component_count {
-            if let Some(component_id) = self.created_materials.get(i) {
+            if let Some(component_material_id) = self.created_materials.get(i) {
                 components.push(BomComponent {
-                    component_id: component_id.clone(),
+                    component_material_id: component_material_id.clone(),
                     quantity: Decimal::from(self.rng.gen_range(1..5)),
                     uom: "EA".to_string(),
                     position: (i + 1) as u16 * 10,
-                    is_phantom: false,
+                    scrap_percentage: Decimal::ZERO,
+                    is_optional: false,
                 });
             }
         }
@@ -504,31 +506,35 @@ impl MaterialGenerator {
                 inventory_account: "140000".to_string(),
                 cogs_account: "500000".to_string(),
                 revenue_account: "400000".to_string(),
-                price_variance_account: Some("590000".to_string()),
-                gr_ir_clearing_account: "290000".to_string(),
+                purchase_expense_account: "500000".to_string(),
+                price_difference_account: "590000".to_string(),
+                gr_ir_account: "290000".to_string(),
             },
             MaterialType::RawMaterial | MaterialType::SemiFinished => {
                 MaterialAccountDetermination {
                     inventory_account: "141000".to_string(),
                     cogs_account: "510000".to_string(),
                     revenue_account: "400000".to_string(),
-                    price_variance_account: Some("591000".to_string()),
-                    gr_ir_clearing_account: "290000".to_string(),
+                    purchase_expense_account: "510000".to_string(),
+                    price_difference_account: "591000".to_string(),
+                    gr_ir_account: "290000".to_string(),
                 }
             }
             MaterialType::OperatingSupplies => MaterialAccountDetermination {
                 inventory_account: "".to_string(),
                 cogs_account: "520000".to_string(),
                 revenue_account: "410000".to_string(),
-                price_variance_account: None,
-                gr_ir_clearing_account: "290000".to_string(),
+                purchase_expense_account: "520000".to_string(),
+                price_difference_account: "".to_string(),
+                gr_ir_account: "290000".to_string(),
             },
             _ => MaterialAccountDetermination {
                 inventory_account: "145000".to_string(),
                 cogs_account: "530000".to_string(),
                 revenue_account: "400000".to_string(),
-                price_variance_account: Some("595000".to_string()),
-                gr_ir_clearing_account: "290000".to_string(),
+                purchase_expense_account: "530000".to_string(),
+                price_difference_account: "595000".to_string(),
+                gr_ir_account: "290000".to_string(),
             },
         }
     }

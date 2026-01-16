@@ -61,6 +61,23 @@ impl OpeningBalanceSpec {
         }
     }
 
+    /// Create a specification for a given industry with default parameters.
+    /// This is a convenience method for creating industry-specific opening balances.
+    pub fn for_industry(total_assets: Decimal, industry: IndustryType) -> Self {
+        Self {
+            company_code: String::new(),
+            as_of_date: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+            fiscal_year: 2024,
+            currency: "USD".to_string(),
+            total_assets,
+            industry,
+            asset_composition: AssetComposition::for_industry(industry),
+            capital_structure: CapitalStructure::for_industry(industry),
+            target_ratios: TargetRatios::for_industry(industry),
+            account_overrides: HashMap::new(),
+        }
+    }
+
     /// Validate that the specification is coherent (A = L + E).
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
@@ -354,6 +371,100 @@ impl Default for CapitalStructure {
 }
 
 impl CapitalStructure {
+    /// Get capital structure for a specific industry.
+    pub fn for_industry(industry: IndustryType) -> Self {
+        match industry {
+            IndustryType::Manufacturing => Self {
+                debt_percent: dec!(40),
+                equity_percent: dec!(60),
+                current_liabilities_percent: dec!(50),
+                long_term_debt_percent: dec!(40),
+                other_liabilities_percent: dec!(10),
+                common_stock_percent: dec!(15),
+                apic_percent: dec!(25),
+                retained_earnings_percent: dec!(55),
+                other_equity_percent: dec!(5),
+            },
+            IndustryType::Retail => Self {
+                debt_percent: dec!(45),
+                equity_percent: dec!(55),
+                current_liabilities_percent: dec!(60),
+                long_term_debt_percent: dec!(30),
+                other_liabilities_percent: dec!(10),
+                common_stock_percent: dec!(20),
+                apic_percent: dec!(20),
+                retained_earnings_percent: dec!(55),
+                other_equity_percent: dec!(5),
+            },
+            IndustryType::Services => Self {
+                debt_percent: dec!(30),
+                equity_percent: dec!(70),
+                current_liabilities_percent: dec!(55),
+                long_term_debt_percent: dec!(35),
+                other_liabilities_percent: dec!(10),
+                common_stock_percent: dec!(15),
+                apic_percent: dec!(30),
+                retained_earnings_percent: dec!(50),
+                other_equity_percent: dec!(5),
+            },
+            IndustryType::Technology => Self {
+                debt_percent: dec!(25),
+                equity_percent: dec!(75),
+                current_liabilities_percent: dec!(60),
+                long_term_debt_percent: dec!(30),
+                other_liabilities_percent: dec!(10),
+                common_stock_percent: dec!(10),
+                apic_percent: dec!(40),
+                retained_earnings_percent: dec!(45),
+                other_equity_percent: dec!(5),
+            },
+            IndustryType::Financial => Self {
+                debt_percent: dec!(70),
+                equity_percent: dec!(30),
+                current_liabilities_percent: dec!(70),
+                long_term_debt_percent: dec!(20),
+                other_liabilities_percent: dec!(10),
+                common_stock_percent: dec!(25),
+                apic_percent: dec!(35),
+                retained_earnings_percent: dec!(35),
+                other_equity_percent: dec!(5),
+            },
+            IndustryType::Healthcare => Self {
+                debt_percent: dec!(35),
+                equity_percent: dec!(65),
+                current_liabilities_percent: dec!(50),
+                long_term_debt_percent: dec!(40),
+                other_liabilities_percent: dec!(10),
+                common_stock_percent: dec!(15),
+                apic_percent: dec!(30),
+                retained_earnings_percent: dec!(50),
+                other_equity_percent: dec!(5),
+            },
+            IndustryType::Utilities => Self {
+                debt_percent: dec!(55),
+                equity_percent: dec!(45),
+                current_liabilities_percent: dec!(35),
+                long_term_debt_percent: dec!(55),
+                other_liabilities_percent: dec!(10),
+                common_stock_percent: dec!(20),
+                apic_percent: dec!(25),
+                retained_earnings_percent: dec!(50),
+                other_equity_percent: dec!(5),
+            },
+            IndustryType::RealEstate => Self {
+                debt_percent: dec!(60),
+                equity_percent: dec!(40),
+                current_liabilities_percent: dec!(30),
+                long_term_debt_percent: dec!(60),
+                other_liabilities_percent: dec!(10),
+                common_stock_percent: dec!(25),
+                apic_percent: dec!(30),
+                retained_earnings_percent: dec!(40),
+                other_equity_percent: dec!(5),
+            },
+        }
+    }
+
     /// Create capital structure with specific debt-to-equity ratio.
     pub fn with_debt_equity_ratio(ratio: Decimal) -> Self {
         // D/E = debt_percent / equity_percent

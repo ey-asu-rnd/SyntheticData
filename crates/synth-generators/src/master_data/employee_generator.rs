@@ -113,7 +113,7 @@ impl DepartmentDefinition {
             name: "Procurement".to_string(),
             cost_center: format!("CC-{}-PROC", company_code),
             headcount: 10,
-            system_roles: vec![SystemRole::Buyer, SystemRole::ProcurementManager],
+            system_roles: vec![SystemRole::Buyer, SystemRole::Approver],
             transaction_codes: vec![
                 "ME21N".to_string(),
                 "ME22N".to_string(),
@@ -131,7 +131,7 @@ impl DepartmentDefinition {
             name: "Sales".to_string(),
             cost_center: format!("CC-{}-SALES", company_code),
             headcount: 20,
-            system_roles: vec![SystemRole::SalesRep, SystemRole::SalesManager],
+            system_roles: vec![SystemRole::Creator, SystemRole::Approver],
             transaction_codes: vec![
                 "VA01".to_string(),
                 "VA02".to_string(),
@@ -149,7 +149,7 @@ impl DepartmentDefinition {
             name: "Warehouse".to_string(),
             cost_center: format!("CC-{}-WH", company_code),
             headcount: 12,
-            system_roles: vec![SystemRole::WarehouseClerk, SystemRole::InventoryManager],
+            system_roles: vec![SystemRole::Creator, SystemRole::Viewer],
             transaction_codes: vec![
                 "MIGO".to_string(),
                 "MB51".to_string(),
@@ -166,7 +166,7 @@ impl DepartmentDefinition {
             name: "Information Technology".to_string(),
             cost_center: format!("CC-{}-IT", company_code),
             headcount: 8,
-            system_roles: vec![SystemRole::SystemAdmin],
+            system_roles: vec![SystemRole::Admin],
             transaction_codes: vec!["SU01".to_string(), "PFCG".to_string(), "SM21".to_string()],
         }
     }
@@ -224,6 +224,7 @@ impl EmployeeGenerator {
 
         let name = self.name_generator.generate_name(&mut self.rng);
         let employee_id = format!("EMP-{}-{:06}", company_code, self.employee_counter);
+        let user_id = format!("u{:06}", self.employee_counter);
         let email = self.name_generator.generate_email(&name);
 
         let job_level = self.select_job_level();
@@ -231,15 +232,19 @@ impl EmployeeGenerator {
 
         let mut employee = Employee::new(
             employee_id,
-            name.display_name.clone(),
-            email,
-            job_level,
+            user_id,
+            name.first_name.clone(),
+            name.last_name.clone(),
             company_code.to_string(),
         );
 
+        // Set additional fields
+        employee.email = email;
+        employee.job_level = job_level;
+
         // Set department info
-        employee.department = department.name.clone();
-        employee.cost_center = department.cost_center.clone();
+        employee.department_id = Some(department.name.clone());
+        employee.cost_center = Some(department.cost_center.clone());
 
         // Set dates
         employee.hire_date = hire_date;
@@ -437,19 +442,22 @@ impl EmployeeGenerator {
 
         let name = self.name_generator.generate_name(&mut self.rng);
         let employee_id = format!("EMP-{}-{:06}", company_code, self.employee_counter);
+        let user_id = format!("exec{:04}", self.employee_counter);
         let email = self.name_generator.generate_email(&name);
 
         let mut employee = Employee::new(
             employee_id,
-            name.display_name.clone(),
-            email,
-            JobLevel::Executive,
+            user_id,
+            name.first_name.clone(),
+            name.last_name.clone(),
             company_code.to_string(),
         );
 
-        employee.title = Some(title.to_string());
-        employee.department = "Executive".to_string();
-        employee.cost_center = format!("CC-{}-EXEC", company_code);
+        employee.email = email;
+        employee.job_level = JobLevel::Executive;
+        employee.job_title = title.to_string();
+        employee.department_id = Some("Executive".to_string());
+        employee.cost_center = Some(format!("CC-{}-EXEC", company_code));
         employee.hire_date = hire_date;
         employee.approval_limit = Decimal::from(100_000_000);
         employee.can_approve_pr = true;

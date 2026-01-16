@@ -36,10 +36,10 @@ impl Default for VendorGeneratorConfig {
                 (PaymentTerms::Immediate, 0.05),
             ],
             behavior_distribution: vec![
-                (VendorBehavior::Reliable, 0.60),
-                (VendorBehavior::Occasional, 0.25),
-                (VendorBehavior::Unreliable, 0.10),
-                (VendorBehavior::Seasonal, 0.05),
+                (VendorBehavior::Flexible, 0.60),
+                (VendorBehavior::Strict, 0.25),
+                (VendorBehavior::VeryFlexible, 0.10),
+                (VendorBehavior::Aggressive, 0.05),
             ],
             intercompany_rate: 0.05,
             default_country: "US".to_string(),
@@ -307,7 +307,7 @@ impl VendorGenerator {
             }
         }
 
-        VendorBehavior::Reliable
+        VendorBehavior::Flexible
     }
 
     /// Generate a tax ID.

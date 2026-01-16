@@ -533,42 +533,63 @@ impl AssetGenerator {
                 accumulated_depreciation_account: "165000".to_string(),
                 depreciation_expense_account: "680000".to_string(),
                 gain_loss_account: "790000".to_string(),
+                gain_on_disposal_account: "790010".to_string(),
+                loss_on_disposal_account: "790020".to_string(),
+                acquisition_clearing_account: "199100".to_string(),
             },
             AssetClass::Machinery | AssetClass::MachineryEquipment => AssetAccountDetermination {
                 asset_account: "161000".to_string(),
                 accumulated_depreciation_account: "166000".to_string(),
                 depreciation_expense_account: "681000".to_string(),
                 gain_loss_account: "791000".to_string(),
+                gain_on_disposal_account: "791010".to_string(),
+                loss_on_disposal_account: "791020".to_string(),
+                acquisition_clearing_account: "199110".to_string(),
             },
             AssetClass::Vehicles => AssetAccountDetermination {
                 asset_account: "162000".to_string(),
                 accumulated_depreciation_account: "167000".to_string(),
                 depreciation_expense_account: "682000".to_string(),
                 gain_loss_account: "792000".to_string(),
+                gain_on_disposal_account: "792010".to_string(),
+                loss_on_disposal_account: "792020".to_string(),
+                acquisition_clearing_account: "199120".to_string(),
             },
             AssetClass::Furniture | AssetClass::FurnitureFixtures => AssetAccountDetermination {
                 asset_account: "163000".to_string(),
                 accumulated_depreciation_account: "168000".to_string(),
                 depreciation_expense_account: "683000".to_string(),
                 gain_loss_account: "793000".to_string(),
+                gain_on_disposal_account: "793010".to_string(),
+                loss_on_disposal_account: "793020".to_string(),
+                acquisition_clearing_account: "199130".to_string(),
             },
             AssetClass::ItEquipment | AssetClass::ComputerHardware => AssetAccountDetermination {
                 asset_account: "164000".to_string(),
                 accumulated_depreciation_account: "169000".to_string(),
                 depreciation_expense_account: "684000".to_string(),
                 gain_loss_account: "794000".to_string(),
+                gain_on_disposal_account: "794010".to_string(),
+                loss_on_disposal_account: "794020".to_string(),
+                acquisition_clearing_account: "199140".to_string(),
             },
             AssetClass::Software | AssetClass::Intangibles => AssetAccountDetermination {
                 asset_account: "170000".to_string(),
                 accumulated_depreciation_account: "175000".to_string(),
                 depreciation_expense_account: "685000".to_string(),
                 gain_loss_account: "795000".to_string(),
+                gain_on_disposal_account: "795010".to_string(),
+                loss_on_disposal_account: "795020".to_string(),
+                acquisition_clearing_account: "199150".to_string(),
             },
             AssetClass::LeaseholdImprovements => AssetAccountDetermination {
                 asset_account: "171000".to_string(),
                 accumulated_depreciation_account: "176000".to_string(),
                 depreciation_expense_account: "686000".to_string(),
                 gain_loss_account: "796000".to_string(),
+                gain_on_disposal_account: "796010".to_string(),
+                loss_on_disposal_account: "796020".to_string(),
+                acquisition_clearing_account: "199160".to_string(),
             },
             AssetClass::Land => {
                 AssetAccountDetermination {
@@ -576,6 +597,9 @@ impl AssetGenerator {
                     accumulated_depreciation_account: "".to_string(), // Land not depreciated
                     depreciation_expense_account: "".to_string(),
                     gain_loss_account: "790000".to_string(),
+                    gain_on_disposal_account: "790010".to_string(),
+                    loss_on_disposal_account: "790020".to_string(),
+                    acquisition_clearing_account: "199000".to_string(),
                 }
             }
             AssetClass::ConstructionInProgress => AssetAccountDetermination {
@@ -583,12 +607,18 @@ impl AssetGenerator {
                 accumulated_depreciation_account: "".to_string(),
                 depreciation_expense_account: "".to_string(),
                 gain_loss_account: "".to_string(),
+                gain_on_disposal_account: "".to_string(),
+                loss_on_disposal_account: "".to_string(),
+                acquisition_clearing_account: "199090".to_string(),
             },
             AssetClass::LowValueAssets => AssetAccountDetermination {
                 asset_account: "172000".to_string(),
                 accumulated_depreciation_account: "177000".to_string(),
                 depreciation_expense_account: "687000".to_string(),
                 gain_loss_account: "797000".to_string(),
+                gain_on_disposal_account: "797010".to_string(),
+                loss_on_disposal_account: "797020".to_string(),
+                acquisition_clearing_account: "199170".to_string(),
             },
         }
     }

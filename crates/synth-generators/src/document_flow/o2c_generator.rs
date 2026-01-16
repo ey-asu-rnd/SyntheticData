@@ -3,7 +3,7 @@
 //! Generates complete O2C document chains:
 //! SalesOrder → Delivery → CustomerInvoice → CustomerReceipt (Payment)
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;

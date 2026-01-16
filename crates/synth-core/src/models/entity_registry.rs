@@ -516,6 +516,27 @@ impl EntityRegistry {
             }
         }
     }
+
+    // === Backward compatibility aliases ===
+
+    /// Alias for `register` - registers a new entity.
+    pub fn register_entity(&mut self, record: EntityRecord) {
+        self.register(record);
+    }
+
+    /// Record an event for an entity.
+    pub fn record_event(&mut self, event: EntityEvent) {
+        self.entity_timeline
+            .entry(event.event_date)
+            .or_default()
+            .push(event);
+    }
+
+    /// Check if an entity is valid on a given date.
+    /// Alias for `is_valid`.
+    pub fn is_valid_on(&self, entity_id: &EntityId, date: NaiveDate) -> bool {
+        self.is_valid(entity_id, date)
+    }
 }
 
 #[cfg(test)]

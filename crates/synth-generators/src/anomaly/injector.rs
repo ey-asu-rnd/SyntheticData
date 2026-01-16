@@ -300,7 +300,7 @@ impl AnomalyInjector {
                 entry.posting_date(),
             )
             .with_description(&result.description)
-            .with_injection_strategy(strategy.name());
+            .with_injection_strategy(&type_name);
 
             // Add monetary impact
             if let Some(impact) = result.monetary_impact {

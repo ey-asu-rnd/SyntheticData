@@ -3,7 +3,7 @@
 //! Generates complete P2P document chains:
 //! PurchaseOrder → GoodsReceipt → VendorInvoice → Payment
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;

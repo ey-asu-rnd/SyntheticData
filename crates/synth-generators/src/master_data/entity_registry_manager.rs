@@ -504,17 +504,17 @@ impl EntityRegistryManager {
     ) -> Option<String> {
         let vendors = self
             .registry
-            .get_entities_for_company(company_code)
+            .get_by_company(company_code)
             .into_iter()
-            .filter(|id| id.entity_type == EntityType::Vendor)
-            .filter(|id| self.registry.is_valid_on(id, date))
+            .filter(|rec| rec.entity_id.entity_type == EntityType::Vendor)
+            .filter(|rec| self.registry.is_valid(&rec.entity_id, date))
             .collect::<Vec<_>>();
 
         if vendors.is_empty() {
             None
         } else {
             use rand::seq::SliceRandom;
-            vendors.choose(rng).map(|id| id.id.clone())
+            vendors.choose(rng).map(|rec| rec.entity_id.id.clone())
         }
     }
 
@@ -527,17 +527,17 @@ impl EntityRegistryManager {
     ) -> Option<String> {
         let customers = self
             .registry
-            .get_entities_for_company(company_code)
+            .get_by_company(company_code)
             .into_iter()
-            .filter(|id| id.entity_type == EntityType::Customer)
-            .filter(|id| self.registry.is_valid_on(id, date))
+            .filter(|rec| rec.entity_id.entity_type == EntityType::Customer)
+            .filter(|rec| self.registry.is_valid(&rec.entity_id, date))
             .collect::<Vec<_>>();
 
         if customers.is_empty() {
             None
         } else {
             use rand::seq::SliceRandom;
-            customers.choose(rng).map(|id| id.id.clone())
+            customers.choose(rng).map(|rec| rec.entity_id.id.clone())
         }
     }
 
