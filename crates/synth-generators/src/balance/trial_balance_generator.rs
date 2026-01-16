@@ -597,50 +597,55 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
+    fn create_test_balance(
+        company: &str,
+        account: &str,
+        acct_type: AccountType,
+        opening: Decimal,
+    ) -> AccountBalance {
+        let mut bal = AccountBalance::new(
+            company.to_string(),
+            account.to_string(),
+            acct_type,
+            "USD".to_string(),
+            2024,
+            1,
+        );
+        bal.opening_balance = opening;
+        bal.closing_balance = opening;
+        bal
+    }
+
     fn create_test_snapshot() -> BalanceSnapshot {
-        let mut balances = HashMap::new();
-
-        // Assets
-        balances.insert(
-            "1100".to_string(),
-            AccountBalance::new(
-                "1100".to_string(),
-                "TEST".to_string(),
-                AccountType::Asset,
-                NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-            )
-            .with_opening_balance(dec!(10000)),
-        );
-
-        // Liabilities
-        balances.insert(
-            "2100".to_string(),
-            AccountBalance::new(
-                "2100".to_string(),
-                "TEST".to_string(),
-                AccountType::Liability,
-                NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-            )
-            .with_opening_balance(dec!(5000)),
-        );
-
-        // Equity
-        balances.insert(
-            "3100".to_string(),
-            AccountBalance::new(
-                "3100".to_string(),
-                "TEST".to_string(),
-                AccountType::Equity,
-                NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-            )
-            .with_opening_balance(dec!(5000)),
-        );
-
-        BalanceSnapshot::new(
-            NaiveDate::from_ymd_opt(2024, 1, 31).unwrap(),
+        let mut snapshot = BalanceSnapshot::new(
+            "SNAP-TEST-2024-01".to_string(),
             "TEST".to_string(),
-            balances,
-        )
+            NaiveDate::from_ymd_opt(2024, 1, 31).unwrap(),
+            2024,
+            1,
+            "USD".to_string(),
+        );
+
+        // Add assets
+        snapshot.balances.insert(
+            "1100".to_string(),
+            create_test_balance("TEST", "1100", AccountType::Asset, dec!(10000)),
+        );
+
+        // Add liabilities
+        snapshot.balances.insert(
+            "2100".to_string(),
+            create_test_balance("TEST", "2100", AccountType::Liability, dec!(5000)),
+        );
+
+        // Add equity
+        snapshot.balances.insert(
+            "3100".to_string(),
+            create_test_balance("TEST", "3100", AccountType::Equity, dec!(5000)),
+        );
+
+        snapshot.recalculate_totals();
+        snapshot
     }
 
     #[test]
@@ -663,7 +668,7 @@ mod tests {
 
         let tb = generator.generate_from_snapshot(&snapshot, 2024, 1);
 
-        assert!(!tb.category_summaries.is_empty());
+        assert!(!tb.category_summary.is_empty());
     }
 
     #[test]
@@ -671,15 +676,24 @@ mod tests {
         let generator = TrialBalanceGenerator::with_defaults();
 
         let snapshot1 = create_test_snapshot();
-        let mut snapshot2_balances = snapshot1.balances.clone();
-        for balance in snapshot2_balances.values_mut() {
-            balance.closing_balance *= dec!(2);
-        }
-        let snapshot2 = BalanceSnapshot::new(
-            snapshot1.as_of_date,
+        let mut snapshot2 = BalanceSnapshot::new(
+            "SNAP-TEST2-2024-01".to_string(),
             "TEST2".to_string(),
-            snapshot2_balances,
+            snapshot1.as_of_date,
+            2024,
+            1,
+            "USD".to_string(),
         );
+
+        // Copy and double the balances
+        for (code, balance) in &snapshot1.balances {
+            let mut new_bal = balance.clone();
+            new_bal.company_code = "TEST2".to_string();
+            new_bal.closing_balance *= dec!(2);
+            new_bal.opening_balance *= dec!(2);
+            snapshot2.balances.insert(code.clone(), new_bal);
+        }
+        snapshot2.recalculate_totals();
 
         let tb1 = generator.generate_from_snapshot(&snapshot1, 2024, 1);
         let tb2 = generator.generate_from_snapshot(&snapshot2, 2024, 1);

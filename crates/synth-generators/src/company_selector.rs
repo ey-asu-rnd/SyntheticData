@@ -208,15 +208,19 @@ mod tests {
                 code: "1000".to_string(),
                 name: "US HQ".to_string(),
                 volume_weight: 1.0,
-                country: Some("US".to_string()),
-                currency: Some("USD".to_string()),
+                country: "US".to_string(),
+                currency: "USD".to_string(),
+                fiscal_year_variant: "K4".to_string(),
+                annual_transaction_volume: synth_config::TransactionVolume::HundredK,
             },
             CompanyConfig {
                 code: "2000".to_string(),
                 name: "EU Sub".to_string(),
                 volume_weight: 0.5,
-                country: Some("DE".to_string()),
-                currency: Some("EUR".to_string()),
+                country: "DE".to_string(),
+                currency: "EUR".to_string(),
+                fiscal_year_variant: "K4".to_string(),
+                annual_transaction_volume: synth_config::TransactionVolume::HundredK,
             },
         ];
 

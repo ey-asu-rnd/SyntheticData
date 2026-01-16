@@ -635,11 +635,15 @@ impl OpeningBalanceSpecBuilder {
 mod tests {
     use super::*;
     use rand::SeedableRng;
+    use synth_core::models::chart_of_accounts::IndustryType as CoaIndustry;
 
     fn create_test_chart() -> ChartOfAccounts {
         ChartOfAccounts {
+            coa_id: "TEST-COA".to_string(),
+            name: "Test Chart of Accounts".to_string(),
+            country: "US".to_string(),
+            industry: CoaIndustry::Manufacturing,
             accounts: vec![],
-            company_code: "TEST".to_string(),
         }
     }
 
@@ -662,12 +666,11 @@ mod tests {
         );
 
         // Verify balance sheet is balanced
-        assert!(result.snapshot.is_balanced);
+        assert!(result.is_balanced);
 
         // Verify total assets match
-        let totals = result.snapshot.calculate_totals();
         assert!(
-            (totals.total_assets - dec!(1_000_000)).abs() < dec!(1000),
+            (result.total_assets - dec!(1_000_000)).abs() < dec!(1000),
             "Total assets should be close to spec"
         );
     }
@@ -696,14 +699,29 @@ mod tests {
 
     #[test]
     fn test_builder_pattern() {
-        let spec = OpeningBalanceSpecBuilder::new(dec!(5_000_000), IndustryType::Retail)
-            .with_target_ratios(TargetRatios {
-                target_dso_days: 30,
-                target_dpo_days: 45,
-                ..TargetRatios::for_industry(IndustryType::Retail)
-            })
-            .with_account_override("1000".to_string(), dec!(500_000))
-            .build();
+        let as_of = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+        let mut overrides = HashMap::new();
+        overrides.insert(
+            "1000".to_string(),
+            synth_core::models::balance::AccountSpec {
+                amount: dec!(500_000),
+                variance_percent: Decimal::ZERO,
+            },
+        );
+
+        let spec = OpeningBalanceSpecBuilder::new(
+            "TEST",
+            as_of,
+            dec!(5_000_000),
+            IndustryType::Retail,
+        )
+        .with_target_ratios(TargetRatios {
+            target_dso_days: 30,
+            target_dpo_days: 45,
+            ..TargetRatios::for_industry(IndustryType::Retail)
+        })
+        .with_account_overrides(overrides)
+        .build();
 
         assert_eq!(spec.total_assets, dec!(5_000_000));
         assert_eq!(spec.target_ratios.target_dso_days, 30);
