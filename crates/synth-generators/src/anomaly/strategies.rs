@@ -487,10 +487,12 @@ impl InjectionStrategy for BenfordViolationStrategy {
         // Calculate new amount with target first digit
         let original_str = original_amount.to_string();
         let magnitude = original_str.replace('.', "").trim_start_matches('0').len() as i32 - 1;
+        // Limit magnitude to prevent overflow (10^18 is max safe for i64)
+        let safe_magnitude = magnitude.max(0).min(18) as u32;
 
-        let base = Decimal::new(10_i64.pow(magnitude.max(0) as u32), 0);
+        let base = Decimal::new(10_i64.pow(safe_magnitude), 0);
         let new_amount = base * Decimal::new(target_digit as i64, 0)
-            + Decimal::new(rng.gen_range(0..10_i64.pow(magnitude.max(0) as u32)), 0);
+            + Decimal::new(rng.gen_range(0..10_i64.pow(safe_magnitude)), 0);
 
         if line.debit_amount > Decimal::ZERO {
             line.debit_amount = new_amount;

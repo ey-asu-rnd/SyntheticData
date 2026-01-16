@@ -3,5 +3,5 @@
 mod routes;
 mod websocket;
 
-pub use routes::create_router;
+pub use routes::{create_router, create_router_with_cors, CorsConfig};
 pub use websocket::MetricsStream;

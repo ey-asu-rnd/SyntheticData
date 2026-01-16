@@ -11,3 +11,10 @@ pub mod synth {
 
 pub use service::SynthService;
 pub use synth::synthetic_data_service_server::SyntheticDataServiceServer;
+// Re-export proto types for testing
+pub use synth::{
+    BulkGenerateRequest, BulkGenerateResponse, ConfigRequest, ConfigResponse,
+    ControlAction, ControlCommand, ControlResponse, GenerationConfig,
+    HealthResponse, MetricsResponse, StreamDataRequest,
+    synthetic_data_service_server::SyntheticDataService,
+};
