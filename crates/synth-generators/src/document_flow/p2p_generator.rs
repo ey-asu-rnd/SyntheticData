@@ -219,7 +219,7 @@ impl P2PGenerator {
             po_date,
             created_by,
         )
-        .with_payment_terms(&vendor.payment_terms.code());
+        .with_payment_terms(vendor.payment_terms.code());
 
         // Add line items
         for (idx, material) in materials.iter().enumerate() {

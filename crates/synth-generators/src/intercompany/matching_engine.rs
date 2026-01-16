@@ -190,32 +190,28 @@ impl ICMatchingEngine {
             // Look for IC accounts in journal lines
             for line in &entry.lines {
                 // Check for IC receivable accounts (1310xx pattern)
-                if line.account_code.starts_with("1310") {
-                    if let Some(amount) = line.debit_amount {
-                        // Extract counterparty from account code
-                        let counterparty = line.account_code[4..].to_string();
-                        self.add_receivable(
-                            entry.company_code(),
-                            &counterparty,
-                            amount,
-                            entry.header.reference.as_deref(),
-                            entry.posting_date(),
-                        );
-                    }
+                if line.account_code.starts_with("1310") && line.debit_amount > Decimal::ZERO {
+                    // Extract counterparty from account code
+                    let counterparty = line.account_code[4..].to_string();
+                    self.add_receivable(
+                        entry.company_code(),
+                        &counterparty,
+                        line.debit_amount,
+                        entry.header.reference.as_deref(),
+                        entry.posting_date(),
+                    );
                 }
 
                 // Check for IC payable accounts (2110xx pattern)
-                if line.account_code.starts_with("2110") {
-                    if let Some(amount) = line.credit_amount {
-                        let counterparty = line.account_code[4..].to_string();
-                        self.add_payable(
-                            entry.company_code(),
-                            &counterparty,
-                            amount,
-                            entry.header.reference.as_deref(),
-                            entry.posting_date(),
-                        );
-                    }
+                if line.account_code.starts_with("2110") && line.credit_amount > Decimal::ZERO {
+                    let counterparty = line.account_code[4..].to_string();
+                    self.add_payable(
+                        entry.company_code(),
+                        &counterparty,
+                        line.credit_amount,
+                        entry.header.reference.as_deref(),
+                        entry.posting_date(),
+                    );
                 }
             }
         }

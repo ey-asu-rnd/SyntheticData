@@ -112,7 +112,7 @@ impl CurrencyTranslator {
 
             translated_lines.push(TranslatedTrialBalanceLine {
                 account_code: line.account_code.clone(),
-                account_description: line.account_description.clone(),
+                account_description: Some(line.account_description.clone()),
                 account_type: account_type.clone(),
                 local_debit: line.debit_balance,
                 local_credit: line.credit_balance,
@@ -133,12 +133,12 @@ impl CurrencyTranslator {
 
         TranslatedTrialBalance {
             company_code: trial_balance.company_code.clone(),
-            company_name: trial_balance.company_name.clone(),
+            company_name: trial_balance.company_name.clone().unwrap_or_default(),
             local_currency: local_currency.clone(),
             group_currency: self.config.group_currency.clone(),
             period_end_date: period_end,
             fiscal_year: trial_balance.fiscal_year,
-            fiscal_period: trial_balance.fiscal_period,
+            fiscal_period: trial_balance.fiscal_period as u8,
             lines: translated_lines,
             closing_rate,
             average_rate,
