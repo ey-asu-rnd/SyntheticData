@@ -1,6 +1,6 @@
 //! AR Receipt (customer payment) model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -161,7 +161,10 @@ impl ARReceipt {
         self.status = SubledgerDocumentStatus::Reversed;
         self.notes = Some(format!(
             "{}Reversed: {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             reason
         ));
     }
@@ -289,7 +292,12 @@ pub struct ARReceiptBatch {
 
 impl ARReceiptBatch {
     /// Creates a new receipt batch.
-    pub fn new(batch_id: String, company_code: String, batch_date: NaiveDate, created_by: String) -> Self {
+    pub fn new(
+        batch_id: String,
+        company_code: String,
+        batch_date: NaiveDate,
+        created_by: String,
+    ) -> Self {
         Self {
             batch_id,
             company_code,

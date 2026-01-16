@@ -3,7 +3,10 @@
 //! Defines the company code entity which represents a legal entity
 //! or organizational unit within an enterprise group.
 
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+
+use crate::models::intercompany::ConsolidationMethod;
 
 /// Fiscal year variant defining the fiscal calendar.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -242,6 +245,106 @@ impl EnterpriseGroup {
                 }
             })
             .collect()
+    }
+}
+
+/// Company entity for graph building and consolidation.
+///
+/// This is a simplified view of a company entity with ownership and
+/// consolidation attributes for building entity relationship graphs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Company {
+    /// Company code identifier
+    pub company_code: String,
+
+    /// Company name
+    pub company_name: String,
+
+    /// Country code (ISO 3166-1 alpha-2)
+    pub country: String,
+
+    /// Local/functional currency (ISO 4217)
+    pub local_currency: String,
+
+    /// Functional currency for translation
+    pub functional_currency: String,
+
+    /// Is this the parent/holding company
+    pub is_parent: bool,
+
+    /// Parent company code (if subsidiary)
+    pub parent_company: Option<String>,
+
+    /// Ownership percentage (0-100)
+    pub ownership_percentage: Option<Decimal>,
+
+    /// Consolidation method
+    pub consolidation_method: ConsolidationMethod,
+}
+
+impl Company {
+    /// Create a new company entity.
+    pub fn new(
+        company_code: impl Into<String>,
+        company_name: impl Into<String>,
+        country: impl Into<String>,
+        local_currency: impl Into<String>,
+    ) -> Self {
+        let currency = local_currency.into();
+        Self {
+            company_code: company_code.into(),
+            company_name: company_name.into(),
+            country: country.into(),
+            local_currency: currency.clone(),
+            functional_currency: currency,
+            is_parent: false,
+            parent_company: None,
+            ownership_percentage: None,
+            consolidation_method: ConsolidationMethod::Full,
+        }
+    }
+
+    /// Create a parent company.
+    pub fn parent(
+        company_code: impl Into<String>,
+        company_name: impl Into<String>,
+        country: impl Into<String>,
+        currency: impl Into<String>,
+    ) -> Self {
+        let mut company = Self::new(company_code, company_name, country, currency);
+        company.is_parent = true;
+        company
+    }
+
+    /// Create a subsidiary company.
+    pub fn subsidiary(
+        company_code: impl Into<String>,
+        company_name: impl Into<String>,
+        country: impl Into<String>,
+        currency: impl Into<String>,
+        parent_code: impl Into<String>,
+        ownership_pct: Decimal,
+    ) -> Self {
+        let mut company = Self::new(company_code, company_name, country, currency);
+        company.parent_company = Some(parent_code.into());
+        company.ownership_percentage = Some(ownership_pct);
+        company
+    }
+}
+
+impl From<&CompanyCode> for Company {
+    fn from(cc: &CompanyCode) -> Self {
+        Self {
+            company_code: cc.code.clone(),
+            company_name: cc.name.clone(),
+            country: cc.country.clone(),
+            local_currency: cc.currency.clone(),
+            functional_currency: cc.currency.clone(),
+            is_parent: cc.is_group_parent,
+            parent_company: cc.parent_company.clone(),
+            ownership_percentage: None,
+            consolidation_method: ConsolidationMethod::Full,
+        }
     }
 }
 

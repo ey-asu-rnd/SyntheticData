@@ -520,6 +520,73 @@ pub mod rejection_reasons {
     ];
 }
 
+/// Individual approval record for tracking approval relationships.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApprovalRecord {
+    /// Unique approval record ID
+    pub approval_id: String,
+    /// Document being approved
+    pub document_number: String,
+    /// Document type
+    pub document_type: String,
+    /// Company code
+    pub company_code: String,
+    /// Requester's user ID
+    pub requester_id: String,
+    /// Requester's name (optional)
+    pub requester_name: Option<String>,
+    /// Approver's user ID
+    pub approver_id: String,
+    /// Approver's name
+    pub approver_name: String,
+    /// Approval date
+    pub approval_date: chrono::NaiveDate,
+    /// Approval action taken
+    pub action: String,
+    /// Amount being approved
+    pub amount: Decimal,
+    /// Approver's approval limit (if any)
+    pub approval_limit: Option<Decimal>,
+    /// Comments/notes
+    pub comments: Option<String>,
+    /// If delegated, from whom
+    pub delegation_from: Option<String>,
+    /// Whether this was auto-approved
+    pub is_auto_approved: bool,
+}
+
+impl ApprovalRecord {
+    /// Creates a new approval record.
+    pub fn new(
+        document_number: String,
+        approver_id: String,
+        approver_name: String,
+        requester_id: String,
+        approval_date: chrono::NaiveDate,
+        amount: Decimal,
+        action: String,
+        company_code: String,
+    ) -> Self {
+        Self {
+            approval_id: uuid::Uuid::new_v4().to_string(),
+            document_number,
+            document_type: "JE".to_string(),
+            company_code,
+            requester_id,
+            requester_name: None,
+            approver_id,
+            approver_name,
+            approval_date,
+            action,
+            amount,
+            approval_limit: None,
+            comments: None,
+            delegation_from: None,
+            is_auto_approved: false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

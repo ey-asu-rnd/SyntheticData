@@ -241,15 +241,25 @@ impl ARGenerator {
         }
 
         // Generate receipts for older invoices
-        let payment_cutoff = end_date - chrono::Duration::days(self.config.avg_days_to_payment as i64);
+        let payment_cutoff =
+            end_date - chrono::Duration::days(self.config.avg_days_to_payment as i64);
         for invoice in &invoices {
             if invoice.invoice_date <= payment_cutoff {
                 let should_pay: f64 = self.rng.gen();
-                if should_pay < self.config.on_time_payment_rate.to_string().parse().unwrap_or(0.75) {
+                if should_pay
+                    < self
+                        .config
+                        .on_time_payment_rate
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0.75)
+                {
                     let days_to_pay = self.rng.gen_range(
-                        (self.config.avg_days_to_payment / 2)..(self.config.avg_days_to_payment * 2),
+                        (self.config.avg_days_to_payment / 2)
+                            ..(self.config.avg_days_to_payment * 2),
                     );
-                    let receipt_date = invoice.invoice_date + chrono::Duration::days(days_to_pay as i64);
+                    let receipt_date =
+                        invoice.invoice_date + chrono::Duration::days(days_to_pay as i64);
 
                     if receipt_date <= end_date {
                         let (receipt, je) = self.generate_receipt(invoice, receipt_date, None);
@@ -263,7 +273,14 @@ impl ARGenerator {
         // Generate some credit memos
         for invoice in &invoices {
             let should_credit: f64 = self.rng.gen();
-            if should_credit < self.config.credit_memo_rate.to_string().parse().unwrap_or(0.05) {
+            if should_credit
+                < self
+                    .config
+                    .credit_memo_rate
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0.05)
+            {
                 let days_after = self.rng.gen_range(5..30);
                 let memo_date = invoice.invoice_date + chrono::Duration::days(days_after);
 
@@ -296,7 +313,7 @@ impl ARGenerator {
 
     /// Generates invoice journal entry.
     fn generate_invoice_je(&mut self, invoice: &ARInvoice) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", invoice.invoice_number),
             invoice.company_code.clone(),
             invoice.posting_date,
@@ -306,62 +323,31 @@ impl ARGenerator {
         // Debit AR
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "1100".to_string(),
-            account_description: Some("Accounts Receivable".to_string()),
+            gl_account: "1100".to_string(),
             debit_amount: invoice.gross_amount.document_amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(invoice.invoice_number.clone()),
             assignment: Some(invoice.customer_id.clone()),
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Revenue
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "4000".to_string(),
-            account_description: Some("Revenue".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "4000".to_string(),
             credit_amount: invoice.net_amount.document_amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(invoice.invoice_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Tax Payable
         if invoice.tax_amount.document_amount > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: 3,
-                account_code: "2300".to_string(),
-                account_description: Some("Tax Payable".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: "2300".to_string(),
                 credit_amount: invoice.tax_amount.document_amount,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(invoice.invoice_number.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
                 tax_code: Some("VAT".to_string()),
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
@@ -370,7 +356,7 @@ impl ARGenerator {
 
     /// Generates receipt journal entry.
     fn generate_receipt_je(&mut self, receipt: &ARReceipt, currency: &str) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", receipt.receipt_number),
             receipt.company_code.clone(),
             receipt.posting_date,
@@ -380,63 +366,31 @@ impl ARGenerator {
         // Debit Cash
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "1000".to_string(),
-            account_description: Some("Cash".to_string()),
+            gl_account: "1000".to_string(),
             debit_amount: receipt.amount.document_amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(receipt.receipt_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit AR
         let ar_credit = receipt.net_applied + receipt.discount_taken;
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "1100".to_string(),
-            account_description: Some("Accounts Receivable".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "1100".to_string(),
             credit_amount: ar_credit,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(receipt.receipt_number.clone()),
             assignment: Some(receipt.customer_id.clone()),
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Debit Discount Expense if discount taken
         if receipt.discount_taken > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: 3,
-                account_code: "4900".to_string(),
-                account_description: Some("Sales Discounts".to_string()),
+                gl_account: "4900".to_string(),
                 debit_amount: receipt.discount_taken,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(receipt.receipt_number.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
@@ -445,7 +399,7 @@ impl ARGenerator {
 
     /// Generates credit memo journal entry.
     fn generate_credit_memo_je(&mut self, memo: &ARCreditMemo) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", memo.credit_memo_number),
             memo.company_code.clone(),
             memo.posting_date,
@@ -455,63 +409,32 @@ impl ARGenerator {
         // Debit Revenue
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "4000".to_string(),
-            account_description: Some("Revenue".to_string()),
+            gl_account: "4000".to_string(),
             debit_amount: memo.net_amount.document_amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(memo.credit_memo_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Debit Tax
         if memo.tax_amount.document_amount > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: "2300".to_string(),
-                account_description: Some("Tax Payable".to_string()),
+                gl_account: "2300".to_string(),
                 debit_amount: memo.tax_amount.document_amount,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(memo.credit_memo_number.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
                 tax_code: Some("VAT".to_string()),
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
         // Credit AR
         je.add_line(JournalEntryLine {
             line_number: 3,
-            account_code: "1100".to_string(),
-            account_description: Some("Accounts Receivable".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "1100".to_string(),
             credit_amount: memo.gross_amount.document_amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(memo.credit_memo_number.clone()),
             assignment: Some(memo.customer_id.clone()),
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je

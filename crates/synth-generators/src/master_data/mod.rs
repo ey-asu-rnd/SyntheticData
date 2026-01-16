@@ -8,16 +8,16 @@
 //! - Employees (with org hierarchy)
 //! - Entity Registry (central entity management)
 
-mod vendor_generator;
-mod customer_generator;
-mod material_generator;
 mod asset_generator;
+mod customer_generator;
 mod employee_generator;
 mod entity_registry_manager;
+mod material_generator;
+mod vendor_generator;
 
-pub use vendor_generator::*;
-pub use customer_generator::*;
-pub use material_generator::*;
 pub use asset_generator::*;
+pub use customer_generator::*;
 pub use employee_generator::*;
 pub use entity_registry_manager::*;
+pub use material_generator::*;
+pub use vendor_generator::*;

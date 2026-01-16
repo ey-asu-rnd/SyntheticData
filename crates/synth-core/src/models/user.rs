@@ -383,7 +383,9 @@ impl Default for UserPool {
 }
 
 /// Employee job level in the organization hierarchy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum JobLevel {
     /// Individual contributor
@@ -492,6 +494,18 @@ pub enum SystemRole {
     PeriodClose,
     /// System administrator
     Admin,
+    /// AP Accountant
+    ApAccountant,
+    /// AR Accountant
+    ArAccountant,
+    /// Buyer / Procurement
+    Buyer,
+    /// Executive / Management
+    Executive,
+    /// Financial Analyst
+    FinancialAnalyst,
+    /// General Accountant
+    GeneralAccountant,
     /// Custom role with name
     Custom(String),
 }
@@ -634,7 +648,11 @@ impl Employee {
         let last = last_name.into();
         let uid = user_id.into();
         let display_name = format!("{} {}", first, last);
-        let email = format!("{}.{}@company.com", first.to_lowercase(), last.to_lowercase());
+        let email = format!(
+            "{}.{}@company.com",
+            first.to_lowercase(),
+            last.to_lowercase()
+        );
 
         Self {
             employee_id: employee_id.into(),
@@ -811,7 +829,10 @@ impl Employee {
             return false;
         }
         self.authorized_company_codes.is_empty()
-            || self.authorized_company_codes.iter().any(|c| c == company_code)
+            || self
+                .authorized_company_codes
+                .iter()
+                .any(|c| c == company_code)
     }
 
     /// Check if employee has a specific role.

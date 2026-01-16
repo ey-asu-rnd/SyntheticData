@@ -383,6 +383,16 @@ impl GLAccount {
             typical_amount_range: (100.0, 100000.0),
         }
     }
+
+    /// Get account code (alias for account_number).
+    pub fn account_code(&self) -> &str {
+        &self.account_number
+    }
+
+    /// Get description (alias for short_description).
+    pub fn description(&self) -> &str {
+        &self.short_description
+    }
 }
 
 /// Chart of Accounts complexity levels.

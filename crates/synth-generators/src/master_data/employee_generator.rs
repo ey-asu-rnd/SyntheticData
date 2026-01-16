@@ -96,8 +96,12 @@ impl DepartmentDefinition {
                 SystemRole::FinancialAnalyst,
             ],
             transaction_codes: vec![
-                "FB01".to_string(), "FB02".to_string(), "FB03".to_string(),
-                "F-28".to_string(), "F-53".to_string(), "FBL1N".to_string(),
+                "FB01".to_string(),
+                "FB02".to_string(),
+                "FB03".to_string(),
+                "F-28".to_string(),
+                "F-53".to_string(),
+                "FBL1N".to_string(),
             ],
         }
     }
@@ -109,13 +113,13 @@ impl DepartmentDefinition {
             name: "Procurement".to_string(),
             cost_center: format!("CC-{}-PROC", company_code),
             headcount: 10,
-            system_roles: vec![
-                SystemRole::Buyer,
-                SystemRole::ProcurementManager,
-            ],
+            system_roles: vec![SystemRole::Buyer, SystemRole::Approver],
             transaction_codes: vec![
-                "ME21N".to_string(), "ME22N".to_string(), "ME23N".to_string(),
-                "MIGO".to_string(), "ME2M".to_string(),
+                "ME21N".to_string(),
+                "ME22N".to_string(),
+                "ME23N".to_string(),
+                "MIGO".to_string(),
+                "ME2M".to_string(),
             ],
         }
     }
@@ -127,13 +131,13 @@ impl DepartmentDefinition {
             name: "Sales".to_string(),
             cost_center: format!("CC-{}-SALES", company_code),
             headcount: 20,
-            system_roles: vec![
-                SystemRole::SalesRep,
-                SystemRole::SalesManager,
-            ],
+            system_roles: vec![SystemRole::Creator, SystemRole::Approver],
             transaction_codes: vec![
-                "VA01".to_string(), "VA02".to_string(), "VA03".to_string(),
-                "VL01N".to_string(), "VF01".to_string(),
+                "VA01".to_string(),
+                "VA02".to_string(),
+                "VA03".to_string(),
+                "VL01N".to_string(),
+                "VF01".to_string(),
             ],
         }
     }
@@ -145,12 +149,11 @@ impl DepartmentDefinition {
             name: "Warehouse".to_string(),
             cost_center: format!("CC-{}-WH", company_code),
             headcount: 12,
-            system_roles: vec![
-                SystemRole::WarehouseClerk,
-                SystemRole::InventoryManager,
-            ],
+            system_roles: vec![SystemRole::Creator, SystemRole::Viewer],
             transaction_codes: vec![
-                "MIGO".to_string(), "MB51".to_string(), "MMBE".to_string(),
+                "MIGO".to_string(),
+                "MB51".to_string(),
+                "MMBE".to_string(),
                 "LT01".to_string(),
             ],
         }
@@ -163,12 +166,8 @@ impl DepartmentDefinition {
             name: "Information Technology".to_string(),
             cost_center: format!("CC-{}-IT", company_code),
             headcount: 8,
-            system_roles: vec![
-                SystemRole::SystemAdmin,
-            ],
-            transaction_codes: vec![
-                "SU01".to_string(), "PFCG".to_string(), "SM21".to_string(),
-            ],
+            system_roles: vec![SystemRole::Admin],
+            transaction_codes: vec!["SU01".to_string(), "PFCG".to_string(), "SM21".to_string()],
         }
     }
 
@@ -225,6 +224,7 @@ impl EmployeeGenerator {
 
         let name = self.name_generator.generate_name(&mut self.rng);
         let employee_id = format!("EMP-{}-{:06}", company_code, self.employee_counter);
+        let user_id = format!("u{:06}", self.employee_counter);
         let email = self.name_generator.generate_email(&name);
 
         let job_level = self.select_job_level();
@@ -232,18 +232,22 @@ impl EmployeeGenerator {
 
         let mut employee = Employee::new(
             employee_id,
-            name.display_name.clone(),
-            email,
-            job_level,
+            user_id,
+            name.first_name.clone(),
+            name.last_name.clone(),
             company_code.to_string(),
         );
 
+        // Set additional fields
+        employee.email = email;
+        employee.job_level = job_level;
+
         // Set department info
-        employee.department = department.name.clone();
-        employee.cost_center = department.cost_center.clone();
+        employee.department_id = Some(department.name.clone());
+        employee.cost_center = Some(department.cost_center.clone());
 
         // Set dates
-        employee.hire_date = hire_date;
+        employee.hire_date = Some(hire_date);
 
         // Set approval limits based on job level
         employee.approval_limit = approval_limit;
@@ -253,7 +257,11 @@ impl EmployeeGenerator {
         );
         employee.can_approve_po = matches!(
             job_level,
-            JobLevel::Senior | JobLevel::Manager | JobLevel::Director | JobLevel::VicePresident | JobLevel::Executive
+            JobLevel::Senior
+                | JobLevel::Manager
+                | JobLevel::Director
+                | JobLevel::VicePresident
+                | JobLevel::Executive
         );
         employee.can_approve_je = matches!(
             job_level,
@@ -263,24 +271,25 @@ impl EmployeeGenerator {
         // Assign system roles
         if !department.system_roles.is_empty() {
             let role_idx = self.rng.gen_range(0..department.system_roles.len());
-            employee.system_roles.push(department.system_roles[role_idx]);
+            employee
+                .system_roles
+                .push(department.system_roles[role_idx].clone());
         }
 
         // Assign transaction codes
         for tcode in &department.transaction_codes {
             employee.transaction_codes.push(TransactionCodeAuth {
-                code: tcode.clone(),
-                authorized_date: hire_date,
-                expiry_date: None,
+                tcode: tcode.clone(),
+                activity: synth_core::models::ActivityType::Create,
+                active: true,
             });
         }
 
         // Set status
         employee.status = self.select_status();
         if employee.status == EmployeeStatus::Terminated {
-            employee.termination_date = Some(hire_date + chrono::Duration::days(
-                self.rng.gen_range(365..1825) as i64
-            ));
+            employee.termination_date =
+                Some(hire_date + chrono::Duration::days(self.rng.gen_range(365..1825) as i64));
         }
 
         employee
@@ -303,7 +312,11 @@ impl EmployeeGenerator {
         );
         employee.can_approve_po = matches!(
             job_level,
-            JobLevel::Senior | JobLevel::Manager | JobLevel::Director | JobLevel::VicePresident | JobLevel::Executive
+            JobLevel::Senior
+                | JobLevel::Manager
+                | JobLevel::Director
+                | JobLevel::VicePresident
+                | JobLevel::Executive
         );
         employee.can_approve_je = matches!(
             job_level,
@@ -330,21 +343,17 @@ impl EmployeeGenerator {
         } else {
             JobLevel::Manager
         };
-        let hire_date = start_date
-            + chrono::Duration::days(self.rng.gen_range(0..=days_range / 2) as i64);
-        let dept_head = self.generate_employee_with_level(
-            company_code,
-            department,
-            head_level,
-            hire_date,
-        );
+        let hire_date =
+            start_date + chrono::Duration::days(self.rng.gen_range(0..=days_range / 2) as i64);
+        let dept_head =
+            self.generate_employee_with_level(company_code, department, head_level, hire_date);
         let dept_head_id = dept_head.employee_id.clone();
         pool.add_employee(dept_head);
 
         // Generate remaining employees
         for _ in 1..department.headcount {
-            let hire_date = start_date
-                + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
+            let hire_date =
+                start_date + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
             let mut employee = self.generate_employee(company_code, department, hire_date);
 
             // Assign manager (department head)
@@ -353,12 +362,21 @@ impl EmployeeGenerator {
             pool.add_employee(employee);
         }
 
+        // Collect direct reports first to avoid borrow conflict
+        let direct_reports: Vec<String> = pool
+            .employees
+            .iter()
+            .filter(|e| e.manager_id.as_ref() == Some(&dept_head_id))
+            .map(|e| e.employee_id.clone())
+            .collect();
+
         // Update direct reports for department head
-        if let Some(head) = pool.employees.iter_mut().find(|e| e.employee_id == dept_head_id) {
-            head.direct_reports = pool.employees.iter()
-                .filter(|e| e.manager_id.as_ref() == Some(&dept_head_id))
-                .map(|e| e.employee_id.clone())
-                .collect();
+        if let Some(head) = pool
+            .employees
+            .iter_mut()
+            .find(|e| e.employee_id == dept_head_id)
+        {
+            head.direct_reports = direct_reports;
         }
 
         pool
@@ -427,20 +445,23 @@ impl EmployeeGenerator {
 
         let name = self.name_generator.generate_name(&mut self.rng);
         let employee_id = format!("EMP-{}-{:06}", company_code, self.employee_counter);
+        let user_id = format!("exec{:04}", self.employee_counter);
         let email = self.name_generator.generate_email(&name);
 
         let mut employee = Employee::new(
             employee_id,
-            name.display_name.clone(),
-            email,
-            JobLevel::Executive,
+            user_id,
+            name.first_name.clone(),
+            name.last_name.clone(),
             company_code.to_string(),
         );
 
-        employee.title = Some(title.to_string());
-        employee.department = "Executive".to_string();
-        employee.cost_center = format!("CC-{}-EXEC", company_code);
-        employee.hire_date = hire_date;
+        employee.email = email;
+        employee.job_level = JobLevel::Executive;
+        employee.job_title = title.to_string();
+        employee.department_id = Some("Executive".to_string());
+        employee.cost_center = Some(format!("CC-{}-EXEC", company_code));
+        employee.hire_date = Some(hire_date);
         employee.approval_limit = Decimal::from(100_000_000);
         employee.can_approve_pr = true;
         employee.can_approve_po = true;
@@ -526,11 +547,8 @@ mod tests {
     fn test_employee_generation() {
         let mut gen = EmployeeGenerator::new(42);
         let dept = DepartmentDefinition::finance("1000");
-        let employee = gen.generate_employee(
-            "1000",
-            &dept,
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let employee =
+            gen.generate_employee("1000", &dept, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert!(!employee.employee_id.is_empty());
         assert!(!employee.name.is_empty());
@@ -554,7 +572,9 @@ mod tests {
         assert_eq!(pool.employees.len(), dept.headcount);
 
         // Should have at least one manager
-        let managers: Vec<_> = pool.employees.iter()
+        let managers: Vec<_> = pool
+            .employees
+            .iter()
             .filter(|e| matches!(e.job_level, JobLevel::Manager | JobLevel::Director))
             .collect();
         assert!(!managers.is_empty());
@@ -576,13 +596,17 @@ mod tests {
         );
 
         // Should have executives
-        let executives: Vec<_> = pool.employees.iter()
+        let executives: Vec<_> = pool
+            .employees
+            .iter()
             .filter(|e| e.job_level == JobLevel::Executive)
             .collect();
         assert!(executives.len() >= 3); // CEO, CFO, COO
 
         // Executives should have direct reports
-        let cfo = pool.employees.iter()
+        let cfo = pool
+            .employees
+            .iter()
             .find(|e| e.title.as_ref().map_or(false, |t| t == "CFO"));
         assert!(cfo.is_some());
     }
@@ -599,7 +623,9 @@ mod tests {
         );
 
         // Every non-CEO employee should have a manager
-        let non_ceo_without_manager: Vec<_> = pool.employees.iter()
+        let non_ceo_without_manager: Vec<_> = pool
+            .employees
+            .iter()
             .filter(|e| e.title.as_ref().map_or(true, |t| t != "CEO"))
             .filter(|e| e.manager_id.is_none())
             .collect();
@@ -614,16 +640,10 @@ mod tests {
         let mut gen2 = EmployeeGenerator::new(42);
 
         let dept = DepartmentDefinition::finance("1000");
-        let employee1 = gen1.generate_employee(
-            "1000",
-            &dept,
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
-        let employee2 = gen2.generate_employee(
-            "1000",
-            &dept,
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let employee1 =
+            gen1.generate_employee("1000", &dept, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
+        let employee2 =
+            gen2.generate_employee("1000", &dept, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert_eq!(employee1.employee_id, employee2.employee_id);
         assert_eq!(employee1.name, employee2.name);

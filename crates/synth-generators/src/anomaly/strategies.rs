@@ -134,7 +134,8 @@ impl InjectionStrategy for AmountModificationStrategy {
         };
 
         let multiplier = rng.gen_range(self.min_multiplier..self.max_multiplier);
-        let mut new_amount = original_amount * Decimal::from_f64_retain(multiplier).unwrap_or(Decimal::ONE);
+        let mut new_amount =
+            original_amount * Decimal::from_f64_retain(multiplier).unwrap_or(Decimal::ONE);
 
         // Round to nice number if preferred
         if self.prefer_round_numbers {
@@ -210,7 +211,7 @@ impl InjectionStrategy for DateModificationStrategy {
         anomaly_type: &AnomalyType,
         rng: &mut R,
     ) -> InjectionResult {
-        let original_date = entry.posting_date;
+        let original_date = entry.header.posting_date;
 
         let (days_offset, description) = match anomaly_type {
             AnomalyType::Error(ErrorType::BackdatedEntry) => {
@@ -229,8 +230,8 @@ impl InjectionStrategy for DateModificationStrategy {
             }
             AnomalyType::ProcessIssue(ProcessIssueType::LatePosting) => {
                 let days = rng.gen_range(5..=15);
-                entry.entry_date = entry.posting_date; // Entry date stays same
-                entry.posting_date = original_date + chrono::Duration::days(days);
+                entry.header.document_date = entry.header.posting_date; // Document date stays same
+                entry.header.posting_date = original_date + chrono::Duration::days(days);
                 return InjectionResult::success(&format!(
                     "Late posting: {} days after transaction",
                     days
@@ -241,12 +242,12 @@ impl InjectionStrategy for DateModificationStrategy {
         };
 
         if days_offset != 0 {
-            entry.posting_date = original_date + chrono::Duration::days(days_offset);
+            entry.header.posting_date = original_date + chrono::Duration::days(days_offset);
         }
 
         InjectionResult::success(&description)
             .with_metadata("original_date", &original_date.to_string())
-            .with_metadata("new_date", &entry.posting_date.to_string())
+            .with_metadata("new_date", &entry.header.posting_date.to_string())
     }
 }
 
@@ -276,7 +277,12 @@ impl DuplicationStrategy {
         let mut duplicate = entry.clone();
 
         if self.change_doc_number {
-            duplicate.document_number = format!("{}-DUP{}", entry.document_number, rng.gen_range(1..999));
+            // Generate a new UUID for the duplicate
+            duplicate.header.document_id = uuid::Uuid::new_v4();
+            // Update line items to reference the new document ID
+            for line in &mut duplicate.lines {
+                line.document_id = duplicate.header.document_id;
+            }
         }
 
         if self.vary_amounts {
@@ -332,7 +338,8 @@ impl InjectionStrategy for ApprovalAnomalyStrategy {
         match anomaly_type {
             AnomalyType::Fraud(FraudType::JustBelowThreshold) => {
                 // Set total to just below threshold
-                let target = self.approval_threshold - self.threshold_buffer
+                let target = self.approval_threshold
+                    - self.threshold_buffer
                     - Decimal::new(rng.gen_range(1..50), 0);
 
                 let current_total = entry.total_debit();
@@ -422,12 +429,15 @@ impl InjectionStrategy for DescriptionAnomalyStrategy {
         _anomaly_type: &AnomalyType,
         rng: &mut R,
     ) -> InjectionResult {
-        let original = entry.description.clone();
+        let original = entry.description().unwrap_or("").to_string();
         let vague = &self.vague_descriptions[rng.gen_range(0..self.vague_descriptions.len())];
-        entry.description = vague.clone();
+        entry.set_description(vague.clone());
 
-        InjectionResult::success(&format!("Changed description from '{}' to '{}'", original, vague))
-            .with_metadata("original_description", &original)
+        InjectionResult::success(&format!(
+            "Changed description from '{}' to '{}'",
+            original, vague
+        ))
+        .with_metadata("original_description", &original)
     }
 }
 
@@ -528,31 +538,64 @@ impl Default for StrategyCollection {
 }
 
 impl StrategyCollection {
-    /// Gets the appropriate strategy for an anomaly type.
-    pub fn get_strategy(&self, anomaly_type: &AnomalyType) -> &dyn InjectionStrategy {
+    /// Checks if the strategy can be applied to an entry.
+    pub fn can_apply(&self, entry: &JournalEntry, anomaly_type: &AnomalyType) -> bool {
         match anomaly_type {
             AnomalyType::Fraud(FraudType::RoundDollarManipulation)
             | AnomalyType::Statistical(StatisticalAnomalyType::UnusuallyHighAmount)
             | AnomalyType::Statistical(StatisticalAnomalyType::UnusuallyLowAmount) => {
-                &self.amount_modification
+                self.amount_modification.can_apply(entry)
             }
             AnomalyType::Error(ErrorType::BackdatedEntry)
             | AnomalyType::Error(ErrorType::FutureDatedEntry)
             | AnomalyType::Error(ErrorType::WrongPeriod)
             | AnomalyType::ProcessIssue(ProcessIssueType::LatePosting) => {
-                &self.date_modification
+                self.date_modification.can_apply(entry)
             }
             AnomalyType::Fraud(FraudType::JustBelowThreshold)
             | AnomalyType::Fraud(FraudType::ExceededApprovalLimit) => {
-                &self.approval_anomaly
+                self.approval_anomaly.can_apply(entry)
             }
             AnomalyType::ProcessIssue(ProcessIssueType::VagueDescription) => {
-                &self.description_anomaly
+                self.description_anomaly.can_apply(entry)
             }
             AnomalyType::Statistical(StatisticalAnomalyType::BenfordViolation) => {
-                &self.benford_violation
+                self.benford_violation.can_apply(entry)
             }
-            _ => &self.amount_modification, // Default fallback
+            _ => self.amount_modification.can_apply(entry),
+        }
+    }
+
+    /// Applies the appropriate strategy for an anomaly type.
+    pub fn apply_strategy<R: Rng>(
+        &self,
+        entry: &mut JournalEntry,
+        anomaly_type: &AnomalyType,
+        rng: &mut R,
+    ) -> InjectionResult {
+        match anomaly_type {
+            AnomalyType::Fraud(FraudType::RoundDollarManipulation)
+            | AnomalyType::Statistical(StatisticalAnomalyType::UnusuallyHighAmount)
+            | AnomalyType::Statistical(StatisticalAnomalyType::UnusuallyLowAmount) => {
+                self.amount_modification.apply(entry, anomaly_type, rng)
+            }
+            AnomalyType::Error(ErrorType::BackdatedEntry)
+            | AnomalyType::Error(ErrorType::FutureDatedEntry)
+            | AnomalyType::Error(ErrorType::WrongPeriod)
+            | AnomalyType::ProcessIssue(ProcessIssueType::LatePosting) => {
+                self.date_modification.apply(entry, anomaly_type, rng)
+            }
+            AnomalyType::Fraud(FraudType::JustBelowThreshold)
+            | AnomalyType::Fraud(FraudType::ExceededApprovalLimit) => {
+                self.approval_anomaly.apply(entry, anomaly_type, rng)
+            }
+            AnomalyType::ProcessIssue(ProcessIssueType::VagueDescription) => {
+                self.description_anomaly.apply(entry, anomaly_type, rng)
+            }
+            AnomalyType::Statistical(StatisticalAnomalyType::BenfordViolation) => {
+                self.benford_violation.apply(entry, anomaly_type, rng)
+            }
+            _ => self.amount_modification.apply(entry, anomaly_type, rng), // Default fallback
         }
     }
 }
@@ -565,7 +608,7 @@ mod tests {
     use rust_decimal_macros::dec;
 
     fn create_test_entry() -> JournalEntry {
-        let mut entry = JournalEntry::new(
+        let mut entry = JournalEntry::new_simple(
             "JE001".to_string(),
             "1000".to_string(),
             NaiveDate::from_ymd_opt(2024, 6, 15).unwrap(),
@@ -574,40 +617,16 @@ mod tests {
 
         entry.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "5000".to_string(),
-            account_description: Some("Expense".to_string()),
+            gl_account: "5000".to_string(),
             debit_amount: dec!(1000),
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         entry.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "1000".to_string(),
-            account_description: Some("Cash".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "1000".to_string(),
             credit_amount: dec!(1000),
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         entry
@@ -633,7 +652,7 @@ mod tests {
     fn test_date_modification() {
         let strategy = DateModificationStrategy::default();
         let mut entry = create_test_entry();
-        let original_date = entry.posting_date;
+        let original_date = entry.header.posting_date;
         let mut rng = ChaCha8Rng::seed_from_u64(42);
 
         let result = strategy.apply(
@@ -643,7 +662,7 @@ mod tests {
         );
 
         assert!(result.success);
-        assert!(entry.posting_date < original_date);
+        assert!(entry.header.posting_date < original_date);
     }
 
     #[test]
@@ -659,6 +678,7 @@ mod tests {
         );
 
         assert!(result.success);
-        assert!(strategy.vague_descriptions.contains(&entry.description));
+        let desc = entry.description().unwrap_or("").to_string();
+        assert!(strategy.vague_descriptions.contains(&desc));
     }
 }

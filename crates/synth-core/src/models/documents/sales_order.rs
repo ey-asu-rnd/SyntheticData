@@ -36,12 +36,18 @@ pub enum SalesOrderType {
 impl SalesOrderType {
     /// Check if this order type requires delivery.
     pub fn requires_delivery(&self) -> bool {
-        !matches!(self, Self::Service | Self::CreditMemoRequest | Self::DebitMemoRequest)
+        !matches!(
+            self,
+            Self::Service | Self::CreditMemoRequest | Self::DebitMemoRequest
+        )
     }
 
     /// Check if this creates revenue.
     pub fn creates_revenue(&self) -> bool {
-        !matches!(self, Self::FreeOfCharge | Self::Return | Self::CreditMemoRequest)
+        !matches!(
+            self,
+            Self::FreeOfCharge | Self::Return | Self::CreditMemoRequest
+        )
     }
 }
 
@@ -151,7 +157,11 @@ impl SalesOrderItem {
 
     /// Confirm the schedule line.
     pub fn confirm_schedule(&mut self, schedule_number: u16, confirmed_date: NaiveDate) {
-        if let Some(line) = self.schedule_lines.iter_mut().find(|l| l.schedule_number == schedule_number) {
+        if let Some(line) = self
+            .schedule_lines
+            .iter_mut()
+            .find(|l| l.schedule_number == schedule_number)
+        {
             line.confirmed_date = Some(confirmed_date);
             self.quantity_confirmed += line.quantity;
         }
@@ -398,11 +408,15 @@ impl SalesOrder {
 
     /// Recalculate totals.
     pub fn recalculate_totals(&mut self) {
-        self.total_net_amount = self.items.iter()
+        self.total_net_amount = self
+            .items
+            .iter()
             .filter(|i| !i.is_rejected)
             .map(|i| i.base.net_amount)
             .sum();
-        self.total_tax_amount = self.items.iter()
+        self.total_tax_amount = self
+            .items
+            .iter()
             .filter(|i| !i.is_rejected)
             .map(|i| i.base.tax_amount)
             .sum();
@@ -439,12 +453,16 @@ impl SalesOrder {
 
     /// Check if order is complete.
     pub fn check_complete(&mut self) {
-        self.is_complete = self.items.iter().all(|i| i.is_rejected || i.is_fully_invoiced);
+        self.is_complete = self
+            .items
+            .iter()
+            .all(|i| i.is_rejected || i.is_fully_invoiced);
     }
 
     /// Get total open delivery value.
     pub fn open_delivery_value(&self) -> Decimal {
-        self.items.iter()
+        self.items
+            .iter()
             .filter(|i| !i.is_rejected)
             .map(|i| i.open_quantity_delivery() * i.base.unit_price)
             .sum()
@@ -452,7 +470,8 @@ impl SalesOrder {
 
     /// Get total open billing value.
     pub fn open_billing_value(&self) -> Decimal {
-        self.items.iter()
+        self.items
+            .iter()
             .filter(|i| !i.is_rejected)
             .map(|i| i.open_quantity_billing() * i.base.unit_price)
             .sum()
@@ -491,12 +510,7 @@ mod tests {
             "JSMITH",
         );
 
-        let mut item = SalesOrderItem::new(
-            1,
-            "Product A",
-            Decimal::from(10),
-            Decimal::from(100),
-        );
+        let mut item = SalesOrderItem::new(1, "Product A", Decimal::from(10), Decimal::from(100));
         item.add_schedule_line(
             NaiveDate::from_ymd_opt(2024, 1, 20).unwrap(),
             Decimal::from(10),
@@ -510,12 +524,7 @@ mod tests {
 
     #[test]
     fn test_delivery_tracking() {
-        let mut item = SalesOrderItem::new(
-            1,
-            "Product A",
-            Decimal::from(100),
-            Decimal::from(10),
-        );
+        let mut item = SalesOrderItem::new(1, "Product A", Decimal::from(100), Decimal::from(10));
 
         assert_eq!(item.open_quantity_delivery(), Decimal::from(100));
 

@@ -1,6 +1,6 @@
 //! AP Payment Schedule and Forecasting models.
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -130,7 +130,10 @@ impl APAgingReport {
         vendor_details.sort_by(|a, b| b.total_balance.cmp(&a.total_balance));
 
         let total_ap_balance: Decimal = bucket_totals.values().sum();
-        let total_current = bucket_totals.get(&APAgingBucket::Current).copied().unwrap_or_default();
+        let total_current = bucket_totals
+            .get(&APAgingBucket::Current)
+            .copied()
+            .unwrap_or_default();
         let total_overdue = total_ap_balance - total_current;
 
         Self {
@@ -177,10 +180,8 @@ impl VendorAging {
             .into_iter()
             .map(|b| (b, Decimal::ZERO))
             .collect();
-        let mut invoice_counts: HashMap<APAgingBucket, u32> = APAgingBucket::all()
-            .into_iter()
-            .map(|b| (b, 0))
-            .collect();
+        let mut invoice_counts: HashMap<APAgingBucket, u32> =
+            APAgingBucket::all().into_iter().map(|b| (b, 0)).collect();
 
         let mut total_days_weighted = Decimal::ZERO;
         let mut total_balance = Decimal::ZERO;
@@ -277,14 +278,16 @@ impl APCashForecast {
                 Decimal::ZERO
             };
 
-            let entry = daily_map.entry(invoice.due_date).or_insert_with(|| DailyForecast {
-                date: invoice.due_date,
-                amount_due: Decimal::ZERO,
-                invoice_count: 0,
-                discount_available: Decimal::ZERO,
-                vendor_count: 0,
-                vendors: Vec::new(),
-            });
+            let entry = daily_map
+                .entry(invoice.due_date)
+                .or_insert_with(|| DailyForecast {
+                    date: invoice.due_date,
+                    amount_due: Decimal::ZERO,
+                    invoice_count: 0,
+                    discount_available: Decimal::ZERO,
+                    vendor_count: 0,
+                    vendors: Vec::new(),
+                });
 
             entry.amount_due += amount;
             entry.invoice_count += 1;

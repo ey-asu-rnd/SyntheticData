@@ -3,14 +3,12 @@
 //! Maintains real-time account balances as journal entries are processed,
 //! with continuous validation of balance sheet integrity.
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-use synth_core::models::balance::{
-    AccountBalance, AccountType, BalanceChange, BalanceSnapshot,
-};
+use synth_core::models::balance::{AccountBalance, AccountPeriodActivity, AccountType, BalanceSnapshot};
 use synth_core::models::{JournalEntry, JournalEntryLine};
 
 /// Configuration for the balance tracker.
@@ -159,18 +157,18 @@ impl RunningBalanceTracker {
         // Validate entry is balanced first
         if !entry.is_balanced() {
             let error = ValidationError {
-                date: entry.posting_date,
-                company_code: entry.company_code.clone(),
-                entry_id: Some(entry.entry_id.clone()),
+                date: entry.posting_date(),
+                company_code: entry.company_code().to_string(),
+                entry_id: Some(entry.document_number().clone()),
                 error_type: ValidationErrorType::UnbalancedEntry,
                 message: format!(
                     "Entry {} is unbalanced: debits={}, credits={}",
-                    entry.entry_id, entry.total_debit, entry.total_credit
+                    entry.document_number(), entry.total_debit(), entry.total_credit()
                 ),
                 details: {
                     let mut d = HashMap::new();
-                    d.insert("total_debit".to_string(), entry.total_debit);
-                    d.insert("total_credit".to_string(), entry.total_credit);
+                    d.insert("total_debit".to_string(), entry.total_debit());
+                    d.insert("total_credit".to_string(), entry.total_credit());
                     d
                 },
             };
@@ -181,34 +179,92 @@ impl RunningBalanceTracker {
             self.validation_errors.push(error);
         }
 
+        // Extract data we need before mutably borrowing balances
+        let company_code = entry.company_code().to_string();
+        let document_number = entry.document_number().clone();
+        let posting_date = entry.posting_date();
+        let track_history = self.config.track_history;
+
+        // Pre-compute account types for all lines
+        let line_data: Vec<_> = entry.lines.iter()
+            .map(|line| {
+                let account_type = self.determine_account_type(&line.account_code);
+                (line.clone(), account_type)
+            })
+            .collect();
+
         // Get or create company balances
-        let company_balances = self
-            .balances
-            .entry(entry.company_code.clone())
-            .or_default();
+        let company_balances = self.balances.entry(company_code.clone()).or_default();
+
+        // History entries to add
+        let mut history_entries = Vec::new();
 
         // Apply each line
-        for line in &entry.lines {
-            self.apply_line(
-                company_balances,
-                line,
-                &entry.entry_id,
-                entry.posting_date,
-                &entry.company_code,
-            );
+        for (line, account_type) in &line_data {
+            let previous_balance;
+            let new_balance;
+
+            // Get or create account balance
+            let balance = company_balances
+                .entry(line.account_code.clone())
+                .or_insert_with(|| {
+                    AccountBalance::new(
+                        company_code.clone(),
+                        line.account_code.clone(),
+                        *account_type,
+                        "USD".to_string(),
+                        posting_date.year(),
+                        posting_date.month(),
+                    )
+                });
+
+            previous_balance = balance.closing_balance;
+
+            // Apply debit or credit
+            if line.debit_amount > Decimal::ZERO {
+                balance.apply_debit(line.debit_amount);
+            }
+            if line.credit_amount > Decimal::ZERO {
+                balance.apply_credit(line.credit_amount);
+            }
+
+            new_balance = balance.closing_balance;
+
+            // Record history if configured
+            if track_history {
+                let change = line.debit_amount - line.credit_amount;
+                history_entries.push(BalanceHistoryEntry {
+                    date: posting_date,
+                    entry_id: document_number.clone(),
+                    account_code: line.account_code.clone(),
+                    previous_balance,
+                    change,
+                    new_balance,
+                });
+            }
+        }
+
+        // Add history entries after releasing the balances borrow
+        if !history_entries.is_empty() {
+            let hist = self.history.entry(company_code.clone()).or_default();
+            hist.extend(history_entries);
         }
 
         // Update statistics
         self.stats.entries_processed += 1;
         self.stats.lines_processed += entry.lines.len() as u64;
-        self.stats.total_debits += entry.total_debit;
-        self.stats.total_credits += entry.total_credit;
+        self.stats.total_debits += entry.total_debit();
+        self.stats.total_credits += entry.total_credit();
         self.stats.companies_tracked = self.balances.len();
         self.stats.accounts_tracked = self.balances.values().map(|b| b.len()).sum();
 
         // Validate balance sheet if configured
         if self.config.validate_on_each_entry {
-            self.validate_balance_sheet(&entry.company_code, entry.posting_date, Some(&entry.entry_id))?;
+            self.validate_balance_sheet(
+                entry.company_code(),
+                entry.posting_date(),
+                Some(&entry.document_number()),
+            )?;
         }
 
         Ok(())
@@ -245,10 +301,12 @@ impl RunningBalanceTracker {
             .entry(line.account_code.clone())
             .or_insert_with(|| {
                 AccountBalance::new(
-                    line.account_code.clone(),
                     company_code.to_string(),
+                    line.account_code.clone(),
                     account_type,
-                    date,
+                    "USD".to_string(), // Default currency
+                    date.year(),
+                    date.month(),
                 )
             });
 
@@ -370,18 +428,48 @@ impl RunningBalanceTracker {
     }
 
     /// Gets the current snapshot for a company.
-    pub fn get_snapshot(&self, company_code: &str, as_of_date: NaiveDate) -> Option<BalanceSnapshot> {
+    pub fn get_snapshot(
+        &self,
+        company_code: &str,
+        as_of_date: NaiveDate,
+    ) -> Option<BalanceSnapshot> {
+        use chrono::Datelike;
         self.balances.get(company_code).map(|balances| {
-            BalanceSnapshot::new(as_of_date, company_code.to_string(), balances.clone())
+            let mut snapshot = BalanceSnapshot::new(
+                format!("SNAP-{}-{}", company_code, as_of_date),
+                company_code.to_string(),
+                as_of_date,
+                as_of_date.year(),
+                as_of_date.month(),
+                "USD".to_string(),
+            );
+            for (account, balance) in balances {
+                snapshot.balances.insert(account.clone(), balance.clone());
+            }
+            snapshot.recalculate_totals();
+            snapshot
         })
     }
 
     /// Gets snapshots for all companies.
     pub fn get_all_snapshots(&self, as_of_date: NaiveDate) -> Vec<BalanceSnapshot> {
+        use chrono::Datelike;
         self.balances
             .iter()
             .map(|(company_code, balances)| {
-                BalanceSnapshot::new(as_of_date, company_code.clone(), balances.clone())
+                let mut snapshot = BalanceSnapshot::new(
+                    format!("SNAP-{}-{}", company_code, as_of_date),
+                    company_code.clone(),
+                    as_of_date,
+                    as_of_date.year(),
+                    as_of_date.month(),
+                    "USD".to_string(),
+                );
+                for (account, balance) in balances {
+                    snapshot.balances.insert(account.clone(), balance.clone());
+                }
+                snapshot.recalculate_totals();
+                snapshot
             })
             .collect()
     }
@@ -392,17 +480,20 @@ impl RunningBalanceTracker {
         company_code: &str,
         from_date: NaiveDate,
         to_date: NaiveDate,
-    ) -> Vec<BalanceChange> {
+    ) -> Vec<AccountPeriodActivity> {
         let Some(history) = self.history.get(company_code) else {
             return Vec::new();
         };
 
-        let mut changes_by_account: HashMap<String, BalanceChange> = HashMap::new();
+        let mut changes_by_account: HashMap<String, AccountPeriodActivity> = HashMap::new();
 
-        for entry in history.iter().filter(|e| e.date >= from_date && e.date <= to_date) {
+        for entry in history
+            .iter()
+            .filter(|e| e.date >= from_date && e.date <= to_date)
+        {
             let change = changes_by_account
                 .entry(entry.account_code.clone())
-                .or_insert_with(|| BalanceChange {
+                .or_insert_with(|| AccountPeriodActivity {
                     account_code: entry.account_code.clone(),
                     period_start: from_date,
                     period_end: to_date,
@@ -464,10 +555,10 @@ impl RunningBalanceTracker {
     }
 
     /// Rolls forward balances to a new period.
-    pub fn roll_forward(&mut self, new_period_start: NaiveDate) {
+    pub fn roll_forward(&mut self, _new_period_start: NaiveDate) {
         for company_balances in self.balances.values_mut() {
             for balance in company_balances.values_mut() {
-                balance.roll_forward(new_period_start);
+                balance.roll_forward();
             }
         }
     }
@@ -497,7 +588,7 @@ mod tests {
         account2: &str,
         amount: Decimal,
     ) -> JournalEntry {
-        let mut entry = JournalEntry::new(
+        let mut entry = JournalEntry::new_simple(
             "TEST001".to_string(),
             company.to_string(),
             NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
@@ -506,40 +597,16 @@ mod tests {
 
         entry.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: account1.to_string(),
-            account_description: Some("Account 1".to_string()),
+            gl_account: account1.to_string(),
             debit_amount: amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         entry.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: account2.to_string(),
-            account_description: Some("Account 2".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: account2.to_string(),
             credit_amount: amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         entry
@@ -593,25 +660,13 @@ mod tests {
     fn test_determine_account_type_from_prefix() {
         let tracker = RunningBalanceTracker::with_defaults();
 
-        assert_eq!(
-            tracker.determine_account_type("1000"),
-            AccountType::Asset
-        );
+        assert_eq!(tracker.determine_account_type("1000"), AccountType::Asset);
         assert_eq!(
             tracker.determine_account_type("2000"),
             AccountType::Liability
         );
-        assert_eq!(
-            tracker.determine_account_type("3000"),
-            AccountType::Equity
-        );
-        assert_eq!(
-            tracker.determine_account_type("4000"),
-            AccountType::Revenue
-        );
-        assert_eq!(
-            tracker.determine_account_type("5000"),
-            AccountType::Expense
-        );
+        assert_eq!(tracker.determine_account_type("3000"), AccountType::Equity);
+        assert_eq!(tracker.determine_account_type("4000"), AccountType::Revenue);
+        assert_eq!(tracker.determine_account_type("5000"), AccountType::Expense);
     }
 }

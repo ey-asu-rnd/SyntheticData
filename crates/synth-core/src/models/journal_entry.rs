@@ -9,6 +9,8 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::anomaly::FraudType;
+
 /// Source of a journal entry transaction.
 ///
 /// Distinguishes between manual human entries and automated system postings,
@@ -31,34 +33,8 @@ pub enum TransactionSource {
     Statistical,
 }
 
-/// Types of fraud scenarios that can be simulated.
-///
-/// Based on common fraud patterns identified in forensic accounting research
-/// and audit practice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FraudType {
-    /// Round-tripping funds through suspense/clearing accounts
-    SuspenseAccountAbuse,
-    /// Fictitious vendors, customers, or transactions
-    FictitiousTransaction,
-    /// Premature or delayed revenue recognition
-    RevenueManipulation,
-    /// Improperly capitalizing expenses as assets
-    ExpenseCapitalization,
-    /// Splitting transactions to stay below approval thresholds
-    SplitTransaction,
-    /// Unusual timing (weekend, holiday, after-hours postings)
-    TimingAnomaly,
-    /// Posting to unauthorized accounts
-    UnauthorizedAccess,
-    /// Duplicate payment schemes
-    DuplicatePayment,
-    /// Ghost employee schemes
-    GhostEmployee,
-    /// Kickback schemes through vendor manipulation
-    KickbackScheme,
-}
+// Note: FraudType is defined in anomaly.rs and re-exported from mod.rs
+// Use `crate::models::FraudType` for fraud type classification.
 
 /// Business process that originated the transaction.
 ///
@@ -240,7 +216,6 @@ pub struct JournalEntryHeader {
     pub batch_id: Option<Uuid>,
 
     // --- Internal Controls / SOX Compliance Fields ---
-
     /// Internal control IDs that apply to this transaction
     #[serde(default)]
     pub control_ids: Vec<String>,
@@ -352,6 +327,14 @@ pub struct JournalEntryLine {
     /// GL account number
     pub gl_account: String,
 
+    /// Account code (alias for gl_account for compatibility)
+    #[serde(default)]
+    pub account_code: String,
+
+    /// Account description (for display)
+    #[serde(default)]
+    pub account_description: Option<String>,
+
     /// Debit amount in transaction currency (positive or zero)
     pub debit_amount: Decimal,
 
@@ -379,6 +362,18 @@ pub struct JournalEntryLine {
     /// Line item text/description
     pub line_text: Option<String>,
 
+    /// Text field (alias for line_text for compatibility)
+    #[serde(default)]
+    pub text: Option<String>,
+
+    /// Reference field
+    #[serde(default)]
+    pub reference: Option<String>,
+
+    /// Value date (for interest calculations)
+    #[serde(default)]
+    pub value_date: Option<NaiveDate>,
+
     /// Tax code
     pub tax_code: Option<String>,
 
@@ -402,6 +397,14 @@ pub struct JournalEntryLine {
 
     /// Unit of measure
     pub unit_of_measure: Option<String>,
+
+    /// Unit (alias for unit_of_measure for compatibility)
+    #[serde(default)]
+    pub unit: Option<String>,
+
+    /// Project code
+    #[serde(default)]
+    pub project_code: Option<String>,
 }
 
 impl JournalEntryLine {
@@ -410,7 +413,9 @@ impl JournalEntryLine {
         Self {
             document_id,
             line_number,
-            gl_account,
+            gl_account: gl_account.clone(),
+            account_code: gl_account,
+            account_description: None,
             debit_amount: amount,
             credit_amount: Decimal::ZERO,
             local_amount: amount,
@@ -420,6 +425,9 @@ impl JournalEntryLine {
             segment: None,
             functional_area: None,
             line_text: None,
+            text: None,
+            reference: None,
+            value_date: None,
             tax_code: None,
             tax_amount: None,
             assignment: None,
@@ -428,6 +436,8 @@ impl JournalEntryLine {
             trading_partner: None,
             quantity: None,
             unit_of_measure: None,
+            unit: None,
+            project_code: None,
         }
     }
 
@@ -441,7 +451,9 @@ impl JournalEntryLine {
         Self {
             document_id,
             line_number,
-            gl_account,
+            gl_account: gl_account.clone(),
+            account_code: gl_account,
+            account_description: None,
             debit_amount: Decimal::ZERO,
             credit_amount: amount,
             local_amount: -amount,
@@ -451,6 +463,9 @@ impl JournalEntryLine {
             segment: None,
             functional_area: None,
             line_text: None,
+            text: None,
+            reference: None,
+            value_date: None,
             tax_code: None,
             tax_amount: None,
             assignment: None,
@@ -459,6 +474,8 @@ impl JournalEntryLine {
             trading_partner: None,
             quantity: None,
             unit_of_measure: None,
+            unit: None,
+            project_code: None,
         }
     }
 
@@ -475,6 +492,53 @@ impl JournalEntryLine {
     /// Get the signed amount (positive for debit, negative for credit).
     pub fn signed_amount(&self) -> Decimal {
         self.debit_amount - self.credit_amount
+    }
+
+    // Convenience accessors for compatibility
+
+    /// Get the account code (alias for gl_account).
+    pub fn account_code(&self) -> &str {
+        &self.gl_account
+    }
+
+    /// Get the account description (currently returns empty string as not stored).
+    pub fn account_description(&self) -> &str {
+        // Account descriptions are typically looked up from CoA, not stored per line
+        ""
+    }
+}
+
+impl Default for JournalEntryLine {
+    fn default() -> Self {
+        Self {
+            document_id: Uuid::nil(),
+            line_number: 0,
+            gl_account: String::new(),
+            account_code: String::new(),
+            account_description: None,
+            debit_amount: Decimal::ZERO,
+            credit_amount: Decimal::ZERO,
+            local_amount: Decimal::ZERO,
+            group_amount: None,
+            cost_center: None,
+            profit_center: None,
+            segment: None,
+            functional_area: None,
+            line_text: None,
+            text: None,
+            reference: None,
+            value_date: None,
+            tax_code: None,
+            tax_amount: None,
+            assignment: None,
+            offsetting_account: None,
+            is_suspense: false,
+            trading_partner: None,
+            quantity: None,
+            unit_of_measure: None,
+            unit: None,
+            project_code: None,
+        }
     }
 }
 
@@ -493,6 +557,25 @@ pub struct JournalEntry {
 impl JournalEntry {
     /// Create a new journal entry with header and empty lines.
     pub fn new(header: JournalEntryHeader) -> Self {
+        Self {
+            header,
+            lines: Vec::new(),
+        }
+    }
+
+    /// Create a new journal entry with basic parameters (convenience constructor).
+    ///
+    /// This is a simplified constructor for backwards compatibility that creates
+    /// a journal entry with the specified document number, company code, posting date,
+    /// and description.
+    pub fn new_simple(
+        _document_number: String,
+        company_code: String,
+        posting_date: NaiveDate,
+        description: String,
+    ) -> Self {
+        let mut header = JournalEntryHeader::new(company_code, posting_date);
+        header.header_text = Some(description);
         Self {
             header,
             lines: Vec::new(),
@@ -558,6 +641,63 @@ impl JournalEntry {
     /// Check if any line posts to a suspense account.
     pub fn has_suspense_posting(&self) -> bool {
         self.lines.iter().any(|l| l.is_suspense)
+    }
+
+    // Convenience accessors for header fields
+
+    /// Get the company code.
+    pub fn company_code(&self) -> &str {
+        &self.header.company_code
+    }
+
+    /// Get the document number (document_id as string).
+    pub fn document_number(&self) -> String {
+        self.header.document_id.to_string()
+    }
+
+    /// Get the posting date.
+    pub fn posting_date(&self) -> NaiveDate {
+        self.header.posting_date
+    }
+
+    /// Get the document date.
+    pub fn document_date(&self) -> NaiveDate {
+        self.header.document_date
+    }
+
+    /// Get the fiscal year.
+    pub fn fiscal_year(&self) -> u16 {
+        self.header.fiscal_year
+    }
+
+    /// Get the fiscal period.
+    pub fn fiscal_period(&self) -> u8 {
+        self.header.fiscal_period
+    }
+
+    /// Get the currency.
+    pub fn currency(&self) -> &str {
+        &self.header.currency
+    }
+
+    /// Check if this entry is marked as fraud.
+    pub fn is_fraud(&self) -> bool {
+        self.header.is_fraud
+    }
+
+    /// Check if this entry has a SOD violation.
+    pub fn has_sod_violation(&self) -> bool {
+        self.header.sod_violation
+    }
+
+    /// Get the description (header text).
+    pub fn description(&self) -> Option<&str> {
+        self.header.header_text.as_deref()
+    }
+
+    /// Set the description (header text).
+    pub fn set_description(&mut self, description: String) {
+        self.header.header_text = Some(description);
     }
 }
 

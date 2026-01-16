@@ -453,7 +453,7 @@ pub struct JournalEntrySources {
 mod tests {
     use super::*;
     use synth_core::models::{
-        Customer, CreditRating, CustomerPaymentBehavior, Material, MaterialType, Vendor,
+        CreditRating, Customer, CustomerPaymentBehavior, Material, MaterialType, Vendor,
     };
 
     fn create_test_pools() -> (VendorPool, CustomerPool, MaterialPool) {
@@ -468,11 +468,8 @@ mod tests {
 
         let mut customers = CustomerPool::new();
         for i in 1..=5 {
-            let mut customer = Customer::new(
-                format!("C-{:06}", i),
-                format!("Customer {}", i),
-                "1000",
-            );
+            let mut customer =
+                Customer::new(format!("C-{:06}", i), format!("Customer {}", i), "1000");
             customer.credit_rating = CreditRating::A;
             customer.credit_limit = rust_decimal::Decimal::from(1_000_000);
             customer.payment_behavior = CustomerPaymentBehavior::OnTime;

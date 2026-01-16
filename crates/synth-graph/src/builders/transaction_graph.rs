@@ -96,16 +96,16 @@ impl TransactionGraphBuilder {
         // Create edges from debit accounts to credit accounts
         for debit in &debits {
             let source_id = self.get_or_create_account_node(
-                &debit.account_code,
-                debit.account_description.as_deref().unwrap_or(""),
-                &entry.company_code,
+                debit.account_code(),
+                debit.account_description(),
+                entry.company_code(),
             );
 
             for credit in &credits {
                 let target_id = self.get_or_create_account_node(
-                    &credit.account_code,
-                    credit.account_description.as_deref().unwrap_or(""),
-                    &entry.company_code,
+                    credit.account_code(),
+                    credit.account_description(),
+                    entry.company_code(),
                 );
 
                 // Calculate edge weight (proportional allocation)
@@ -128,12 +128,12 @@ impl TransactionGraphBuilder {
                         0,
                         source_id,
                         target_id,
-                        entry.document_number.clone(),
-                        entry.posting_date,
+                        entry.document_number(),
+                        entry.posting_date(),
                         edge_amount,
                         true,
                     );
-                    tx_edge.company_code = entry.company_code.clone();
+                    tx_edge.company_code = entry.company_code().to_string();
                     tx_edge.cost_center = debit.cost_center.clone();
                     tx_edge.compute_features();
 
@@ -146,14 +146,15 @@ impl TransactionGraphBuilder {
     /// Adds journal entry with document nodes.
     fn add_journal_entry_with_document(&mut self, entry: &JournalEntry) {
         // Create or get document node
-        let doc_id = self.get_or_create_document_node(&entry.document_number, &entry.company_code);
+        let doc_id =
+            self.get_or_create_document_node(&entry.document_number(), entry.company_code());
 
         // Create edges from document to each account
         for line in &entry.lines {
             let account_id = self.get_or_create_account_node(
-                &line.account_code,
-                line.account_description.as_deref().unwrap_or(""),
-                &entry.company_code,
+                line.account_code(),
+                line.account_description(),
+                entry.company_code(),
             );
 
             let is_debit = line.debit_amount > Decimal::ZERO;
@@ -167,12 +168,12 @@ impl TransactionGraphBuilder {
                 0,
                 doc_id,
                 account_id,
-                entry.document_number.clone(),
-                entry.posting_date,
+                entry.document_number(),
+                entry.posting_date(),
                 amount,
                 is_debit,
             );
-            tx_edge.company_code = entry.company_code.clone();
+            tx_edge.company_code = entry.company_code().to_string();
             tx_edge.cost_center = line.cost_center.clone();
             tx_edge.compute_features();
 
@@ -243,17 +244,17 @@ impl TransactionGraphBuilder {
             target,
             total_weight: 0.0,
             count: 0,
-            first_date: entry.posting_date,
-            last_date: entry.posting_date,
+            first_date: entry.posting_date(),
+            last_date: entry.posting_date(),
         });
 
         agg.total_weight += weight;
         agg.count += 1;
-        if entry.posting_date < agg.first_date {
-            agg.first_date = entry.posting_date;
+        if entry.posting_date() < agg.first_date {
+            agg.first_date = entry.posting_date();
         }
-        if entry.posting_date > agg.last_date {
-            agg.last_date = entry.posting_date;
+        if entry.posting_date() > agg.last_date {
+            agg.last_date = entry.posting_date();
         }
     }
 
@@ -344,50 +345,28 @@ mod tests {
     use synth_core::models::JournalEntryLine;
 
     fn create_test_entry() -> JournalEntry {
-        let mut entry = JournalEntry::new(
+        let mut entry = JournalEntry::new_simple(
             "JE001".to_string(),
             "1000".to_string(),
             chrono::NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
             "Test Entry".to_string(),
         );
 
-        entry.add_line(JournalEntryLine {
-            line_number: 1,
-            account_code: "1000".to_string(),
-            account_description: Some("Cash".to_string()),
-            debit_amount: dec!(1000),
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
-        });
+        let doc_id = entry.header.document_id;
 
-        entry.add_line(JournalEntryLine {
-            line_number: 2,
-            account_code: "4000".to_string(),
-            account_description: Some("Revenue".to_string()),
-            debit_amount: Decimal::ZERO,
-            credit_amount: dec!(1000),
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
-        });
+        entry.add_line(JournalEntryLine::debit(
+            doc_id,
+            1,
+            "1000".to_string(),
+            dec!(1000),
+        ));
+
+        entry.add_line(JournalEntryLine::credit(
+            doc_id,
+            2,
+            "4000".to_string(),
+            dec!(1000),
+        ));
 
         entry
     }

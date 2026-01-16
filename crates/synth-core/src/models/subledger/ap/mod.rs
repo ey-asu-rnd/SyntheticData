@@ -6,12 +6,12 @@
 //! - Debit memos
 //! - Payment schedules and forecasts
 
+mod debit_memo;
 mod invoice;
 mod payment;
-mod debit_memo;
 mod schedule;
 
+pub use debit_memo::*;
 pub use invoice::*;
 pub use payment::*;
-pub use debit_memo::*;
 pub use schedule::*;

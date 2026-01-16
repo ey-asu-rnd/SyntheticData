@@ -1,6 +1,6 @@
 //! Fixed Asset model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -158,7 +158,11 @@ impl FixedAssetRecord {
         self.accumulated_depreciation += amount;
         self.net_book_value = self.acquisition_cost - self.accumulated_depreciation;
 
-        if let Some(area) = self.depreciation_areas.iter_mut().find(|a| a.area_type == area_type) {
+        if let Some(area) = self
+            .depreciation_areas
+            .iter_mut()
+            .find(|a| a.area_type == area_type)
+        {
             area.accumulated_depreciation += amount;
             area.net_book_value = area.acquisition_cost - area.accumulated_depreciation;
         }
@@ -213,12 +217,48 @@ impl FixedAssetRecord {
         self
     }
 
+    // === Backward compatibility accessor methods ===
+
+    /// Gets asset_id (alias for asset_number).
+    pub fn asset_id(&self) -> &str {
+        &self.asset_number
+    }
+
+    /// Gets current acquisition cost (alias for acquisition_cost).
+    pub fn current_acquisition_cost(&self) -> Decimal {
+        self.acquisition_cost
+    }
+
+    /// Gets salvage value from the first depreciation area.
+    pub fn salvage_value(&self) -> Decimal {
+        self.depreciation_areas
+            .first()
+            .map(|a| a.salvage_value)
+            .unwrap_or(Decimal::ZERO)
+    }
+
+    /// Gets useful life in months from the first depreciation area.
+    pub fn useful_life_months(&self) -> u32 {
+        self.depreciation_areas
+            .first()
+            .map(|a| a.useful_life_months)
+            .unwrap_or(0)
+    }
+
+    /// Gets accumulated depreciation account from account determination.
+    pub fn accumulated_depreciation_account(&self) -> &str {
+        &self.account_determination.depreciation_account
+    }
+
     /// Marks as inactive (retired).
     pub fn retire(&mut self, retirement_date: NaiveDate) {
         self.status = AssetStatus::Retired;
         self.notes = Some(format!(
             "{}Retired on {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             retirement_date
         ));
         self.modified_at = Some(Utc::now());
@@ -236,20 +276,32 @@ pub enum AssetClass {
     BuildingImprovements,
     /// Machinery and equipment.
     MachineryEquipment,
+    /// Machinery (alias for MachineryEquipment).
+    Machinery,
     /// Vehicles.
     Vehicles,
     /// Office equipment.
     OfficeEquipment,
     /// Computer equipment.
     ComputerEquipment,
+    /// IT Equipment (alias for ComputerEquipment).
+    ItEquipment,
+    /// Computer hardware (alias for ComputerEquipment).
+    ComputerHardware,
     /// Software.
     Software,
+    /// Intangibles (alias for Software).
+    Intangibles,
     /// Furniture and fixtures.
     FurnitureFixtures,
+    /// Furniture (alias for FurnitureFixtures).
+    Furniture,
     /// Leasehold improvements.
     LeaseholdImprovements,
     /// Construction in progress.
     ConstructionInProgress,
+    /// Low value assets.
+    LowValueAssets,
     /// Other.
     Other,
 }
@@ -261,14 +313,15 @@ impl AssetClass {
             AssetClass::Land => 0, // Land doesn't depreciate
             AssetClass::Buildings => 39,
             AssetClass::BuildingImprovements => 15,
-            AssetClass::MachineryEquipment => 7,
+            AssetClass::MachineryEquipment | AssetClass::Machinery => 7,
             AssetClass::Vehicles => 5,
             AssetClass::OfficeEquipment => 7,
-            AssetClass::ComputerEquipment => 5,
-            AssetClass::Software => 3,
-            AssetClass::FurnitureFixtures => 7,
+            AssetClass::ComputerEquipment | AssetClass::ItEquipment | AssetClass::ComputerHardware => 5,
+            AssetClass::Software | AssetClass::Intangibles => 3,
+            AssetClass::FurnitureFixtures | AssetClass::Furniture => 7,
             AssetClass::LeaseholdImprovements => 10,
             AssetClass::ConstructionInProgress => 0, // CIP doesn't depreciate
+            AssetClass::LowValueAssets => 1, // Typically expensed immediately
             AssetClass::Other => 7,
         }
     }
@@ -277,8 +330,15 @@ impl AssetClass {
     pub fn default_depreciation_method(&self) -> DepreciationMethod {
         match self {
             AssetClass::Land | AssetClass::ConstructionInProgress => DepreciationMethod::None,
-            AssetClass::ComputerEquipment | AssetClass::Software => DepreciationMethod::StraightLine,
-            AssetClass::Vehicles | AssetClass::MachineryEquipment => DepreciationMethod::DecliningBalance { rate: dec!(0.40) },
+            AssetClass::ComputerEquipment
+            | AssetClass::ItEquipment
+            | AssetClass::ComputerHardware
+            | AssetClass::Software
+            | AssetClass::Intangibles => DepreciationMethod::StraightLine,
+            AssetClass::Vehicles | AssetClass::MachineryEquipment | AssetClass::Machinery => {
+                DepreciationMethod::DecliningBalance { rate: dec!(0.40) }
+            }
+            AssetClass::LowValueAssets => DepreciationMethod::StraightLine,
             _ => DepreciationMethod::StraightLine,
         }
     }
@@ -362,7 +422,8 @@ impl DepreciationArea {
 
     /// Gets remaining useful life in months.
     pub fn remaining_life_months(&self) -> u32 {
-        self.useful_life_months.saturating_sub(self.periods_completed)
+        self.useful_life_months
+            .saturating_sub(self.periods_completed)
     }
 
     /// Checks if fully depreciated.
@@ -396,7 +457,8 @@ impl DepreciationArea {
                 let total_years = self.useful_life_months / 12;
                 let sum_of_years = (total_years * (total_years + 1)) / 2;
                 if sum_of_years > 0 {
-                    let annual = depreciable_base * Decimal::from(remaining_years) / Decimal::from(sum_of_years);
+                    let annual = depreciable_base * Decimal::from(remaining_years)
+                        / Decimal::from(sum_of_years);
                     (annual / dec!(12)).round_dp(2)
                 } else {
                     Decimal::ZERO
@@ -461,10 +523,14 @@ pub struct AssetAccountDetermination {
     pub accumulated_depreciation_account: String,
     /// Depreciation expense account.
     pub depreciation_expense_account: String,
+    /// Depreciation account (alias for accumulated_depreciation_account).
+    pub depreciation_account: String,
     /// Gain on disposal account.
     pub gain_on_disposal_account: String,
     /// Loss on disposal account.
     pub loss_on_disposal_account: String,
+    /// Gain/loss account (combined, for backward compatibility).
+    pub gain_loss_account: String,
     /// Clearing account (for acquisitions).
     pub clearing_account: String,
 }
@@ -476,23 +542,28 @@ impl AssetAccountDetermination {
             AssetClass::Land => "1510",
             AssetClass::Buildings => "1520",
             AssetClass::BuildingImprovements => "1525",
-            AssetClass::MachineryEquipment => "1530",
+            AssetClass::MachineryEquipment | AssetClass::Machinery => "1530",
             AssetClass::Vehicles => "1540",
             AssetClass::OfficeEquipment => "1550",
-            AssetClass::ComputerEquipment => "1555",
-            AssetClass::Software => "1560",
-            AssetClass::FurnitureFixtures => "1570",
+            AssetClass::ComputerEquipment | AssetClass::ItEquipment | AssetClass::ComputerHardware => "1555",
+            AssetClass::Software | AssetClass::Intangibles => "1560",
+            AssetClass::FurnitureFixtures | AssetClass::Furniture => "1570",
             AssetClass::LeaseholdImprovements => "1580",
             AssetClass::ConstructionInProgress => "1600",
+            AssetClass::LowValueAssets => "1595",
             AssetClass::Other => "1590",
         };
 
+        let depreciation_account = format!("{}9", &prefix[..3]);
+
         Self {
-            acquisition_account: format!("{}", prefix),
-            accumulated_depreciation_account: format!("{}9", &prefix[..3]),
+            acquisition_account: prefix.to_string(),
+            accumulated_depreciation_account: depreciation_account.clone(),
             depreciation_expense_account: "7100".to_string(),
+            depreciation_account,
             gain_on_disposal_account: "4900".to_string(),
             loss_on_disposal_account: "7900".to_string(),
+            gain_loss_account: "4900".to_string(),
             clearing_account: "1599".to_string(),
         }
     }

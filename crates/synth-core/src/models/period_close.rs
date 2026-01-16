@@ -525,9 +525,10 @@ impl CloseSchedule {
             CloseTask::PostRetainedEarningsRollforward,
             next_seq + 2,
         ));
-        schedule
-            .tasks
-            .push(ScheduledCloseTask::new(CloseTask::GenerateFinancialStatements, next_seq + 3));
+        schedule.tasks.push(ScheduledCloseTask::new(
+            CloseTask::GenerateFinancialStatements,
+            next_seq + 3,
+        ));
 
         schedule
     }
@@ -686,7 +687,8 @@ impl TaxProvisionResult {
         let current_tax = (taxable_income * input.statutory_rate / dec!(100)).round_dp(2);
         let deferred_tax = (temporary_diff * input.statutory_rate / dec!(100)).round_dp(2);
 
-        let total_tax = current_tax + deferred_tax - input.tax_credits + input.prior_year_adjustment;
+        let total_tax =
+            current_tax + deferred_tax - input.tax_credits + input.prior_year_adjustment;
 
         let effective_rate = if input.pretax_income != Decimal::ZERO {
             (total_tax / input.pretax_income * dec!(100)).round_dp(2)
@@ -783,8 +785,14 @@ mod tests {
     #[test]
     fn test_fiscal_period_monthly() {
         let period = FiscalPeriod::monthly(2024, 1);
-        assert_eq!(period.start_date, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
-        assert_eq!(period.end_date, NaiveDate::from_ymd_opt(2024, 1, 31).unwrap());
+        assert_eq!(
+            period.start_date,
+            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap()
+        );
+        assert_eq!(
+            period.end_date,
+            NaiveDate::from_ymd_opt(2024, 1, 31).unwrap()
+        );
         assert_eq!(period.days(), 31);
         assert!(!period.is_year_end);
 

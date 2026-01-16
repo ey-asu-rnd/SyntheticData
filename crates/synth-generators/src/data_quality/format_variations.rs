@@ -272,7 +272,10 @@ impl IdentifierFormat {
                     format!("{:>width$}", id, width = len)
                 }
             }
-            IdentifierFormat::WithSeparator { separator, interval } => {
+            IdentifierFormat::WithSeparator {
+                separator,
+                interval,
+            } => {
                 let mut result = String::new();
                 for (i, c) in id.chars().enumerate() {
                     if i > 0 && i % interval == 0 {
@@ -316,29 +319,27 @@ impl TextFormat {
             TextFormat::Original => text.to_string(),
             TextFormat::Upper => text.to_uppercase(),
             TextFormat::Lower => text.to_lowercase(),
-            TextFormat::Title => {
-                text.split_whitespace()
-                    .map(|word| {
-                        let mut chars = word.chars();
-                        match chars.next() {
-                            None => String::new(),
-                            Some(first) => {
-                                first.to_uppercase().to_string() + chars.as_str().to_lowercase().as_str()
-                            }
+            TextFormat::Title => text
+                .split_whitespace()
+                .map(|word| {
+                    let mut chars = word.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => {
+                            first.to_uppercase().to_string()
+                                + chars.as_str().to_lowercase().as_str()
                         }
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            }
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" "),
             TextFormat::LeadingWhitespace(n) => {
                 format!("{}{}", " ".repeat(*n), text)
             }
             TextFormat::TrailingWhitespace(n) => {
                 format!("{}{}", text, " ".repeat(*n))
             }
-            TextFormat::ExtraSpaces => {
-                text.split_whitespace().collect::<Vec<_>>().join("  ")
-            }
+            TextFormat::ExtraSpaces => text.split_whitespace().collect::<Vec<_>>().join("  "),
             TextFormat::Trimmed => text.trim().to_string(),
             TextFormat::NonBreakingSpaces => text.replace(' ', "\u{00A0}"),
         }

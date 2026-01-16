@@ -78,7 +78,7 @@ impl CurrencyTranslator {
         historical_rates: &HashMap<String, Decimal>,
     ) -> TranslatedTrialBalance {
         let local_currency = &trial_balance.currency;
-        let period_end = trial_balance.period_end_date;
+        let period_end = trial_balance.as_of_date;
 
         // Get closing and average rates
         let closing_rate = rate_table
@@ -112,7 +112,7 @@ impl CurrencyTranslator {
 
             translated_lines.push(TranslatedTrialBalanceLine {
                 account_code: line.account_code.clone(),
-                account_description: line.account_description.clone(),
+                account_description: Some(line.account_description.clone()),
                 account_type: account_type.clone(),
                 local_debit: line.debit_balance,
                 local_credit: line.credit_balance,
@@ -133,12 +133,12 @@ impl CurrencyTranslator {
 
         TranslatedTrialBalance {
             company_code: trial_balance.company_code.clone(),
-            company_name: trial_balance.company_name.clone(),
+            company_name: trial_balance.company_name.clone().unwrap_or_default(),
             local_currency: local_currency.clone(),
             group_currency: self.config.group_currency.clone(),
             period_end_date: period_end,
             fiscal_year: trial_balance.fiscal_year,
-            fiscal_period: trial_balance.fiscal_period,
+            fiscal_period: trial_balance.fiscal_period as u8,
             lines: translated_lines,
             closing_rate,
             average_rate,
@@ -161,16 +161,14 @@ impl CurrencyTranslator {
         date: NaiveDate,
     ) -> TranslatedAmount {
         let (rate, rate_type) = match account_type {
-            TranslationAccountType::Asset
-            | TranslationAccountType::Liability => {
+            TranslationAccountType::Asset | TranslationAccountType::Liability => {
                 let rate = rate_table
                     .get_closing_rate(local_currency, &self.config.group_currency, date)
                     .map(|r| r.rate)
                     .unwrap_or(Decimal::ONE);
                 (rate, RateType::Closing)
             }
-            TranslationAccountType::Revenue
-            | TranslationAccountType::Expense => {
+            TranslationAccountType::Revenue | TranslationAccountType::Expense => {
                 let rate = rate_table
                     .get_average_rate(local_currency, &self.config.group_currency, date)
                     .map(|r| r.rate)
@@ -202,7 +200,11 @@ impl CurrencyTranslator {
     /// Determines the account type based on account code.
     fn determine_account_type(&self, account_code: &str) -> TranslationAccountType {
         // Check for specific accounts first
-        if self.config.historical_rate_accounts.contains(&account_code.to_string()) {
+        if self
+            .config
+            .historical_rate_accounts
+            .contains(&account_code.to_string())
+        {
             if account_code.starts_with("31") {
                 return TranslationAccountType::CommonStock;
             } else if account_code.starts_with("32") {
@@ -237,10 +239,12 @@ impl CurrencyTranslator {
         match self.config.method {
             TranslationMethod::CurrentRate => {
                 match account_type {
-                    TranslationAccountType::Asset
-                    | TranslationAccountType::Liability => closing_rate,
-                    TranslationAccountType::Revenue
-                    | TranslationAccountType::Expense => average_rate,
+                    TranslationAccountType::Asset | TranslationAccountType::Liability => {
+                        closing_rate
+                    }
+                    TranslationAccountType::Revenue | TranslationAccountType::Expense => {
+                        average_rate
+                    }
                     TranslationAccountType::CommonStock
                     | TranslationAccountType::AdditionalPaidInCapital => {
                         // Use historical rate if available
@@ -249,8 +253,7 @@ impl CurrencyTranslator {
                             .copied()
                             .unwrap_or(closing_rate)
                     }
-                    TranslationAccountType::Equity
-                    | TranslationAccountType::RetainedEarnings => {
+                    TranslationAccountType::Equity | TranslationAccountType::RetainedEarnings => {
                         // These are typically calculated separately
                         closing_rate
                     }
@@ -411,50 +414,82 @@ impl TranslatedTrialBalanceLine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use synth_core::models::balance::TrialBalanceLine;
+    use synth_core::models::balance::{TrialBalanceLine, TrialBalanceType, AccountCategory, AccountType};
     use synth_core::models::FxRate;
 
     fn create_test_trial_balance() -> TrialBalance {
-        TrialBalance {
-            company_code: "1200".to_string(),
-            company_name: "Test Subsidiary".to_string(),
-            currency: "EUR".to_string(),
-            period_end_date: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
-            fiscal_year: 2024,
-            fiscal_period: 12,
-            lines: vec![
-                TrialBalanceLine {
-                    account_code: "1000".to_string(),
-                    account_description: Some("Cash".to_string()),
-                    debit_balance: dec!(100000),
-                    credit_balance: Decimal::ZERO,
-                    account_category: None,
-                },
-                TrialBalanceLine {
-                    account_code: "2000".to_string(),
-                    account_description: Some("Accounts Payable".to_string()),
-                    debit_balance: Decimal::ZERO,
-                    credit_balance: dec!(50000),
-                    account_category: None,
-                },
-                TrialBalanceLine {
-                    account_code: "4000".to_string(),
-                    account_description: Some("Revenue".to_string()),
-                    debit_balance: Decimal::ZERO,
-                    credit_balance: dec!(150000),
-                    account_category: None,
-                },
-                TrialBalanceLine {
-                    account_code: "5000".to_string(),
-                    account_description: Some("Expenses".to_string()),
-                    debit_balance: dec!(100000),
-                    credit_balance: Decimal::ZERO,
-                    account_category: None,
-                },
-            ],
-            total_debits: dec!(200000),
-            total_credits: dec!(200000),
-        }
+        let mut tb = TrialBalance::new(
+            "TB-TEST-2024-12".to_string(),
+            "1200".to_string(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            2024,
+            12,
+            "EUR".to_string(),
+            TrialBalanceType::PostClosing,
+        );
+        tb.company_name = Some("Test Subsidiary".to_string());
+
+        tb.add_line(TrialBalanceLine {
+            account_code: "1000".to_string(),
+            account_description: "Cash".to_string(),
+            category: AccountCategory::CurrentAssets,
+            account_type: AccountType::Asset,
+            opening_balance: Decimal::ZERO,
+            period_debits: dec!(100000),
+            period_credits: Decimal::ZERO,
+            closing_balance: dec!(100000),
+            debit_balance: dec!(100000),
+            credit_balance: Decimal::ZERO,
+            cost_center: None,
+            profit_center: None,
+        });
+
+        tb.add_line(TrialBalanceLine {
+            account_code: "2000".to_string(),
+            account_description: "Accounts Payable".to_string(),
+            category: AccountCategory::CurrentLiabilities,
+            account_type: AccountType::Liability,
+            opening_balance: Decimal::ZERO,
+            period_debits: Decimal::ZERO,
+            period_credits: dec!(50000),
+            closing_balance: dec!(50000),
+            debit_balance: Decimal::ZERO,
+            credit_balance: dec!(50000),
+            cost_center: None,
+            profit_center: None,
+        });
+
+        tb.add_line(TrialBalanceLine {
+            account_code: "4000".to_string(),
+            account_description: "Revenue".to_string(),
+            category: AccountCategory::Revenue,
+            account_type: AccountType::Revenue,
+            opening_balance: Decimal::ZERO,
+            period_debits: Decimal::ZERO,
+            period_credits: dec!(150000),
+            closing_balance: dec!(150000),
+            debit_balance: Decimal::ZERO,
+            credit_balance: dec!(150000),
+            cost_center: None,
+            profit_center: None,
+        });
+
+        tb.add_line(TrialBalanceLine {
+            account_code: "5000".to_string(),
+            account_description: "Expenses".to_string(),
+            category: AccountCategory::OperatingExpenses,
+            account_type: AccountType::Expense,
+            opening_balance: Decimal::ZERO,
+            period_debits: dec!(100000),
+            period_credits: Decimal::ZERO,
+            closing_balance: dec!(100000),
+            debit_balance: dec!(100000),
+            credit_balance: Decimal::ZERO,
+            cost_center: None,
+            profit_center: None,
+        });
+
+        tb
     }
 
     #[test]
@@ -481,7 +516,8 @@ mod tests {
         ));
 
         let historical_rates = HashMap::new();
-        let translated = translator.translate_trial_balance(&trial_balance, &rate_table, &historical_rates);
+        let translated =
+            translator.translate_trial_balance(&trial_balance, &rate_table, &historical_rates);
 
         assert!(translated.is_local_balanced());
         assert_eq!(translated.closing_rate, dec!(1.10));

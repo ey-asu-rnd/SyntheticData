@@ -1,6 +1,6 @@
 //! Common types shared across all subledgers.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -109,7 +109,12 @@ impl TaxInfo {
     }
 
     /// Creates tax info with explicit tax amount.
-    pub fn with_amount(tax_code: String, tax_rate: Decimal, tax_base: Decimal, tax_amount: Decimal) -> Self {
+    pub fn with_amount(
+        tax_code: String,
+        tax_rate: Decimal,
+        tax_base: Decimal,
+        tax_amount: Decimal,
+    ) -> Self {
         Self {
             tax_code,
             tax_rate,
@@ -208,8 +213,15 @@ impl PaymentTerms {
     }
 
     /// Calculates discount amount for a given base amount.
-    pub fn calculate_discount(&self, base_amount: Decimal, payment_date: NaiveDate, baseline_date: NaiveDate) -> Decimal {
-        if let (Some(discount_percent), Some(discount_days)) = (self.discount_percent, self.discount_days) {
+    pub fn calculate_discount(
+        &self,
+        base_amount: Decimal,
+        payment_date: NaiveDate,
+        baseline_date: NaiveDate,
+    ) -> Decimal {
+        if let (Some(discount_percent), Some(discount_days)) =
+            (self.discount_percent, self.discount_days)
+        {
             let discount_deadline = baseline_date + chrono::Duration::days(discount_days as i64);
             if payment_date <= discount_deadline {
                 return (base_amount * discount_percent / dec!(100)).round_dp(2);

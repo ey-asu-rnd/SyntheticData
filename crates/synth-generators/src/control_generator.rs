@@ -29,8 +29,8 @@ pub struct ControlGeneratorConfig {
 impl Default for ControlGeneratorConfig {
     fn default() -> Self {
         Self {
-            exception_rate: 0.02,           // 2% exception rate
-            sod_violation_rate: 0.01,       // 1% SoD violation rate
+            exception_rate: 0.02,     // 2% exception rate
+            sod_violation_rate: 0.01, // 1% SoD violation rate
             enable_sox_marking: true,
             sox_materiality_threshold: Decimal::from(10000),
         }
@@ -72,11 +72,7 @@ impl ControlGenerator {
     /// - SOX relevance flag
     /// - Control status (effective, exception, not tested)
     /// - SoD violation flag and conflict type
-    pub fn apply_controls(
-        &mut self,
-        entry: &mut JournalEntry,
-        coa: &ChartOfAccounts,
-    ) {
+    pub fn apply_controls(&mut self, entry: &mut JournalEntry, coa: &ChartOfAccounts) {
         // Determine applicable controls from all line items
         let mut all_control_ids = Vec::new();
 
@@ -90,7 +86,7 @@ impl ControlGenerator {
             // Get account sub-type from CoA
             let account_sub_type = coa
                 .get_account(&line.gl_account)
-                .and_then(|acc| acc.sub_type);
+                .map(|acc| acc.sub_type);
 
             let control_ids = self.registry.get_applicable_controls(
                 &line.gl_account,
@@ -135,7 +131,9 @@ impl ControlGenerator {
 
         // 2. Has key controls applied
         let has_key_control = entry.header.control_ids.iter().any(|cid| {
-            self.controls.iter().any(|c| c.control_id == *cid && c.is_key_control)
+            self.controls
+                .iter()
+                .any(|c| c.control_id == *cid && c.is_key_control)
         });
         if has_key_control {
             return true;
@@ -143,7 +141,10 @@ impl ControlGenerator {
 
         // 3. Involves critical business processes
         if let Some(bp) = &entry.header.business_process {
-            matches!(bp, BusinessProcess::R2R | BusinessProcess::P2P | BusinessProcess::O2C)
+            matches!(
+                bp,
+                BusinessProcess::R2R | BusinessProcess::P2P | BusinessProcess::O2C
+            )
         } else {
             false
         }
@@ -237,12 +238,14 @@ impl SodChecker {
                 SodConflictType::RequesterApprover,
                 SodConflictType::PreparerApprover,
             ],
-            Some(BusinessProcess::A2R) => vec![
-                SodConflictType::PreparerApprover,
-            ],
+            Some(BusinessProcess::A2R) => vec![SodConflictType::PreparerApprover],
             Some(BusinessProcess::Intercompany) => vec![
                 SodConflictType::PreparerApprover,
                 SodConflictType::ReconcilerPoster,
+            ],
+            Some(BusinessProcess::Treasury) | Some(BusinessProcess::Tax) => vec![
+                SodConflictType::PreparerApprover,
+                SodConflictType::PaymentReleaser,
             ],
             None => vec![
                 SodConflictType::PreparerApprover,
@@ -267,50 +270,43 @@ impl SodChecker {
             SodConflictType::PreparerApprover => {
                 format!(
                     "User {} both prepared and approved journal entry {}",
-                    entry.header.created_by,
-                    entry.header.document_id
+                    entry.header.created_by, entry.header.document_id
                 )
             }
             SodConflictType::RequesterApprover => {
                 format!(
                     "User {} approved their own request in transaction {}",
-                    entry.header.created_by,
-                    entry.header.document_id
+                    entry.header.created_by, entry.header.document_id
                 )
             }
             SodConflictType::ReconcilerPoster => {
                 format!(
                     "User {} both reconciled and posted adjustments in {}",
-                    entry.header.created_by,
-                    entry.header.document_id
+                    entry.header.created_by, entry.header.document_id
                 )
             }
             SodConflictType::MasterDataMaintainer => {
                 format!(
                     "User {} maintains master data and processed payment {}",
-                    entry.header.created_by,
-                    entry.header.document_id
+                    entry.header.created_by, entry.header.document_id
                 )
             }
             SodConflictType::PaymentReleaser => {
                 format!(
                     "User {} both created and released payment {}",
-                    entry.header.created_by,
-                    entry.header.document_id
+                    entry.header.created_by, entry.header.document_id
                 )
             }
             SodConflictType::JournalEntryPoster => {
                 format!(
                     "User {} posted to sensitive accounts without review in {}",
-                    entry.header.created_by,
-                    entry.header.document_id
+                    entry.header.created_by, entry.header.document_id
                 )
             }
             SodConflictType::SystemAccessConflict => {
                 format!(
                     "User {} has conflicting system access roles for {}",
-                    entry.header.created_by,
-                    entry.header.document_id
+                    entry.header.created_by, entry.header.document_id
                 )
             }
         };

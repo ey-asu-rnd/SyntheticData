@@ -332,9 +332,7 @@ impl EntityTargetingManager {
                 // Filter by type weights
                 let weighted: Vec<_> = candidates
                     .iter()
-                    .filter_map(|c| {
-                        type_weights.get(c).map(|&w| (c.clone(), w))
-                    })
+                    .filter_map(|c| type_weights.get(c).map(|&w| (c.clone(), w)))
                     .collect();
 
                 if weighted.is_empty() {
@@ -438,7 +436,9 @@ mod tests {
 
         // Year end
         let year_end = NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
-        assert!(pattern.probability_multiplier(year_end) > pattern.probability_multiplier(month_end));
+        assert!(
+            pattern.probability_multiplier(year_end) > pattern.probability_multiplier(month_end)
+        );
     }
 
     #[test]

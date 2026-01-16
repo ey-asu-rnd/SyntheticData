@@ -5,11 +5,37 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-use synth_core::models::subledger::ar::ARInvoice;
 use synth_core::models::subledger::ap::APInvoice;
+use synth_core::models::subledger::ar::ARInvoice;
 use synth_core::models::subledger::fa::FixedAssetRecord;
 use synth_core::models::subledger::inventory::InventoryPosition;
-use synth_core::models::subledger::{ReconciliationStatus, SubledgerType, UnreconciledItem};
+use synth_core::models::subledger::SubledgerType;
+
+/// Local status enum for reconciliation results.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReconStatus {
+    /// Fully reconciled within tolerance.
+    Reconciled,
+    /// Partially reconciled (some items identified).
+    PartiallyReconciled,
+    /// Not reconciled.
+    Unreconciled,
+    /// Reconciliation in progress.
+    InProgress,
+}
+
+/// An item that doesn't reconcile.
+#[derive(Debug, Clone)]
+pub struct UnreconciledEntry {
+    /// Type of discrepancy.
+    pub entry_type: String,
+    /// Document number.
+    pub document_number: String,
+    /// Amount.
+    pub amount: Decimal,
+    /// Description of discrepancy.
+    pub description: String,
+}
 
 /// Result of a GL-to-subledger reconciliation.
 #[derive(Debug, Clone)]
@@ -31,9 +57,9 @@ pub struct ReconciliationResult {
     /// Difference.
     pub difference: Decimal,
     /// Status.
-    pub status: ReconciliationStatus,
+    pub status: ReconStatus,
     /// Unreconciled items.
-    pub unreconciled_items: Vec<UnreconciledItem>,
+    pub unreconciled_items: Vec<UnreconciledEntry>,
     /// Reconciliation date.
     pub reconciliation_date: NaiveDate,
     /// Reconciled by.
@@ -102,10 +128,7 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let reconciliation_id = format!("RECON-AR-{:08}", self.reconciliation_counter);
 
-        let subledger_balance: Decimal = ar_invoices
-            .iter()
-            .map(|inv| inv.amount_remaining)
-            .sum();
+        let subledger_balance: Decimal = ar_invoices.iter().map(|inv| inv.amount_remaining).sum();
 
         let difference = gl_balance - subledger_balance;
 
@@ -116,8 +139,8 @@ impl ReconciliationEngine {
             // Find potential unreconciled items
             for invoice in ar_invoices {
                 if invoice.posting_date > as_of_date {
-                    unreconciled_items.push(UnreconciledItem {
-                        item_type: "Timing Difference".to_string(),
+                    unreconciled_items.push(UnreconciledEntry {
+                        entry_type: "Timing Difference".to_string(),
                         document_number: invoice.invoice_number.clone(),
                         amount: invoice.amount_remaining,
                         description: format!(
@@ -130,11 +153,11 @@ impl ReconciliationEngine {
         }
 
         let status = if difference.abs() < self.config.tolerance_amount {
-            ReconciliationStatus::Reconciled
+            ReconStatus::Reconciled
         } else if !unreconciled_items.is_empty() {
-            ReconciliationStatus::PartiallyReconciled
+            ReconStatus::PartiallyReconciled
         } else {
-            ReconciliationStatus::Unreconciled
+            ReconStatus::Unreconciled
         };
 
         ReconciliationResult {
@@ -165,10 +188,7 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let reconciliation_id = format!("RECON-AP-{:08}", self.reconciliation_counter);
 
-        let subledger_balance: Decimal = ap_invoices
-            .iter()
-            .map(|inv| inv.amount_remaining)
-            .sum();
+        let subledger_balance: Decimal = ap_invoices.iter().map(|inv| inv.amount_remaining).sum();
 
         let difference = gl_balance - subledger_balance;
 
@@ -177,8 +197,8 @@ impl ReconciliationEngine {
         if difference.abs() >= self.config.tolerance_amount {
             for invoice in ap_invoices {
                 if invoice.posting_date > as_of_date {
-                    unreconciled_items.push(UnreconciledItem {
-                        item_type: "Timing Difference".to_string(),
+                    unreconciled_items.push(UnreconciledEntry {
+                        entry_type: "Timing Difference".to_string(),
                         document_number: invoice.invoice_number.clone(),
                         amount: invoice.amount_remaining,
                         description: format!(
@@ -191,11 +211,11 @@ impl ReconciliationEngine {
         }
 
         let status = if difference.abs() < self.config.tolerance_amount {
-            ReconciliationStatus::Reconciled
+            ReconStatus::Reconciled
         } else if !unreconciled_items.is_empty() {
-            ReconciliationStatus::PartiallyReconciled
+            ReconStatus::PartiallyReconciled
         } else {
-            ReconciliationStatus::Unreconciled
+            ReconStatus::Unreconciled
         };
 
         ReconciliationResult {
@@ -228,17 +248,15 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let asset_recon_id = format!("RECON-FA-{:08}", self.reconciliation_counter);
 
-        let subledger_asset_balance: Decimal = assets
-            .iter()
-            .map(|a| a.current_acquisition_cost)
-            .sum();
+        let subledger_asset_balance: Decimal =
+            assets.iter().map(|a| a.current_acquisition_cost()).sum();
 
         let asset_difference = gl_asset_balance - subledger_asset_balance;
 
         let asset_status = if asset_difference.abs() < self.config.tolerance_amount {
-            ReconciliationStatus::Reconciled
+            ReconStatus::Reconciled
         } else {
-            ReconciliationStatus::Unreconciled
+            ReconStatus::Unreconciled
         };
 
         let asset_result = ReconciliationResult {
@@ -261,17 +279,14 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let depr_recon_id = format!("RECON-FA-{:08}", self.reconciliation_counter);
 
-        let subledger_accum_depr: Decimal = assets
-            .iter()
-            .map(|a| a.accumulated_depreciation)
-            .sum();
+        let subledger_accum_depr: Decimal = assets.iter().map(|a| a.accumulated_depreciation).sum();
 
         let depr_difference = gl_accum_depr_balance - subledger_accum_depr;
 
         let depr_status = if depr_difference.abs() < self.config.tolerance_amount {
-            ReconciliationStatus::Reconciled
+            ReconStatus::Reconciled
         } else {
-            ReconciliationStatus::Unreconciled
+            ReconStatus::Unreconciled
         };
 
         let depr_result = ReconciliationResult {
@@ -304,10 +319,7 @@ impl ReconciliationEngine {
         self.reconciliation_counter += 1;
         let reconciliation_id = format!("RECON-INV-{:08}", self.reconciliation_counter);
 
-        let subledger_balance: Decimal = positions
-            .iter()
-            .map(|p| p.valuation.total_value)
-            .sum();
+        let subledger_balance: Decimal = positions.iter().map(|p| p.valuation.total_value).sum();
 
         let difference = gl_balance - subledger_balance;
 
@@ -319,8 +331,8 @@ impl ReconciliationEngine {
                 if position.quantity_on_hand > Decimal::ZERO
                     && position.valuation.total_value == Decimal::ZERO
                 {
-                    unreconciled_items.push(UnreconciledItem {
-                        item_type: "Valuation Issue".to_string(),
+                    unreconciled_items.push(UnreconciledEntry {
+                        entry_type: "Valuation Issue".to_string(),
                         document_number: position.material_id.clone(),
                         amount: Decimal::ZERO,
                         description: format!(
@@ -333,11 +345,11 @@ impl ReconciliationEngine {
         }
 
         let status = if difference.abs() < self.config.tolerance_amount {
-            ReconciliationStatus::Reconciled
+            ReconStatus::Reconciled
         } else if !unreconciled_items.is_empty() {
-            ReconciliationStatus::PartiallyReconciled
+            ReconStatus::PartiallyReconciled
         } else {
-            ReconciliationStatus::Unreconciled
+            ReconStatus::Unreconciled
         };
 
         ReconciliationResult {
@@ -371,14 +383,18 @@ impl ReconciliationEngine {
         let ar_result = self.reconcile_ar(
             company_code,
             as_of_date,
-            *gl_balances.get(&self.config.ar_control_account).unwrap_or(&Decimal::ZERO),
+            *gl_balances
+                .get(&self.config.ar_control_account)
+                .unwrap_or(&Decimal::ZERO),
             ar_invoices,
         );
 
         let ap_result = self.reconcile_ap(
             company_code,
             as_of_date,
-            *gl_balances.get(&self.config.ap_control_account).unwrap_or(&Decimal::ZERO),
+            *gl_balances
+                .get(&self.config.ap_control_account)
+                .unwrap_or(&Decimal::ZERO),
             ap_invoices,
         );
 
@@ -400,7 +416,9 @@ impl ReconciliationEngine {
         let inventory_result = self.reconcile_inventory(
             company_code,
             as_of_date,
-            *gl_balances.get(&self.config.inventory_control_account).unwrap_or(&Decimal::ZERO),
+            *gl_balances
+                .get(&self.config.inventory_control_account)
+                .unwrap_or(&Decimal::ZERO),
             inventory_positions,
         );
 
@@ -476,18 +494,22 @@ impl FullReconciliationReport {
             self.fa_depreciation.difference,
             status_str(&self.inventory.status),
             self.inventory.difference,
-            if self.all_reconciled { "RECONCILED" } else { "UNRECONCILED" },
+            if self.all_reconciled {
+                "RECONCILED"
+            } else {
+                "UNRECONCILED"
+            },
             self.total_difference
         )
     }
 }
 
-fn status_str(status: &ReconciliationStatus) -> &'static str {
+fn status_str(status: &ReconStatus) -> &'static str {
     match status {
-        ReconciliationStatus::Reconciled => "RECONCILED",
-        ReconciliationStatus::Unreconciled => "UNRECONCILED",
-        ReconciliationStatus::PartiallyReconciled => "PARTIAL",
-        ReconciliationStatus::InProgress => "IN PROGRESS",
+        ReconStatus::Reconciled => "RECONCILED",
+        ReconStatus::Unreconciled => "UNRECONCILED",
+        ReconStatus::PartiallyReconciled => "PARTIAL",
+        ReconStatus::InProgress => "IN PROGRESS",
     }
 }
 
@@ -506,7 +528,7 @@ mod tests {
             gl_balance: dec!(10000),
             subledger_balance: dec!(10000),
             difference: Decimal::ZERO,
-            status: ReconciliationStatus::Reconciled,
+            status: ReconStatus::Reconciled,
             unreconciled_items: Vec::new(),
             reconciliation_date: NaiveDate::from_ymd_opt(2024, 1, 31).unwrap(),
             reconciled_by: None,
@@ -527,7 +549,7 @@ mod tests {
             gl_balance: dec!(10000),
             subledger_balance: dec!(9500),
             difference: dec!(500),
-            status: ReconciliationStatus::Unreconciled,
+            status: ReconStatus::Unreconciled,
             unreconciled_items: Vec::new(),
             reconciliation_date: NaiveDate::from_ymd_opt(2024, 1, 31).unwrap(),
             reconciled_by: None,

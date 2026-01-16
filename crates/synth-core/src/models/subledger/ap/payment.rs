@@ -1,6 +1,6 @@
 //! AP Payment model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -138,8 +138,10 @@ impl APPayment {
 
     /// Recalculates net payment amount.
     fn recalculate_net_payment(&mut self) {
-        self.net_payment =
-            self.amount.document_amount - self.discount_taken - self.withholding_tax - self.bank_charges;
+        self.net_payment = self.amount.document_amount
+            - self.discount_taken
+            - self.withholding_tax
+            - self.bank_charges;
     }
 
     /// Sets bank charges.
@@ -201,14 +203,20 @@ impl APPayment {
         self.status = PaymentStatus::Voided;
         self.notes = Some(format!(
             "{}Voided: {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             reason
         ));
     }
 
     /// Gets total settlement amount (payment + discount + withholding).
     pub fn total_settlement(&self) -> Decimal {
-        self.paid_invoices.iter().map(|a| a.total_settlement()).sum()
+        self.paid_invoices
+            .iter()
+            .map(|a| a.total_settlement())
+            .sum()
     }
 
     /// Adds a GL reference.
@@ -380,7 +388,10 @@ impl PaymentProposal {
 
     /// Gets count of invoices.
     pub fn invoice_count(&self) -> usize {
-        self.proposed_payments.iter().map(|p| p.invoices.len()).sum()
+        self.proposed_payments
+            .iter()
+            .map(|p| p.invoices.len())
+            .sum()
     }
 
     /// Submits for approval.

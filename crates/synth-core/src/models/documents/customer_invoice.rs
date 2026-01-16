@@ -7,7 +7,10 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use super::{DocumentHeader, DocumentLineItem, DocumentReference, DocumentStatus, DocumentType, ReferenceType};
+use super::{
+    DocumentHeader, DocumentLineItem, DocumentReference, DocumentStatus, DocumentType,
+    ReferenceType,
+};
 
 /// Customer Invoice type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -33,7 +36,14 @@ pub enum CustomerInvoiceType {
 impl CustomerInvoiceType {
     /// Check if this type increases AR (debit).
     pub fn is_debit(&self) -> bool {
-        matches!(self, Self::Standard | Self::DebitMemo | Self::DownPaymentRequest | Self::FinalInvoice | Self::Intercompany)
+        matches!(
+            self,
+            Self::Standard
+                | Self::DebitMemo
+                | Self::DownPaymentRequest
+                | Self::FinalInvoice
+                | Self::Intercompany
+        )
     }
 
     /// Check if this type decreases AR (credit).
@@ -43,7 +53,10 @@ impl CustomerInvoiceType {
 
     /// Check if this creates revenue.
     pub fn creates_revenue(&self) -> bool {
-        matches!(self, Self::Standard | Self::FinalInvoice | Self::Intercompany)
+        matches!(
+            self,
+            Self::Standard | Self::FinalInvoice | Self::Intercompany
+        )
     }
 }
 
@@ -458,11 +471,7 @@ impl CustomerInvoice {
     }
 
     /// Set partner functions.
-    pub fn with_partners(
-        mut self,
-        bill_to: impl Into<String>,
-        payer: impl Into<String>,
-    ) -> Self {
+    pub fn with_partners(mut self, bill_to: impl Into<String>, payer: impl Into<String>) -> Self {
         self.bill_to = Some(bill_to.into());
         self.payer = Some(payer.into());
         self
@@ -477,7 +486,8 @@ impl CustomerInvoice {
     ) -> Self {
         self.payment_terms = terms.into();
         if let (Some(days), Some(pct)) = (discount_days_1, discount_percent_1) {
-            self.discount_date_1 = Some(self.header.document_date + chrono::Duration::days(days as i64));
+            self.discount_date_1 =
+                Some(self.header.document_date + chrono::Duration::days(days as i64));
             self.discount_percent_1 = Some(pct);
         }
         self
@@ -655,7 +665,9 @@ impl CustomerInvoice {
 
         // CR Revenue per item (or DR for credit memo)
         for item in &self.items {
-            let revenue_account = item.revenue_account.clone()
+            let revenue_account = item
+                .revenue_account
+                .clone()
                 .or_else(|| item.base.gl_account.clone())
                 .unwrap_or_else(|| "400000".to_string());
 
@@ -814,11 +826,13 @@ mod tests {
         invoice.post("BILLING", NaiveDate::from_ymd_opt(2024, 1, 15).unwrap());
 
         // Within discount period
-        let discount = invoice.cash_discount_available(NaiveDate::from_ymd_opt(2024, 1, 20).unwrap());
+        let discount =
+            invoice.cash_discount_available(NaiveDate::from_ymd_opt(2024, 1, 20).unwrap());
         assert_eq!(discount, Decimal::from(20)); // 2% of 1000
 
         // After discount period
-        let discount = invoice.cash_discount_available(NaiveDate::from_ymd_opt(2024, 1, 30).unwrap());
+        let discount =
+            invoice.cash_discount_available(NaiveDate::from_ymd_opt(2024, 1, 30).unwrap());
         assert_eq!(discount, Decimal::ZERO);
     }
 
@@ -875,7 +889,8 @@ mod tests {
             "JSMITH",
         );
 
-        let mut item = CustomerInvoiceItem::new(1, "Product", Decimal::from(10), Decimal::from(100));
+        let mut item =
+            CustomerInvoiceItem::new(1, "Product", Decimal::from(10), Decimal::from(100));
         item.base.tax_amount = Decimal::from(100);
         invoice.add_item(item);
         invoice.recalculate_totals();

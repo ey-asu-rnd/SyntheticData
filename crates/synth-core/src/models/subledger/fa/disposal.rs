@@ -1,6 +1,6 @@
 //! Asset disposal and retirement models.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -185,7 +185,10 @@ impl AssetDisposal {
         self.approval_status = DisposalApprovalStatus::Rejected;
         self.notes = Some(format!(
             "{}Rejected: {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             reason
         ));
     }
@@ -202,12 +205,20 @@ impl AssetDisposal {
 
     /// Gets the gain (or zero if loss).
     pub fn gain(&self) -> Decimal {
-        if self.is_gain { self.gain_loss } else { Decimal::ZERO }
+        if self.is_gain {
+            self.gain_loss
+        } else {
+            Decimal::ZERO
+        }
     }
 
     /// Gets the loss (or zero if gain).
     pub fn loss(&self) -> Decimal {
-        if !self.is_gain { self.gain_loss.abs() } else { Decimal::ZERO }
+        if !self.is_gain {
+            self.gain_loss.abs()
+        } else {
+            Decimal::ZERO
+        }
     }
 
     /// Requires approval based on threshold.
@@ -262,6 +273,8 @@ pub enum DisposalReason {
     Compliance,
     /// Environmental disposal.
     Environmental,
+    /// Donated to charity.
+    Donated,
     /// Other.
     Other,
 }

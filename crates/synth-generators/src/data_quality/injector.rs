@@ -5,19 +5,17 @@
 
 use chrono::NaiveDate;
 use rand::Rng;
-use rand_chacha::ChaCha8Rng;
 use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 
-use super::duplicates::{DuplicateConfig, DuplicateGenerator, DuplicateStats, Duplicatable};
+use super::duplicates::{DuplicateConfig, DuplicateGenerator, DuplicateStats};
 use super::format_variations::{
-    DateFormat, AmountFormat, FormatVariationConfig, FormatVariationInjector, FormatVariationStats,
+    AmountFormat, DateFormat, FormatVariationConfig, FormatVariationInjector, FormatVariationStats,
 };
-use super::missing_values::{
-    MissingValueConfig, MissingValueInjector, MissingValueStats, MissingValue,
-};
-use super::typos::{TypoConfig, TypoGenerator, TypoStats, EncodingIssue, introduce_encoding_issue};
+use super::missing_values::{MissingValueConfig, MissingValueInjector, MissingValueStats};
+use super::typos::{introduce_encoding_issue, EncodingIssue, TypoConfig, TypoGenerator, TypoStats};
 
 /// Configuration for the data quality injector.
 #[derive(Debug, Clone)]
@@ -155,12 +153,17 @@ impl DataQualityStats {
     /// Returns a summary of issues.
     pub fn summary(&self) -> HashMap<String, usize> {
         let mut summary = HashMap::new();
-        summary.insert("missing_values".to_string(), self.missing_values.total_missing);
-        summary.insert("format_variations".to_string(),
+        summary.insert(
+            "missing_values".to_string(),
+            self.missing_values.total_missing,
+        );
+        summary.insert(
+            "format_variations".to_string(),
             self.format_variations.date_variations
-            + self.format_variations.amount_variations
-            + self.format_variations.identifier_variations
-            + self.format_variations.text_variations);
+                + self.format_variations.amount_variations
+                + self.format_variations.identifier_variations
+                + self.format_variations.text_variations,
+        );
         summary.insert("duplicates".to_string(), self.duplicates.total_duplicates);
         summary.insert("typos".to_string(), self.typos.total_typos);
         summary.insert("encoding_issues".to_string(), self.encoding_issues);
@@ -266,8 +269,9 @@ impl DataQualityInjector {
                 context,
                 &mut self.rng,
             ) {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::MissingValue,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -283,8 +287,9 @@ impl DataQualityInjector {
         if self.config.enable_typos && !self.typo_generator.is_protected(field) {
             let with_typos = self.typo_generator.introduce_typos(&result, &mut self.rng);
             if with_typos != result {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::Typo,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -301,8 +306,9 @@ impl DataQualityInjector {
         if self.config.enable_format_variations {
             let varied = self.format_injector.vary_text(&result, &mut self.rng);
             if varied != result {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::TextFormatVariation,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -316,7 +322,9 @@ impl DataQualityInjector {
         }
 
         // Apply encoding issues
-        if self.config.enable_encoding_issues && self.rng.gen::<f64>() < self.config.encoding_issue_rate {
+        if self.config.enable_encoding_issues
+            && self.rng.gen::<f64>() < self.config.encoding_issue_rate
+        {
             let issues = [
                 EncodingIssue::Mojibake,
                 EncodingIssue::MissingChars,
@@ -326,8 +334,9 @@ impl DataQualityInjector {
             let with_encoding = introduce_encoding_issue(&result, issue, &mut self.rng);
 
             if with_encoding != result {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::EncodingIssue,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -364,8 +373,9 @@ impl DataQualityInjector {
                 context,
                 &mut self.rng,
             ) {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::MissingValue,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -383,8 +393,9 @@ impl DataQualityInjector {
             let standard = DateFormat::ISO.format(date);
 
             if formatted != standard {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::DateFormatVariation,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -416,8 +427,9 @@ impl DataQualityInjector {
                 context,
                 &mut self.rng,
             ) {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::MissingValue,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -435,8 +447,9 @@ impl DataQualityInjector {
             let standard = AmountFormat::Plain.format(amount);
 
             if formatted != standard {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::AmountFormatVariation,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -468,8 +481,9 @@ impl DataQualityInjector {
                 context,
                 &mut self.rng,
             ) {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::MissingValue,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -486,8 +500,9 @@ impl DataQualityInjector {
             let varied = self.format_injector.vary_identifier(id, &mut self.rng);
 
             if varied != id {
+                let issue_id = self.next_issue_id();
                 self.record_issue(QualityIssue {
-                    issue_id: self.next_issue_id(),
+                    issue_id,
                     issue_type: QualityIssueType::IdentifierFormatVariation,
                     record_id: record_id.to_string(),
                     field: Some(field.to_string()),
@@ -670,12 +685,8 @@ mod tests {
         let mut injector = DataQualityInjector::new(config);
         let context = HashMap::new();
 
-        let result = injector.process_text_field(
-            "description",
-            "Test Entry Description",
-            "JE001",
-            &context,
-        );
+        let result =
+            injector.process_text_field("description", "Test Entry Description", "JE001", &context);
 
         assert!(result.is_some());
     }

@@ -5,22 +5,22 @@
 
 use chrono::NaiveDate;
 use rand::Rng;
-use rand_chacha::ChaCha8Rng;
 use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 
 use synth_core::models::{
     AnomalyRateConfig, AnomalySummary, AnomalyType, ErrorType, FraudType, JournalEntry,
-    LabeledAnomaly, ProcessIssueType, StatisticalAnomalyType, RelationalAnomalyType,
+    LabeledAnomaly, ProcessIssueType, RelationalAnomalyType, StatisticalAnomalyType,
 };
 
 use super::patterns::{
-    AnomalyPatternConfig, ClusterManager, EntityTargetingManager, TemporalPattern,
-    should_inject_anomaly,
+    should_inject_anomaly, AnomalyPatternConfig, ClusterManager, EntityTargetingManager,
+    TemporalPattern,
 };
 use super::strategies::{
-    InjectionStrategy, StrategyCollection, InjectionResult, DuplicationStrategy,
+    DuplicationStrategy, InjectionResult, InjectionStrategy, StrategyCollection,
 };
 use super::types::AnomalyTypeSelector;
 
@@ -112,7 +112,8 @@ impl AnomalyInjector {
     pub fn new(config: AnomalyInjectorConfig) -> Self {
         let rng = ChaCha8Rng::seed_from_u64(config.seed);
         let cluster_manager = ClusterManager::new(config.patterns.clustering.clone());
-        let entity_targeting = EntityTargetingManager::new(config.patterns.entity_targeting.clone());
+        let entity_targeting =
+            EntityTargetingManager::new(config.patterns.entity_targeting.clone());
 
         Self {
             config,
@@ -143,7 +144,7 @@ impl AnomalyInjector {
             // Determine if we inject an anomaly
             if should_inject_anomaly(
                 self.config.rates.total_rate,
-                entry.posting_date,
+                entry.posting_date(),
                 &self.config.patterns.temporal_pattern,
                 &mut self.rng,
             ) {
@@ -152,7 +153,7 @@ impl AnomalyInjector {
 
                 // Apply the anomaly
                 if let Some(label) = self.inject_anomaly(entry, anomaly_type) {
-                    modified_documents.push(entry.document_number.clone());
+                    modified_documents.push(entry.document_number().clone());
                     self.labels.push(label);
                     self.stats.total_injected += 1;
                 }
@@ -192,7 +193,7 @@ impl AnomalyInjector {
     fn should_process(&mut self, entry: &JournalEntry) -> bool {
         // Check company filter
         if !self.config.target_companies.is_empty()
-            && !self.config.target_companies.contains(&entry.company_code)
+            && !self.config.target_companies.iter().any(|c| c == entry.company_code())
         {
             self.stats.skipped_company += 1;
             return false;
@@ -200,7 +201,7 @@ impl AnomalyInjector {
 
         // Check date range
         if let Some((start, end)) = self.config.date_range {
-            if entry.posting_date < start || entry.posting_date > end {
+            if entry.posting_date() < start || entry.posting_date() > end {
                 self.stats.skipped_date += 1;
                 return false;
             }
@@ -209,7 +210,7 @@ impl AnomalyInjector {
         // Check max anomalies per document
         let current_count = self
             .document_anomaly_counts
-            .get(&entry.document_number)
+            .get(&entry.document_number())
             .copied()
             .unwrap_or(0);
         if current_count >= self.config.max_anomalies_per_document {
@@ -256,16 +257,13 @@ impl AnomalyInjector {
         entry: &mut JournalEntry,
         anomaly_type: AnomalyType,
     ) -> Option<LabeledAnomaly> {
-        // Get the appropriate strategy
-        let strategy = self.strategies.get_strategy(&anomaly_type);
-
         // Check if strategy can be applied
-        if !strategy.can_apply(entry) {
+        if !self.strategies.can_apply(entry, &anomaly_type) {
             return None;
         }
 
         // Apply the strategy
-        let result = strategy.apply(entry, &anomaly_type, &mut self.rng);
+        let result = self.strategies.apply_strategy(entry, &anomaly_type, &mut self.rng);
 
         if !result.success {
             return None;
@@ -274,7 +272,7 @@ impl AnomalyInjector {
         // Update document anomaly count
         *self
             .document_anomaly_counts
-            .entry(entry.document_number.clone())
+            .entry(entry.document_number().clone())
             .or_insert(0) += 1;
 
         // Update statistics
@@ -286,26 +284,23 @@ impl AnomalyInjector {
         *self
             .stats
             .by_company
-            .entry(entry.company_code.clone())
+            .entry(entry.company_code().to_string())
             .or_insert(0) += 1;
 
         // Generate label
         if self.config.generate_labels {
-            let anomaly_id = format!(
-                "ANO{:08}",
-                self.labels.len() + 1
-            );
+            let anomaly_id = format!("ANO{:08}", self.labels.len() + 1);
 
             let mut label = LabeledAnomaly::new(
                 anomaly_id,
                 anomaly_type.clone(),
-                entry.document_number.clone(),
+                entry.document_number().clone(),
                 "JE".to_string(),
-                entry.company_code.clone(),
-                entry.posting_date,
+                entry.company_code().to_string(),
+                entry.posting_date(),
             )
             .with_description(&result.description)
-            .with_injection_strategy(strategy.name());
+            .with_injection_strategy(&type_name);
 
             // Add monetary impact
             if let Some(impact) = result.monetary_impact {
@@ -323,11 +318,10 @@ impl AnomalyInjector {
             }
 
             // Assign cluster
-            if let Some(cluster_id) = self.cluster_manager.assign_cluster(
-                entry.posting_date,
-                &type_name,
-                &mut self.rng,
-            ) {
+            if let Some(cluster_id) =
+                self.cluster_manager
+                    .assign_cluster(entry.posting_date(), &type_name, &mut self.rng)
+            {
                 label = label.with_cluster(&cluster_id);
             }
 
@@ -357,17 +351,17 @@ impl AnomalyInjector {
         let mut label = LabeledAnomaly::new(
             format!("ANO{:08}", self.labels.len() + 1),
             anomaly_type,
-            entry.document_number.clone(),
+            entry.document_number().clone(),
             "JE".to_string(),
-            entry.company_code.clone(),
-            entry.posting_date,
+            entry.company_code().to_string(),
+            entry.posting_date(),
         )
         .with_description(&format!("User {} approved their own transaction", user_id))
         .with_related_entity(user_id)
         .with_injection_strategy("ManualSelfApproval");
 
         // Set approver = requester
-        entry.created_by = user_id.to_string();
+        entry.header.created_by = user_id.to_string();
 
         self.labels.push(label.clone());
         Some(label)
@@ -385,10 +379,10 @@ impl AnomalyInjector {
         let label = LabeledAnomaly::new(
             format!("ANO{:08}", self.labels.len() + 1),
             anomaly_type,
-            entry.document_number.clone(),
+            entry.document_number().clone(),
             "JE".to_string(),
-            entry.company_code.clone(),
-            entry.posting_date,
+            entry.company_code().to_string(),
+            entry.posting_date(),
         )
         .with_description(&format!(
             "User {} performed conflicting duties: {} and {}",
@@ -416,10 +410,10 @@ impl AnomalyInjector {
         let label = LabeledAnomaly::new(
             format!("ANO{:08}", self.labels.len() + 1),
             anomaly_type,
-            entry.document_number.clone(),
+            entry.document_number().clone(),
             "JE".to_string(),
-            entry.company_code.clone(),
-            entry.posting_date,
+            entry.company_code().to_string(),
+            entry.posting_date(),
         )
         .with_description(&format!(
             "Intercompany mismatch with {}: expected {} but got {}",
@@ -544,7 +538,7 @@ mod tests {
     use synth_core::models::JournalEntryLine;
 
     fn create_test_entry(doc_num: &str) -> JournalEntry {
-        let mut entry = JournalEntry::new(
+        let mut entry = JournalEntry::new_simple(
             doc_num.to_string(),
             "1000".to_string(),
             NaiveDate::from_ymd_opt(2024, 6, 15).unwrap(),
@@ -553,40 +547,16 @@ mod tests {
 
         entry.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "5000".to_string(),
-            account_description: Some("Expense".to_string()),
+            gl_account: "5000".to_string(),
             debit_amount: dec!(1000),
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         entry.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "1000".to_string(),
-            account_description: Some("Cash".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "1000".to_string(),
             credit_amount: dec!(1000),
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         entry

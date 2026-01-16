@@ -58,9 +58,9 @@ impl Default for DuplicateConfig {
     fn default() -> Self {
         Self {
             duplicate_rate: 0.005, // 0.5% of records get duplicated
-            exact_rate: 0.3,      // 30% of duplicates are exact
-            near_rate: 0.5,       // 50% are near duplicates
-            fuzzy_rate: 0.2,      // 20% are fuzzy
+            exact_rate: 0.3,       // 30% of duplicates are exact
+            near_rate: 0.5,        // 50% are near duplicates
+            fuzzy_rate: 0.2,       // 20% are fuzzy
             max_date_offset_days: 5,
             varying_fields: vec![
                 "entry_date".to_string(),
@@ -239,17 +239,20 @@ impl DuplicateGenerator {
             match field.as_str() {
                 "entry_date" | "date" => {
                     if let Some(date) = record.get_date() {
-                        let offset = rng.gen_range(-self.config.max_date_offset_days
-                            ..=self.config.max_date_offset_days);
+                        let offset = rng.gen_range(
+                            -self.config.max_date_offset_days..=self.config.max_date_offset_days,
+                        );
                         record.set_date(date + Duration::days(offset));
                     }
                 }
                 "amount" | "debit_amount" | "credit_amount" => {
                     if let Some(amount) = record.get_amount() {
                         let variance = 1.0
-                            + rng.gen_range(-self.config.amount_variance..self.config.amount_variance);
-                        let new_amount = amount
-                            * Decimal::from_f64_retain(variance).unwrap_or(Decimal::ONE);
+                            + rng.gen_range(
+                                -self.config.amount_variance..self.config.amount_variance,
+                            );
+                        let new_amount =
+                            amount * Decimal::from_f64_retain(variance).unwrap_or(Decimal::ONE);
                         record.set_amount(new_amount.round_dp(2));
                     }
                 }
@@ -290,8 +293,8 @@ impl DuplicateGenerator {
         if rng.gen::<f64>() < change_probability {
             if let Some(amount) = record.get_amount() {
                 let variance = 1.0 + rng.gen_range(-0.1..0.1); // Up to 10% variation
-                let new_amount = amount
-                    * Decimal::from_f64_retain(variance).unwrap_or(Decimal::ONE);
+                let new_amount =
+                    amount * Decimal::from_f64_retain(variance).unwrap_or(Decimal::ONE);
                 record.set_amount(new_amount.round_dp(2));
                 varied_fields.push("amount".to_string());
             }

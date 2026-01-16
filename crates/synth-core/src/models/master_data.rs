@@ -76,6 +76,41 @@ impl PaymentTerms {
     pub fn requires_prepayment(&self) -> bool {
         matches!(self, Self::Prepayment | Self::CashOnDelivery)
     }
+
+    /// Get the payment terms code (for display/export).
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::Immediate => "IMM",
+            Self::Net10 => "N10",
+            Self::Net15 => "N15",
+            Self::Net30 => "N30",
+            Self::Net45 => "N45",
+            Self::Net60 => "N60",
+            Self::Net90 => "N90",
+            Self::TwoTenNet30 => "2/10N30",
+            Self::OneTenNet30 => "1/10N30",
+            Self::TwoFifteenNet45 => "2/15N45",
+            Self::EndOfMonth => "EOM",
+            Self::EndOfMonthPlus30 => "EOM30",
+            Self::CashOnDelivery => "COD",
+            Self::Prepayment => "PREP",
+        }
+    }
+
+    /// Get the net payment days.
+    pub fn net_days(&self) -> u16 {
+        self.due_days()
+    }
+
+    /// Get the discount days (days within which discount applies).
+    pub fn discount_days(&self) -> Option<u16> {
+        self.early_payment_discount().map(|(days, _)| days)
+    }
+
+    /// Get the discount percent.
+    pub fn discount_percent(&self) -> Option<Decimal> {
+        self.early_payment_discount().map(|(_, percent)| percent)
+    }
 }
 
 /// Vendor payment behavior for simulation.
@@ -111,48 +146,58 @@ impl VendorBehavior {
 pub enum CustomerPaymentBehavior {
     /// Excellent - always pays early or on time
     Excellent,
+    /// Early payer (alias for Excellent)
+    EarlyPayer,
     /// Good - usually pays on time
     #[default]
     Good,
+    /// On time payer (alias for Good)
+    OnTime,
     /// Fair - sometimes late
     Fair,
+    /// Slightly late (alias for Fair)
+    SlightlyLate,
     /// Poor - frequently late
     Poor,
+    /// Often late (alias for Poor)
+    OftenLate,
     /// Very Poor - chronically delinquent
     VeryPoor,
+    /// High risk (alias for VeryPoor)
+    HighRisk,
 }
 
 impl CustomerPaymentBehavior {
     /// Get average days past due for this behavior.
     pub fn average_days_past_due(&self) -> i16 {
         match self {
-            Self::Excellent => -5, // Pays early
-            Self::Good => 0,
-            Self::Fair => 10,
-            Self::Poor => 30,
-            Self::VeryPoor => 60,
+            Self::Excellent | Self::EarlyPayer => -5, // Pays early
+            Self::Good | Self::OnTime => 0,
+            Self::Fair | Self::SlightlyLate => 10,
+            Self::Poor | Self::OftenLate => 30,
+            Self::VeryPoor | Self::HighRisk => 60,
         }
     }
 
     /// Get probability of payment on time.
     pub fn on_time_probability(&self) -> f64 {
         match self {
-            Self::Excellent => 0.98,
-            Self::Good => 0.90,
-            Self::Fair => 0.70,
-            Self::Poor => 0.40,
-            Self::VeryPoor => 0.20,
+            Self::Excellent | Self::EarlyPayer => 0.98,
+            Self::Good | Self::OnTime => 0.90,
+            Self::Fair | Self::SlightlyLate => 0.70,
+            Self::Poor | Self::OftenLate => 0.40,
+            Self::VeryPoor | Self::HighRisk => 0.20,
         }
     }
 
     /// Get probability of taking early payment discount.
     pub fn discount_probability(&self) -> f64 {
         match self {
-            Self::Excellent => 0.80,
-            Self::Good => 0.50,
-            Self::Fair => 0.20,
-            Self::Poor => 0.05,
-            Self::VeryPoor => 0.01,
+            Self::Excellent | Self::EarlyPayer => 0.80,
+            Self::Good | Self::OnTime => 0.50,
+            Self::Fair | Self::SlightlyLate => 0.20,
+            Self::Poor | Self::OftenLate => 0.05,
+            Self::VeryPoor | Self::HighRisk => 0.01,
         }
     }
 }
@@ -380,13 +425,8 @@ impl Vendor {
     }
 
     /// Create an intercompany vendor.
-    pub fn new_intercompany(
-        vendor_id: &str,
-        name: &str,
-        related_company_code: &str,
-    ) -> Self {
-        Self::new(vendor_id, name, VendorType::Supplier)
-            .with_intercompany(related_company_code)
+    pub fn new_intercompany(vendor_id: &str, name: &str, related_company_code: &str) -> Self {
+        Self::new(vendor_id, name, VendorType::Supplier).with_intercompany(related_company_code)
     }
 
     /// Set country.
@@ -463,7 +503,9 @@ impl Vendor {
 
     /// Get the primary bank account.
     pub fn primary_bank_account(&self) -> Option<&BankAccount> {
-        self.bank_accounts.iter().find(|a| a.is_primary)
+        self.bank_accounts
+            .iter()
+            .find(|a| a.is_primary)
             .or_else(|| self.bank_accounts.first())
     }
 
@@ -614,11 +656,7 @@ impl Customer {
     }
 
     /// Create an intercompany customer.
-    pub fn new_intercompany(
-        customer_id: &str,
-        name: &str,
-        related_company_code: &str,
-    ) -> Self {
+    pub fn new_intercompany(customer_id: &str, name: &str, related_company_code: &str) -> Self {
         Self::new(customer_id, name, CustomerType::Intercompany)
             .with_intercompany(related_company_code)
     }
@@ -1187,7 +1225,9 @@ mod tests {
 
     #[test]
     fn test_credit_rating() {
-        assert!(CreditRating::AAA.credit_limit_multiplier() > CreditRating::B.credit_limit_multiplier());
+        assert!(
+            CreditRating::AAA.credit_limit_multiplier() > CreditRating::B.credit_limit_multiplier()
+        );
         assert!(CreditRating::D.is_credit_blocked());
         assert!(!CreditRating::A.is_credit_blocked());
     }
@@ -1235,7 +1275,8 @@ mod tests {
     fn test_payment_behavior() {
         assert!(CustomerPaymentBehavior::Excellent.on_time_probability() > 0.95);
         assert!(CustomerPaymentBehavior::VeryPoor.on_time_probability() < 0.25);
-        assert!(CustomerPaymentBehavior::Excellent.average_days_past_due() < 0); // Pays early
+        assert!(CustomerPaymentBehavior::Excellent.average_days_past_due() < 0);
+        // Pays early
     }
 
     #[test]
@@ -1246,6 +1287,9 @@ mod tests {
         let invoice_date = chrono::NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
         let due_date = vendor.calculate_due_date(invoice_date);
 
-        assert_eq!(due_date, chrono::NaiveDate::from_ymd_opt(2024, 2, 14).unwrap());
+        assert_eq!(
+            due_date,
+            chrono::NaiveDate::from_ymd_opt(2024, 2, 14).unwrap()
+        );
     }
 }

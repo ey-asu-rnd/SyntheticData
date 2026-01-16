@@ -75,12 +75,12 @@ impl TrialBalanceGenerator {
     pub fn register_from_chart(&mut self, chart: &ChartOfAccounts) {
         for account in &chart.accounts {
             self.account_descriptions
-                .insert(account.account_code.clone(), account.description.clone());
+                .insert(account.account_code().to_string(), account.description().to_string());
 
             // Determine category from account code prefix
-            let category = self.determine_category(&account.account_code);
+            let category = self.determine_category(account.account_code());
             self.category_mappings
-                .insert(account.account_code.clone(), category);
+                .insert(account.account_code().to_string(), category);
         }
     }
 
@@ -122,12 +122,15 @@ impl TrialBalanceGenerator {
                 account_code: account_code.clone(),
                 account_description: description,
                 category,
+                account_type: balance.account_type,
                 debit_balance: debit,
                 credit_balance: credit,
                 opening_balance: balance.opening_balance,
                 period_debits: balance.period_debits,
                 period_credits: balance.period_credits,
                 closing_balance: balance.closing_balance,
+                cost_center: None,
+                profit_center: None,
             });
         }
 
@@ -137,27 +140,37 @@ impl TrialBalanceGenerator {
         }
 
         // Calculate category summaries
-        let category_summaries = if self.config.group_by_category {
-            self.calculate_category_summaries(&lines)
+        let category_summary = if self.config.group_by_category {
+            self.calculate_category_summary(&lines)
         } else {
-            Vec::new()
+            HashMap::new()
         };
 
+        let out_of_balance = total_debits - total_credits;
+
         TrialBalance {
+            trial_balance_id: format!(
+                "TB-{}-{}-{:02}",
+                snapshot.company_code, fiscal_year, fiscal_period
+            ),
             company_code: snapshot.company_code.clone(),
+            company_name: None,
             as_of_date: snapshot.as_of_date,
             fiscal_year,
             fiscal_period,
-            trial_balance_type: self.config.trial_balance_type,
+            currency: snapshot.currency.clone(),
+            balance_type: self.config.trial_balance_type,
             lines,
             total_debits,
             total_credits,
-            is_balanced: (total_debits - total_credits).abs() < dec!(0.01),
-            category_summaries,
+            is_balanced: out_of_balance.abs() < dec!(0.01),
+            out_of_balance,
+            category_summary,
+            created_at: chrono::Utc::now().naive_utc(),
+            created_by: "TrialBalanceGenerator".to_string(),
+            approved_by: None,
+            approved_at: None,
             status: TrialBalanceStatus::Draft,
-            generated_at: chrono::Utc::now(),
-            generated_by: Some("TrialBalanceGenerator".to_string()),
-            notes: None,
         }
     }
 
@@ -196,7 +209,10 @@ impl TrialBalanceGenerator {
         snapshots: &[(NaiveDate, BalanceSnapshot)],
         fiscal_year: i32,
     ) -> ComparativeTrialBalance {
-        let periods: Vec<TrialBalance> = snapshots
+        use synth_core::models::balance::ComparativeTrialBalanceLine;
+
+        // Generate trial balances for each period
+        let trial_balances: Vec<TrialBalance> = snapshots
             .iter()
             .enumerate()
             .map(|(i, (date, snapshot))| {
@@ -206,15 +222,71 @@ impl TrialBalanceGenerator {
             })
             .collect();
 
-        let variances = self.calculate_period_variances(&periods);
+        // Build periods list
+        let periods: Vec<(i32, u32)> = trial_balances
+            .iter()
+            .map(|tb| (tb.fiscal_year, tb.fiscal_period))
+            .collect();
+
+        // Build comparative lines
+        let mut lines_map: HashMap<String, ComparativeTrialBalanceLine> = HashMap::new();
+
+        for tb in &trial_balances {
+            for line in &tb.lines {
+                let entry = lines_map
+                    .entry(line.account_code.clone())
+                    .or_insert_with(|| ComparativeTrialBalanceLine {
+                        account_code: line.account_code.clone(),
+                        account_description: line.account_description.clone(),
+                        category: line.category,
+                        period_balances: HashMap::new(),
+                        period_changes: HashMap::new(),
+                    });
+
+                entry.period_balances.insert(
+                    (tb.fiscal_year, tb.fiscal_period),
+                    line.closing_balance,
+                );
+            }
+        }
+
+        // Calculate period-over-period changes
+        for line in lines_map.values_mut() {
+            let mut sorted_periods: Vec<_> = line.period_balances.keys().cloned().collect();
+            sorted_periods.sort();
+
+            for i in 1..sorted_periods.len() {
+                let prev_period = sorted_periods[i - 1];
+                let curr_period = sorted_periods[i];
+
+                if let (Some(&prev_balance), Some(&curr_balance)) = (
+                    line.period_balances.get(&prev_period),
+                    line.period_balances.get(&curr_period),
+                ) {
+                    line.period_changes
+                        .insert(curr_period, curr_balance - prev_balance);
+                }
+            }
+        }
+
+        let lines: Vec<ComparativeTrialBalanceLine> = lines_map.into_values().collect();
+
+        let company_code = snapshots
+            .first()
+            .map(|(_, s)| s.company_code.clone())
+            .unwrap_or_default();
+
+        let currency = snapshots
+            .first()
+            .map(|(_, s)| s.currency.clone())
+            .unwrap_or_else(|| "USD".to_string());
 
         ComparativeTrialBalance {
-            company_code: snapshots
-                .first()
-                .map(|(_, s)| s.company_code.clone())
-                .unwrap_or_default(),
+            company_code,
+            currency,
             periods,
-            variances,
+            lines,
+            created_at: chrono::Utc::now().naive_utc(),
         }
     }
 
@@ -234,12 +306,15 @@ impl TrialBalanceGenerator {
                         account_code: line.account_code.clone(),
                         account_description: line.account_description.clone(),
                         category: line.category,
+                        account_type: line.account_type,
                         debit_balance: Decimal::ZERO,
                         credit_balance: Decimal::ZERO,
                         opening_balance: Decimal::ZERO,
                         period_debits: Decimal::ZERO,
                         period_credits: Decimal::ZERO,
                         closing_balance: Decimal::ZERO,
+                        cost_center: None,
+                        profit_center: None,
                     });
 
                 entry.debit_balance += line.debit_balance;
@@ -259,10 +334,10 @@ impl TrialBalanceGenerator {
         let total_debits: Decimal = lines.iter().map(|l| l.debit_balance).sum();
         let total_credits: Decimal = lines.iter().map(|l| l.credit_balance).sum();
 
-        let category_summaries = if self.config.group_by_category {
-            self.calculate_category_summaries(&lines)
+        let category_summary = if self.config.group_by_category {
+            self.calculate_category_summary(&lines)
         } else {
-            Vec::new()
+            HashMap::new()
         };
 
         let as_of_date = trial_balances
@@ -271,26 +346,44 @@ impl TrialBalanceGenerator {
             .unwrap_or_else(|| chrono::Local::now().date_naive());
 
         let fiscal_year = trial_balances.first().map(|tb| tb.fiscal_year).unwrap_or(0);
-        let fiscal_period = trial_balances.first().map(|tb| tb.fiscal_period).unwrap_or(0);
+        let fiscal_period = trial_balances
+            .first()
+            .map(|tb| tb.fiscal_period)
+            .unwrap_or(0);
+
+        let currency = trial_balances
+            .first()
+            .map(|tb| tb.currency.clone())
+            .unwrap_or_else(|| "USD".to_string());
+
+        let out_of_balance = total_debits - total_credits;
 
         TrialBalance {
+            trial_balance_id: format!(
+                "TB-CONS-{}-{}-{:02}",
+                consolidated_company_code, fiscal_year, fiscal_period
+            ),
             company_code: consolidated_company_code.to_string(),
+            company_name: None,
             as_of_date,
             fiscal_year,
             fiscal_period,
-            trial_balance_type: TrialBalanceType::Consolidated,
+            currency,
+            balance_type: TrialBalanceType::Consolidated,
             lines,
             total_debits,
             total_credits,
-            is_balanced: (total_debits - total_credits).abs() < dec!(0.01),
-            category_summaries,
-            status: TrialBalanceStatus::Draft,
-            generated_at: chrono::Utc::now(),
-            generated_by: Some("TrialBalanceGenerator (Consolidated)".to_string()),
-            notes: Some(format!(
-                "Consolidated from {} companies",
+            is_balanced: out_of_balance.abs() < dec!(0.01),
+            out_of_balance,
+            category_summary,
+            created_at: chrono::Utc::now().naive_utc(),
+            created_by: format!(
+                "TrialBalanceGenerator (Consolidated from {} companies)",
                 trial_balances.len()
-            )),
+            ),
+            approved_by: None,
+            approved_at: None,
+            status: TrialBalanceStatus::Draft,
         }
     }
 
@@ -356,27 +449,21 @@ impl TrialBalanceGenerator {
     }
 
     /// Calculates category summaries from lines.
-    fn calculate_category_summaries(&self, lines: &[TrialBalanceLine]) -> Vec<CategorySummary> {
+    fn calculate_category_summary(
+        &self,
+        lines: &[TrialBalanceLine],
+    ) -> HashMap<AccountCategory, CategorySummary> {
         let mut summaries: HashMap<AccountCategory, CategorySummary> = HashMap::new();
 
         for line in lines {
-            let summary = summaries.entry(line.category).or_insert_with(|| CategorySummary {
-                category: line.category,
-                account_count: 0,
-                total_debits: Decimal::ZERO,
-                total_credits: Decimal::ZERO,
-                net_balance: Decimal::ZERO,
-            });
+            let summary = summaries
+                .entry(line.category)
+                .or_insert_with(|| CategorySummary::new(line.category));
 
-            summary.account_count += 1;
-            summary.total_debits += line.debit_balance;
-            summary.total_credits += line.credit_balance;
-            summary.net_balance += line.closing_balance;
+            summary.add_balance(line.debit_balance, line.credit_balance);
         }
 
-        let mut result: Vec<CategorySummary> = summaries.into_values().collect();
-        result.sort_by_key(|s| s.category as u8);
-        result
+        summaries
     }
 
     /// Calculates variances between periods.
@@ -435,12 +522,8 @@ impl TrialBalanceGenerator {
     /// Approves a trial balance.
     pub fn approve(&self, mut trial_balance: TrialBalance, approver: &str) -> TrialBalance {
         trial_balance.status = TrialBalanceStatus::Approved;
-        trial_balance.notes = Some(format!(
-            "{}Approved by {} on {}",
-            trial_balance.notes.map(|n| format!("{}. ", n)).unwrap_or_default(),
-            approver,
-            chrono::Local::now().format("%Y-%m-%d %H:%M")
-        ));
+        trial_balance.approved_by = Some(approver.to_string());
+        trial_balance.approved_at = Some(chrono::Utc::now().naive_utc());
         trial_balance
     }
 }
@@ -481,8 +564,11 @@ impl TrialBalanceBuilder {
         self.snapshots
             .iter()
             .map(|(_, snapshot)| {
-                self.generator
-                    .generate_from_snapshot(snapshot, self.fiscal_year, self.fiscal_period)
+                self.generator.generate_from_snapshot(
+                    snapshot,
+                    self.fiscal_year,
+                    self.fiscal_period,
+                )
             })
             .collect()
     }
@@ -493,12 +579,16 @@ impl TrialBalanceBuilder {
             .snapshots
             .iter()
             .map(|(_, snapshot)| {
-                self.generator
-                    .generate_from_snapshot(snapshot, self.fiscal_year, self.fiscal_period)
+                self.generator.generate_from_snapshot(
+                    snapshot,
+                    self.fiscal_year,
+                    self.fiscal_period,
+                )
             })
             .collect::<Vec<_>>();
 
-        self.generator.generate_consolidated(&individual, consolidated_code)
+        self.generator
+            .generate_consolidated(&individual, consolidated_code)
     }
 }
 
@@ -507,50 +597,55 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
+    fn create_test_balance(
+        company: &str,
+        account: &str,
+        acct_type: AccountType,
+        opening: Decimal,
+    ) -> AccountBalance {
+        let mut bal = AccountBalance::new(
+            company.to_string(),
+            account.to_string(),
+            acct_type,
+            "USD".to_string(),
+            2024,
+            1,
+        );
+        bal.opening_balance = opening;
+        bal.closing_balance = opening;
+        bal
+    }
+
     fn create_test_snapshot() -> BalanceSnapshot {
-        let mut balances = HashMap::new();
-
-        // Assets
-        balances.insert(
-            "1100".to_string(),
-            AccountBalance::new(
-                "1100".to_string(),
-                "TEST".to_string(),
-                AccountType::Asset,
-                NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-            )
-            .with_opening_balance(dec!(10000)),
-        );
-
-        // Liabilities
-        balances.insert(
-            "2100".to_string(),
-            AccountBalance::new(
-                "2100".to_string(),
-                "TEST".to_string(),
-                AccountType::Liability,
-                NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-            )
-            .with_opening_balance(dec!(5000)),
-        );
-
-        // Equity
-        balances.insert(
-            "3100".to_string(),
-            AccountBalance::new(
-                "3100".to_string(),
-                "TEST".to_string(),
-                AccountType::Equity,
-                NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-            )
-            .with_opening_balance(dec!(5000)),
-        );
-
-        BalanceSnapshot::new(
-            NaiveDate::from_ymd_opt(2024, 1, 31).unwrap(),
+        let mut snapshot = BalanceSnapshot::new(
+            "SNAP-TEST-2024-01".to_string(),
             "TEST".to_string(),
-            balances,
-        )
+            NaiveDate::from_ymd_opt(2024, 1, 31).unwrap(),
+            2024,
+            1,
+            "USD".to_string(),
+        );
+
+        // Add assets
+        snapshot.balances.insert(
+            "1100".to_string(),
+            create_test_balance("TEST", "1100", AccountType::Asset, dec!(10000)),
+        );
+
+        // Add liabilities
+        snapshot.balances.insert(
+            "2100".to_string(),
+            create_test_balance("TEST", "2100", AccountType::Liability, dec!(5000)),
+        );
+
+        // Add equity
+        snapshot.balances.insert(
+            "3100".to_string(),
+            create_test_balance("TEST", "3100", AccountType::Equity, dec!(5000)),
+        );
+
+        snapshot.recalculate_totals();
+        snapshot
     }
 
     #[test]
@@ -573,7 +668,7 @@ mod tests {
 
         let tb = generator.generate_from_snapshot(&snapshot, 2024, 1);
 
-        assert!(!tb.category_summaries.is_empty());
+        assert!(!tb.category_summary.is_empty());
     }
 
     #[test]
@@ -581,15 +676,24 @@ mod tests {
         let generator = TrialBalanceGenerator::with_defaults();
 
         let snapshot1 = create_test_snapshot();
-        let mut snapshot2_balances = snapshot1.balances.clone();
-        for balance in snapshot2_balances.values_mut() {
-            balance.closing_balance *= dec!(2);
-        }
-        let snapshot2 = BalanceSnapshot::new(
-            snapshot1.as_of_date,
+        let mut snapshot2 = BalanceSnapshot::new(
+            "SNAP-TEST2-2024-01".to_string(),
             "TEST2".to_string(),
-            snapshot2_balances,
+            snapshot1.as_of_date,
+            2024,
+            1,
+            "USD".to_string(),
         );
+
+        // Copy and double the balances
+        for (code, balance) in &snapshot1.balances {
+            let mut new_bal = balance.clone();
+            new_bal.company_code = "TEST2".to_string();
+            new_bal.closing_balance *= dec!(2);
+            new_bal.opening_balance *= dec!(2);
+            snapshot2.balances.insert(code.clone(), new_bal);
+        }
+        snapshot2.recalculate_totals();
 
         let tb1 = generator.generate_from_snapshot(&snapshot1, 2024, 1);
         let tb2 = generator.generate_from_snapshot(&snapshot2, 2024, 1);

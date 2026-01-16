@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use chrono::NaiveDate;
 
-use crate::models::{Graph, NodeId, EdgeId};
+use crate::models::{EdgeId, Graph, NodeId};
 
 /// Configuration for data splitting.
 #[derive(Debug, Clone)]
@@ -77,8 +77,11 @@ impl DataSplit {
         // Create ID to index mapping
         let mut node_ids: Vec<_> = graph.nodes.keys().copied().collect();
         node_ids.sort();
-        let id_to_idx: std::collections::HashMap<_, _> =
-            node_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+        let id_to_idx: std::collections::HashMap<_, _> = node_ids
+            .iter()
+            .enumerate()
+            .map(|(i, &id)| (id, i))
+            .collect();
 
         for &id in &self.train_nodes {
             if let Some(&idx) = id_to_idx.get(&id) {
@@ -109,8 +112,11 @@ impl DataSplit {
         // Create ID to index mapping
         let mut edge_ids: Vec<_> = graph.edges.keys().copied().collect();
         edge_ids.sort();
-        let id_to_idx: std::collections::HashMap<_, _> =
-            edge_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+        let id_to_idx: std::collections::HashMap<_, _> = edge_ids
+            .iter()
+            .enumerate()
+            .map(|(i, &id)| (id, i))
+            .collect();
 
         for &id in &self.train_edges {
             if let Some(&idx) = id_to_idx.get(&id) {
@@ -147,9 +153,10 @@ impl DataSplitter {
     pub fn split(&self, graph: &Graph) -> DataSplit {
         match &self.config.strategy {
             SplitStrategy::Random => self.random_split(graph),
-            SplitStrategy::Temporal { train_cutoff, val_cutoff } => {
-                self.temporal_split(graph, *train_cutoff, *val_cutoff)
-            }
+            SplitStrategy::Temporal {
+                train_cutoff,
+                val_cutoff,
+            } => self.temporal_split(graph, *train_cutoff, *val_cutoff),
             SplitStrategy::Stratified => self.stratified_split(graph),
             SplitStrategy::KFold { k, fold } => self.kfold_split(graph, *k, *fold),
             SplitStrategy::Transductive => self.transductive_split(graph),
@@ -300,10 +307,16 @@ impl DataSplitter {
         shuffle(&mut anomalous_nodes, &mut rng);
 
         // Split each class
-        let (normal_train, normal_val, normal_test) =
-            split_by_ratio(&normal_nodes, self.config.train_ratio, self.config.val_ratio);
-        let (anomaly_train, anomaly_val, anomaly_test) =
-            split_by_ratio(&anomalous_nodes, self.config.train_ratio, self.config.val_ratio);
+        let (normal_train, normal_val, normal_test) = split_by_ratio(
+            &normal_nodes,
+            self.config.train_ratio,
+            self.config.val_ratio,
+        );
+        let (anomaly_train, anomaly_val, anomaly_test) = split_by_ratio(
+            &anomalous_nodes,
+            self.config.train_ratio,
+            self.config.val_ratio,
+        );
 
         // Combine
         let mut train_nodes = normal_train;
@@ -332,10 +345,16 @@ impl DataSplitter {
         shuffle(&mut normal_edges, &mut rng);
         shuffle(&mut anomalous_edges, &mut rng);
 
-        let (normal_train_e, normal_val_e, normal_test_e) =
-            split_by_ratio(&normal_edges, self.config.train_ratio, self.config.val_ratio);
-        let (anomaly_train_e, anomaly_val_e, anomaly_test_e) =
-            split_by_ratio(&anomalous_edges, self.config.train_ratio, self.config.val_ratio);
+        let (normal_train_e, normal_val_e, normal_test_e) = split_by_ratio(
+            &normal_edges,
+            self.config.train_ratio,
+            self.config.val_ratio,
+        );
+        let (anomaly_train_e, anomaly_val_e, anomaly_test_e) = split_by_ratio(
+            &anomalous_edges,
+            self.config.train_ratio,
+            self.config.val_ratio,
+        );
 
         let mut train_edges = normal_train_e;
         train_edges.extend(anomaly_train_e);
@@ -440,7 +459,11 @@ impl DataSplitter {
 }
 
 /// Splits a slice by ratio.
-fn split_by_ratio<T: Clone>(items: &[T], train_ratio: f64, val_ratio: f64) -> (Vec<T>, Vec<T>, Vec<T>) {
+fn split_by_ratio<T: Clone>(
+    items: &[T],
+    train_ratio: f64,
+    val_ratio: f64,
+) -> (Vec<T>, Vec<T>, Vec<T>) {
     let n = items.len();
     let train_size = (n as f64 * train_ratio) as usize;
     let val_size = (n as f64 * val_ratio) as usize;
@@ -533,7 +556,7 @@ pub fn sample_negative_edges(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{GraphEdge, GraphNode, GraphType, EdgeType, NodeType};
+    use crate::models::{EdgeType, GraphEdge, GraphNode, GraphType, NodeType};
 
     fn create_test_graph() -> Graph {
         let mut graph = Graph::new("test", GraphType::Transaction);

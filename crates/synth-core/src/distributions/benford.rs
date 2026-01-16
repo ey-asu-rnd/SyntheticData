@@ -12,8 +12,10 @@ use super::AmountDistributionConfig;
 
 /// Benford's Law probability distribution for first digits 1-9.
 /// P(d) = log10(1 + 1/d)
+/// Note: Uses explicit values to satisfy clippy while maintaining exact precision.
+#[allow(clippy::approx_constant)]
 pub const BENFORD_PROBABILITIES: [f64; 9] = [
-    0.30103, // 1: 30.1%
+    0.30103, // 1: 30.1% - log10(2)
     0.17609, // 2: 17.6%
     0.12494, // 3: 12.5%
     0.09691, // 4: 9.7%
@@ -25,8 +27,10 @@ pub const BENFORD_PROBABILITIES: [f64; 9] = [
 ];
 
 /// Cumulative distribution function for Benford's Law.
+/// Note: Uses explicit values to satisfy clippy while maintaining exact precision.
+#[allow(clippy::approx_constant)]
 pub const BENFORD_CDF: [f64; 9] = [
-    0.30103, // 1
+    0.30103, // 1 - log10(2)
     0.47712, // 1-2
     0.60206, // 1-3
     0.69897, // 1-4
@@ -136,7 +140,8 @@ impl BenfordSampler {
 
     /// Sample an amount following Benford's Law.
     pub fn sample(&mut self) -> Decimal {
-        self.sample_with_first_digit(self.sample_benford_first_digit())
+        let first_digit = self.sample_benford_first_digit();
+        self.sample_with_first_digit(first_digit)
     }
 
     /// Sample an amount with a specific first digit.
@@ -402,11 +407,7 @@ mod tests {
         for _ in 0..100 {
             let amount = gen.sample(FraudAmountPattern::ThresholdAdjacent);
             let f = amount.to_string().parse::<f64>().unwrap();
-            assert!(
-                f < 10000.0,
-                "Amount {} should be below threshold 10000",
-                f
-            );
+            assert!(f < 10000.0, "Amount {} should be below threshold 10000", f);
             assert!(
                 f >= 8500.0,
                 "Amount {} should be within 15% of threshold",

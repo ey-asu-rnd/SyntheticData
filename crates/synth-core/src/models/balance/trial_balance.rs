@@ -145,7 +145,10 @@ impl TrialBalance {
 
     /// Get lines for a specific category.
     pub fn get_lines_by_category(&self, category: AccountCategory) -> Vec<&TrialBalanceLine> {
-        self.lines.iter().filter(|l| l.category == category).collect()
+        self.lines
+            .iter()
+            .filter(|l| l.category == category)
+            .collect()
     }
 
     /// Get total for a category.
@@ -234,17 +237,17 @@ impl TrialBalance {
 
     /// Sort lines by account code.
     pub fn sort_by_account(&mut self) {
-        self.lines.sort_by(|a, b| a.account_code.cmp(&b.account_code));
+        self.lines
+            .sort_by(|a, b| a.account_code.cmp(&b.account_code));
     }
 
     /// Sort lines by category then account code.
     pub fn sort_by_category(&mut self) {
-        self.lines.sort_by(|a, b| {
-            match a.category.cmp(&b.category) {
+        self.lines
+            .sort_by(|a, b| match a.category.cmp(&b.category) {
                 std::cmp::Ordering::Equal => a.account_code.cmp(&b.account_code),
                 other => other,
-            }
-        });
+            });
     }
 }
 
@@ -373,9 +376,13 @@ impl AccountCategory {
             "30" | "31" | "32" | "33" | "34" | "35" | "36" | "37" | "38" | "39" => Self::Equity,
             "40" | "41" | "42" | "43" | "44" => Self::Revenue,
             "50" | "51" | "52" => Self::CostOfGoodsSold,
-            "60" | "61" | "62" | "63" | "64" | "65" | "66" | "67" | "68" | "69" => Self::OperatingExpenses,
+            "60" | "61" | "62" | "63" | "64" | "65" | "66" | "67" | "68" | "69" => {
+                Self::OperatingExpenses
+            }
             "70" | "71" | "72" | "73" | "74" => Self::OtherIncome,
-            "80" | "81" | "82" | "83" | "84" | "85" | "86" | "87" | "88" | "89" => Self::OtherExpenses,
+            "80" | "81" | "82" | "83" | "84" | "85" | "86" | "87" | "88" | "89" => {
+                Self::OtherExpenses
+            }
             _ => Self::OperatingExpenses,
         }
     }
@@ -484,7 +491,9 @@ pub struct ComparativeTrialBalanceLine {
 impl ComparativeTrialBalance {
     /// Create from multiple trial balances.
     pub fn from_trial_balances(trial_balances: Vec<&TrialBalance>) -> Self {
-        let first = trial_balances.first().expect("At least one trial balance required");
+        let first = trial_balances
+            .first()
+            .expect("At least one trial balance required");
 
         let periods: Vec<(i32, u32)> = trial_balances
             .iter()
@@ -521,9 +530,18 @@ impl ComparativeTrialBalance {
             for i in 1..sorted_periods.len() {
                 let prior = sorted_periods[i - 1];
                 let current = sorted_periods[i];
-                let prior_balance = line.period_balances.get(&prior).copied().unwrap_or(Decimal::ZERO);
-                let current_balance = line.period_balances.get(&current).copied().unwrap_or(Decimal::ZERO);
-                line.period_changes.insert(current, current_balance - prior_balance);
+                let prior_balance = line
+                    .period_balances
+                    .get(&prior)
+                    .copied()
+                    .unwrap_or(Decimal::ZERO);
+                let current_balance = line
+                    .period_balances
+                    .get(&current)
+                    .copied()
+                    .unwrap_or(Decimal::ZERO);
+                line.period_changes
+                    .insert(current, current_balance - prior_balance);
             }
         }
 
@@ -639,14 +657,38 @@ mod tests {
 
     #[test]
     fn test_account_category_from_code() {
-        assert_eq!(AccountCategory::from_account_code("1100"), AccountCategory::CurrentAssets);
-        assert_eq!(AccountCategory::from_account_code("1500"), AccountCategory::NonCurrentAssets);
-        assert_eq!(AccountCategory::from_account_code("2100"), AccountCategory::CurrentLiabilities);
-        assert_eq!(AccountCategory::from_account_code("2700"), AccountCategory::NonCurrentLiabilities);
-        assert_eq!(AccountCategory::from_account_code("3100"), AccountCategory::Equity);
-        assert_eq!(AccountCategory::from_account_code("4100"), AccountCategory::Revenue);
-        assert_eq!(AccountCategory::from_account_code("5100"), AccountCategory::CostOfGoodsSold);
-        assert_eq!(AccountCategory::from_account_code("6100"), AccountCategory::OperatingExpenses);
+        assert_eq!(
+            AccountCategory::from_account_code("1100"),
+            AccountCategory::CurrentAssets
+        );
+        assert_eq!(
+            AccountCategory::from_account_code("1500"),
+            AccountCategory::NonCurrentAssets
+        );
+        assert_eq!(
+            AccountCategory::from_account_code("2100"),
+            AccountCategory::CurrentLiabilities
+        );
+        assert_eq!(
+            AccountCategory::from_account_code("2700"),
+            AccountCategory::NonCurrentLiabilities
+        );
+        assert_eq!(
+            AccountCategory::from_account_code("3100"),
+            AccountCategory::Equity
+        );
+        assert_eq!(
+            AccountCategory::from_account_code("4100"),
+            AccountCategory::Revenue
+        );
+        assert_eq!(
+            AccountCategory::from_account_code("5100"),
+            AccountCategory::CostOfGoodsSold
+        );
+        assert_eq!(
+            AccountCategory::from_account_code("6100"),
+            AccountCategory::OperatingExpenses
+        );
     }
 
     #[test]

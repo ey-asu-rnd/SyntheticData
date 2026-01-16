@@ -7,6 +7,7 @@ use chrono::{Datelike, NaiveDate};
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, Normal};
+use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
@@ -76,7 +77,7 @@ impl FxRateService {
         // Initialize log rates from base rates
         for currency in &config.currencies {
             if let Some(rate) = base_rates.get(currency) {
-                let rate_f64: f64 = rate.try_into().unwrap_or(1.0);
+                let rate_f64: f64 = rate.to_f64().unwrap_or(1.0);
                 current_log_rates.insert(currency.clone(), rate_f64.ln());
             }
         }
@@ -203,10 +204,7 @@ impl FxRateService {
     /// - σ = volatility
     /// - dW = Wiener process increment
     fn generate_next_rate(&mut self, currency: &str, date: NaiveDate) -> FxRate {
-        let current_log = *self
-            .current_log_rates
-            .get(currency)
-            .unwrap_or(&0.0);
+        let current_log = *self.current_log_rates.get(currency).unwrap_or(&0.0);
 
         // Get base rate for mean reversion target
         let base_rate: f64 = self
@@ -241,9 +239,7 @@ impl FxRateService {
 
         // Convert log rate back to actual rate
         let new_rate = new_log.exp();
-        let rate_decimal = Decimal::try_from(new_rate)
-            .unwrap_or(dec!(1))
-            .round_dp(6);
+        let rate_decimal = Decimal::try_from(new_rate).unwrap_or(dec!(1)).round_dp(6);
 
         FxRate::new(
             currency,
@@ -261,7 +257,8 @@ impl FxRateService {
         for currency in &self.config.currencies {
             if let Some(rate) = self.base_rates.get(currency) {
                 let rate_f64: f64 = (*rate).try_into().unwrap_or(1.0);
-                self.current_log_rates.insert(currency.clone(), rate_f64.ln());
+                self.current_log_rates
+                    .insert(currency.clone(), rate_f64.ln());
             }
         }
     }
@@ -305,9 +302,9 @@ impl FxRateGenerator {
         while (current_year < end_date.year())
             || (current_year == end_date.year() && current_month <= end_date.month())
         {
-            let rates = self
-                .service
-                .generate_period_rates(current_year, current_month, &daily_rates);
+            let rates =
+                self.service
+                    .generate_period_rates(current_year, current_month, &daily_rates);
             period_rates.extend(rates);
 
             // Move to next month
@@ -458,12 +455,12 @@ mod tests {
         );
 
         // Should have closing and average rates for each month
-        let jan_closing = generated
-            .closing_rates_for_date(NaiveDate::from_ymd_opt(2024, 1, 31).unwrap());
+        let jan_closing =
+            generated.closing_rates_for_date(NaiveDate::from_ymd_opt(2024, 1, 31).unwrap());
         assert!(!jan_closing.is_empty());
 
-        let jan_average = generated
-            .average_rates_for_date(NaiveDate::from_ymd_opt(2024, 1, 31).unwrap());
+        let jan_average =
+            generated.average_rates_for_date(NaiveDate::from_ymd_opt(2024, 1, 31).unwrap());
         assert!(!jan_average.is_empty());
     }
 }

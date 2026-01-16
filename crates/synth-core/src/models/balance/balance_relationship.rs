@@ -164,7 +164,7 @@ impl BalanceRelationshipRule {
             enabled: true,
             severity: RuleSeverity::Warning,
             numerator_accounts: vec!["4100".to_string(), "5100".to_string()], // Revenue - COGS
-            denominator_accounts: vec!["4100".to_string()], // Revenue
+            denominator_accounts: vec!["4100".to_string()],                   // Revenue
             multiplier: Decimal::ONE,
         }
     }
@@ -275,7 +275,11 @@ impl ValidationResult {
     }
 
     /// Create a failing result.
-    pub fn fail(rule: &BalanceRelationshipRule, calculated_value: Decimal, message: String) -> Self {
+    pub fn fail(
+        rule: &BalanceRelationshipRule,
+        calculated_value: Decimal,
+        message: String,
+    ) -> Self {
         let deviation = rule.deviation_from_target(calculated_value);
         let deviation_percent = rule.target_value.and_then(|target| {
             if target != Decimal::ZERO {
@@ -324,10 +328,17 @@ impl BalanceCoherenceValidator {
 
     /// Add standard rules for an industry.
     pub fn add_standard_rules(&mut self, target_dso: u32, target_dpo: u32, target_margin: Decimal) {
-        self.rules.push(BalanceRelationshipRule::new_dso_rule(target_dso, 10));
-        self.rules.push(BalanceRelationshipRule::new_dpo_rule(target_dpo, 10));
-        self.rules.push(BalanceRelationshipRule::new_gross_margin_rule(target_margin, dec!(0.05)));
-        self.rules.push(BalanceRelationshipRule::new_balance_equation_rule());
+        self.rules
+            .push(BalanceRelationshipRule::new_dso_rule(target_dso, 10));
+        self.rules
+            .push(BalanceRelationshipRule::new_dpo_rule(target_dpo, 10));
+        self.rules
+            .push(BalanceRelationshipRule::new_gross_margin_rule(
+                target_margin,
+                dec!(0.05),
+            ));
+        self.rules
+            .push(BalanceRelationshipRule::new_balance_equation_rule());
     }
 
     /// Validate a balance snapshot against all rules.
@@ -347,7 +358,11 @@ impl BalanceCoherenceValidator {
     }
 
     /// Validate a single rule against a snapshot.
-    fn validate_rule(&self, rule: &BalanceRelationshipRule, snapshot: &BalanceSnapshot) -> ValidationResult {
+    fn validate_rule(
+        &self,
+        rule: &BalanceRelationshipRule,
+        snapshot: &BalanceSnapshot,
+    ) -> ValidationResult {
         match rule.relationship_type {
             RelationshipType::BalanceSheetEquation => {
                 // A = L + E + Net Income
@@ -358,10 +373,7 @@ impl BalanceCoherenceValidator {
                     ValidationResult::fail(
                         rule,
                         equation_diff,
-                        format!(
-                            "Balance sheet is out of balance by {:.2}",
-                            equation_diff
-                        ),
+                        format!("Balance sheet is out of balance by {:.2}", equation_diff),
                     )
                 }
             }
@@ -370,7 +382,11 @@ impl BalanceCoherenceValidator {
                 let current_liabilities = snapshot.total_liabilities;
 
                 if current_liabilities == Decimal::ZERO {
-                    ValidationResult::fail(rule, Decimal::ZERO, "No current liabilities".to_string())
+                    ValidationResult::fail(
+                        rule,
+                        Decimal::ZERO,
+                        "No current liabilities".to_string(),
+                    )
                 } else {
                     let ratio = current_assets / current_liabilities;
                     if rule.is_within_range(ratio) {
@@ -379,10 +395,7 @@ impl BalanceCoherenceValidator {
                         ValidationResult::fail(
                             rule,
                             ratio,
-                            format!(
-                                "Current ratio {:.2} is outside acceptable range",
-                                ratio
-                            ),
+                            format!("Current ratio {:.2} is outside acceptable range", ratio),
                         )
                     }
                 }
@@ -452,10 +465,7 @@ impl BalanceCoherenceValidator {
                         ValidationResult::fail(
                             rule,
                             value,
-                            format!(
-                                "{} = {:.2} is outside acceptable range",
-                                rule.name, value
-                            ),
+                            format!("{} = {:.2} is outside acceptable range", rule.name, value),
                         )
                     }
                 }

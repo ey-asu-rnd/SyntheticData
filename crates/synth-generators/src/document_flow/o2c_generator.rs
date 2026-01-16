@@ -3,7 +3,7 @@
 //! Generates complete O2C document chains:
 //! SalesOrder → Delivery → CustomerInvoice → CustomerReceipt (Payment)
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
@@ -136,11 +136,14 @@ impl O2CGenerator {
 
         // Perform credit check
         let credit_check_passed = self.perform_credit_check(customer, so.total_gross_amount);
-        so.check_credit(credit_check_passed, if !credit_check_passed {
-            Some("Credit limit exceeded".to_string())
-        } else {
-            None
-        });
+        so.check_credit(
+            credit_check_passed,
+            if !credit_check_passed {
+                Some("Credit limit exceeded".to_string())
+            } else {
+                None
+            },
+        );
 
         // If credit check fails, the chain may be blocked
         if !credit_check_passed {
@@ -202,11 +205,8 @@ impl O2CGenerator {
         // Calculate payment date
         let customer_receipt = if will_pay {
             customer_invoice.as_ref().map(|invoice| {
-                let payment_date = self.calculate_payment_date(
-                    invoice_date,
-                    &customer.payment_terms,
-                    customer,
-                );
+                let payment_date =
+                    self.calculate_payment_date(invoice_date, &customer.payment_terms, customer);
                 let payment_fiscal_period = self.get_fiscal_period(payment_date);
 
                 self.generate_customer_receipt(
@@ -251,8 +251,8 @@ impl O2CGenerator {
 
         let so_id = format!("SO-{}-{:010}", company_code, self.so_counter);
 
-        let requested_delivery = so_date
-            + chrono::Duration::days(self.config.avg_days_so_to_delivery as i64);
+        let requested_delivery =
+            so_date + chrono::Duration::days(self.config.avg_days_so_to_delivery as i64);
 
         let mut so = SalesOrder::new(
             so_id,
@@ -319,8 +319,8 @@ impl O2CGenerator {
             deliveries.push(dlv1);
 
             // Second shipment
-            let second_date = delivery_date
-                + chrono::Duration::days(self.rng.gen_range(3..7) as i64);
+            let second_date =
+                delivery_date + chrono::Duration::days(self.rng.gen_range(3..7) as i64);
             let second_period = self.get_fiscal_period(second_date);
             let dlv2 = self.create_delivery(
                 so,
@@ -383,14 +383,16 @@ impl O2CGenerator {
         for so_item in &so.items {
             let ship_qty = (so_item.base.quantity
                 * Decimal::from_f64_retain(quantity_pct).unwrap_or(Decimal::ONE))
-                .round_dp(0);
+            .round_dp(0);
 
             if ship_qty > Decimal::ZERO {
                 // Calculate COGS (assume 60-70% of sales price)
                 let cogs_pct = 0.60 + self.rng.gen::<f64>() * 0.10;
-                let cogs = (so_item.base.unit_price * ship_qty
-                    * Decimal::from_f64_retain(cogs_pct).unwrap_or(Decimal::from_f64_retain(0.65).unwrap()))
-                    .round_dp(2);
+                let cogs = (so_item.base.unit_price
+                    * ship_qty
+                    * Decimal::from_f64_retain(cogs_pct)
+                        .unwrap_or(Decimal::from_f64_retain(0.65).unwrap()))
+                .round_dp(2);
 
                 let mut item = DeliveryItem::from_sales_order(
                     so_item.base.line_number,
@@ -598,15 +600,16 @@ impl O2CGenerator {
 
             // Select random materials (1-5 items per SO)
             let num_items = self.rng.gen_range(1..=5).min(materials.materials.len());
-            let selected_materials: Vec<&Material> = materials.materials
+            let selected_materials: Vec<&Material> = materials
+                .materials
                 .iter()
                 .choose_multiple(&mut self.rng, num_items)
                 .into_iter()
                 .collect();
 
             // Select random SO date
-            let so_date = start_date
-                + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
+            let so_date =
+                start_date + chrono::Duration::days(self.rng.gen_range(0..=days_range) as i64);
             let fiscal_period = self.get_fiscal_period(so_date);
 
             let chain = self.generate_chain(
@@ -657,7 +660,8 @@ impl O2CGenerator {
     /// Calculate invoice date from delivery date.
     fn calculate_invoice_date(&mut self, delivery_date: NaiveDate) -> NaiveDate {
         let variance = self.rng.gen_range(0..2) as i64;
-        delivery_date + chrono::Duration::days(self.config.avg_days_delivery_to_invoice as i64 + variance)
+        delivery_date
+            + chrono::Duration::days(self.config.avg_days_delivery_to_invoice as i64 + variance)
     }
 
     /// Calculate payment date based on customer behavior.
@@ -671,19 +675,24 @@ impl O2CGenerator {
 
         // Adjust based on customer payment behavior
         let behavior_adjustment = match customer.payment_behavior {
-            synth_core::models::CustomerPaymentBehavior::EarlyPayer => {
+            synth_core::models::CustomerPaymentBehavior::Excellent
+            | synth_core::models::CustomerPaymentBehavior::EarlyPayer => {
                 -self.rng.gen_range(5..15) as i64
             }
-            synth_core::models::CustomerPaymentBehavior::OnTime => {
+            synth_core::models::CustomerPaymentBehavior::Good
+            | synth_core::models::CustomerPaymentBehavior::OnTime => {
                 self.rng.gen_range(-2..3) as i64
             }
-            synth_core::models::CustomerPaymentBehavior::SlightlyLate => {
+            synth_core::models::CustomerPaymentBehavior::Fair
+            | synth_core::models::CustomerPaymentBehavior::SlightlyLate => {
                 self.rng.gen_range(5..15) as i64
             }
-            synth_core::models::CustomerPaymentBehavior::OftenLate => {
+            synth_core::models::CustomerPaymentBehavior::Poor
+            | synth_core::models::CustomerPaymentBehavior::OftenLate => {
                 self.rng.gen_range(15..45) as i64
             }
-            synth_core::models::CustomerPaymentBehavior::HighRisk => {
+            synth_core::models::CustomerPaymentBehavior::VeryPoor
+            | synth_core::models::CustomerPaymentBehavior::HighRisk => {
                 self.rng.gen_range(30..90) as i64
             }
         };
@@ -699,7 +708,11 @@ impl O2CGenerator {
     }
 
     /// Calculate due date based on payment terms.
-    fn calculate_due_date(&self, invoice_date: NaiveDate, payment_terms: &PaymentTerms) -> NaiveDate {
+    fn calculate_due_date(
+        &self,
+        invoice_date: NaiveDate,
+        payment_terms: &PaymentTerms,
+    ) -> NaiveDate {
         invoice_date + chrono::Duration::days(payment_terms.net_days() as i64)
     }
 

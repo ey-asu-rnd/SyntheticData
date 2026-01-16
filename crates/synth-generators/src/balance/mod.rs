@@ -10,10 +10,10 @@
 //! - Financial ratio coherence (DSO, DPO, margins)
 //! - Subledger-to-GL reconciliation
 
-mod opening_balance_generator;
 mod balance_tracker;
+mod opening_balance_generator;
 mod trial_balance_generator;
 
-pub use opening_balance_generator::*;
 pub use balance_tracker::*;
+pub use opening_balance_generator::*;
 pub use trial_balance_generator::*;

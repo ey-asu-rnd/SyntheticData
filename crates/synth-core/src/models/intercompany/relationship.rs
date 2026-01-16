@@ -113,6 +113,16 @@ impl ConsolidationMethod {
     pub fn requires_proportional_elimination(&self) -> bool {
         matches!(self, Self::Proportional)
     }
+
+    /// Returns the string representation of the consolidation method.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Full => "Full",
+            Self::Proportional => "Proportional",
+            Self::Equity => "Equity",
+            Self::Cost => "Cost",
+        }
+    }
 }
 
 impl Default for ConsolidationMethod {
@@ -241,10 +251,10 @@ impl OwnershipStructure {
             return true;
         }
         // Both are in the same group if they have effective ownership
-        let has1 = company1 == self.ultimate_parent
-            || self.effective_ownership.contains_key(company1);
-        let has2 = company2 == self.ultimate_parent
-            || self.effective_ownership.contains_key(company2);
+        let has1 =
+            company1 == self.ultimate_parent || self.effective_ownership.contains_key(company1);
+        let has2 =
+            company2 == self.ultimate_parent || self.effective_ownership.contains_key(company2);
         has1 && has2
     }
 
@@ -286,7 +296,8 @@ impl OwnershipStructure {
                     .iter()
                     .find(|r| r.parent_company == company && r.subsidiary_company == sub)
                 {
-                    let sub_effective = effective_pct * rel.ownership_percentage / Decimal::from(100);
+                    let sub_effective =
+                        effective_pct * rel.ownership_percentage / Decimal::from(100);
                     to_process.push((sub.to_string(), sub_effective));
                 }
             }

@@ -20,12 +20,12 @@
 //! - **Neo4j**: CSV files with Cypher import scripts
 //! - **DGL**: Compatible format for Deep Graph Library
 
-pub mod models;
 pub mod builders;
 pub mod exporters;
 pub mod ml;
+pub mod models;
 
-pub use models::*;
 pub use builders::*;
 pub use exporters::*;
 pub use ml::*;
+pub use models::*;

@@ -48,11 +48,14 @@ impl ControlExporter {
         let mut summary = ExportSummary::default();
 
         summary.controls_count = self.export_controls(controls)?;
-        summary.account_mappings_count = self.export_account_mappings(&registry.account_mappings)?;
-        summary.process_mappings_count = self.export_process_mappings(&registry.process_mappings)?;
+        summary.account_mappings_count =
+            self.export_account_mappings(&registry.account_mappings)?;
+        summary.process_mappings_count =
+            self.export_process_mappings(&registry.process_mappings)?;
         summary.threshold_mappings_count =
             self.export_threshold_mappings(&registry.threshold_mappings)?;
-        summary.doctype_mappings_count = self.export_doctype_mappings(&registry.doc_type_mappings)?;
+        summary.doctype_mappings_count =
+            self.export_doctype_mappings(&registry.doc_type_mappings)?;
         summary.sod_conflicts_count = self.export_sod_conflicts(sod_conflicts)?;
         summary.sod_rules_count = self.export_sod_rules(sod_rules)?;
 
@@ -69,13 +72,13 @@ impl ControlExporter {
         writeln!(
             writer,
             "control_id,control_name,control_type,objective,frequency,owner_role,\
-             risk_level,is_key_control,sox_assertion,related_process"
+             risk_level,is_key_control,sox_assertion"
         )?;
 
         for control in controls {
             writeln!(
                 writer,
-                "{},{},{},{},{},{},{},{},{},{}",
+                "{},{},{},{},{},{},{},{},{}",
                 escape_csv(&control.control_id),
                 escape_csv(&control.control_name),
                 format!("{:?}", control.control_type),
@@ -85,10 +88,6 @@ impl ControlExporter {
                 format!("{:?}", control.risk_level),
                 control.is_key_control,
                 format!("{:?}", control.sox_assertion),
-                control
-                    .related_process
-                    .map(|p| format!("{:?}", p))
-                    .unwrap_or_default()
             )?;
         }
 
@@ -225,10 +224,7 @@ impl ControlExporter {
         let mut writer = BufWriter::new(file);
 
         // Header
-        writeln!(
-            writer,
-            "conflict_type,role_a,role_b,description,severity"
-        )?;
+        writeln!(writer, "conflict_type,role_a,role_b,description,severity")?;
 
         for conflict in conflicts {
             writeln!(
@@ -350,8 +346,14 @@ mod tests {
 
         // Verify files were created
         assert!(temp_dir.path().join("internal_controls.csv").exists());
-        assert!(temp_dir.path().join("control_account_mappings.csv").exists());
-        assert!(temp_dir.path().join("control_process_mappings.csv").exists());
+        assert!(temp_dir
+            .path()
+            .join("control_account_mappings.csv")
+            .exists());
+        assert!(temp_dir
+            .path()
+            .join("control_process_mappings.csv")
+            .exists());
         assert!(temp_dir.path().join("sod_conflict_pairs.csv").exists());
         assert!(temp_dir.path().join("sod_rules.csv").exists());
     }
@@ -375,7 +377,8 @@ mod tests {
         assert_eq!(count, controls.len());
 
         // Read the file and verify content
-        let content = std::fs::read_to_string(temp_dir.path().join("internal_controls.csv")).unwrap();
+        let content =
+            std::fs::read_to_string(temp_dir.path().join("internal_controls.csv")).unwrap();
         assert!(content.contains("control_id"));
         assert!(content.contains("C001")); // Cash control
     }
@@ -390,7 +393,8 @@ mod tests {
 
         assert_eq!(count, conflicts.len());
 
-        let content = std::fs::read_to_string(temp_dir.path().join("sod_conflict_pairs.csv")).unwrap();
+        let content =
+            std::fs::read_to_string(temp_dir.path().join("sod_conflict_pairs.csv")).unwrap();
         assert!(content.contains("PreparerApprover"));
     }
 }

@@ -97,8 +97,7 @@ impl YearEndCloseGenerator {
         let net_income = revenue_total - expense_total;
         result.net_income = net_income;
 
-        let income_summary_je =
-            self.close_income_summary(company_code, closing_date, net_income);
+        let income_summary_je = self.close_income_summary(company_code, closing_date, net_income);
         result.closing_entries.push(income_summary_je);
 
         // Step 4: Close dividends to retained earnings (if applicable)
@@ -137,7 +136,7 @@ impl YearEndCloseGenerator {
         self.entry_counter += 1;
         let doc_number = format!("YECL-REV-{:08}", self.entry_counter);
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             doc_number.clone(),
             company_code.to_string(),
             closing_date,
@@ -158,21 +157,11 @@ impl YearEndCloseGenerator {
                 // Revenue accounts have credit balances, so debit to close
                 je.add_line(JournalEntryLine {
                     line_number: line_num,
-                    account_code: account.clone(),
-                    account_description: Some("Revenue".to_string()),
+                    gl_account: account.clone(),
                     debit_amount: *balance,
-                    credit_amount: Decimal::ZERO,
-                    cost_center: None,
-                    profit_center: None,
-                    project_code: None,
                     reference: Some(doc_number.clone()),
-                    assignment: None,
                     text: Some("Year-end close".to_string()),
-                    quantity: None,
-                    unit: None,
-                    tax_code: None,
-                    trading_partner: None,
-                    value_date: None,
+                    ..Default::default()
                 });
                 line_num += 1;
                 total_revenue += *balance;
@@ -183,21 +172,11 @@ impl YearEndCloseGenerator {
         if total_revenue != Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: spec.income_summary_account.clone(),
-                account_description: Some("Income Summary".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: spec.income_summary_account.clone(),
                 credit_amount: total_revenue,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(doc_number.clone()),
-                assignment: None,
                 text: Some("Revenue closed".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
@@ -215,7 +194,7 @@ impl YearEndCloseGenerator {
         self.entry_counter += 1;
         let doc_number = format!("YECL-EXP-{:08}", self.entry_counter);
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             doc_number.clone(),
             company_code.to_string(),
             closing_date,
@@ -246,21 +225,11 @@ impl YearEndCloseGenerator {
         if total_expenses != Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: spec.income_summary_account.clone(),
-                account_description: Some("Income Summary".to_string()),
+                gl_account: spec.income_summary_account.clone(),
                 debit_amount: total_expenses,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(doc_number.clone()),
-                assignment: None,
                 text: Some("Expenses closed".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
             line_num += 1;
         }
@@ -269,21 +238,11 @@ impl YearEndCloseGenerator {
         for (account, balance) in expense_lines {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: account,
-                account_description: Some("Expense".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: account,
                 credit_amount: balance,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(doc_number.clone()),
-                assignment: None,
                 text: Some("Year-end close".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
             line_num += 1;
         }
@@ -301,7 +260,7 @@ impl YearEndCloseGenerator {
         self.entry_counter += 1;
         let doc_number = format!("YECL-IS-{:08}", self.entry_counter);
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             doc_number.clone(),
             company_code.to_string(),
             closing_date,
@@ -312,80 +271,40 @@ impl YearEndCloseGenerator {
             // Profit: Debit Income Summary, Credit Retained Earnings
             je.add_line(JournalEntryLine {
                 line_number: 1,
-                account_code: self.config.income_summary_account.clone(),
-                account_description: Some("Income Summary".to_string()),
+                gl_account: self.config.income_summary_account.clone(),
                 debit_amount: net_income,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(doc_number.clone()),
-                assignment: None,
                 text: Some("Net income transfer".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
 
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: self.config.retained_earnings_account.clone(),
-                account_description: Some("Retained Earnings".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: self.config.retained_earnings_account.clone(),
                 credit_amount: net_income,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(doc_number.clone()),
-                assignment: None,
                 text: Some("Net income for year".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         } else if net_income < Decimal::ZERO {
             // Loss: Debit Retained Earnings, Credit Income Summary
             let loss = net_income.abs();
             je.add_line(JournalEntryLine {
                 line_number: 1,
-                account_code: self.config.retained_earnings_account.clone(),
-                account_description: Some("Retained Earnings".to_string()),
+                gl_account: self.config.retained_earnings_account.clone(),
                 debit_amount: loss,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(doc_number.clone()),
-                assignment: None,
                 text: Some("Net loss for year".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
 
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: self.config.income_summary_account.clone(),
-                account_description: Some("Income Summary".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: self.config.income_summary_account.clone(),
                 credit_amount: loss,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(doc_number.clone()),
-                assignment: None,
                 text: Some("Net loss transfer".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
@@ -403,7 +322,7 @@ impl YearEndCloseGenerator {
         self.entry_counter += 1;
         let doc_number = format!("YECL-DIV-{:08}", self.entry_counter);
 
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             doc_number.clone(),
             company_code.to_string(),
             closing_date,
@@ -413,41 +332,21 @@ impl YearEndCloseGenerator {
         // Debit Retained Earnings
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: self.config.retained_earnings_account.clone(),
-            account_description: Some("Retained Earnings".to_string()),
+            gl_account: self.config.retained_earnings_account.clone(),
             debit_amount: dividend_amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
             text: Some("Dividends declared".to_string()),
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Dividends
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: dividend_account.to_string(),
-            account_description: Some("Dividends".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: dividend_account.to_string(),
             credit_amount: dividend_amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(doc_number.clone()),
-            assignment: None,
             text: Some("Dividends closed".to_string()),
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
@@ -483,7 +382,7 @@ impl YearEndCloseGenerator {
         // Entry 1: Current tax expense
         if provision.current_tax_expense != Decimal::ZERO {
             self.entry_counter += 1;
-            let mut je = JournalEntry::new(
+            let mut je = JournalEntry::new_simple(
                 format!("TAX-CUR-{:08}", self.entry_counter),
                 company_code.to_string(),
                 closing_date,
@@ -492,40 +391,17 @@ impl YearEndCloseGenerator {
 
             je.add_line(JournalEntryLine {
                 line_number: 1,
-                account_code: self.config.tax_expense_account.clone(),
-                account_description: Some("Income Tax Expense".to_string()),
+                gl_account: self.config.tax_expense_account.clone(),
                 debit_amount: provision.current_tax_expense,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
-                reference: None,
-                assignment: None,
                 text: Some("Current tax provision".to_string()),
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
 
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: self.config.current_tax_payable_account.clone(),
-                account_description: Some("Income Tax Payable".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: self.config.current_tax_payable_account.clone(),
                 credit_amount: provision.current_tax_expense,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
-                reference: None,
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
 
             entries.push(je);
@@ -534,7 +410,7 @@ impl YearEndCloseGenerator {
         // Entry 2: Deferred tax expense/benefit
         if provision.deferred_tax_expense != Decimal::ZERO {
             self.entry_counter += 1;
-            let mut je = JournalEntry::new(
+            let mut je = JournalEntry::new_simple(
                 format!("TAX-DEF-{:08}", self.entry_counter),
                 company_code.to_string(),
                 closing_date,
@@ -545,80 +421,34 @@ impl YearEndCloseGenerator {
                 // Deferred tax expense (increase in DTL or decrease in DTA)
                 je.add_line(JournalEntryLine {
                     line_number: 1,
-                    account_code: self.config.tax_expense_account.clone(),
-                    account_description: Some("Deferred Tax Expense".to_string()),
+                    gl_account: self.config.tax_expense_account.clone(),
                     debit_amount: provision.deferred_tax_expense,
-                    credit_amount: Decimal::ZERO,
-                    cost_center: None,
-                    profit_center: None,
-                    project_code: None,
-                    reference: None,
-                    assignment: None,
                     text: Some("Deferred tax expense".to_string()),
-                    quantity: None,
-                    unit: None,
-                    tax_code: None,
-                    trading_partner: None,
-                    value_date: None,
+                    ..Default::default()
                 });
 
                 je.add_line(JournalEntryLine {
                     line_number: 2,
-                    account_code: self.config.deferred_tax_liability_account.clone(),
-                    account_description: Some("Deferred Tax Liability".to_string()),
-                    debit_amount: Decimal::ZERO,
+                    gl_account: self.config.deferred_tax_liability_account.clone(),
                     credit_amount: provision.deferred_tax_expense,
-                    cost_center: None,
-                    profit_center: None,
-                    project_code: None,
-                    reference: None,
-                    assignment: None,
-                    text: None,
-                    quantity: None,
-                    unit: None,
-                    tax_code: None,
-                    trading_partner: None,
-                    value_date: None,
+                    ..Default::default()
                 });
             } else {
                 // Deferred tax benefit (increase in DTA or decrease in DTL)
                 let benefit = provision.deferred_tax_expense.abs();
                 je.add_line(JournalEntryLine {
                     line_number: 1,
-                    account_code: self.config.deferred_tax_asset_account.clone(),
-                    account_description: Some("Deferred Tax Asset".to_string()),
+                    gl_account: self.config.deferred_tax_asset_account.clone(),
                     debit_amount: benefit,
-                    credit_amount: Decimal::ZERO,
-                    cost_center: None,
-                    profit_center: None,
-                    project_code: None,
-                    reference: None,
-                    assignment: None,
                     text: Some("Deferred tax benefit".to_string()),
-                    quantity: None,
-                    unit: None,
-                    tax_code: None,
-                    trading_partner: None,
-                    value_date: None,
+                    ..Default::default()
                 });
 
                 je.add_line(JournalEntryLine {
                     line_number: 2,
-                    account_code: self.config.tax_expense_account.clone(),
-                    account_description: Some("Deferred Tax Benefit".to_string()),
-                    debit_amount: Decimal::ZERO,
+                    gl_account: self.config.tax_expense_account.clone(),
                     credit_amount: benefit,
-                    cost_center: None,
-                    profit_center: None,
-                    project_code: None,
-                    reference: None,
-                    assignment: None,
-                    text: None,
-                    quantity: None,
-                    unit: None,
-                    tax_code: None,
-                    trading_partner: None,
-                    value_date: None,
+                    ..Default::default()
                 });
             }
 
@@ -716,9 +546,6 @@ mod tests {
         );
 
         assert!(result.provision.current_tax_expense > Decimal::ZERO);
-        assert!(result
-            .journal_entries
-            .iter()
-            .all(|je| je.is_balanced()));
+        assert!(result.journal_entries.iter().all(|je| je.is_balanced()));
     }
 }

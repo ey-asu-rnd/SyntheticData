@@ -1,6 +1,6 @@
 //! AR Credit Memo model.
 
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -186,7 +186,10 @@ impl ARCreditMemo {
         self.approval_status = ApprovalStatus::Rejected;
         self.notes = Some(format!(
             "{}Rejected: {}",
-            self.notes.as_ref().map(|n| format!("{}. ", n)).unwrap_or_default(),
+            self.notes
+                .as_ref()
+                .map(|n| format!("{}. ", n))
+                .unwrap_or_default(),
             reason
         ));
     }

@@ -7,7 +7,10 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use super::{DocumentHeader, DocumentLineItem, DocumentReference, DocumentStatus, DocumentType, ReferenceType};
+use super::{
+    DocumentHeader, DocumentLineItem, DocumentReference, DocumentStatus, DocumentType,
+    ReferenceType,
+};
 
 /// Vendor Invoice type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -429,7 +432,8 @@ impl VendorInvoice {
         self.withholding_tax_amount = self.items.iter().map(|i| i.withholding_tax_amount).sum();
         self.gross_amount = self.net_amount + self.tax_amount;
         self.payable_amount = self.gross_amount - self.withholding_tax_amount;
-        self.cash_discount_amount = self.net_amount * self.cash_discount_percent / Decimal::from(100);
+        self.cash_discount_amount =
+            self.net_amount * self.cash_discount_percent / Decimal::from(100);
         self.balance = self.payable_amount - self.amount_paid;
     }
 
@@ -485,7 +489,10 @@ impl VendorInvoice {
             let account = if item.po_number.is_some() && item.gr_number.is_some() {
                 "290000".to_string() // GR/IR Clearing
             } else {
-                item.base.gl_account.clone().unwrap_or_else(|| "600000".to_string())
+                item.base
+                    .gl_account
+                    .clone()
+                    .unwrap_or_else(|| "600000".to_string())
             };
 
             entries.push((
@@ -536,7 +543,10 @@ mod tests {
         );
 
         assert_eq!(invoice.vendor_id, "V-000001");
-        assert_eq!(invoice.due_date, NaiveDate::from_ymd_opt(2024, 2, 14).unwrap());
+        assert_eq!(
+            invoice.due_date,
+            NaiveDate::from_ymd_opt(2024, 2, 14).unwrap()
+        );
     }
 
     #[test]

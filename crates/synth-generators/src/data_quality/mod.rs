@@ -10,14 +10,14 @@
 //! These variations make synthetic data more realistic for testing
 //! data cleaning, ETL pipelines, and data quality tools.
 
-mod missing_values;
-mod format_variations;
 mod duplicates;
-mod typos;
+mod format_variations;
 mod injector;
+mod missing_values;
+mod typos;
 
-pub use missing_values::*;
-pub use format_variations::*;
 pub use duplicates::*;
-pub use typos::*;
+pub use format_variations::*;
 pub use injector::*;
+pub use missing_values::*;
+pub use typos::*;

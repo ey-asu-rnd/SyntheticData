@@ -130,11 +130,8 @@ impl IndustrySeasonality {
     /// If multiple events are active, returns the one with highest priority.
     /// If no events are active, returns 1.0.
     pub fn get_multiplier(&self, date: NaiveDate) -> f64 {
-        let active_events: Vec<&SeasonalEvent> = self
-            .events
-            .iter()
-            .filter(|e| e.is_active(date))
-            .collect();
+        let active_events: Vec<&SeasonalEvent> =
+            self.events.iter().filter(|e| e.is_active(date)).collect();
 
         if active_events.is_empty() {
             return 1.0;
@@ -159,45 +156,26 @@ impl IndustrySeasonality {
 
         // Black Friday / Cyber Monday (Nov 20-30): 8x
         s.add_event(
-            SeasonalEvent::new("Black Friday/Cyber Monday", 11, 20, 11, 30, 8.0)
-                .with_priority(10),
+            SeasonalEvent::new("Black Friday/Cyber Monday", 11, 20, 11, 30, 8.0).with_priority(10),
         );
 
         // Christmas rush (Dec 15-24): 6x
-        s.add_event(
-            SeasonalEvent::new("Christmas Rush", 12, 15, 12, 24, 6.0)
-                .with_priority(9),
-        );
+        s.add_event(SeasonalEvent::new("Christmas Rush", 12, 15, 12, 24, 6.0).with_priority(9));
 
         // Post-holiday returns (Jan 1-15): 3x
-        s.add_event(
-            SeasonalEvent::new("Post-Holiday Returns", 1, 1, 1, 15, 3.0)
-                .with_priority(7),
-        );
+        s.add_event(SeasonalEvent::new("Post-Holiday Returns", 1, 1, 1, 15, 3.0).with_priority(7));
 
         // Back-to-school (Aug 1-31): 2x
-        s.add_event(
-            SeasonalEvent::new("Back-to-School", 8, 1, 8, 31, 2.0)
-                .with_priority(5),
-        );
+        s.add_event(SeasonalEvent::new("Back-to-School", 8, 1, 8, 31, 2.0).with_priority(5));
 
         // Valentine's Day surge (Feb 7-14): 1.8x
-        s.add_event(
-            SeasonalEvent::new("Valentine's Day", 2, 7, 2, 14, 1.8)
-                .with_priority(4),
-        );
+        s.add_event(SeasonalEvent::new("Valentine's Day", 2, 7, 2, 14, 1.8).with_priority(4));
 
         // Easter season (late March - mid April): 1.5x
-        s.add_event(
-            SeasonalEvent::new("Easter Season", 3, 20, 4, 15, 1.5)
-                .with_priority(3),
-        );
+        s.add_event(SeasonalEvent::new("Easter Season", 3, 20, 4, 15, 1.5).with_priority(3));
 
         // Summer slowdown (Jun-Jul): 0.7x
-        s.add_event(
-            SeasonalEvent::new("Summer Slowdown", 6, 1, 7, 31, 0.7)
-                .with_priority(2),
-        );
+        s.add_event(SeasonalEvent::new("Summer Slowdown", 6, 1, 7, 31, 0.7).with_priority(2));
 
         s
     }
@@ -207,40 +185,26 @@ impl IndustrySeasonality {
         let mut s = Self::new(IndustrySector::Manufacturing);
 
         // Year-end close (Dec 20-31): 4x
-        s.add_event(
-            SeasonalEvent::new("Year-End Close", 12, 20, 12, 31, 4.0)
-                .with_priority(10),
-        );
+        s.add_event(SeasonalEvent::new("Year-End Close", 12, 20, 12, 31, 4.0).with_priority(10));
 
         // Q4 inventory buildup (Oct-Nov): 2x
         s.add_event(
-            SeasonalEvent::new("Q4 Inventory Buildup", 10, 1, 11, 30, 2.0)
-                .with_priority(6),
+            SeasonalEvent::new("Q4 Inventory Buildup", 10, 1, 11, 30, 2.0).with_priority(6),
         );
 
         // Model year transitions (Sep): 1.5x
-        s.add_event(
-            SeasonalEvent::new("Model Year Transition", 9, 1, 9, 30, 1.5)
-                .with_priority(5),
-        );
+        s.add_event(SeasonalEvent::new("Model Year Transition", 9, 1, 9, 30, 1.5).with_priority(5));
 
         // Spring production ramp (Mar-Apr): 1.3x
         s.add_event(
-            SeasonalEvent::new("Spring Production Ramp", 3, 1, 4, 30, 1.3)
-                .with_priority(3),
+            SeasonalEvent::new("Spring Production Ramp", 3, 1, 4, 30, 1.3).with_priority(3),
         );
 
         // Summer slowdown/maintenance (Jul): 0.6x
-        s.add_event(
-            SeasonalEvent::new("Summer Shutdown", 7, 1, 7, 31, 0.6)
-                .with_priority(4),
-        );
+        s.add_event(SeasonalEvent::new("Summer Shutdown", 7, 1, 7, 31, 0.6).with_priority(4));
 
         // Holiday shutdown (Dec 24-26): 0.2x
-        s.add_event(
-            SeasonalEvent::new("Holiday Shutdown", 12, 24, 12, 26, 0.2)
-                .with_priority(11),
-        );
+        s.add_event(SeasonalEvent::new("Holiday Shutdown", 12, 24, 12, 26, 0.2).with_priority(11));
 
         s
     }
@@ -250,46 +214,25 @@ impl IndustrySeasonality {
         let mut s = Self::new(IndustrySector::FinancialServices);
 
         // Year-end (Dec 15-31): 8x
-        s.add_event(
-            SeasonalEvent::new("Year-End", 12, 15, 12, 31, 8.0)
-                .with_priority(10),
-        );
+        s.add_event(SeasonalEvent::new("Year-End", 12, 15, 12, 31, 8.0).with_priority(10));
 
         // Q1 end (Mar 26-31): 5x
-        s.add_event(
-            SeasonalEvent::new("Q1 Close", 3, 26, 3, 31, 5.0)
-                .with_priority(9),
-        );
+        s.add_event(SeasonalEvent::new("Q1 Close", 3, 26, 3, 31, 5.0).with_priority(9));
 
         // Q2 end (Jun 25-30): 5x
-        s.add_event(
-            SeasonalEvent::new("Q2 Close", 6, 25, 6, 30, 5.0)
-                .with_priority(9),
-        );
+        s.add_event(SeasonalEvent::new("Q2 Close", 6, 25, 6, 30, 5.0).with_priority(9));
 
         // Q3 end (Sep 25-30): 5x
-        s.add_event(
-            SeasonalEvent::new("Q3 Close", 9, 25, 9, 30, 5.0)
-                .with_priority(9),
-        );
+        s.add_event(SeasonalEvent::new("Q3 Close", 9, 25, 9, 30, 5.0).with_priority(9));
 
         // Tax deadline (Apr 10-20): 3x
-        s.add_event(
-            SeasonalEvent::new("Tax Deadline", 4, 10, 4, 20, 3.0)
-                .with_priority(7),
-        );
+        s.add_event(SeasonalEvent::new("Tax Deadline", 4, 10, 4, 20, 3.0).with_priority(7));
 
         // Annual audit season (Jan 15 - Feb 28): 2.5x
-        s.add_event(
-            SeasonalEvent::new("Audit Season", 1, 15, 2, 28, 2.5)
-                .with_priority(6),
-        );
+        s.add_event(SeasonalEvent::new("Audit Season", 1, 15, 2, 28, 2.5).with_priority(6));
 
         // SEC/Regulatory filing periods (Feb 1-28): 2x
-        s.add_event(
-            SeasonalEvent::new("Regulatory Filing", 2, 1, 2, 28, 2.0)
-                .with_priority(5),
-        );
+        s.add_event(SeasonalEvent::new("Regulatory Filing", 2, 1, 2, 28, 2.0).with_priority(5));
 
         s
     }
@@ -299,38 +242,20 @@ impl IndustrySeasonality {
         let mut s = Self::new(IndustrySector::Healthcare);
 
         // Year-end (Dec 15-31): 3x
-        s.add_event(
-            SeasonalEvent::new("Year-End", 12, 15, 12, 31, 3.0)
-                .with_priority(10),
-        );
+        s.add_event(SeasonalEvent::new("Year-End", 12, 15, 12, 31, 3.0).with_priority(10));
 
         // Insurance renewal/benefits enrollment (Jan 1-31): 2x
-        s.add_event(
-            SeasonalEvent::new("Insurance Enrollment", 1, 1, 1, 31, 2.0)
-                .with_priority(8),
-        );
+        s.add_event(SeasonalEvent::new("Insurance Enrollment", 1, 1, 1, 31, 2.0).with_priority(8));
 
         // Flu season (Oct-Feb): 1.5x
-        s.add_event(
-            SeasonalEvent::new("Flu Season", 10, 1, 10, 31, 1.5)
-                .with_priority(4),
-        );
-        s.add_event(
-            SeasonalEvent::new("Flu Season Extended", 11, 1, 2, 28, 1.5)
-                .with_priority(4),
-        );
+        s.add_event(SeasonalEvent::new("Flu Season", 10, 1, 10, 31, 1.5).with_priority(4));
+        s.add_event(SeasonalEvent::new("Flu Season Extended", 11, 1, 2, 28, 1.5).with_priority(4));
 
         // Open enrollment period (Nov): 1.8x
-        s.add_event(
-            SeasonalEvent::new("Open Enrollment", 11, 1, 11, 30, 1.8)
-                .with_priority(6),
-        );
+        s.add_event(SeasonalEvent::new("Open Enrollment", 11, 1, 11, 30, 1.8).with_priority(6));
 
         // Summer elective procedure slowdown (Jun-Aug): 0.8x
-        s.add_event(
-            SeasonalEvent::new("Summer Slowdown", 6, 15, 8, 15, 0.8)
-                .with_priority(3),
-        );
+        s.add_event(SeasonalEvent::new("Summer Slowdown", 6, 15, 8, 15, 0.8).with_priority(3));
 
         s
     }
@@ -341,37 +266,21 @@ impl IndustrySeasonality {
 
         // Q4 enterprise deals (Dec): 4x
         s.add_event(
-            SeasonalEvent::new("Q4 Enterprise Deals", 12, 1, 12, 31, 4.0)
-                .with_priority(10),
+            SeasonalEvent::new("Q4 Enterprise Deals", 12, 1, 12, 31, 4.0).with_priority(10),
         );
 
         // Black Friday/holiday sales (Nov 15-30): 2x
-        s.add_event(
-            SeasonalEvent::new("Holiday Sales", 11, 15, 11, 30, 2.0)
-                .with_priority(8),
-        );
+        s.add_event(SeasonalEvent::new("Holiday Sales", 11, 15, 11, 30, 2.0).with_priority(8));
 
         // Back-to-school (Aug-Sep): 1.5x
-        s.add_event(
-            SeasonalEvent::new("Back-to-School", 8, 1, 9, 15, 1.5)
-                .with_priority(5),
-        );
+        s.add_event(SeasonalEvent::new("Back-to-School", 8, 1, 9, 15, 1.5).with_priority(5));
 
         // Product launch seasons (Mar, Sep): 1.8x
-        s.add_event(
-            SeasonalEvent::new("Spring Launches", 3, 1, 3, 31, 1.8)
-                .with_priority(6),
-        );
-        s.add_event(
-            SeasonalEvent::new("Fall Launches", 9, 1, 9, 30, 1.8)
-                .with_priority(6),
-        );
+        s.add_event(SeasonalEvent::new("Spring Launches", 3, 1, 3, 31, 1.8).with_priority(6));
+        s.add_event(SeasonalEvent::new("Fall Launches", 9, 1, 9, 30, 1.8).with_priority(6));
 
         // Summer slowdown (Jul-Aug): 0.7x
-        s.add_event(
-            SeasonalEvent::new("Summer Slowdown", 7, 1, 8, 15, 0.7)
-                .with_priority(3),
-        );
+        s.add_event(SeasonalEvent::new("Summer Slowdown", 7, 1, 8, 15, 0.7).with_priority(3));
 
         s
     }
@@ -381,34 +290,19 @@ impl IndustrySeasonality {
         let mut s = Self::new(IndustrySector::ProfessionalServices);
 
         // Year-end (Dec): 3x
-        s.add_event(
-            SeasonalEvent::new("Year-End", 12, 10, 12, 31, 3.0)
-                .with_priority(10),
-        );
+        s.add_event(SeasonalEvent::new("Year-End", 12, 10, 12, 31, 3.0).with_priority(10));
 
         // Tax season (Feb-Apr): 2.5x for accounting firms
-        s.add_event(
-            SeasonalEvent::new("Tax Season", 2, 1, 4, 15, 2.5)
-                .with_priority(8),
-        );
+        s.add_event(SeasonalEvent::new("Tax Season", 2, 1, 4, 15, 2.5).with_priority(8));
 
         // Budget season (Oct-Nov): 1.8x
-        s.add_event(
-            SeasonalEvent::new("Budget Season", 10, 1, 11, 30, 1.8)
-                .with_priority(6),
-        );
+        s.add_event(SeasonalEvent::new("Budget Season", 10, 1, 11, 30, 1.8).with_priority(6));
 
         // Summer slowdown (Jul-Aug): 0.75x
-        s.add_event(
-            SeasonalEvent::new("Summer Slowdown", 7, 1, 8, 31, 0.75)
-                .with_priority(3),
-        );
+        s.add_event(SeasonalEvent::new("Summer Slowdown", 7, 1, 8, 31, 0.75).with_priority(3));
 
         // Holiday period (Dec 23-Jan 2): 0.3x
-        s.add_event(
-            SeasonalEvent::new("Holiday Period", 12, 23, 12, 26, 0.3)
-                .with_priority(11),
-        );
+        s.add_event(SeasonalEvent::new("Holiday Period", 12, 23, 12, 26, 0.3).with_priority(11));
 
         s
     }
@@ -419,31 +313,18 @@ impl IndustrySeasonality {
 
         // Winter heating season (Nov-Feb): 1.8x
         s.add_event(
-            SeasonalEvent::new("Winter Heating Season", 11, 1, 2, 28, 1.8)
-                .with_priority(6),
+            SeasonalEvent::new("Winter Heating Season", 11, 1, 2, 28, 1.8).with_priority(6),
         );
 
         // Summer cooling season (Jun-Aug): 1.5x
-        s.add_event(
-            SeasonalEvent::new("Summer Cooling Season", 6, 1, 8, 31, 1.5)
-                .with_priority(5),
-        );
+        s.add_event(SeasonalEvent::new("Summer Cooling Season", 6, 1, 8, 31, 1.5).with_priority(5));
 
         // Year-end reconciliation (Dec 15-31): 3x
-        s.add_event(
-            SeasonalEvent::new("Year-End", 12, 15, 12, 31, 3.0)
-                .with_priority(10),
-        );
+        s.add_event(SeasonalEvent::new("Year-End", 12, 15, 12, 31, 3.0).with_priority(10));
 
         // Spring/Fall shoulder seasons: 0.8x
-        s.add_event(
-            SeasonalEvent::new("Spring Shoulder", 3, 15, 5, 15, 0.8)
-                .with_priority(3),
-        );
-        s.add_event(
-            SeasonalEvent::new("Fall Shoulder", 9, 15, 10, 15, 0.8)
-                .with_priority(3),
-        );
+        s.add_event(SeasonalEvent::new("Spring Shoulder", 3, 15, 5, 15, 0.8).with_priority(3));
+        s.add_event(SeasonalEvent::new("Fall Shoulder", 9, 15, 10, 15, 0.8).with_priority(3));
 
         s
     }
@@ -453,28 +334,16 @@ impl IndustrySeasonality {
         let mut s = Self::new(IndustrySector::Transportation);
 
         // Holiday shipping season (Nov 15 - Dec 24): 4x
-        s.add_event(
-            SeasonalEvent::new("Holiday Shipping", 11, 15, 12, 24, 4.0)
-                .with_priority(10),
-        );
+        s.add_event(SeasonalEvent::new("Holiday Shipping", 11, 15, 12, 24, 4.0).with_priority(10));
 
         // Back-to-school (Aug): 1.5x
-        s.add_event(
-            SeasonalEvent::new("Back-to-School", 8, 1, 8, 31, 1.5)
-                .with_priority(5),
-        );
+        s.add_event(SeasonalEvent::new("Back-to-School", 8, 1, 8, 31, 1.5).with_priority(5));
 
         // Summer travel season (Jun-Aug): 1.3x for passenger
-        s.add_event(
-            SeasonalEvent::new("Summer Travel", 6, 15, 8, 15, 1.3)
-                .with_priority(4),
-        );
+        s.add_event(SeasonalEvent::new("Summer Travel", 6, 15, 8, 15, 1.3).with_priority(4));
 
         // Post-holiday slowdown (Jan): 0.7x
-        s.add_event(
-            SeasonalEvent::new("January Slowdown", 1, 5, 1, 31, 0.7)
-                .with_priority(3),
-        );
+        s.add_event(SeasonalEvent::new("January Slowdown", 1, 5, 1, 31, 0.7).with_priority(3));
 
         s
     }
@@ -484,28 +353,16 @@ impl IndustrySeasonality {
         let mut s = Self::new(IndustrySector::RealEstate);
 
         // Spring buying season (Mar-Jun): 2x
-        s.add_event(
-            SeasonalEvent::new("Spring Buying Season", 3, 1, 6, 30, 2.0)
-                .with_priority(6),
-        );
+        s.add_event(SeasonalEvent::new("Spring Buying Season", 3, 1, 6, 30, 2.0).with_priority(6));
 
         // Year-end closings (Dec): 2.5x
-        s.add_event(
-            SeasonalEvent::new("Year-End Closings", 12, 1, 12, 31, 2.5)
-                .with_priority(8),
-        );
+        s.add_event(SeasonalEvent::new("Year-End Closings", 12, 1, 12, 31, 2.5).with_priority(8));
 
         // Summer moving season (Jun-Aug): 1.8x
-        s.add_event(
-            SeasonalEvent::new("Summer Moving", 6, 1, 8, 31, 1.8)
-                .with_priority(5),
-        );
+        s.add_event(SeasonalEvent::new("Summer Moving", 6, 1, 8, 31, 1.8).with_priority(5));
 
         // Winter slowdown (Jan-Feb): 0.6x
-        s.add_event(
-            SeasonalEvent::new("Winter Slowdown", 1, 1, 2, 28, 0.6)
-                .with_priority(3),
-        );
+        s.add_event(SeasonalEvent::new("Winter Slowdown", 1, 1, 2, 28, 0.6).with_priority(3));
 
         s
     }
@@ -516,27 +373,17 @@ impl IndustrySeasonality {
 
         // Holiday activations (Nov-Dec): 2x
         s.add_event(
-            SeasonalEvent::new("Holiday Activations", 11, 15, 12, 31, 2.0)
-                .with_priority(8),
+            SeasonalEvent::new("Holiday Activations", 11, 15, 12, 31, 2.0).with_priority(8),
         );
 
         // Back-to-school (Aug-Sep): 1.5x
-        s.add_event(
-            SeasonalEvent::new("Back-to-School", 8, 1, 9, 15, 1.5)
-                .with_priority(5),
-        );
+        s.add_event(SeasonalEvent::new("Back-to-School", 8, 1, 9, 15, 1.5).with_priority(5));
 
         // Year-end billing (Dec 15-31): 1.8x
-        s.add_event(
-            SeasonalEvent::new("Year-End Billing", 12, 15, 12, 31, 1.8)
-                .with_priority(7),
-        );
+        s.add_event(SeasonalEvent::new("Year-End Billing", 12, 15, 12, 31, 1.8).with_priority(7));
 
         // Q1 slowdown (Jan-Feb): 0.8x
-        s.add_event(
-            SeasonalEvent::new("Q1 Slowdown", 1, 15, 2, 28, 0.8)
-                .with_priority(3),
-        );
+        s.add_event(SeasonalEvent::new("Q1 Slowdown", 1, 15, 2, 28, 0.8).with_priority(3));
 
         s
     }
@@ -652,14 +499,8 @@ mod tests {
         let mut s = IndustrySeasonality::new(IndustrySector::Retail);
 
         // Add two overlapping events
-        s.add_event(
-            SeasonalEvent::new("Low Priority", 12, 1, 12, 31, 2.0)
-                .with_priority(1),
-        );
-        s.add_event(
-            SeasonalEvent::new("High Priority", 12, 15, 12, 25, 5.0)
-                .with_priority(10),
-        );
+        s.add_event(SeasonalEvent::new("Low Priority", 12, 1, 12, 31, 2.0).with_priority(1));
+        s.add_event(SeasonalEvent::new("High Priority", 12, 15, 12, 25, 5.0).with_priority(10));
 
         // In overlap period, high priority should win
         let overlap = NaiveDate::from_ymd_opt(2024, 12, 20).unwrap();

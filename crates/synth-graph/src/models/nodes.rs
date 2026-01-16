@@ -178,7 +178,7 @@ impl NodeProperty {
         match self {
             NodeProperty::Int(i) => Some(*i as f64),
             NodeProperty::Float(f) => Some(*f),
-            NodeProperty::Decimal(d) => d.try_into().ok(),
+            NodeProperty::Decimal(d) => (*d).try_into().ok(),
             NodeProperty::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
             _ => None,
         }
@@ -315,7 +315,9 @@ impl UserNode {
     /// Computes features for the user node.
     pub fn compute_features(&mut self) {
         // Active status
-        self.node.features.push(if self.is_active { 1.0 } else { 0.0 });
+        self.node
+            .features
+            .push(if self.is_active { 1.0 } else { 0.0 });
 
         // Approval limit (log-scaled)
         if let Some(limit) = self.approval_limit {

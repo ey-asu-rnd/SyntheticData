@@ -241,7 +241,7 @@ impl APGenerator {
     }
 
     fn generate_invoice_je(&self, invoice: &APInvoice) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", invoice.invoice_number),
             invoice.company_code.clone(),
             invoice.posting_date,
@@ -251,70 +251,39 @@ impl APGenerator {
         // Debit Expense
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "5000".to_string(),
-            account_description: Some("Expense".to_string()),
+            gl_account: "5000".to_string(),
             debit_amount: invoice.net_amount.document_amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(invoice.invoice_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Debit Tax Receivable
         if invoice.tax_amount.document_amount > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: 2,
-                account_code: "1400".to_string(),
-                account_description: Some("Input Tax".to_string()),
+                gl_account: "1400".to_string(),
                 debit_amount: invoice.tax_amount.document_amount,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(invoice.invoice_number.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
                 tax_code: Some("VAT".to_string()),
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
         // Credit AP
         je.add_line(JournalEntryLine {
             line_number: 3,
-            account_code: "2000".to_string(),
-            account_description: Some("Accounts Payable".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "2000".to_string(),
             credit_amount: invoice.gross_amount.document_amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(invoice.invoice_number.clone()),
             assignment: Some(invoice.vendor_id.clone()),
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         je
     }
 
     fn generate_payment_je(&self, payment: &APPayment) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", payment.payment_number),
             payment.company_code.clone(),
             payment.posting_date,
@@ -325,62 +294,30 @@ impl APGenerator {
         let ap_debit = payment.net_payment + payment.discount_taken;
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "2000".to_string(),
-            account_description: Some("Accounts Payable".to_string()),
+            gl_account: "2000".to_string(),
             debit_amount: ap_debit,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(payment.payment_number.clone()),
             assignment: Some(payment.vendor_id.clone()),
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Cash
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "1000".to_string(),
-            account_description: Some("Cash".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "1000".to_string(),
             credit_amount: payment.net_payment,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(payment.payment_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Discount Income
         if payment.discount_taken > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: 3,
-                account_code: "4800".to_string(),
-                account_description: Some("Purchase Discounts".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: "4800".to_string(),
                 credit_amount: payment.discount_taken,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(payment.payment_number.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
@@ -388,7 +325,7 @@ impl APGenerator {
     }
 
     fn generate_debit_memo_je(&self, memo: &APDebitMemo) -> JournalEntry {
-        let mut je = JournalEntry::new(
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", memo.debit_memo_number),
             memo.company_code.clone(),
             memo.posting_date,
@@ -398,62 +335,31 @@ impl APGenerator {
         // Debit AP
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: "2000".to_string(),
-            account_description: Some("Accounts Payable".to_string()),
+            gl_account: "2000".to_string(),
             debit_amount: memo.gross_amount.document_amount,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(memo.debit_memo_number.clone()),
             assignment: Some(memo.vendor_id.clone()),
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Expense
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "5000".to_string(),
-            account_description: Some("Expense".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: "5000".to_string(),
             credit_amount: memo.net_amount.document_amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
             reference: Some(memo.debit_memo_number.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Tax
         if memo.tax_amount.document_amount > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: 3,
-                account_code: "1400".to_string(),
-                account_description: Some("Input Tax".to_string()),
-                debit_amount: Decimal::ZERO,
+                gl_account: "1400".to_string(),
                 credit_amount: memo.tax_amount.document_amount,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
                 reference: Some(memo.debit_memo_number.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
                 tax_code: Some("VAT".to_string()),
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 

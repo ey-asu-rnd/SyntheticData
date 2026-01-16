@@ -5,10 +5,10 @@
 //! - IC matching and reconciliation
 //! - Consolidation elimination entries
 
+mod elimination_generator;
 mod ic_generator;
 mod matching_engine;
-mod elimination_generator;
 
+pub use elimination_generator::*;
 pub use ic_generator::*;
 pub use matching_engine::*;
-pub use elimination_generator::*;

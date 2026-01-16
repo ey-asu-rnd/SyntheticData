@@ -58,13 +58,41 @@ impl Default for CustomerGeneratorConfig {
             default_country: "US".to_string(),
             default_currency: "USD".to_string(),
             credit_limits: vec![
-                (CreditRating::AAA, Decimal::from(1_000_000), Decimal::from(10_000_000)),
-                (CreditRating::AA, Decimal::from(500_000), Decimal::from(2_000_000)),
-                (CreditRating::A, Decimal::from(250_000), Decimal::from(1_000_000)),
-                (CreditRating::BBB, Decimal::from(100_000), Decimal::from(500_000)),
-                (CreditRating::BB, Decimal::from(50_000), Decimal::from(250_000)),
-                (CreditRating::B, Decimal::from(25_000), Decimal::from(100_000)),
-                (CreditRating::CCC, Decimal::from(10_000), Decimal::from(50_000)),
+                (
+                    CreditRating::AAA,
+                    Decimal::from(1_000_000),
+                    Decimal::from(10_000_000),
+                ),
+                (
+                    CreditRating::AA,
+                    Decimal::from(500_000),
+                    Decimal::from(2_000_000),
+                ),
+                (
+                    CreditRating::A,
+                    Decimal::from(250_000),
+                    Decimal::from(1_000_000),
+                ),
+                (
+                    CreditRating::BBB,
+                    Decimal::from(100_000),
+                    Decimal::from(500_000),
+                ),
+                (
+                    CreditRating::BB,
+                    Decimal::from(50_000),
+                    Decimal::from(250_000),
+                ),
+                (
+                    CreditRating::B,
+                    Decimal::from(25_000),
+                    Decimal::from(100_000),
+                ),
+                (
+                    CreditRating::CCC,
+                    Decimal::from(10_000),
+                    Decimal::from(50_000),
+                ),
                 (CreditRating::D, Decimal::from(0), Decimal::from(10_000)),
             ],
         }
@@ -73,86 +101,110 @@ impl Default for CustomerGeneratorConfig {
 
 /// Customer name templates by industry.
 const CUSTOMER_NAME_TEMPLATES: &[(&str, &[&str])] = &[
-    ("Retail", &[
-        "Consumer Goods Corp.",
-        "Retail Solutions Inc.",
-        "Shop Direct Ltd.",
-        "Market Leaders LLC",
-        "Consumer Brands Group",
-        "Retail Partners Co.",
-        "Shopping Networks Inc.",
-        "Direct Sales Corp.",
-    ]),
-    ("Manufacturing", &[
-        "Industrial Manufacturing Inc.",
-        "Production Systems Corp.",
-        "Assembly Technologies LLC",
-        "Manufacturing Partners Group",
-        "Factory Solutions Ltd.",
-        "Production Line Inc.",
-        "Industrial Works Corp.",
-        "Manufacturing Excellence Co.",
-    ]),
-    ("Healthcare", &[
-        "Healthcare Systems Inc.",
-        "Medical Solutions Corp.",
-        "Health Partners LLC",
-        "Medical Equipment Group",
-        "Healthcare Providers Ltd.",
-        "Clinical Services Inc.",
-        "Health Networks Corp.",
-        "Medical Supplies Co.",
-    ]),
-    ("Technology", &[
-        "Tech Innovations Inc.",
-        "Digital Solutions Corp.",
-        "Software Systems LLC",
-        "Technology Partners Group",
-        "IT Solutions Ltd.",
-        "Tech Enterprises Inc.",
-        "Digital Networks Corp.",
-        "Innovation Labs Co.",
-    ]),
-    ("Financial", &[
-        "Financial Services Inc.",
-        "Banking Solutions Corp.",
-        "Investment Partners LLC",
-        "Financial Networks Group",
-        "Capital Services Ltd.",
-        "Banking Partners Inc.",
-        "Finance Solutions Corp.",
-        "Investment Group Co.",
-    ]),
-    ("Energy", &[
-        "Energy Solutions Inc.",
-        "Power Systems Corp.",
-        "Renewable Partners LLC",
-        "Energy Networks Group",
-        "Utility Services Ltd.",
-        "Power Generation Inc.",
-        "Energy Partners Corp.",
-        "Sustainable Energy Co.",
-    ]),
-    ("Transportation", &[
-        "Transport Solutions Inc.",
-        "Logistics Systems Corp.",
-        "Freight Partners LLC",
-        "Transportation Networks Group",
-        "Shipping Services Ltd.",
-        "Fleet Management Inc.",
-        "Logistics Partners Corp.",
-        "Transport Dynamics Co.",
-    ]),
-    ("Construction", &[
-        "Construction Solutions Inc.",
-        "Building Systems Corp.",
-        "Development Partners LLC",
-        "Construction Group Ltd.",
-        "Building Services Inc.",
-        "Property Development Corp.",
-        "Construction Partners Co.",
-        "Infrastructure Systems LLC",
-    ]),
+    (
+        "Retail",
+        &[
+            "Consumer Goods Corp.",
+            "Retail Solutions Inc.",
+            "Shop Direct Ltd.",
+            "Market Leaders LLC",
+            "Consumer Brands Group",
+            "Retail Partners Co.",
+            "Shopping Networks Inc.",
+            "Direct Sales Corp.",
+        ],
+    ),
+    (
+        "Manufacturing",
+        &[
+            "Industrial Manufacturing Inc.",
+            "Production Systems Corp.",
+            "Assembly Technologies LLC",
+            "Manufacturing Partners Group",
+            "Factory Solutions Ltd.",
+            "Production Line Inc.",
+            "Industrial Works Corp.",
+            "Manufacturing Excellence Co.",
+        ],
+    ),
+    (
+        "Healthcare",
+        &[
+            "Healthcare Systems Inc.",
+            "Medical Solutions Corp.",
+            "Health Partners LLC",
+            "Medical Equipment Group",
+            "Healthcare Providers Ltd.",
+            "Clinical Services Inc.",
+            "Health Networks Corp.",
+            "Medical Supplies Co.",
+        ],
+    ),
+    (
+        "Technology",
+        &[
+            "Tech Innovations Inc.",
+            "Digital Solutions Corp.",
+            "Software Systems LLC",
+            "Technology Partners Group",
+            "IT Solutions Ltd.",
+            "Tech Enterprises Inc.",
+            "Digital Networks Corp.",
+            "Innovation Labs Co.",
+        ],
+    ),
+    (
+        "Financial",
+        &[
+            "Financial Services Inc.",
+            "Banking Solutions Corp.",
+            "Investment Partners LLC",
+            "Financial Networks Group",
+            "Capital Services Ltd.",
+            "Banking Partners Inc.",
+            "Finance Solutions Corp.",
+            "Investment Group Co.",
+        ],
+    ),
+    (
+        "Energy",
+        &[
+            "Energy Solutions Inc.",
+            "Power Systems Corp.",
+            "Renewable Partners LLC",
+            "Energy Networks Group",
+            "Utility Services Ltd.",
+            "Power Generation Inc.",
+            "Energy Partners Corp.",
+            "Sustainable Energy Co.",
+        ],
+    ),
+    (
+        "Transportation",
+        &[
+            "Transport Solutions Inc.",
+            "Logistics Systems Corp.",
+            "Freight Partners LLC",
+            "Transportation Networks Group",
+            "Shipping Services Ltd.",
+            "Fleet Management Inc.",
+            "Logistics Partners Corp.",
+            "Transport Dynamics Co.",
+        ],
+    ),
+    (
+        "Construction",
+        &[
+            "Construction Solutions Inc.",
+            "Building Systems Corp.",
+            "Development Partners LLC",
+            "Construction Group Ltd.",
+            "Building Services Inc.",
+            "Property Development Corp.",
+            "Construction Partners Co.",
+            "Infrastructure Systems LLC",
+        ],
+    ),
 ];
 
 /// Generator for customer master data.
@@ -180,26 +232,17 @@ impl CustomerGenerator {
     }
 
     /// Generate a single customer.
-    pub fn generate_customer(
-        &mut self,
-        company_code: &str,
-        effective_date: NaiveDate,
-    ) -> Customer {
+    pub fn generate_customer(&mut self, company_code: &str, effective_date: NaiveDate) -> Customer {
         self.customer_counter += 1;
 
         let customer_id = format!("C-{:06}", self.customer_counter);
         let (industry, name) = self.select_customer_name();
 
-        let mut customer = Customer::new(
-            customer_id,
-            name.to_string(),
-            company_code.to_string(),
-        );
+        let mut customer = Customer::new(&customer_id, name, synth_core::models::CustomerType::Corporate);
 
         customer.country = self.config.default_country.clone();
         customer.currency = self.config.default_currency.clone();
-        customer.industry = Some(industry.to_string());
-        customer.effective_date = effective_date;
+        // Note: industry and effective_date are not fields on Customer
 
         // Set credit rating and limit
         customer.credit_rating = self.select_credit_rating();
@@ -217,12 +260,7 @@ impl CustomerGenerator {
             customer.intercompany_code = Some(format!("IC-{}", company_code));
         }
 
-        // Set address
-        customer.address = Some(self.generate_address());
-
-        // Generate contact info
-        customer.contact_name = Some(self.generate_contact_name());
-        customer.contact_email = Some(self.generate_contact_email(&customer.name));
+        // Note: address, contact_name, contact_email are not fields on Customer
 
         customer
     }
@@ -267,8 +305,8 @@ impl CustomerGenerator {
             }
             CreditRating::A | CreditRating::BBB => CustomerPaymentBehavior::OnTime,
             CreditRating::BB | CreditRating::B => CustomerPaymentBehavior::SlightlyLate,
-            CreditRating::CCC => CustomerPaymentBehavior::OftenLate,
-            CreditRating::D => CustomerPaymentBehavior::HighRisk,
+            CreditRating::CCC | CreditRating::CC => CustomerPaymentBehavior::OftenLate,
+            CreditRating::C | CreditRating::D => CustomerPaymentBehavior::HighRisk,
         };
 
         customer
@@ -310,7 +348,8 @@ impl CustomerGenerator {
 
         // Generate IC customers for each partner
         for partner in partner_company_codes {
-            let customer = self.generate_intercompany_customer(company_code, partner, effective_date);
+            let customer =
+                self.generate_intercompany_customer(company_code, partner, effective_date);
             pool.add_customer(customer);
         }
 
@@ -431,12 +470,22 @@ impl CustomerGenerator {
     fn generate_address(&mut self) -> String {
         let street_num = self.rng.gen_range(1..9999);
         let streets = [
-            "Corporate Dr", "Business Center", "Commerce Way",
-            "Executive Plaza", "Industry Park", "Trade Center",
+            "Corporate Dr",
+            "Business Center",
+            "Commerce Way",
+            "Executive Plaza",
+            "Industry Park",
+            "Trade Center",
         ];
         let cities = [
-            "New York", "Los Angeles", "Chicago", "Houston",
-            "Phoenix", "Philadelphia", "San Antonio", "San Diego",
+            "New York",
+            "Los Angeles",
+            "Chicago",
+            "Houston",
+            "Phoenix",
+            "Philadelphia",
+            "San Antonio",
+            "San Diego",
         ];
         let states = ["NY", "CA", "IL", "TX", "AZ", "PA", "TX", "CA"];
 
@@ -452,8 +501,12 @@ impl CustomerGenerator {
 
     /// Generate a contact name.
     fn generate_contact_name(&mut self) -> String {
-        let first_names = ["John", "Jane", "Michael", "Sarah", "David", "Emily", "Robert", "Lisa"];
-        let last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis"];
+        let first_names = [
+            "John", "Jane", "Michael", "Sarah", "David", "Emily", "Robert", "Lisa",
+        ];
+        let last_names = [
+            "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+        ];
 
         let first = first_names[self.rng.gen_range(0..first_names.len())];
         let last = last_names[self.rng.gen_range(0..last_names.len())];
@@ -490,10 +543,7 @@ mod tests {
     #[test]
     fn test_customer_generation() {
         let mut gen = CustomerGenerator::new(42);
-        let customer = gen.generate_customer(
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let customer = gen.generate_customer("1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert!(!customer.customer_id.is_empty());
         assert!(!customer.name.is_empty());
@@ -503,11 +553,8 @@ mod tests {
     #[test]
     fn test_customer_pool_generation() {
         let mut gen = CustomerGenerator::new(42);
-        let pool = gen.generate_customer_pool(
-            20,
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let pool =
+            gen.generate_customer_pool(20, "1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert_eq!(pool.customers.len(), 20);
     }
@@ -529,17 +576,18 @@ mod tests {
     #[test]
     fn test_diverse_pool() {
         let mut gen = CustomerGenerator::new(42);
-        let pool = gen.generate_diverse_pool(
-            100,
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let pool =
+            gen.generate_diverse_pool(100, "1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         // Should have customers with various credit ratings
-        let aaa_count = pool.customers.iter()
+        let aaa_count = pool
+            .customers
+            .iter()
             .filter(|c| c.credit_rating == CreditRating::AAA)
             .count();
-        let d_count = pool.customers.iter()
+        let d_count = pool
+            .customers
+            .iter()
             .filter(|c| c.credit_rating == CreditRating::D)
             .count();
 
@@ -552,14 +600,10 @@ mod tests {
         let mut gen1 = CustomerGenerator::new(42);
         let mut gen2 = CustomerGenerator::new(42);
 
-        let customer1 = gen1.generate_customer(
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
-        let customer2 = gen2.generate_customer(
-            "1000",
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        );
+        let customer1 =
+            gen1.generate_customer("1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
+        let customer2 =
+            gen2.generate_customer("1000", NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert_eq!(customer1.customer_id, customer2.customer_id);
         assert_eq!(customer1.name, customer2.name);

@@ -82,10 +82,7 @@ impl DocumentType {
     pub fn creates_gl_entry(&self) -> bool {
         !matches!(
             self,
-            Self::PurchaseRequisition
-                | Self::PurchaseOrder
-                | Self::SalesQuote
-                | Self::SalesOrder
+            Self::PurchaseRequisition | Self::PurchaseOrder | Self::SalesQuote | Self::SalesOrder
         )
     }
 
@@ -434,12 +431,7 @@ impl DocumentHeader {
 
     /// Generate a deterministic document ID.
     pub fn generate_id(doc_type: DocumentType, company_code: &str, sequence: u64) -> String {
-        format!(
-            "{}-{}-{:010}",
-            doc_type.prefix(),
-            company_code,
-            sequence
-        )
+        format!("{}-{}-{:010}", doc_type.prefix(), company_code, sequence)
     }
 }
 

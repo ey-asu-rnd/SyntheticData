@@ -6,12 +6,12 @@
 //! - Credit memos
 //! - AR aging analysis
 
+mod aging;
+mod credit_memo;
 mod invoice;
 mod receipt;
-mod credit_memo;
-mod aging;
 
+pub use aging::*;
+pub use credit_memo::*;
 pub use invoice::*;
 pub use receipt::*;
-pub use credit_memo::*;
-pub use aging::*;

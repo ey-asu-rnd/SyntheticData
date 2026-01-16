@@ -7,8 +7,9 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
 use synth_core::models::subledger::fa::{
-    AssetDisposal, AssetStatus, DepreciationEntry, DepreciationMethod, DepreciationRun,
-    DepreciationRunStatus, DisposalReason, DisposalType, FixedAssetRecord,
+    AssetClass, AssetDisposal, AssetStatus, DepreciationArea, DepreciationAreaType,
+    DepreciationEntry, DepreciationMethod, DepreciationRun, DisposalReason,
+    DisposalType, FixedAssetRecord,
 };
 use synth_core::models::{JournalEntry, JournalEntryLine};
 
@@ -63,53 +64,63 @@ impl FAGenerator {
         }
     }
 
+    /// Maps a string asset class to the enum.
+    fn parse_asset_class(class_str: &str) -> AssetClass {
+        match class_str.to_uppercase().as_str() {
+            "LAND" => AssetClass::Land,
+            "BUILDINGS" | "BUILDING" => AssetClass::Buildings,
+            "MACHINERY" | "EQUIPMENT" | "MACHINERY_EQUIPMENT" => AssetClass::MachineryEquipment,
+            "VEHICLES" | "VEHICLE" => AssetClass::Vehicles,
+            "FURNITURE" | "FIXTURES" => AssetClass::FurnitureFixtures,
+            "COMPUTER" | "IT" | "IT_EQUIPMENT" => AssetClass::ComputerEquipment,
+            "SOFTWARE" => AssetClass::Software,
+            "LEASEHOLD" | "LEASEHOLD_IMPROVEMENTS" => AssetClass::LeaseholdImprovements,
+            _ => AssetClass::Other,
+        }
+    }
+
     /// Generates a new fixed asset acquisition.
     pub fn generate_asset_acquisition(
         &mut self,
         company_code: &str,
-        asset_class: &str,
+        asset_class_str: &str,
         description: &str,
         acquisition_date: NaiveDate,
         currency: &str,
         cost_center: Option<&str>,
     ) -> (FixedAssetRecord, JournalEntry) {
         self.asset_counter += 1;
-        let asset_id = format!("FA{:08}", self.asset_counter);
+        let asset_number = format!("FA{:08}", self.asset_counter);
+        let asset_class = Self::parse_asset_class(asset_class_str);
 
         let acquisition_cost = self.generate_acquisition_cost();
         let salvage_value = (acquisition_cost * self.config.salvage_value_percent).round_dp(2);
 
-        let asset = FixedAssetRecord {
-            asset_id: asset_id.clone(),
-            company_code: company_code.to_string(),
-            asset_class: asset_class.to_string(),
-            description: description.to_string(),
-            serial_number: Some(format!("SN-{:010}", self.rng.gen::<u32>())),
-            inventory_number: Some(format!("INV-{:08}", self.asset_counter)),
+        // Create the asset using the constructor
+        let mut asset = FixedAssetRecord::new(
+            asset_number,
+            company_code.to_string(),
+            asset_class,
+            description.to_string(),
             acquisition_date,
-            capitalization_date: acquisition_date,
-            original_acquisition_cost: acquisition_cost,
-            current_acquisition_cost: acquisition_cost,
-            salvage_value,
-            useful_life_months: self.config.default_useful_life_months,
-            depreciation_method: self.config.default_depreciation_method.clone(),
-            depreciation_start_date: acquisition_date,
-            accumulated_depreciation: Decimal::ZERO,
-            net_book_value: acquisition_cost,
-            ytd_depreciation: Decimal::ZERO,
-            currency: currency.to_string(),
-            cost_center: cost_center.map(|s| s.to_string()),
-            profit_center: None,
-            location: None,
-            responsible_person: None,
-            status: AssetStatus::Active,
-            last_depreciation_date: None,
-            disposal_date: None,
-            disposal_proceeds: None,
-            asset_account: "1500".to_string(),
-            accumulated_depreciation_account: "1510".to_string(),
-            depreciation_expense_account: "6100".to_string(),
-        };
+            acquisition_cost,
+            currency.to_string(),
+        );
+
+        // Add serial number and inventory number
+        asset.serial_number = Some(format!("SN-{:010}", self.rng.gen::<u32>()));
+        asset.inventory_number = Some(format!("INV-{:08}", self.asset_counter));
+        asset.cost_center = cost_center.map(|s| s.to_string());
+
+        // Add a depreciation area
+        let mut depreciation_area = DepreciationArea::new(
+            DepreciationAreaType::Book,
+            self.config.default_depreciation_method.clone(),
+            self.config.default_useful_life_months,
+            acquisition_cost,
+        );
+        depreciation_area.salvage_value = salvage_value;
+        asset.add_depreciation_area(depreciation_area);
 
         let je = self.generate_acquisition_je(&asset);
         (asset, je)
@@ -122,26 +133,22 @@ impl FAGenerator {
         assets: &[&FixedAssetRecord],
         period_date: NaiveDate,
         fiscal_year: i32,
-        fiscal_period: u8,
-    ) -> (DepreciationRun, Vec<DepreciationEntry>, Vec<JournalEntry>) {
+        fiscal_period: u32,
+    ) -> (DepreciationRun, Vec<JournalEntry>) {
         self.depreciation_run_counter += 1;
         let run_id = format!("DEPR{:08}", self.depreciation_run_counter);
 
-        let mut run = DepreciationRun {
-            run_id: run_id.clone(),
-            company_code: company_code.to_string(),
+        let mut run = DepreciationRun::new(
+            run_id,
+            company_code.to_string(),
             fiscal_year,
             fiscal_period,
-            run_date: period_date,
-            status: DepreciationRunStatus::Processing,
-            assets_processed: 0,
-            assets_with_errors: 0,
-            total_depreciation: Decimal::ZERO,
-            posted_by: None,
-            posted_at: None,
-        };
+            DepreciationAreaType::Book,
+            period_date,
+            "FAGenerator".to_string(),
+        );
 
-        let mut entries = Vec::new();
+        run.start();
         let mut journal_entries = Vec::new();
 
         for asset in assets {
@@ -149,39 +156,20 @@ impl FAGenerator {
                 continue;
             }
 
-            let depreciation_amount = self.calculate_monthly_depreciation(asset);
-            if depreciation_amount <= Decimal::ZERO {
-                continue;
+            // Create entry from asset using the from_asset method
+            if let Some(entry) = DepreciationEntry::from_asset(asset, DepreciationAreaType::Book) {
+                if entry.depreciation_amount <= Decimal::ZERO {
+                    continue;
+                }
+
+                let je = self.generate_depreciation_je(asset, &entry, period_date);
+                run.add_entry(entry);
+                journal_entries.push(je);
             }
-
-            let entry = DepreciationEntry {
-                entry_id: format!("{}-{}", run_id, asset.asset_id),
-                run_id: run_id.clone(),
-                asset_id: asset.asset_id.clone(),
-                fiscal_year,
-                fiscal_period,
-                depreciation_amount,
-                accumulated_before: asset.accumulated_depreciation,
-                accumulated_after: asset.accumulated_depreciation + depreciation_amount,
-                net_book_value_before: asset.net_book_value,
-                net_book_value_after: asset.net_book_value - depreciation_amount,
-                depreciation_method: asset.depreciation_method.clone(),
-                posting_date: period_date,
-                document_number: None,
-            };
-
-            let je = self.generate_depreciation_je(asset, &entry, period_date);
-
-            run.total_depreciation += depreciation_amount;
-            run.assets_processed += 1;
-
-            entries.push(entry);
-            journal_entries.push(je);
         }
 
-        run.status = DepreciationRunStatus::Completed;
-
-        (run, entries, journal_entries)
+        run.complete();
+        (run, journal_entries)
     }
 
     /// Generates an asset disposal.
@@ -195,33 +183,37 @@ impl FAGenerator {
         self.disposal_counter += 1;
         let disposal_id = format!("DISP{:08}", self.disposal_counter);
 
-        let gain_loss = proceeds - asset.net_book_value;
+        let disposal_reason = self.random_disposal_reason();
 
-        let disposal = AssetDisposal {
-            disposal_id: disposal_id.clone(),
-            asset_id: asset.asset_id.clone(),
-            company_code: asset.company_code.clone(),
-            disposal_date,
-            disposal_type,
-            disposal_reason: self.random_disposal_reason(),
-            proceeds,
-            net_book_value_at_disposal: asset.net_book_value,
-            accumulated_depreciation_at_disposal: asset.accumulated_depreciation,
-            gain_loss,
-            gain_loss_account: if gain_loss >= Decimal::ZERO {
-                "4900".to_string() // Gain on disposal
+        // Use the appropriate constructor based on disposal type
+        let mut disposal = if disposal_type == DisposalType::Sale && proceeds > Decimal::ZERO {
+            AssetDisposal::sale(
+                disposal_id,
+                asset,
+                disposal_date,
+                proceeds,
+                format!("CUST-{}", self.disposal_counter),
+                "FAGenerator".to_string(),
+            )
+        } else {
+            let mut d = AssetDisposal::new(
+                disposal_id,
+                asset,
+                disposal_date,
+                disposal_type,
+                disposal_reason,
+                "FAGenerator".to_string(),
+            );
+            if proceeds > Decimal::ZERO {
+                d = d.with_sale_proceeds(proceeds);
             } else {
-                "6900".to_string() // Loss on disposal
-            },
-            buyer_name: Some(format!("Buyer-{}", self.disposal_counter)),
-            buyer_id: None,
-            invoice_number: Some(format!("SALE-{:08}", self.disposal_counter)),
-            approval_status: synth_core::models::subledger::fa::DisposalApprovalStatus::Approved,
-            approved_by: Some("SYSTEM".to_string()),
-            approved_at: Some(disposal_date),
-            document_number: None,
-            notes: None,
+                d.calculate_gain_loss();
+            }
+            d
         };
+
+        // Approve the disposal
+        disposal.approve("SYSTEM".to_string(), disposal_date);
 
         let je = self.generate_disposal_je(asset, &disposal);
         (disposal, je)
@@ -237,116 +229,55 @@ impl FAGenerator {
     }
 
     fn calculate_monthly_depreciation(&self, asset: &FixedAssetRecord) -> Decimal {
-        let depreciable_amount = asset.current_acquisition_cost - asset.salvage_value;
+        // Get the first depreciation area (Book depreciation)
+        let area = match asset.depreciation_areas.first() {
+            Some(a) => a,
+            None => return Decimal::ZERO,
+        };
 
-        if depreciable_amount <= Decimal::ZERO || asset.net_book_value <= asset.salvage_value {
-            return Decimal::ZERO;
-        }
-
-        match &asset.depreciation_method {
-            DepreciationMethod::StraightLine => {
-                let monthly = depreciable_amount / Decimal::from(asset.useful_life_months);
-                monthly.min(asset.net_book_value - asset.salvage_value).round_dp(2)
-            }
-            DepreciationMethod::DecliningBalance { rate } => {
-                let annual = asset.net_book_value * rate;
-                let monthly = annual / dec!(12);
-                monthly.min(asset.net_book_value - asset.salvage_value).round_dp(2)
-            }
-            DepreciationMethod::DoubleDecliningBalance => {
-                let rate = dec!(2) / Decimal::from(asset.useful_life_months) * dec!(12);
-                let annual = asset.net_book_value * rate;
-                let monthly = annual / dec!(12);
-                monthly.min(asset.net_book_value - asset.salvage_value).round_dp(2)
-            }
-            DepreciationMethod::SumOfYearsDigits => {
-                // Simplified calculation
-                let total_months = asset.useful_life_months as i64;
-                let sum_of_digits = total_months * (total_months + 1) / 2;
-                let elapsed = asset
-                    .last_depreciation_date
-                    .map(|d| {
-                        let days = (d - asset.depreciation_start_date).num_days();
-                        (days / 30) as i64
-                    })
-                    .unwrap_or(0);
-                let remaining = (total_months - elapsed).max(1);
-                let factor = Decimal::from(remaining) / Decimal::from(sum_of_digits);
-                let annual = depreciable_amount * factor;
-                (annual / dec!(12)).min(asset.net_book_value - asset.salvage_value).round_dp(2)
-            }
-            DepreciationMethod::UnitsOfProduction {
-                total_units,
-                units_this_period,
-            } => {
-                if *total_units <= Decimal::ZERO {
-                    return Decimal::ZERO;
-                }
-                let per_unit = depreciable_amount / *total_units;
-                (per_unit * *units_this_period)
-                    .min(asset.net_book_value - asset.salvage_value)
-                    .round_dp(2)
-            }
-            DepreciationMethod::NoDepreciation => Decimal::ZERO,
-        }
+        // Use the depreciation area's calculate method
+        area.calculate_monthly_depreciation()
     }
 
     fn random_disposal_reason(&mut self) -> DisposalReason {
         match self.rng.gen_range(0..5) {
             0 => DisposalReason::Sale,
-            1 => DisposalReason::Scrapped,
-            2 => DisposalReason::Obsolete,
+            1 => DisposalReason::EndOfLife,
+            2 => DisposalReason::Obsolescence,
             3 => DisposalReason::Donated,
-            _ => DisposalReason::Other("End of useful life".to_string()),
+            _ => DisposalReason::Replacement,
         }
     }
 
     fn generate_acquisition_je(&self, asset: &FixedAssetRecord) -> JournalEntry {
-        let mut je = JournalEntry::new(
-            format!("JE-ACQ-{}", asset.asset_id),
+        let mut je = JournalEntry::new_simple(
+            format!("JE-ACQ-{}", asset.asset_number),
             asset.company_code.clone(),
             asset.acquisition_date,
-            format!("Asset Acquisition {}", asset.asset_id),
+            format!("Asset Acquisition {}", asset.asset_number),
         );
 
         // Debit Fixed Asset
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: asset.asset_account.clone(),
-            account_description: Some("Fixed Assets".to_string()),
-            debit_amount: asset.original_acquisition_cost,
-            credit_amount: Decimal::ZERO,
+            gl_account: asset.account_determination.acquisition_account.clone(),
+            debit_amount: asset.acquisition_cost,
             cost_center: asset.cost_center.clone(),
             profit_center: asset.profit_center.clone(),
-            project_code: None,
-            reference: Some(asset.asset_id.clone()),
-            assignment: None,
+            reference: Some(asset.asset_number.clone()),
             text: Some(asset.description.clone()),
             quantity: Some(dec!(1)),
             unit: Some("EA".to_string()),
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
 
         // Credit Cash/AP (assuming cash purchase)
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: "1000".to_string(),
-            account_description: Some("Cash".to_string()),
-            debit_amount: Decimal::ZERO,
-            credit_amount: asset.original_acquisition_cost,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: Some(asset.asset_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            gl_account: asset.account_determination.clearing_account.clone(),
+            credit_amount: asset.acquisition_cost,
+            reference: Some(asset.asset_number.clone()),
+            ..Default::default()
         });
 
         je
@@ -358,85 +289,58 @@ impl FAGenerator {
         entry: &DepreciationEntry,
         posting_date: NaiveDate,
     ) -> JournalEntry {
-        let mut je = JournalEntry::new(
-            format!("JE-DEP-{}-{}", entry.run_id, asset.asset_id),
+        let mut je = JournalEntry::new_simple(
+            format!("JE-DEP-{}", asset.asset_number),
             asset.company_code.clone(),
             posting_date,
-            format!("Depreciation {} Period {}", asset.asset_id, entry.fiscal_period),
+            format!("Depreciation {}", asset.asset_number),
         );
 
         // Debit Depreciation Expense
         je.add_line(JournalEntryLine {
             line_number: 1,
-            account_code: asset.depreciation_expense_account.clone(),
-            account_description: Some("Depreciation Expense".to_string()),
+            gl_account: entry.expense_account.clone(),
             debit_amount: entry.depreciation_amount,
-            credit_amount: Decimal::ZERO,
             cost_center: asset.cost_center.clone(),
             profit_center: asset.profit_center.clone(),
-            project_code: None,
-            reference: Some(asset.asset_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            reference: Some(asset.asset_number.clone()),
+            ..Default::default()
         });
 
         // Credit Accumulated Depreciation
         je.add_line(JournalEntryLine {
             line_number: 2,
-            account_code: asset.accumulated_depreciation_account.clone(),
-            account_description: Some("Accumulated Depreciation".to_string()),
-            debit_amount: Decimal::ZERO,
+            gl_account: entry.accum_depr_account.clone(),
             credit_amount: entry.depreciation_amount,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: Some(asset.asset_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            reference: Some(asset.asset_number.clone()),
+            ..Default::default()
         });
 
         je
     }
 
-    fn generate_disposal_je(&self, asset: &FixedAssetRecord, disposal: &AssetDisposal) -> JournalEntry {
-        let mut je = JournalEntry::new(
+    fn generate_disposal_je(
+        &self,
+        asset: &FixedAssetRecord,
+        disposal: &AssetDisposal,
+    ) -> JournalEntry {
+        let mut je = JournalEntry::new_simple(
             format!("JE-{}", disposal.disposal_id),
             asset.company_code.clone(),
             disposal.disposal_date,
-            format!("Asset Disposal {}", asset.asset_id),
+            format!("Asset Disposal {}", asset.asset_number),
         );
 
         let mut line_num = 1;
 
         // Debit Cash (if proceeds > 0)
-        if disposal.proceeds > Decimal::ZERO {
+        if disposal.sale_proceeds > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: "1000".to_string(),
-                account_description: Some("Cash".to_string()),
-                debit_amount: disposal.proceeds,
-                credit_amount: Decimal::ZERO,
-                cost_center: None,
-                profit_center: None,
-                project_code: None,
+                gl_account: "1000".to_string(),
+                debit_amount: disposal.sale_proceeds,
                 reference: Some(disposal.disposal_id.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
             line_num += 1;
         }
@@ -444,43 +348,23 @@ impl FAGenerator {
         // Debit Accumulated Depreciation
         je.add_line(JournalEntryLine {
             line_number: line_num,
-            account_code: asset.accumulated_depreciation_account.clone(),
-            account_description: Some("Accumulated Depreciation".to_string()),
-            debit_amount: disposal.accumulated_depreciation_at_disposal,
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
+            gl_account: asset.account_determination.accumulated_depreciation_account.clone(),
+            debit_amount: disposal.accumulated_depreciation,
             reference: Some(disposal.disposal_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
         line_num += 1;
 
         // Debit Loss on Disposal (if loss)
-        if disposal.gain_loss < Decimal::ZERO {
+        if !disposal.is_gain {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: disposal.gain_loss_account.clone(),
-                account_description: Some("Loss on Asset Disposal".to_string()),
-                debit_amount: disposal.gain_loss.abs(),
-                credit_amount: Decimal::ZERO,
+                gl_account: asset.account_determination.loss_on_disposal_account.clone(),
+                debit_amount: disposal.loss(),
                 cost_center: asset.cost_center.clone(),
                 profit_center: asset.profit_center.clone(),
-                project_code: None,
                 reference: Some(disposal.disposal_id.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
             line_num += 1;
         }
@@ -488,43 +372,23 @@ impl FAGenerator {
         // Credit Fixed Asset
         je.add_line(JournalEntryLine {
             line_number: line_num,
-            account_code: asset.asset_account.clone(),
-            account_description: Some("Fixed Assets".to_string()),
-            debit_amount: Decimal::ZERO,
-            credit_amount: asset.current_acquisition_cost,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
+            gl_account: asset.account_determination.acquisition_account.clone(),
+            credit_amount: asset.acquisition_cost,
             reference: Some(disposal.disposal_id.clone()),
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
+            ..Default::default()
         });
         line_num += 1;
 
         // Credit Gain on Disposal (if gain)
-        if disposal.gain_loss > Decimal::ZERO {
+        if disposal.is_gain && disposal.gain() > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: line_num,
-                account_code: disposal.gain_loss_account.clone(),
-                account_description: Some("Gain on Asset Disposal".to_string()),
-                debit_amount: Decimal::ZERO,
-                credit_amount: disposal.gain_loss,
+                gl_account: asset.account_determination.gain_on_disposal_account.clone(),
+                credit_amount: disposal.gain(),
                 cost_center: asset.cost_center.clone(),
                 profit_center: asset.profit_center.clone(),
-                project_code: None,
                 reference: Some(disposal.disposal_id.clone()),
-                assignment: None,
-                text: None,
-                quantity: None,
-                unit: None,
-                tax_code: None,
-                trading_partner: None,
-                value_date: None,
+                ..Default::default()
             });
         }
 
@@ -536,6 +400,7 @@ impl FAGenerator {
 mod tests {
     use super::*;
     use rand::SeedableRng;
+    use synth_core::models::subledger::fa::DepreciationRunStatus;
 
     #[test]
     fn test_generate_asset_acquisition() {
@@ -552,7 +417,7 @@ mod tests {
         );
 
         assert_eq!(asset.status, AssetStatus::Active);
-        assert!(asset.original_acquisition_cost > Decimal::ZERO);
+        assert!(asset.acquisition_cost > Decimal::ZERO);
         assert!(je.is_balanced());
     }
 
@@ -570,7 +435,7 @@ mod tests {
             None,
         );
 
-        let (run, entries, jes) = generator.run_depreciation(
+        let (run, jes) = generator.run_depreciation(
             "1000",
             &[&asset],
             NaiveDate::from_ymd_opt(2024, 1, 31).unwrap(),
@@ -579,7 +444,7 @@ mod tests {
         );
 
         assert_eq!(run.status, DepreciationRunStatus::Completed);
-        assert_eq!(entries.len(), 1);
+        assert!(run.asset_count > 0);
         assert!(jes.iter().all(|je| je.is_balanced()));
     }
 }
