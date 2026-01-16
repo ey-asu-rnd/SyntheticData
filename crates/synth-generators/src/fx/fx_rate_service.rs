@@ -7,6 +7,7 @@ use chrono::{Datelike, NaiveDate};
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, Normal};
+use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
@@ -76,7 +77,7 @@ impl FxRateService {
         // Initialize log rates from base rates
         for currency in &config.currencies {
             if let Some(rate) = base_rates.get(currency) {
-                let rate_f64: f64 = rate.try_into().unwrap_or(1.0);
+                let rate_f64: f64 = rate.to_f64().unwrap_or(1.0);
                 current_log_rates.insert(currency.clone(), rate_f64.ln());
             }
         }

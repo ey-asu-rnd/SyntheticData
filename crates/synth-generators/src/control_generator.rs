@@ -86,7 +86,7 @@ impl ControlGenerator {
             // Get account sub-type from CoA
             let account_sub_type = coa
                 .get_account(&line.gl_account)
-                .and_then(|acc| acc.sub_type);
+                .map(|acc| acc.sub_type);
 
             let control_ids = self.registry.get_applicable_controls(
                 &line.gl_account,

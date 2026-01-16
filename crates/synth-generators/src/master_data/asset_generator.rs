@@ -295,10 +295,12 @@ impl AssetGenerator {
         // Calculate months elapsed
         let months_elapsed = ((as_of_date - acquisition_date).num_days() / 30) as u32;
 
-        // Apply depreciation
-        for month in 0..months_elapsed {
+        // Apply depreciation for each month
+        for month_offset in 0..months_elapsed {
             if asset.status == AssetStatus::Active {
-                let depreciation = asset.calculate_monthly_depreciation(month);
+                // Calculate the depreciation date for this month
+                let dep_date = acquisition_date + chrono::Duration::days((month_offset as i64 + 1) * 30);
+                let depreciation = asset.calculate_monthly_depreciation(dep_date);
                 asset.apply_depreciation(depreciation);
             }
         }

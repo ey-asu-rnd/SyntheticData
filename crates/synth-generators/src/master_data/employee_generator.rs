@@ -362,18 +362,21 @@ impl EmployeeGenerator {
             pool.add_employee(employee);
         }
 
+        // Collect direct reports first to avoid borrow conflict
+        let direct_reports: Vec<String> = pool
+            .employees
+            .iter()
+            .filter(|e| e.manager_id.as_ref() == Some(&dept_head_id))
+            .map(|e| e.employee_id.clone())
+            .collect();
+
         // Update direct reports for department head
         if let Some(head) = pool
             .employees
             .iter_mut()
             .find(|e| e.employee_id == dept_head_id)
         {
-            head.direct_reports = pool
-                .employees
-                .iter()
-                .filter(|e| e.manager_id.as_ref() == Some(&dept_head_id))
-                .map(|e| e.employee_id.clone())
-                .collect();
+            head.direct_reports = direct_reports;
         }
 
         pool

@@ -268,11 +268,15 @@ impl ICMatchingEngine {
 
     /// Match items by IC reference.
     fn match_by_reference(&mut self) {
-        let companies: Vec<String> = self.unmatched_items.keys().cloned().collect();
+        // Collect match candidates: (company, item_idx, counterparty, cp_item_idx)
+        let mut matches_to_apply: Vec<(String, usize, String, usize)> = Vec::new();
 
-        for company in companies {
-            if let Some(items) = self.unmatched_items.get_mut(&company) {
-                for item in items.iter_mut() {
+        let companies: Vec<String> = self.unmatched_items.keys().cloned().collect();
+        let tolerance = self.config.tolerance;
+
+        for company in &companies {
+            if let Some(items) = self.unmatched_items.get(company) {
+                for (item_idx, item) in items.iter().enumerate() {
                     if item.matched || item.ic_reference.is_none() {
                         continue;
                     }
@@ -280,21 +284,23 @@ impl ICMatchingEngine {
                     let ic_ref = item.ic_reference.as_ref().unwrap();
 
                     // Look for matching item in counterparty
-                    if let Some(counterparty_items) =
-                        self.unmatched_items.get_mut(&item.counterparty)
-                    {
-                        for cp_item in counterparty_items.iter_mut() {
+                    if let Some(counterparty_items) = self.unmatched_items.get(&item.counterparty) {
+                        for (cp_idx, cp_item) in counterparty_items.iter().enumerate() {
                             if cp_item.matched {
                                 continue;
                             }
 
                             if cp_item.ic_reference.as_ref() == Some(ic_ref)
-                                && cp_item.counterparty == company
+                                && cp_item.counterparty == *company
                                 && cp_item.is_receivable != item.is_receivable
-                                && (cp_item.amount - item.amount).abs() <= self.config.tolerance
+                                && (cp_item.amount - item.amount).abs() <= tolerance
                             {
-                                item.matched = true;
-                                cp_item.matched = true;
+                                matches_to_apply.push((
+                                    company.clone(),
+                                    item_idx,
+                                    item.counterparty.clone(),
+                                    cp_idx,
+                                ));
                                 break;
                             }
                         }
@@ -302,42 +308,77 @@ impl ICMatchingEngine {
                 }
             }
         }
+
+        // Apply matches
+        for (company, item_idx, counterparty, cp_idx) in matches_to_apply {
+            if let Some(items) = self.unmatched_items.get_mut(&company) {
+                if let Some(item) = items.get_mut(item_idx) {
+                    item.matched = true;
+                }
+            }
+            if let Some(cp_items) = self.unmatched_items.get_mut(&counterparty) {
+                if let Some(cp_item) = cp_items.get_mut(cp_idx) {
+                    cp_item.matched = true;
+                }
+            }
+        }
     }
 
     /// Match items by amount.
     fn match_by_amount(&mut self) {
-        let companies: Vec<String> = self.unmatched_items.keys().cloned().collect();
+        // Collect match candidates: (company, item_idx, counterparty, cp_item_idx)
+        let mut matches_to_apply: Vec<(String, usize, String, usize)> = Vec::new();
 
-        for company in companies {
-            if let Some(items) = self.unmatched_items.get_mut(&company) {
-                for item in items.iter_mut() {
+        let companies: Vec<String> = self.unmatched_items.keys().cloned().collect();
+        let tolerance = self.config.tolerance;
+        let date_range_days = self.config.date_range_days;
+
+        for company in &companies {
+            if let Some(items) = self.unmatched_items.get(company) {
+                for (item_idx, item) in items.iter().enumerate() {
                     if item.matched {
                         continue;
                     }
 
                     // Look for matching amount in counterparty
-                    if let Some(counterparty_items) =
-                        self.unmatched_items.get_mut(&item.counterparty)
-                    {
-                        for cp_item in counterparty_items.iter_mut() {
+                    if let Some(counterparty_items) = self.unmatched_items.get(&item.counterparty) {
+                        for (cp_idx, cp_item) in counterparty_items.iter().enumerate() {
                             if cp_item.matched {
                                 continue;
                             }
 
-                            if cp_item.counterparty == company
+                            if cp_item.counterparty == *company
                                 && cp_item.is_receivable != item.is_receivable
-                                && (cp_item.amount - item.amount).abs() <= self.config.tolerance
+                                && (cp_item.amount - item.amount).abs() <= tolerance
                             {
                                 // Check date range
                                 let date_diff = (cp_item.date - item.date).num_days().abs();
-                                if date_diff <= self.config.date_range_days {
-                                    item.matched = true;
-                                    cp_item.matched = true;
+                                if date_diff <= date_range_days {
+                                    matches_to_apply.push((
+                                        company.clone(),
+                                        item_idx,
+                                        item.counterparty.clone(),
+                                        cp_idx,
+                                    ));
                                     break;
                                 }
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Apply matches
+        for (company, item_idx, counterparty, cp_idx) in matches_to_apply {
+            if let Some(items) = self.unmatched_items.get_mut(&company) {
+                if let Some(item) = items.get_mut(item_idx) {
+                    item.matched = true;
+                }
+            }
+            if let Some(cp_items) = self.unmatched_items.get_mut(&counterparty) {
+                if let Some(cp_item) = cp_items.get_mut(cp_idx) {
+                    cp_item.matched = true;
                 }
             }
         }

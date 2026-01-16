@@ -471,53 +471,62 @@ impl ICGenerator {
         fiscal_year: i32,
         fiscal_period: u32,
     ) -> Vec<(JournalEntry, JournalEntry)> {
-        let mut entries = Vec::new();
+        // Collect loan data to avoid borrow issues
+        let loans_data: Vec<_> = self
+            .active_loans
+            .iter()
+            .filter(|loan| !loan.is_repaid())
+            .map(|loan| {
+                let period_start = NaiveDate::from_ymd_opt(
+                    if fiscal_period == 1 {
+                        fiscal_year - 1
+                    } else {
+                        fiscal_year
+                    },
+                    if fiscal_period == 1 {
+                        12
+                    } else {
+                        fiscal_period - 1
+                    },
+                    1,
+                )
+                .unwrap_or(as_of_date);
 
-        for loan in &self.active_loans {
-            if loan.is_repaid() {
-                continue;
-            }
-
-            // Calculate interest for the period
-            let period_start = NaiveDate::from_ymd_opt(
-                if fiscal_period == 1 {
-                    fiscal_year - 1
-                } else {
-                    fiscal_year
-                },
-                if fiscal_period == 1 {
-                    12
-                } else {
-                    fiscal_period - 1
-                },
-                1,
-            )
-            .unwrap_or(as_of_date);
-
-            let interest = loan.calculate_interest(period_start, as_of_date);
-
-            if interest > Decimal::ZERO {
-                let ic_ref = self.generate_ic_reference(as_of_date);
-                let seller_doc = self.generate_doc_number("INT");
-                let buyer_doc = self.generate_doc_number("INT");
-
-                let mut pair = ICMatchedPair::new(
-                    ic_ref,
-                    ICTransactionType::LoanInterest,
+                let interest = loan.calculate_interest(period_start, as_of_date);
+                (
+                    loan.loan_id.clone(),
                     loan.lender_company.clone(),
                     loan.borrower_company.clone(),
-                    interest,
                     loan.currency.clone(),
-                    as_of_date,
-                );
-                pair.seller_document = seller_doc;
-                pair.buyer_document = buyer_doc;
-                pair.description = format!("Interest on loan {}", loan.loan_id);
+                    interest,
+                )
+            })
+            .filter(|(_, _, _, _, interest)| *interest > Decimal::ZERO)
+            .collect();
 
-                let (seller_je, buyer_je) =
-                    self.generate_journal_entries(&pair, fiscal_year, fiscal_period);
-                entries.push((seller_je, buyer_je));
-            }
+        let mut entries = Vec::new();
+
+        for (loan_id, lender, borrower, currency, interest) in loans_data {
+            let ic_ref = self.generate_ic_reference(as_of_date);
+            let seller_doc = self.generate_doc_number("INT");
+            let buyer_doc = self.generate_doc_number("INT");
+
+            let mut pair = ICMatchedPair::new(
+                ic_ref,
+                ICTransactionType::LoanInterest,
+                lender,
+                borrower,
+                interest,
+                currency,
+                as_of_date,
+            );
+            pair.seller_document = seller_doc;
+            pair.buyer_document = buyer_doc;
+            pair.description = format!("Interest on loan {}", loan_id);
+
+            let (seller_je, buyer_je) =
+                self.generate_journal_entries(&pair, fiscal_year, fiscal_period);
+            entries.push((seller_je, buyer_je));
         }
 
         entries

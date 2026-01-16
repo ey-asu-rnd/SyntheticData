@@ -179,18 +179,75 @@ impl RunningBalanceTracker {
             self.validation_errors.push(error);
         }
 
+        // Extract data we need before mutably borrowing balances
+        let company_code = entry.company_code().to_string();
+        let document_number = entry.document_number().clone();
+        let posting_date = entry.posting_date();
+        let track_history = self.config.track_history;
+
+        // Pre-compute account types for all lines
+        let line_data: Vec<_> = entry.lines.iter()
+            .map(|line| {
+                let account_type = self.determine_account_type(&line.account_code);
+                (line.clone(), account_type)
+            })
+            .collect();
+
         // Get or create company balances
-        let company_balances = self.balances.entry(entry.company_code().to_string()).or_default();
+        let company_balances = self.balances.entry(company_code.clone()).or_default();
+
+        // History entries to add
+        let mut history_entries = Vec::new();
 
         // Apply each line
-        for line in &entry.lines {
-            self.apply_line(
-                company_balances,
-                line,
-                &entry.document_number(),
-                entry.posting_date(),
-                entry.company_code(),
-            );
+        for (line, account_type) in &line_data {
+            let previous_balance;
+            let new_balance;
+
+            // Get or create account balance
+            let balance = company_balances
+                .entry(line.account_code.clone())
+                .or_insert_with(|| {
+                    AccountBalance::new(
+                        company_code.clone(),
+                        line.account_code.clone(),
+                        *account_type,
+                        "USD".to_string(),
+                        posting_date.year(),
+                        posting_date.month(),
+                    )
+                });
+
+            previous_balance = balance.closing_balance;
+
+            // Apply debit or credit
+            if line.debit_amount > Decimal::ZERO {
+                balance.apply_debit(line.debit_amount);
+            }
+            if line.credit_amount > Decimal::ZERO {
+                balance.apply_credit(line.credit_amount);
+            }
+
+            new_balance = balance.closing_balance;
+
+            // Record history if configured
+            if track_history {
+                let change = line.debit_amount - line.credit_amount;
+                history_entries.push(BalanceHistoryEntry {
+                    date: posting_date,
+                    entry_id: document_number.clone(),
+                    account_code: line.account_code.clone(),
+                    previous_balance,
+                    change,
+                    new_balance,
+                });
+            }
+        }
+
+        // Add history entries after releasing the balances borrow
+        if !history_entries.is_empty() {
+            let hist = self.history.entry(company_code.clone()).or_default();
+            hist.extend(history_entries);
         }
 
         // Update statistics
