@@ -509,11 +509,18 @@ impl JournalEntryGenerator {
         let mut entry = JournalEntry::new(header);
 
         // Generate amount - use fraud pattern if this is a fraudulent transaction
-        let total_amount = if let Some(ft) = fraud_type {
+        let base_amount = if let Some(ft) = fraud_type {
             let pattern = self.fraud_type_to_amount_pattern(ft);
             self.amount_sampler.sample_fraud(pattern)
         } else {
             self.amount_sampler.sample()
+        };
+
+        // Apply human variation to amounts for non-automated transactions
+        let total_amount = if is_automated {
+            base_amount // Automated systems use exact amounts
+        } else {
+            self.apply_human_variation(base_amount)
         };
 
         // Generate debit lines
@@ -669,6 +676,60 @@ impl JournalEntryGenerator {
 
         // Cap at 40% to keep it realistic
         rate.min(0.4)
+    }
+
+    /// Apply human-like variation to an amount.
+    ///
+    /// Humans don't enter perfectly calculated amounts - they:
+    /// - Round amounts differently
+    /// - Estimate instead of calculating exactly
+    /// - Make small input variations
+    ///
+    /// This applies small variations (typically ±2%) to make amounts more realistic.
+    fn apply_human_variation(&mut self, amount: rust_decimal::Decimal) -> rust_decimal::Decimal {
+        use rust_decimal::Decimal;
+
+        // Automated transactions or very small amounts don't get variation
+        if amount < Decimal::from(10) {
+            return amount;
+        }
+
+        // 70% chance of human variation being applied
+        if self.rng.gen::<f64>() > 0.70 {
+            return amount;
+        }
+
+        // Decide which type of human variation to apply
+        let variation_type: u8 = self.rng.gen_range(0..4);
+
+        match variation_type {
+            0 => {
+                // ±2% variation (common for estimated amounts)
+                let variation_pct = self.rng.gen_range(-0.02..0.02);
+                let variation = amount * Decimal::try_from(variation_pct).unwrap_or_default();
+                (amount + variation).round_dp(2)
+            }
+            1 => {
+                // Round to nearest $10
+                let ten = Decimal::from(10);
+                (amount / ten).round() * ten
+            }
+            2 => {
+                // Round to nearest $100 (for larger amounts)
+                if amount >= Decimal::from(500) {
+                    let hundred = Decimal::from(100);
+                    (amount / hundred).round() * hundred
+                } else {
+                    amount
+                }
+            }
+            3 => {
+                // Slight under/over payment (±$0.01 to ±$1.00)
+                let cents = Decimal::new(self.rng.gen_range(-100..100), 2);
+                (amount + cents).max(Decimal::ZERO)
+            }
+            _ => amount,
+        }
     }
 
     /// Inject a human-like error based on the persona.
@@ -1193,7 +1254,8 @@ mod tests {
             42,
             template_config,
             None,
-        );
+        )
+        .with_persona_errors(false); // Disable for template testing
 
         for _ in 0..10 {
             let entry = je_gen.generate();
