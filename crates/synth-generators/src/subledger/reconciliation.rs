@@ -249,7 +249,7 @@ impl ReconciliationEngine {
         let asset_recon_id = format!("RECON-FA-{:08}", self.reconciliation_counter);
 
         let subledger_asset_balance: Decimal =
-            assets.iter().map(|a| a.current_acquisition_cost).sum();
+            assets.iter().map(|a| a.current_acquisition_cost()).sum();
 
         let asset_difference = gl_asset_balance - subledger_asset_balance;
 

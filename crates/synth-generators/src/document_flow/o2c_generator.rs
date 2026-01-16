@@ -675,17 +675,24 @@ impl O2CGenerator {
 
         // Adjust based on customer payment behavior
         let behavior_adjustment = match customer.payment_behavior {
-            synth_core::models::CustomerPaymentBehavior::EarlyPayer => {
+            synth_core::models::CustomerPaymentBehavior::Excellent
+            | synth_core::models::CustomerPaymentBehavior::EarlyPayer => {
                 -self.rng.gen_range(5..15) as i64
             }
-            synth_core::models::CustomerPaymentBehavior::OnTime => self.rng.gen_range(-2..3) as i64,
-            synth_core::models::CustomerPaymentBehavior::SlightlyLate => {
+            synth_core::models::CustomerPaymentBehavior::Good
+            | synth_core::models::CustomerPaymentBehavior::OnTime => {
+                self.rng.gen_range(-2..3) as i64
+            }
+            synth_core::models::CustomerPaymentBehavior::Fair
+            | synth_core::models::CustomerPaymentBehavior::SlightlyLate => {
                 self.rng.gen_range(5..15) as i64
             }
-            synth_core::models::CustomerPaymentBehavior::OftenLate => {
+            synth_core::models::CustomerPaymentBehavior::Poor
+            | synth_core::models::CustomerPaymentBehavior::OftenLate => {
                 self.rng.gen_range(15..45) as i64
             }
-            synth_core::models::CustomerPaymentBehavior::HighRisk => {
+            synth_core::models::CustomerPaymentBehavior::VeryPoor
+            | synth_core::models::CustomerPaymentBehavior::HighRisk => {
                 self.rng.gen_range(30..90) as i64
             }
         };

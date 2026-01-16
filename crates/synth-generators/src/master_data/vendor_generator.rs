@@ -178,12 +178,11 @@ impl VendorGenerator {
         let (category, name) = self.select_vendor_name();
         let tax_id = self.generate_tax_id();
 
-        let mut vendor = Vendor::new(vendor_id, name.to_string(), company_code.to_string());
+        let mut vendor = Vendor::new(&vendor_id, name, synth_core::models::VendorType::Supplier);
         vendor.tax_id = Some(tax_id);
         vendor.country = self.config.default_country.clone();
         vendor.currency = self.config.default_currency.clone();
-        vendor.category = Some(category.to_string());
-        vendor.effective_date = effective_date;
+        // Note: category, effective_date, address are not fields on Vendor
 
         // Set payment terms
         vendor.payment_terms = self.select_payment_terms();
@@ -207,9 +206,6 @@ impl VendorGenerator {
                 vendor.bank_accounts.push(bank_account2);
             }
         }
-
-        // Set address
-        vendor.address = Some(self.generate_address());
 
         vendor
     }
@@ -328,13 +324,11 @@ impl VendorGenerator {
         let account = format!("{:010}", self.rng.gen_range(1000000000u64..9999999999));
 
         BankAccount {
-            bank_id: format!("BNK-{}", self.vendor_counter),
             bank_name: bank_name.to_string(),
-            routing_number: Some(routing),
+            bank_country: "US".to_string(),
             account_number: account,
-            swift_code: None,
-            iban: None,
-            currency: self.config.default_currency.clone(),
+            routing_code: routing,
+            holder_name: format!("Vendor {}", vendor_id),
             is_primary: self.vendor_counter == 1,
         }
     }

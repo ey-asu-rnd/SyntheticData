@@ -247,7 +247,7 @@ impl EmployeeGenerator {
         employee.cost_center = Some(department.cost_center.clone());
 
         // Set dates
-        employee.hire_date = hire_date;
+        employee.hire_date = Some(hire_date);
 
         // Set approval limits based on job level
         employee.approval_limit = approval_limit;
@@ -279,9 +279,9 @@ impl EmployeeGenerator {
         // Assign transaction codes
         for tcode in &department.transaction_codes {
             employee.transaction_codes.push(TransactionCodeAuth {
-                code: tcode.clone(),
-                authorized_date: hire_date,
-                expiry_date: None,
+                tcode: tcode.clone(),
+                activity: synth_core::models::ActivityType::Create,
+                active: true,
             });
         }
 
@@ -458,7 +458,7 @@ impl EmployeeGenerator {
         employee.job_title = title.to_string();
         employee.department_id = Some("Executive".to_string());
         employee.cost_center = Some(format!("CC-{}-EXEC", company_code));
-        employee.hire_date = hire_date;
+        employee.hire_date = Some(hire_date);
         employee.approval_limit = Decimal::from(100_000_000);
         employee.can_approve_pr = true;
         employee.can_approve_po = true;

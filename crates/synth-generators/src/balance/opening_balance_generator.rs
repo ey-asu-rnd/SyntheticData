@@ -14,7 +14,7 @@ use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
 use synth_core::models::balance::{
-    AccountBalance, AccountType, AssetComposition, CapitalStructure,
+    AccountBalance, AccountCategory, AccountType, AssetComposition, CapitalStructure,
     GeneratedOpeningBalance, IndustryType, OpeningBalanceSpec, TargetRatios,
 };
 use synth_core::models::ChartOfAccounts;
@@ -517,25 +517,51 @@ impl OpeningBalanceGenerator {
 
 /// Builder for opening balance specifications.
 pub struct OpeningBalanceSpecBuilder {
+    company_code: String,
+    as_of_date: NaiveDate,
+    fiscal_year: i32,
+    currency: String,
     total_assets: Decimal,
     industry: IndustryType,
     asset_composition: Option<AssetComposition>,
     capital_structure: Option<CapitalStructure>,
     target_ratios: Option<TargetRatios>,
-    account_overrides: Vec<synth_core::models::balance::AccountSpec>,
+    account_overrides: HashMap<String, synth_core::models::balance::AccountSpec>,
 }
 
 impl OpeningBalanceSpecBuilder {
     /// Creates a new builder with required parameters.
-    pub fn new(total_assets: Decimal, industry: IndustryType) -> Self {
+    pub fn new(
+        company_code: impl Into<String>,
+        as_of_date: NaiveDate,
+        total_assets: Decimal,
+        industry: IndustryType,
+    ) -> Self {
+        let year = as_of_date.year();
         Self {
+            company_code: company_code.into(),
+            as_of_date,
+            fiscal_year: year,
+            currency: "USD".to_string(),
             total_assets,
             industry,
             asset_composition: None,
             capital_structure: None,
             target_ratios: None,
-            account_overrides: Vec::new(),
+            account_overrides: HashMap::new(),
         }
+    }
+
+    /// Sets the currency.
+    pub fn with_currency(mut self, currency: impl Into<String>) -> Self {
+        self.currency = currency.into();
+        self
+    }
+
+    /// Sets the fiscal year.
+    pub fn with_fiscal_year(mut self, fiscal_year: i32) -> Self {
+        self.fiscal_year = fiscal_year;
+        self
     }
 
     /// Sets custom asset composition.
@@ -556,14 +582,27 @@ impl OpeningBalanceSpecBuilder {
         self
     }
 
-    /// Adds an account override.
-    pub fn with_account_override(mut self, account_code: String, amount: Decimal) -> Self {
-        self.account_overrides
-            .push(synth_core::models::balance::AccountSpec {
-                account_code,
-                amount,
-                description: None,
-            });
+    /// Adds an account override with a fixed balance.
+    pub fn with_account_override(
+        mut self,
+        account_code: impl Into<String>,
+        description: impl Into<String>,
+        account_type: AccountType,
+        fixed_balance: Decimal,
+    ) -> Self {
+        let code = account_code.into();
+        self.account_overrides.insert(
+            code.clone(),
+            synth_core::models::balance::AccountSpec {
+                account_code: code,
+                description: description.into(),
+                account_type,
+                category: AccountCategory::CurrentAssets,
+                fixed_balance: Some(fixed_balance),
+                category_percent: None,
+                total_assets_percent: None,
+            },
+        );
         self
     }
 
@@ -572,6 +611,10 @@ impl OpeningBalanceSpecBuilder {
         let industry_defaults = OpeningBalanceSpec::for_industry(self.total_assets, self.industry);
 
         OpeningBalanceSpec {
+            company_code: self.company_code,
+            as_of_date: self.as_of_date,
+            fiscal_year: self.fiscal_year,
+            currency: self.currency,
             total_assets: self.total_assets,
             industry: self.industry,
             asset_composition: self

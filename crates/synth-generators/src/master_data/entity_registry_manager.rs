@@ -6,7 +6,7 @@
 
 use chrono::NaiveDate;
 use synth_core::models::{
-    CustomerPool, Employee, EmployeePool, EntityEvent, EntityId, EntityRegistry, EntityStatus,
+    CustomerPool, Employee, EmployeePool, EntityId, EntityRegistry, EntityStatus,
     EntityType, FixedAsset, FixedAssetPool, Material, MaterialPool, Vendor, VendorPool,
 };
 
@@ -344,26 +344,9 @@ impl EntityRegistryManager {
 
     /// Register a vendor in the entity registry.
     fn register_vendor(&mut self, vendor: &Vendor, effective_date: NaiveDate) {
-        let entity_id = EntityId {
-            entity_type: EntityType::Vendor,
-            id: vendor.vendor_id.clone(),
-        };
-
-        self.registry.register_entity(
-            entity_id.clone(),
-            vendor.company_code.clone(),
-            effective_date,
-            Some(vendor.name.clone()),
-        );
-
-        // Record create event
-        self.registry.record_event(
-            entity_id,
-            EntityEvent::Created {
-                date: effective_date,
-                created_by: "SYSTEM".to_string(),
-            },
-        );
+        let entity_id = EntityId::vendor(&vendor.vendor_id);
+        let record = synth_core::models::EntityRecord::new(entity_id, &vendor.name, effective_date);
+        self.registry.register(record);
     }
 
     /// Register a customer in the entity registry.
@@ -372,99 +355,30 @@ impl EntityRegistryManager {
         customer: &synth_core::models::Customer,
         effective_date: NaiveDate,
     ) {
-        let entity_id = EntityId {
-            entity_type: EntityType::Customer,
-            id: customer.customer_id.clone(),
-        };
-
-        self.registry.register_entity(
-            entity_id.clone(),
-            customer.company_code.clone(),
-            effective_date,
-            Some(customer.name.clone()),
-        );
-
-        // Record create event
-        self.registry.record_event(
-            entity_id,
-            EntityEvent::Created {
-                date: effective_date,
-                created_by: "SYSTEM".to_string(),
-            },
-        );
+        let entity_id = EntityId::customer(&customer.customer_id);
+        let record = synth_core::models::EntityRecord::new(entity_id, &customer.name, effective_date);
+        self.registry.register(record);
     }
 
     /// Register a material in the entity registry.
     fn register_material(&mut self, material: &Material, effective_date: NaiveDate) {
-        let entity_id = EntityId {
-            entity_type: EntityType::Material,
-            id: material.material_id.clone(),
-        };
-
-        // Materials are not company-specific in the registry
-        self.registry.register_entity(
-            entity_id.clone(),
-            "*".to_string(), // Cross-company
-            effective_date,
-            Some(material.description.clone()),
-        );
-
-        self.registry.record_event(
-            entity_id,
-            EntityEvent::Created {
-                date: effective_date,
-                created_by: "SYSTEM".to_string(),
-            },
-        );
+        let entity_id = EntityId::material(&material.material_id);
+        let record = synth_core::models::EntityRecord::new(entity_id, &material.description, effective_date);
+        self.registry.register(record);
     }
 
     /// Register an asset in the entity registry.
     fn register_asset(&mut self, asset: &FixedAsset, effective_date: NaiveDate) {
-        let entity_id = EntityId {
-            entity_type: EntityType::FixedAsset,
-            id: asset.asset_id.clone(),
-        };
-
-        // Extract company code from asset ID (format: FA-1000-000001)
-        let company_code = asset.asset_id.split('-').nth(1).unwrap_or("*").to_string();
-
-        self.registry.register_entity(
-            entity_id.clone(),
-            company_code,
-            effective_date,
-            Some(asset.description.clone()),
-        );
-
-        self.registry.record_event(
-            entity_id,
-            EntityEvent::Created {
-                date: effective_date,
-                created_by: "SYSTEM".to_string(),
-            },
-        );
+        let entity_id = EntityId::fixed_asset(&asset.asset_id);
+        let record = synth_core::models::EntityRecord::new(entity_id, &asset.description, effective_date);
+        self.registry.register(record);
     }
 
     /// Register an employee in the entity registry.
     fn register_employee(&mut self, employee: &Employee, effective_date: NaiveDate) {
-        let entity_id = EntityId {
-            entity_type: EntityType::Employee,
-            id: employee.employee_id.clone(),
-        };
-
-        self.registry.register_entity(
-            entity_id.clone(),
-            employee.company_code.clone(),
-            effective_date,
-            Some(employee.name.clone()),
-        );
-
-        self.registry.record_event(
-            entity_id,
-            EntityEvent::Created {
-                date: effective_date,
-                created_by: "SYSTEM".to_string(),
-            },
-        );
+        let entity_id = EntityId::employee(&employee.employee_id);
+        let record = synth_core::models::EntityRecord::new(entity_id, &employee.display_name, effective_date);
+        self.registry.register(record);
     }
 
     /// Get the entity registry.
@@ -489,9 +403,10 @@ impl EntityRegistryManager {
     /// Get active entities of a type on a given date.
     pub fn get_active_entities(&self, entity_type: EntityType, date: NaiveDate) -> Vec<EntityId> {
         self.registry
-            .get_entities_by_type(entity_type)
+            .get_ids_by_type(entity_type)
             .into_iter()
             .filter(|id| self.registry.is_valid_on(id, date))
+            .cloned()
             .collect()
     }
 

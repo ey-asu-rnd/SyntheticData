@@ -413,9 +413,9 @@ impl AccrualGenerator {
 
         let mut reversal = JournalEntry::new_simple(
             doc_number.clone(),
-            original.company_code.clone(),
+            original.company_code().to_string(),
             reversal_date,
-            format!("Reversal of {}", original.description),
+            format!("Reversal of {}", original.description().unwrap_or("entry")),
         );
 
         // Reverse each line (swap debits and credits)
@@ -427,7 +427,7 @@ impl AccrualGenerator {
                 credit_amount: line.debit_amount,
                 cost_center: line.cost_center.clone(),
                 profit_center: line.profit_center.clone(),
-                reference: Some(format!("REV-{}", original.document_number)),
+                reference: Some(format!("REV-{}", original.document_number())),
                 assignment: line.assignment.clone(),
                 text: Some(format!(
                     "Reversal: {}",

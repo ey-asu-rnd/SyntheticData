@@ -376,17 +376,43 @@ impl RunningBalanceTracker {
         company_code: &str,
         as_of_date: NaiveDate,
     ) -> Option<BalanceSnapshot> {
+        use chrono::Datelike;
         self.balances.get(company_code).map(|balances| {
-            BalanceSnapshot::new(as_of_date, company_code.to_string(), balances.clone())
+            let mut snapshot = BalanceSnapshot::new(
+                format!("SNAP-{}-{}", company_code, as_of_date),
+                company_code.to_string(),
+                as_of_date,
+                as_of_date.year(),
+                as_of_date.month(),
+                "USD".to_string(),
+            );
+            for (account, balance) in balances {
+                snapshot.balances.insert(account.clone(), balance.clone());
+            }
+            snapshot.recalculate_totals();
+            snapshot
         })
     }
 
     /// Gets snapshots for all companies.
     pub fn get_all_snapshots(&self, as_of_date: NaiveDate) -> Vec<BalanceSnapshot> {
+        use chrono::Datelike;
         self.balances
             .iter()
             .map(|(company_code, balances)| {
-                BalanceSnapshot::new(as_of_date, company_code.clone(), balances.clone())
+                let mut snapshot = BalanceSnapshot::new(
+                    format!("SNAP-{}-{}", company_code, as_of_date),
+                    company_code.clone(),
+                    as_of_date,
+                    as_of_date.year(),
+                    as_of_date.month(),
+                    "USD".to_string(),
+                );
+                for (account, balance) in balances {
+                    snapshot.balances.insert(account.clone(), balance.clone());
+                }
+                snapshot.recalculate_totals();
+                snapshot
             })
             .collect()
     }

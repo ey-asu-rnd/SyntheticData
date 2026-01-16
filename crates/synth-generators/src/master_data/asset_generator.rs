@@ -216,7 +216,7 @@ impl AssetGenerator {
         asset.account_determination = self.generate_account_determination(&asset_class);
 
         // Set location info
-        asset.plant = Some(format!("P{}", company_code));
+        asset.location = Some(format!("P{}", company_code));
         asset.cost_center = Some(format!("CC-{}-ADMIN", company_code));
 
         // Generate serial number for equipment
@@ -231,8 +231,8 @@ impl AssetGenerator {
         if self.rng.gen::<f64>() < self.config.disposed_rate {
             let disposal_date =
                 acquisition_date + chrono::Duration::days(self.rng.gen_range(365..1825) as i64);
-            let (proceeds, gain_loss) = self.generate_disposal_values(&asset);
-            asset.dispose(disposal_date, proceeds, gain_loss);
+            let (proceeds, _gain_loss) = self.generate_disposal_values(&asset);
+            asset.dispose(disposal_date, proceeds);
         } else if self.rng.gen::<f64>() < self.config.fully_depreciated_rate {
             asset.accumulated_depreciation = asset.acquisition_cost - asset.salvage_value;
             asset.net_book_value = asset.salvage_value;
@@ -270,7 +270,7 @@ impl AssetGenerator {
         .round_dp(2);
 
         asset.account_determination = self.generate_account_determination(&asset_class);
-        asset.plant = Some(format!("P{}", company_code));
+        asset.location = Some(format!("P{}", company_code));
         asset.cost_center = Some(format!("CC-{}-ADMIN", company_code));
 
         if matches!(

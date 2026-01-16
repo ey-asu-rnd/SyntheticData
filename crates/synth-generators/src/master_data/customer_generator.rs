@@ -238,12 +238,11 @@ impl CustomerGenerator {
         let customer_id = format!("C-{:06}", self.customer_counter);
         let (industry, name) = self.select_customer_name();
 
-        let mut customer = Customer::new(customer_id, name.to_string(), company_code.to_string());
+        let mut customer = Customer::new(&customer_id, name, synth_core::models::CustomerType::Corporate);
 
         customer.country = self.config.default_country.clone();
         customer.currency = self.config.default_currency.clone();
-        customer.industry = Some(industry.to_string());
-        customer.effective_date = effective_date;
+        // Note: industry and effective_date are not fields on Customer
 
         // Set credit rating and limit
         customer.credit_rating = self.select_credit_rating();
@@ -261,12 +260,7 @@ impl CustomerGenerator {
             customer.intercompany_code = Some(format!("IC-{}", company_code));
         }
 
-        // Set address
-        customer.address = Some(self.generate_address());
-
-        // Generate contact info
-        customer.contact_name = Some(self.generate_contact_name());
-        customer.contact_email = Some(self.generate_contact_email(&customer.name));
+        // Note: address, contact_name, contact_email are not fields on Customer
 
         customer
     }

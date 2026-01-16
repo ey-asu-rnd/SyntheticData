@@ -388,22 +388,27 @@ impl P2PGenerator {
         // Calculate due date based on payment terms
         let due_date = self.calculate_due_date(invoice_date, &vendor.payment_terms);
 
+        let net_days = vendor.payment_terms.net_days() as i64;
+
         let mut invoice = VendorInvoice::new(
             invoice_id,
             company_code,
             &vendor.vendor_id,
+            vendor_invoice_number,
             fiscal_year,
             fiscal_period,
             invoice_date,
-            due_date,
             created_by,
         )
-        .with_vendor_invoice_number(vendor_invoice_number)
-        .with_payment_terms(
-            vendor.payment_terms.code(),
+        .with_payment_terms(vendor.payment_terms.code(), net_days);
+
+        // Apply cash discount if payment terms have one
+        if let (Some(discount_days), Some(discount_percent)) = (
             vendor.payment_terms.discount_days(),
             vendor.payment_terms.discount_percent(),
-        );
+        ) {
+            invoice = invoice.with_cash_discount(discount_percent, discount_days as i64);
+        }
 
         // Calculate total received quantity per item
         let mut received_quantities: std::collections::HashMap<u16, Decimal> =
@@ -435,13 +440,15 @@ impl P2PGenerator {
                     po_item.base.unit_price
                 };
 
-                let item = VendorInvoiceItem::from_purchase_order(
+                let item = VendorInvoiceItem::from_po_gr(
                     po_item.base.line_number,
                     &po_item.base.description,
                     qty,
                     unit_price,
                     &po.header.document_id,
                     po_item.base.line_number,
+                    goods_receipts.first().map(|gr| gr.header.document_id.clone()),
+                    Some(po_item.base.line_number),
                 );
 
                 invoice.add_item(item);
@@ -474,7 +481,7 @@ impl P2PGenerator {
 
         // Verify three-way match
         if three_way_match_passed {
-            invoice.verify_three_way_match(&po.header.document_id, true);
+            invoice.verify(true);
         }
 
         // Post the invoice
@@ -499,18 +506,18 @@ impl P2PGenerator {
         let payment_id = format!("PAY-{}-{:010}", company_code, self.pay_counter);
 
         // Determine if early payment discount applies
-        let take_discount = invoice.discount_date_1.map_or(false, |disc_date| {
+        let take_discount = invoice.discount_due_date.map_or(false, |disc_date| {
             payment_date <= disc_date
                 && self.rng.gen::<f64>() < self.config.early_payment_discount_rate
         });
 
         let discount_amount = if take_discount {
-            invoice.cash_discount_available(payment_date)
+            invoice.cash_discount_amount
         } else {
             Decimal::ZERO
         };
 
-        let payment_amount = invoice.amount_open - discount_amount;
+        let payment_amount = invoice.payable_amount - discount_amount;
 
         let mut payment = Payment::new_ap_payment(
             payment_id,

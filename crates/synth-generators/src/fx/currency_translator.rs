@@ -78,7 +78,7 @@ impl CurrencyTranslator {
         historical_rates: &HashMap<String, Decimal>,
     ) -> TranslatedTrialBalance {
         let local_currency = &trial_balance.currency;
-        let period_end = trial_balance.period_end_date;
+        let period_end = trial_balance.as_of_date;
 
         // Get closing and average rates
         let closing_rate = rate_table
