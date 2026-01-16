@@ -1,0 +1,327 @@
+syntax = "proto3";
+
+package synth;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// Main service for synthetic data generation
+service SyntheticDataService {
+    // Bulk generation - returns when complete
+    rpc BulkGenerate(BulkGenerateRequest) returns (BulkGenerateResponse);
+
+    // Streaming - continuous real-time data generation
+    rpc StreamData(StreamDataRequest) returns (stream DataEvent);
+
+    // Control commands (pause, resume, stop)
+    rpc Control(ControlCommand) returns (ControlResponse);
+
+    // Configuration management
+    rpc GetConfig(google.protobuf.Empty) returns (ConfigResponse);
+    rpc SetConfig(ConfigRequest) returns (ConfigResponse);
+
+    // Server health and metrics
+    rpc GetMetrics(google.protobuf.Empty) returns (MetricsResponse);
+    rpc HealthCheck(google.protobuf.Empty) returns (HealthResponse);
+}
+
+// ============================================================================
+// Generation Requests
+// ============================================================================
+
+message BulkGenerateRequest {
+    // Optional configuration override (uses server default if not provided)
+    optional GenerationConfig config = 1;
+    // Number of journal entries to generate
+    uint64 entry_count = 2;
+    // Output format
+    OutputFormat output_format = 3;
+    // Whether to include master data in response
+    bool include_master_data = 4;
+    // Whether to inject anomalies
+    bool inject_anomalies = 5;
+}
+
+message BulkGenerateResponse {
+    // Total entries generated
+    uint64 entries_generated = 1;
+    // Total time in milliseconds
+    uint64 duration_ms = 2;
+    // Generated journal entries (serialized)
+    repeated JournalEntryProto journal_entries = 3;
+    // Anomaly labels (if injection enabled)
+    repeated AnomalyLabelProto anomaly_labels = 4;
+    // Statistics
+    GenerationStats stats = 5;
+}
+
+message StreamDataRequest {
+    // Optional configuration override
+    optional GenerationConfig config = 1;
+    // Target events per second (0 = unlimited)
+    uint32 events_per_second = 2;
+    // Maximum number of events (0 = unlimited)
+    uint64 max_events = 3;
+    // Whether to inject anomalies
+    bool inject_anomalies = 4;
+    // Anomaly injection rate (0.0 to 1.0)
+    float anomaly_rate = 5;
+}
+
+// ============================================================================
+// Data Events
+// ============================================================================
+
+message DataEvent {
+    // Event sequence number
+    uint64 sequence = 1;
+    // Event timestamp
+    google.protobuf.Timestamp timestamp = 2;
+    // Event type
+    oneof event {
+        JournalEntryProto journal_entry = 3;
+        MasterDataEvent master_data = 4;
+        DocumentFlowEvent document_flow = 5;
+        AnomalyEvent anomaly = 6;
+        MetricsEvent metrics = 7;
+    }
+}
+
+message JournalEntryProto {
+    string document_id = 1;
+    string company_code = 2;
+    uint32 fiscal_year = 3;
+    uint32 fiscal_period = 4;
+    string posting_date = 5;
+    string document_date = 6;
+    string created_at = 7;
+    string source = 8;
+    optional string business_process = 9;
+    repeated JournalLineProto lines = 10;
+    bool is_anomaly = 11;
+    optional string anomaly_type = 12;
+}
+
+message JournalLineProto {
+    uint32 line_number = 1;
+    string account_number = 2;
+    string account_name = 3;
+    string amount = 4;  // Decimal as string for precision
+    bool is_debit = 5;
+    optional string cost_center = 6;
+    optional string profit_center = 7;
+    optional string vendor_id = 8;
+    optional string customer_id = 9;
+    optional string material_id = 10;
+    optional string text = 11;
+}
+
+message MasterDataEvent {
+    oneof data {
+        VendorProto vendor = 1;
+        CustomerProto customer = 2;
+        MaterialProto material = 3;
+        FixedAssetProto fixed_asset = 4;
+        EmployeeProto employee = 5;
+    }
+}
+
+message VendorProto {
+    string vendor_id = 1;
+    string name = 2;
+    string country = 3;
+    string currency = 4;
+    string payment_terms = 5;
+    bool is_intercompany = 6;
+}
+
+message CustomerProto {
+    string customer_id = 1;
+    string name = 2;
+    string country = 3;
+    string currency = 4;
+    string credit_rating = 5;
+    string credit_limit = 6;
+    bool is_intercompany = 7;
+}
+
+message MaterialProto {
+    string material_id = 1;
+    string description = 2;
+    string material_type = 3;
+    string unit_of_measure = 4;
+    string standard_cost = 5;
+}
+
+message FixedAssetProto {
+    string asset_id = 1;
+    string description = 2;
+    string asset_class = 3;
+    string acquisition_value = 4;
+    string acquisition_date = 5;
+    uint32 useful_life_months = 6;
+}
+
+message EmployeeProto {
+    string employee_id = 1;
+    string name = 2;
+    string department = 3;
+    string job_title = 4;
+    optional string manager_id = 5;
+}
+
+message DocumentFlowEvent {
+    string document_type = 1;
+    string document_id = 2;
+    string company_code = 3;
+    string document_date = 4;
+    optional string reference_document = 5;
+    string total_amount = 6;
+    string currency = 7;
+}
+
+message AnomalyEvent {
+    string anomaly_id = 1;
+    string anomaly_type = 2;
+    string document_id = 3;
+    string description = 4;
+    float severity_score = 5;
+}
+
+message MetricsEvent {
+    uint64 total_entries = 1;
+    uint64 entries_per_second = 2;
+    float anomaly_rate = 3;
+    uint64 uptime_seconds = 4;
+}
+
+// ============================================================================
+// Control
+// ============================================================================
+
+message ControlCommand {
+    ControlAction action = 1;
+    // Optional pattern to trigger (for TriggerPattern action)
+    optional string pattern_name = 2;
+}
+
+enum ControlAction {
+    CONTROL_ACTION_UNSPECIFIED = 0;
+    PAUSE = 1;
+    RESUME = 2;
+    STOP = 3;
+    TRIGGER_PATTERN = 4;  // Trigger a specific anomaly pattern
+}
+
+message ControlResponse {
+    bool success = 1;
+    string message = 2;
+    StreamStatus current_status = 3;
+}
+
+enum StreamStatus {
+    STREAM_STATUS_UNSPECIFIED = 0;
+    RUNNING = 1;
+    PAUSED = 2;
+    STOPPED = 3;
+}
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+message GenerationConfig {
+    // Industry sector
+    string industry = 1;
+    // Simulation start date (YYYY-MM-DD)
+    string start_date = 2;
+    // Simulation period in months
+    uint32 period_months = 3;
+    // Random seed (0 = random)
+    uint64 seed = 4;
+    // CoA complexity (small, medium, large)
+    string coa_complexity = 5;
+    // Companies configuration
+    repeated CompanyConfigProto companies = 6;
+    // Enable fraud injection
+    bool fraud_enabled = 7;
+    // Fraud rate (0.0 to 1.0)
+    float fraud_rate = 8;
+    // Enable master data generation
+    bool generate_master_data = 9;
+    // Enable document flows
+    bool generate_document_flows = 10;
+}
+
+message CompanyConfigProto {
+    string code = 1;
+    string name = 2;
+    string currency = 3;
+    string country = 4;
+    uint64 annual_transaction_volume = 5;
+    float volume_weight = 6;
+}
+
+message ConfigRequest {
+    GenerationConfig config = 1;
+}
+
+message ConfigResponse {
+    bool success = 1;
+    string message = 2;
+    GenerationConfig current_config = 3;
+}
+
+// ============================================================================
+// Metrics & Health
+// ============================================================================
+
+message MetricsResponse {
+    // Generation metrics
+    uint64 total_entries_generated = 1;
+    uint64 total_anomalies_injected = 2;
+    uint64 uptime_seconds = 3;
+    // Current session metrics
+    uint64 session_entries = 4;
+    double session_entries_per_second = 5;
+    // Stream metrics
+    uint32 active_streams = 6;
+    uint64 total_stream_events = 7;
+}
+
+message HealthResponse {
+    bool healthy = 1;
+    string version = 2;
+    uint64 uptime_seconds = 3;
+}
+
+// ============================================================================
+// Statistics
+// ============================================================================
+
+message GenerationStats {
+    uint64 total_entries = 1;
+    uint64 total_lines = 2;
+    string total_debit_amount = 3;
+    string total_credit_amount = 4;
+    uint64 anomaly_count = 5;
+    map<string, uint64> entries_by_company = 6;
+    map<string, uint64> entries_by_source = 7;
+}
+
+message AnomalyLabelProto {
+    string anomaly_id = 1;
+    string document_id = 2;
+    string anomaly_type = 3;
+    string anomaly_category = 4;
+    string description = 5;
+    float severity_score = 6;
+}
+
+enum OutputFormat {
+    OUTPUT_FORMAT_UNSPECIFIED = 0;
+    JSON = 1;
+    PROTOBUF = 2;
+    CSV = 3;
+    PARQUET = 4;
+}

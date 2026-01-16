@@ -1,0 +1,64 @@
+[package]
+name = "synth-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "gRPC and REST server for synthetic data generation"
+
+[dependencies]
+synth-core = { workspace = true }
+synth-config = { workspace = true }
+synth-generators = { workspace = true }
+synth-runtime = { workspace = true }
+synth-output = { workspace = true }
+
+# gRPC
+tonic = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+
+# HTTP/REST
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+tokio-stream = "0.1"
+futures = { workspace = true }
+async-trait = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# CLI
+clap = { workspace = true }
+
+# Date/Time
+chrono = { workspace = true }
+
+# UUID
+uuid = { workspace = true }
+
+# Decimal
+rust_decimal = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true }
+
+[[bin]]
+name = "synth-server"
+path = "src/main.rs"
+
+[dev-dependencies]
+tempfile = { workspace = true }

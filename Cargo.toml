@@ -8,6 +8,8 @@ members = [
     "crates/synth-runtime",
     "crates/synth-cli",
     "crates/synth-graph",
+    "crates/synth-server",
+    "crates/synth-ui/src-tauri",
 ]
 
 [workspace.package]
@@ -27,6 +29,7 @@ synth-generators = { path = "crates/synth-generators" }
 synth-output = { path = "crates/synth-output" }
 synth-runtime = { path = "crates/synth-runtime" }
 synth-graph = { path = "crates/synth-graph" }
+synth-server = { path = "crates/synth-server" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -46,6 +49,18 @@ rand_distr = "0.4"
 tokio = { version = "1.42", features = ["full"] }
 async-trait = "0.1"
 futures = "0.3"
+
+# gRPC
+tonic = "0.12"
+tonic-build = "0.12"
+prost = "0.13"
+prost-build = "0.13"
+prost-types = "0.13"
+
+# HTTP/REST
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.5"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # Data formats - Arrow/Parquet for analytics-ready output
 arrow = { version = "53", features = ["prettyprint"] }

@@ -20,6 +20,7 @@ indicatif = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 rand = { workspace = true }
+rust_decimal = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

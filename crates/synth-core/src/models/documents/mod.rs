@@ -3,6 +3,7 @@
 //! This module provides document models representing the various
 //! business documents in P2P (Procure-to-Pay) and O2C (Order-to-Cash) flows:
 //!
+//! - Purchase Requisitions (PR)
 //! - Purchase Orders (PO)
 //! - Goods Receipts (GR)
 //! - Vendor Invoices
@@ -18,6 +19,7 @@ mod document_chain;
 mod goods_receipt;
 mod payment;
 mod purchase_order;
+mod purchase_requisition;
 mod sales_order;
 mod vendor_invoice;
 
@@ -27,5 +29,6 @@ pub use document_chain::*;
 pub use goods_receipt::*;
 pub use payment::*;
 pub use purchase_order::*;
+pub use purchase_requisition::*;
 pub use sales_order::*;
 pub use vendor_invoice::*;
