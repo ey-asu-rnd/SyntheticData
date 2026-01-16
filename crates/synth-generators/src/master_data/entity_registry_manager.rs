@@ -336,7 +336,9 @@ impl EntityRegistryManager {
 
         // Register each employee in the entity registry
         for employee in &pool.employees {
-            self.register_employee(employee, employee.hire_date);
+            if let Some(hire_date) = employee.hire_date {
+                self.register_employee(employee, hire_date);
+            }
         }
 
         pool
