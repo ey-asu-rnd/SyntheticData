@@ -5,11 +5,9 @@ use std::time::Duration;
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use serde::Serialize;
-use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 use super::routes::AppState;
-use crate::grpc::service::SynthService;
 use synth_runtime::{EnhancedOrchestrator, PhaseConfig};
 
 /// Metrics update sent via WebSocket.

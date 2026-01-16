@@ -10,6 +10,7 @@ members = [
     "crates/synth-graph",
     "crates/synth-server",
     "crates/synth-ui/src-tauri",
+    "crates/synth-test-utils",
 ]
 
 [workspace.package]
@@ -30,6 +31,7 @@ synth-output = { path = "crates/synth-output" }
 synth-runtime = { path = "crates/synth-runtime" }
 synth-graph = { path = "crates/synth-graph" }
 synth-server = { path = "crates/synth-server" }
+synth-test-utils = { path = "crates/synth-test-utils" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -93,6 +95,8 @@ crossbeam-channel = "0.5"
 # Testing
 proptest = "1.5"
 tempfile = "3.10"
+assert_cmd = "2.0"
+predicates = "3.0"
 
 [profile.release]
 lto = true

@@ -681,4 +681,269 @@ mod tests {
         assert!(!result.master_data.customers.is_empty());
         assert!(!result.master_data.materials.is_empty());
     }
+
+    #[test]
+    fn test_document_flow_generation() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: true,
+            generate_document_flows: true,
+            generate_journal_entries: false,
+            inject_anomalies: false,
+            show_progress: false,
+            vendors_per_company: 5,
+            customers_per_company: 5,
+            materials_per_company: 10,
+            assets_per_company: 5,
+            employees_per_company: 10,
+            p2p_chains: 5,
+            o2c_chains: 5,
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Should have generated P2P and O2C chains
+        assert!(!result.document_flows.p2p_chains.is_empty());
+        assert!(!result.document_flows.o2c_chains.is_empty());
+
+        // Flattened documents should be populated
+        assert!(!result.document_flows.purchase_orders.is_empty());
+        assert!(!result.document_flows.sales_orders.is_empty());
+    }
+
+    #[test]
+    fn test_anomaly_injection() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: false,
+            generate_document_flows: false,
+            generate_journal_entries: true,
+            inject_anomalies: true,
+            show_progress: false,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Should have journal entries
+        assert!(!result.journal_entries.is_empty());
+
+        // With ~833 entries and 2% rate, expect some anomalies
+        // Note: This is probabilistic, so we just verify the structure exists
+        assert!(result.anomaly_labels.summary.is_some());
+    }
+
+    #[test]
+    fn test_full_generation_pipeline() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: true,
+            generate_document_flows: true,
+            generate_journal_entries: true,
+            inject_anomalies: false,
+            show_progress: false,
+            vendors_per_company: 3,
+            customers_per_company: 3,
+            materials_per_company: 5,
+            assets_per_company: 3,
+            employees_per_company: 5,
+            p2p_chains: 3,
+            o2c_chains: 3,
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // All phases should have results
+        assert!(!result.master_data.vendors.is_empty());
+        assert!(!result.master_data.customers.is_empty());
+        assert!(!result.document_flows.p2p_chains.is_empty());
+        assert!(!result.document_flows.o2c_chains.is_empty());
+        assert!(!result.journal_entries.is_empty());
+        assert!(result.statistics.accounts_count > 0);
+    }
+
+    #[test]
+    fn test_statistics_accuracy() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: true,
+            generate_document_flows: false,
+            generate_journal_entries: true,
+            inject_anomalies: false,
+            show_progress: false,
+            vendors_per_company: 10,
+            customers_per_company: 20,
+            materials_per_company: 15,
+            assets_per_company: 5,
+            employees_per_company: 8,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Statistics should match actual data
+        assert_eq!(result.statistics.vendor_count, result.master_data.vendors.len());
+        assert_eq!(result.statistics.customer_count, result.master_data.customers.len());
+        assert_eq!(result.statistics.material_count, result.master_data.materials.len());
+        assert_eq!(result.statistics.total_entries as usize, result.journal_entries.len());
+    }
+
+    #[test]
+    fn test_phase_config_defaults() {
+        let config = PhaseConfig::default();
+        assert!(config.generate_master_data);
+        assert!(config.generate_document_flows);
+        assert!(config.generate_journal_entries);
+        assert!(!config.inject_anomalies);
+        assert!(config.show_progress);
+        assert!(config.vendors_per_company > 0);
+        assert!(config.customers_per_company > 0);
+    }
+
+    #[test]
+    fn test_get_coa_before_generation() {
+        let config = create_test_config();
+        let orchestrator = EnhancedOrchestrator::with_defaults(config).unwrap();
+
+        // Before generation, CoA should be None
+        assert!(orchestrator.get_coa().is_none());
+    }
+
+    #[test]
+    fn test_get_coa_after_generation() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: false,
+            generate_document_flows: false,
+            generate_journal_entries: true,
+            inject_anomalies: false,
+            show_progress: false,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let _ = orchestrator.generate().unwrap();
+
+        // After generation, CoA should be available
+        assert!(orchestrator.get_coa().is_some());
+    }
+
+    #[test]
+    fn test_get_master_data() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: true,
+            generate_document_flows: false,
+            generate_journal_entries: false,
+            inject_anomalies: false,
+            show_progress: false,
+            vendors_per_company: 5,
+            customers_per_company: 5,
+            materials_per_company: 5,
+            assets_per_company: 5,
+            employees_per_company: 5,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let _ = orchestrator.generate().unwrap();
+
+        let master_data = orchestrator.get_master_data();
+        assert!(!master_data.vendors.is_empty());
+    }
+
+    #[test]
+    fn test_with_progress_builder() {
+        let config = create_test_config();
+        let orchestrator = EnhancedOrchestrator::with_defaults(config)
+            .unwrap()
+            .with_progress(false);
+
+        // Should still work without progress
+        assert!(orchestrator.phase_config.show_progress == false);
+    }
+
+    #[test]
+    fn test_multi_company_generation() {
+        let mut config = create_test_config();
+        config.companies.push(CompanyConfig {
+            code: "2000".to_string(),
+            name: "Subsidiary".to_string(),
+            currency: "EUR".to_string(),
+            country: "DE".to_string(),
+            annual_transaction_volume: TransactionVolume::TenK,
+            volume_weight: 0.5,
+            fiscal_year_variant: "K4".to_string(),
+        });
+
+        let phase_config = PhaseConfig {
+            generate_master_data: true,
+            generate_document_flows: false,
+            generate_journal_entries: true,
+            inject_anomalies: false,
+            show_progress: false,
+            vendors_per_company: 5,
+            customers_per_company: 5,
+            materials_per_company: 5,
+            assets_per_company: 5,
+            employees_per_company: 5,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Should have master data for both companies
+        assert!(result.statistics.vendor_count >= 10); // 5 per company
+        assert!(result.statistics.customer_count >= 10);
+        assert!(result.statistics.companies_count == 2);
+    }
+
+    #[test]
+    fn test_empty_master_data_skips_document_flows() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: false, // Skip master data
+            generate_document_flows: true, // Try to generate flows
+            generate_journal_entries: false,
+            inject_anomalies: false,
+            show_progress: false,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Without master data, document flows should be empty
+        assert!(result.document_flows.p2p_chains.is_empty());
+        assert!(result.document_flows.o2c_chains.is_empty());
+    }
+
+    #[test]
+    fn test_journal_entry_line_item_count() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: false,
+            generate_document_flows: false,
+            generate_journal_entries: true,
+            inject_anomalies: false,
+            show_progress: false,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Total line items should match sum of all entry line counts
+        let calculated_line_items: u64 = result
+            .journal_entries
+            .iter()
+            .map(|e| e.line_count() as u64)
+            .sum();
+        assert_eq!(result.statistics.total_line_items, calculated_line_items);
+    }
 }

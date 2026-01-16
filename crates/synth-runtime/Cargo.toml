@@ -24,3 +24,4 @@ rust_decimal = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
+synth-test-utils = { workspace = true }

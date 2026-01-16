@@ -3,10 +3,12 @@
 //! Starts a gRPC server for synthetic data generation.
 
 use std::net::SocketAddr;
+use std::panic;
 
 use clap::Parser;
+use tokio::signal;
 use tonic::transport::Server;
-use tracing::{info, Level};
+use tracing::{error, info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 use synth_server::grpc::service::default_generator_config;
@@ -29,9 +31,50 @@ struct Args {
     verbose: bool,
 }
 
+/// Setup panic hook to log panics before aborting.
+fn setup_panic_hook() {
+    let default_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        error!("Server panic: {}", panic_info);
+        default_hook(panic_info);
+    }));
+}
+
+/// Wait for shutdown signal (Ctrl+C or SIGTERM).
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            info!("Received Ctrl+C, initiating graceful shutdown...");
+        }
+        _ = terminate => {
+            info!("Received SIGTERM, initiating graceful shutdown...");
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+
+    // Setup panic hook for crash logging
+    setup_panic_hook();
 
     // Initialize tracing
     let log_level = if args.verbose {
@@ -56,11 +99,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create service with default config
     let service = SynthService::new(default_generator_config());
 
-    // Start server
+    // Start server with graceful shutdown
     Server::builder()
         .add_service(SyntheticDataServiceServer::new(service))
-        .serve(addr)
+        .serve_with_shutdown(addr, shutdown_signal())
         .await?;
+
+    info!("Server shutdown complete");
 
     Ok(())
 }

@@ -18,6 +18,7 @@ pub struct GeneratorConfig {
     /// Chart of Accounts configuration
     pub chart_of_accounts: ChartOfAccountsConfig,
     /// Transaction generation settings
+    #[serde(default)]
     pub transactions: TransactionConfig,
     /// Output configuration
     pub output: OutputConfig,
@@ -333,7 +334,7 @@ pub enum OutputMode {
 }
 
 /// Supported file formats.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FileFormat {
     Csv,
@@ -1905,5 +1906,405 @@ impl Default for BalanceConfig {
             validate_balance_equation: true,
             reconcile_subledgers: true,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::presets::demo_preset;
+
+    // ==========================================================================
+    // Serialization/Deserialization Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_config_yaml_roundtrip() {
+        let config = demo_preset();
+        let yaml = serde_yaml::to_string(&config).expect("Failed to serialize to YAML");
+        let deserialized: GeneratorConfig =
+            serde_yaml::from_str(&yaml).expect("Failed to deserialize from YAML");
+
+        assert_eq!(config.global.period_months, deserialized.global.period_months);
+        assert_eq!(config.global.industry, deserialized.global.industry);
+        assert_eq!(config.companies.len(), deserialized.companies.len());
+        assert_eq!(config.companies[0].code, deserialized.companies[0].code);
+    }
+
+    #[test]
+    fn test_config_json_roundtrip() {
+        // Create a config without infinity values (JSON can't serialize f64::INFINITY)
+        let mut config = demo_preset();
+        // Replace infinity with a large but finite value for JSON compatibility
+        config.master_data.employees.approval_limits.executive = 1e12;
+
+        let json = serde_json::to_string(&config).expect("Failed to serialize to JSON");
+        let deserialized: GeneratorConfig =
+            serde_json::from_str(&json).expect("Failed to deserialize from JSON");
+
+        assert_eq!(config.global.period_months, deserialized.global.period_months);
+        assert_eq!(config.global.industry, deserialized.global.industry);
+        assert_eq!(config.companies.len(), deserialized.companies.len());
+    }
+
+    #[test]
+    fn test_transaction_volume_serialization() {
+        // Test various transaction volumes serialize correctly
+        let volumes = vec![
+            (TransactionVolume::TenK, "ten_k"),
+            (TransactionVolume::HundredK, "hundred_k"),
+            (TransactionVolume::OneM, "one_m"),
+            (TransactionVolume::TenM, "ten_m"),
+            (TransactionVolume::HundredM, "hundred_m"),
+        ];
+
+        for (volume, expected_key) in volumes {
+            let json = serde_json::to_string(&volume).expect("Failed to serialize");
+            assert!(
+                json.contains(expected_key),
+                "Expected {} in JSON: {}",
+                expected_key,
+                json
+            );
+        }
+    }
+
+    #[test]
+    fn test_transaction_volume_custom_serialization() {
+        let volume = TransactionVolume::Custom(12345);
+        let json = serde_json::to_string(&volume).expect("Failed to serialize");
+        let deserialized: TransactionVolume =
+            serde_json::from_str(&json).expect("Failed to deserialize");
+        assert_eq!(deserialized.count(), 12345);
+    }
+
+    #[test]
+    fn test_output_mode_serialization() {
+        let modes = vec![
+            OutputMode::Streaming,
+            OutputMode::FlatFile,
+            OutputMode::Both,
+        ];
+
+        for mode in modes {
+            let json = serde_json::to_string(&mode).expect("Failed to serialize");
+            let deserialized: OutputMode =
+                serde_json::from_str(&json).expect("Failed to deserialize");
+            assert!(format!("{:?}", mode) == format!("{:?}", deserialized));
+        }
+    }
+
+    #[test]
+    fn test_file_format_serialization() {
+        let formats = vec![
+            FileFormat::Csv,
+            FileFormat::Parquet,
+            FileFormat::Json,
+            FileFormat::JsonLines,
+        ];
+
+        for format in formats {
+            let json = serde_json::to_string(&format).expect("Failed to serialize");
+            let deserialized: FileFormat =
+                serde_json::from_str(&json).expect("Failed to deserialize");
+            assert!(format!("{:?}", format) == format!("{:?}", deserialized));
+        }
+    }
+
+    #[test]
+    fn test_compression_algorithm_serialization() {
+        let algos = vec![
+            CompressionAlgorithm::Gzip,
+            CompressionAlgorithm::Zstd,
+            CompressionAlgorithm::Lz4,
+            CompressionAlgorithm::Snappy,
+        ];
+
+        for algo in algos {
+            let json = serde_json::to_string(&algo).expect("Failed to serialize");
+            let deserialized: CompressionAlgorithm =
+                serde_json::from_str(&json).expect("Failed to deserialize");
+            assert!(format!("{:?}", algo) == format!("{:?}", deserialized));
+        }
+    }
+
+    #[test]
+    fn test_transfer_pricing_method_serialization() {
+        let methods = vec![
+            TransferPricingMethod::CostPlus,
+            TransferPricingMethod::ComparableUncontrolled,
+            TransferPricingMethod::ResalePrice,
+            TransferPricingMethod::TransactionalNetMargin,
+            TransferPricingMethod::ProfitSplit,
+        ];
+
+        for method in methods {
+            let json = serde_json::to_string(&method).expect("Failed to serialize");
+            let deserialized: TransferPricingMethod =
+                serde_json::from_str(&json).expect("Failed to deserialize");
+            assert!(format!("{:?}", method) == format!("{:?}", deserialized));
+        }
+    }
+
+    #[test]
+    fn test_benford_exemption_serialization() {
+        let exemptions = vec![
+            BenfordExemption::Recurring,
+            BenfordExemption::Payroll,
+            BenfordExemption::FixedFees,
+            BenfordExemption::RoundAmounts,
+        ];
+
+        for exemption in exemptions {
+            let json = serde_json::to_string(&exemption).expect("Failed to serialize");
+            let deserialized: BenfordExemption =
+                serde_json::from_str(&json).expect("Failed to deserialize");
+            assert!(format!("{:?}", exemption) == format!("{:?}", deserialized));
+        }
+    }
+
+    // ==========================================================================
+    // Default Value Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_global_config_defaults() {
+        let yaml = r#"
+            industry: manufacturing
+            start_date: "2024-01-01"
+            period_months: 6
+        "#;
+        let config: GlobalConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert_eq!(config.group_currency, "USD");
+        assert!(config.parallel);
+        assert_eq!(config.worker_threads, 0);
+        assert_eq!(config.memory_limit_mb, 0);
+    }
+
+    #[test]
+    fn test_fraud_config_defaults() {
+        let config = FraudConfig::default();
+        assert!(!config.enabled);
+        assert_eq!(config.fraud_rate, 0.005);
+        assert!(!config.clustering_enabled);
+    }
+
+    #[test]
+    fn test_internal_controls_config_defaults() {
+        let config = InternalControlsConfig::default();
+        assert!(!config.enabled);
+        assert_eq!(config.exception_rate, 0.02);
+        assert_eq!(config.sod_violation_rate, 0.01);
+        assert!(config.export_control_master_data);
+        assert_eq!(config.sox_materiality_threshold, 10000.0);
+    }
+
+    #[test]
+    fn test_output_config_defaults() {
+        let config = OutputConfig::default();
+        assert!(matches!(config.mode, OutputMode::FlatFile));
+        assert_eq!(config.formats, vec![FileFormat::Parquet]);
+        assert!(config.compression.enabled);
+        assert!(matches!(config.compression.algorithm, CompressionAlgorithm::Zstd));
+        assert!(config.include_acdoca);
+        assert!(!config.include_bseg);
+        assert!(config.partition_by_period);
+        assert!(!config.partition_by_company);
+    }
+
+    #[test]
+    fn test_approval_config_defaults() {
+        let config = ApprovalConfig::default();
+        assert!(!config.enabled);
+        assert_eq!(config.auto_approve_threshold, 1000.0);
+        assert_eq!(config.rejection_rate, 0.02);
+        assert_eq!(config.revision_rate, 0.05);
+        assert_eq!(config.average_approval_delay_hours, 4.0);
+        assert_eq!(config.thresholds.len(), 4);
+    }
+
+    #[test]
+    fn test_p2p_flow_config_defaults() {
+        let config = P2PFlowConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.three_way_match_rate, 0.95);
+        assert_eq!(config.partial_delivery_rate, 0.15);
+        assert_eq!(config.average_po_to_gr_days, 14);
+    }
+
+    #[test]
+    fn test_o2c_flow_config_defaults() {
+        let config = O2CFlowConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.credit_check_failure_rate, 0.02);
+        assert_eq!(config.return_rate, 0.03);
+        assert_eq!(config.bad_debt_rate, 0.01);
+    }
+
+    #[test]
+    fn test_balance_config_defaults() {
+        let config = BalanceConfig::default();
+        assert!(!config.generate_opening_balances);
+        assert!(config.generate_trial_balances);
+        assert_eq!(config.target_gross_margin, 0.35);
+        assert!(config.validate_balance_equation);
+        assert!(config.reconcile_subledgers);
+    }
+
+    // ==========================================================================
+    // Partial Config Deserialization Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_partial_config_with_defaults() {
+        // Minimal config that should use all defaults
+        let yaml = r#"
+            global:
+              industry: manufacturing
+              start_date: "2024-01-01"
+              period_months: 3
+            companies:
+              - code: "TEST"
+                name: "Test Company"
+                currency: "USD"
+                country: "US"
+                annual_transaction_volume: ten_k
+            chart_of_accounts:
+              complexity: small
+            output:
+              output_directory: "./output"
+        "#;
+
+        let config: GeneratorConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert_eq!(config.global.period_months, 3);
+        assert_eq!(config.companies.len(), 1);
+        assert!(!config.fraud.enabled); // Default
+        assert!(!config.internal_controls.enabled); // Default
+    }
+
+    #[test]
+    fn test_config_with_fraud_enabled() {
+        let yaml = r#"
+            global:
+              industry: retail
+              start_date: "2024-01-01"
+              period_months: 12
+            companies:
+              - code: "RETAIL"
+                name: "Retail Co"
+                currency: "USD"
+                country: "US"
+                annual_transaction_volume: hundred_k
+            chart_of_accounts:
+              complexity: medium
+            output:
+              output_directory: "./output"
+            fraud:
+              enabled: true
+              fraud_rate: 0.05
+              clustering_enabled: true
+        "#;
+
+        let config: GeneratorConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert!(config.fraud.enabled);
+        assert_eq!(config.fraud.fraud_rate, 0.05);
+        assert!(config.fraud.clustering_enabled);
+    }
+
+    #[test]
+    fn test_config_with_multiple_companies() {
+        let yaml = r#"
+            global:
+              industry: manufacturing
+              start_date: "2024-01-01"
+              period_months: 6
+            companies:
+              - code: "HQ"
+                name: "Headquarters"
+                currency: "USD"
+                country: "US"
+                annual_transaction_volume: hundred_k
+                volume_weight: 1.0
+              - code: "EU"
+                name: "European Subsidiary"
+                currency: "EUR"
+                country: "DE"
+                annual_transaction_volume: hundred_k
+                volume_weight: 0.5
+              - code: "APAC"
+                name: "Asia Pacific"
+                currency: "JPY"
+                country: "JP"
+                annual_transaction_volume: ten_k
+                volume_weight: 0.3
+            chart_of_accounts:
+              complexity: large
+            output:
+              output_directory: "./output"
+        "#;
+
+        let config: GeneratorConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert_eq!(config.companies.len(), 3);
+        assert_eq!(config.companies[0].code, "HQ");
+        assert_eq!(config.companies[1].currency, "EUR");
+        assert_eq!(config.companies[2].volume_weight, 0.3);
+    }
+
+    #[test]
+    fn test_intercompany_config() {
+        let yaml = r#"
+            enabled: true
+            ic_transaction_rate: 0.20
+            transfer_pricing_method: cost_plus
+            markup_percent: 0.08
+            generate_matched_pairs: true
+            generate_eliminations: true
+        "#;
+
+        let config: IntercompanyConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert!(config.enabled);
+        assert_eq!(config.ic_transaction_rate, 0.20);
+        assert!(matches!(
+            config.transfer_pricing_method,
+            TransferPricingMethod::CostPlus
+        ));
+        assert_eq!(config.markup_percent, 0.08);
+        assert!(config.generate_eliminations);
+    }
+
+    // ==========================================================================
+    // Company Config Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_company_config_defaults() {
+        let yaml = r#"
+            code: "TEST"
+            name: "Test Company"
+            currency: "USD"
+            country: "US"
+            annual_transaction_volume: ten_k
+        "#;
+
+        let config: CompanyConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert_eq!(config.fiscal_year_variant, "K4"); // Default
+        assert_eq!(config.volume_weight, 1.0); // Default
+    }
+
+    // ==========================================================================
+    // Chart of Accounts Config Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_coa_config_defaults() {
+        let yaml = r#"
+            complexity: medium
+        "#;
+
+        let config: ChartOfAccountsConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert!(config.industry_specific); // Default true
+        assert!(config.custom_accounts.is_none());
+        assert_eq!(config.min_hierarchy_depth, 2); // Default
+        assert_eq!(config.max_hierarchy_depth, 5); // Default
     }
 }

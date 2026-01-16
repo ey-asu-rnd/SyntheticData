@@ -250,6 +250,16 @@ impl synthetic_data_service_server::SyntheticDataService for SynthService {
         request: Request<BulkGenerateRequest>,
     ) -> Result<Response<BulkGenerateResponse>, Status> {
         let req = request.into_inner();
+
+        // Validate entry_count bounds
+        const MAX_ENTRY_COUNT: u64 = 1_000_000;
+        if req.entry_count > MAX_ENTRY_COUNT {
+            return Err(Status::invalid_argument(format!(
+                "entry_count ({}) exceeds maximum allowed value ({})",
+                req.entry_count, MAX_ENTRY_COUNT
+            )));
+        }
+
         info!("Bulk generate request: {} entries", req.entry_count);
 
         let config = self.proto_to_config(req.config).await?;
@@ -361,6 +371,32 @@ impl synthetic_data_service_server::SyntheticDataService for SynthService {
         request: Request<StreamDataRequest>,
     ) -> Result<Response<Self::StreamDataStream>, Status> {
         let req = request.into_inner();
+
+        // Validate events_per_second bounds
+        const MIN_EVENTS_PER_SECOND: u32 = 1;
+        const MAX_EVENTS_PER_SECOND: u32 = 10_000;
+        if req.events_per_second < MIN_EVENTS_PER_SECOND {
+            return Err(Status::invalid_argument(format!(
+                "events_per_second ({}) must be at least {}",
+                req.events_per_second, MIN_EVENTS_PER_SECOND
+            )));
+        }
+        if req.events_per_second > MAX_EVENTS_PER_SECOND {
+            return Err(Status::invalid_argument(format!(
+                "events_per_second ({}) exceeds maximum allowed value ({})",
+                req.events_per_second, MAX_EVENTS_PER_SECOND
+            )));
+        }
+
+        // Validate max_events if specified
+        const MAX_STREAM_EVENTS: u64 = 10_000_000;
+        if req.max_events > MAX_STREAM_EVENTS {
+            return Err(Status::invalid_argument(format!(
+                "max_events ({}) exceeds maximum allowed value ({})",
+                req.max_events, MAX_STREAM_EVENTS
+            )));
+        }
+
         info!(
             "Stream data request: {} events/sec, max {}",
             req.events_per_second, req.max_events
@@ -654,12 +690,35 @@ mod tests {
     use super::*;
     use crate::grpc::synth::synthetic_data_service_server::SyntheticDataService;
 
+    // ==========================================================================
+    // Service Creation Tests
+    // ==========================================================================
+
     #[tokio::test]
     async fn test_service_creation() {
         let config = default_generator_config();
         let service = SynthService::new(config);
-        assert!(service.state.uptime_seconds() >= 0);
+        // Service should start with zero or very small uptime (test completes quickly)
+        assert!(service.state.uptime_seconds() < 60);
     }
+
+    #[tokio::test]
+    async fn test_service_with_state() {
+        let config = default_generator_config();
+        let state = Arc::new(ServerState::new(config));
+        let service = SynthService::with_state(Arc::clone(&state));
+
+        // Should share the same state
+        state.total_entries.store(100, Ordering::Relaxed);
+        assert_eq!(
+            service.state.total_entries.load(Ordering::Relaxed),
+            100
+        );
+    }
+
+    // ==========================================================================
+    // Health Check Tests
+    // ==========================================================================
 
     #[tokio::test]
     async fn test_health_check() {
@@ -674,6 +733,21 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_health_check_returns_version() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let response = service.health_check(Request::new(())).await.unwrap();
+        let health = response.into_inner();
+
+        assert_eq!(health.version, env!("CARGO_PKG_VERSION"));
+    }
+
+    // ==========================================================================
+    // Configuration Tests
+    // ==========================================================================
+
+    #[tokio::test]
     async fn test_get_config() {
         let config = default_generator_config();
         let service = SynthService::new(config);
@@ -683,5 +757,405 @@ mod tests {
 
         assert!(config_response.success);
         assert!(config_response.current_config.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_get_config_returns_industry() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let response = service.get_config(Request::new(())).await.unwrap();
+        let config_response = response.into_inner();
+        let current = config_response.current_config.unwrap();
+
+        assert_eq!(current.industry, "Manufacturing");
+    }
+
+    #[tokio::test]
+    async fn test_set_config() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let new_config = GenerationConfig {
+            industry: "retail".to_string(),
+            start_date: "2024-06-01".to_string(),
+            period_months: 6,
+            seed: 42,
+            coa_complexity: "medium".to_string(),
+            companies: vec![],
+            fraud_enabled: true,
+            fraud_rate: 0.05,
+            generate_master_data: false,
+            generate_document_flows: false,
+        };
+
+        let response = service
+            .set_config(Request::new(ConfigRequest {
+                config: Some(new_config),
+            }))
+            .await
+            .unwrap();
+        let config_response = response.into_inner();
+
+        assert!(config_response.success);
+    }
+
+    #[tokio::test]
+    async fn test_set_config_without_config_fails() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let result = service
+            .set_config(Request::new(ConfigRequest { config: None }))
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    // ==========================================================================
+    // Metrics Tests
+    // ==========================================================================
+
+    #[tokio::test]
+    async fn test_get_metrics_initial() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let response = service.get_metrics(Request::new(())).await.unwrap();
+        let metrics = response.into_inner();
+
+        assert_eq!(metrics.total_entries_generated, 0);
+        assert_eq!(metrics.total_anomalies_injected, 0);
+        assert_eq!(metrics.active_streams, 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_metrics_after_updates() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        // Simulate some activity
+        service.state.total_entries.store(1000, Ordering::Relaxed);
+        service.state.total_anomalies.store(20, Ordering::Relaxed);
+        service.state.active_streams.store(2, Ordering::Relaxed);
+
+        let response = service.get_metrics(Request::new(())).await.unwrap();
+        let metrics = response.into_inner();
+
+        assert_eq!(metrics.total_entries_generated, 1000);
+        assert_eq!(metrics.total_anomalies_injected, 20);
+        assert_eq!(metrics.active_streams, 2);
+    }
+
+    // ==========================================================================
+    // Control Tests
+    // ==========================================================================
+
+    #[tokio::test]
+    async fn test_control_pause() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let response = service
+            .control(Request::new(ControlCommand {
+                action: ControlAction::Pause as i32,
+                pattern_name: None,
+            }))
+            .await
+            .unwrap();
+        let control_response = response.into_inner();
+
+        assert!(control_response.success);
+        assert!(service.state.stream_paused.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test]
+    async fn test_control_resume() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        // First pause
+        service.state.stream_paused.store(true, Ordering::Relaxed);
+
+        let response = service
+            .control(Request::new(ControlCommand {
+                action: ControlAction::Resume as i32,
+                pattern_name: None,
+            }))
+            .await
+            .unwrap();
+        let control_response = response.into_inner();
+
+        assert!(control_response.success);
+        assert!(!service.state.stream_paused.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test]
+    async fn test_control_stop() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let response = service
+            .control(Request::new(ControlCommand {
+                action: ControlAction::Stop as i32,
+                pattern_name: None,
+            }))
+            .await
+            .unwrap();
+        let control_response = response.into_inner();
+
+        assert!(control_response.success);
+        assert!(service.state.stream_stopped.load(Ordering::Relaxed));
+    }
+
+    // ==========================================================================
+    // ServerState Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_server_state_creation() {
+        let config = default_generator_config();
+        let state = ServerState::new(config);
+
+        assert_eq!(state.total_entries.load(Ordering::Relaxed), 0);
+        assert_eq!(state.total_anomalies.load(Ordering::Relaxed), 0);
+        assert_eq!(state.active_streams.load(Ordering::Relaxed), 0);
+        assert!(!state.stream_paused.load(Ordering::Relaxed));
+        assert!(!state.stream_stopped.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_server_state_uptime() {
+        let config = default_generator_config();
+        let state = ServerState::new(config);
+
+        // Uptime should be small since we just created the state
+        assert!(state.uptime_seconds() < 60);
+    }
+
+    // ==========================================================================
+    // Proto Conversion Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_default_generator_config() {
+        let config = default_generator_config();
+
+        assert_eq!(config.global.industry, IndustrySector::Manufacturing);
+        assert_eq!(config.global.period_months, 12);
+        assert!(!config.companies.is_empty());
+        assert_eq!(config.companies[0].code, "1000");
+    }
+
+    #[test]
+    fn test_config_to_proto() {
+        let config = default_generator_config();
+        let proto = SynthService::config_to_proto(&config);
+
+        assert_eq!(proto.industry, "Manufacturing");
+        assert_eq!(proto.period_months, 12);
+        assert!(!proto.companies.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_proto_to_config_with_none() {
+        let config = default_generator_config();
+        let service = SynthService::new(config.clone());
+
+        let result = service.proto_to_config(None).await.unwrap();
+
+        // Should return current config when None is passed
+        assert_eq!(result.global.industry, config.global.industry);
+    }
+
+    #[tokio::test]
+    async fn test_proto_to_config_with_retail() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let proto = GenerationConfig {
+            industry: "retail".to_string(),
+            start_date: "2024-01-01".to_string(),
+            period_months: 6,
+            seed: 0,
+            coa_complexity: "large".to_string(),
+            companies: vec![],
+            fraud_enabled: false,
+            fraud_rate: 0.0,
+            generate_master_data: false,
+            generate_document_flows: false,
+        };
+
+        let result = service.proto_to_config(Some(proto)).await.unwrap();
+
+        assert_eq!(result.global.industry, IndustrySector::Retail);
+        assert_eq!(result.chart_of_accounts.complexity, CoAComplexity::Large);
+    }
+
+    #[tokio::test]
+    async fn test_proto_to_config_with_healthcare() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let proto = GenerationConfig {
+            industry: "healthcare".to_string(),
+            start_date: "2024-01-01".to_string(),
+            period_months: 12,
+            seed: 42,
+            coa_complexity: "small".to_string(),
+            companies: vec![],
+            fraud_enabled: true,
+            fraud_rate: 0.1,
+            generate_master_data: true,
+            generate_document_flows: true,
+        };
+
+        let result = service.proto_to_config(Some(proto)).await.unwrap();
+
+        assert_eq!(result.global.industry, IndustrySector::Healthcare);
+        assert_eq!(result.global.seed, Some(42));
+        assert!(result.fraud.enabled);
+        assert!((result.fraud.fraud_rate - 0.1).abs() < 0.001);
+    }
+
+    #[tokio::test]
+    async fn test_proto_to_config_with_companies() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let proto = GenerationConfig {
+            industry: "technology".to_string(),
+            start_date: "2024-01-01".to_string(),
+            period_months: 12,
+            seed: 0,
+            coa_complexity: "medium".to_string(),
+            companies: vec![
+                CompanyConfigProto {
+                    code: "1000".to_string(),
+                    name: "Parent Corp".to_string(),
+                    currency: "USD".to_string(),
+                    country: "US".to_string(),
+                    annual_transaction_volume: 100000,
+                    volume_weight: 1.0,
+                },
+                CompanyConfigProto {
+                    code: "2000".to_string(),
+                    name: "EU Sub".to_string(),
+                    currency: "EUR".to_string(),
+                    country: "DE".to_string(),
+                    annual_transaction_volume: 50000,
+                    volume_weight: 0.5,
+                },
+            ],
+            fraud_enabled: false,
+            fraud_rate: 0.0,
+            generate_master_data: false,
+            generate_document_flows: false,
+        };
+
+        let result = service.proto_to_config(Some(proto)).await.unwrap();
+
+        assert_eq!(result.companies.len(), 2);
+        assert_eq!(result.companies[0].code, "1000");
+        assert_eq!(result.companies[1].currency, "EUR");
+    }
+
+    // ==========================================================================
+    // Input Validation Tests
+    // ==========================================================================
+
+    #[tokio::test]
+    async fn test_bulk_generate_entry_count_validation() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let request = BulkGenerateRequest {
+            entry_count: 2_000_000, // Exceeds MAX_ENTRY_COUNT
+            include_master_data: false,
+            inject_anomalies: false,
+            output_format: 0,
+            config: None,
+        };
+
+        let result = service.bulk_generate(Request::new(request)).await;
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert!(err.message().contains("exceeds maximum allowed value"));
+    }
+
+    #[tokio::test]
+    async fn test_stream_data_events_per_second_too_low() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let request = StreamDataRequest {
+            events_per_second: 0, // Below MIN_EVENTS_PER_SECOND
+            max_events: 100,
+            inject_anomalies: false,
+            anomaly_rate: 0.0,
+            config: None,
+        };
+
+        let result = service.stream_data(Request::new(request)).await;
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert!(err.message().contains("must be at least"));
+    }
+
+    #[tokio::test]
+    async fn test_stream_data_events_per_second_too_high() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let request = StreamDataRequest {
+            events_per_second: 20_000, // Exceeds MAX_EVENTS_PER_SECOND
+            max_events: 100,
+            inject_anomalies: false,
+            anomaly_rate: 0.0,
+            config: None,
+        };
+
+        let result = service.stream_data(Request::new(request)).await;
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert!(err.message().contains("exceeds maximum allowed value"));
+    }
+
+    #[tokio::test]
+    async fn test_stream_data_max_events_too_high() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let request = StreamDataRequest {
+            events_per_second: 100,
+            max_events: 100_000_000, // Exceeds MAX_STREAM_EVENTS
+            inject_anomalies: false,
+            anomaly_rate: 0.0,
+            config: None,
+        };
+
+        let result = service.stream_data(Request::new(request)).await;
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert!(err.message().contains("max_events"));
+    }
+
+    #[tokio::test]
+    async fn test_stream_data_valid_request() {
+        let config = default_generator_config();
+        let service = SynthService::new(config);
+
+        let request = StreamDataRequest {
+            events_per_second: 10,
+            max_events: 5,
+            inject_anomalies: false,
+            anomaly_rate: 0.0,
+            config: None,
+        };
+
+        // This should succeed - we can't easily test the stream output,
+        // but we verify the request is accepted
+        let result = service.stream_data(Request::new(request)).await;
+        assert!(result.is_ok());
     }
 }

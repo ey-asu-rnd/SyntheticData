@@ -4,16 +4,16 @@ use std::sync::Arc;
 
 use axum::{
     extract::{State, WebSocketUpgrade},
-    http::StatusCode,
+    http::{header, Method, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::info;
 
-use crate::grpc::service::{default_generator_config, ServerState, SynthService};
+use crate::grpc::service::{ServerState, SynthService};
 use synth_runtime::{EnhancedOrchestrator, PhaseConfig};
 
 use super::websocket;
@@ -25,18 +25,69 @@ pub struct AppState {
     pub server_state: Arc<ServerState>,
 }
 
-/// Create the REST API router.
+/// CORS configuration for the REST API.
+#[derive(Clone)]
+pub struct CorsConfig {
+    /// Allowed origins. If empty, only localhost is allowed.
+    pub allowed_origins: Vec<String>,
+    /// Allow any origin (development mode only - NOT recommended for production).
+    pub allow_any_origin: bool,
+}
+
+impl Default for CorsConfig {
+    fn default() -> Self {
+        Self {
+            allowed_origins: vec![
+                "http://localhost:5173".to_string(),  // Vite dev server
+                "http://localhost:3000".to_string(),  // Common dev server
+                "http://127.0.0.1:5173".to_string(),
+                "http://127.0.0.1:3000".to_string(),
+                "tauri://localhost".to_string(),      // Tauri app
+            ],
+            allow_any_origin: false,
+        }
+    }
+}
+
+/// Create the REST API router with default CORS settings.
 pub fn create_router(service: SynthService) -> Router {
+    create_router_with_cors(service, CorsConfig::default())
+}
+
+/// Create the REST API router with custom CORS settings.
+pub fn create_router_with_cors(service: SynthService, cors_config: CorsConfig) -> Router {
     let server_state = service.state.clone();
     let state = AppState {
         service: Arc::new(service),
         server_state,
     };
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cors = if cors_config.allow_any_origin {
+        // Development mode - allow any origin (use with caution)
+        CorsLayer::permissive()
+    } else {
+        // Production mode - restricted origins
+        let origins: Vec<_> = cors_config
+            .allowed_origins
+            .iter()
+            .filter_map(|o| o.parse().ok())
+            .collect();
+
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
+            .allow_headers([
+                header::CONTENT_TYPE,
+                header::AUTHORIZATION,
+                header::ACCEPT,
+            ])
+    };
 
     Router::new()
         // Health and metrics
@@ -63,14 +114,14 @@ pub fn create_router(service: SynthService) -> Router {
 // Request/Response types
 // ===========================================================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HealthResponse {
     pub healthy: bool,
     pub version: String,
     pub uptime_seconds: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MetricsResponse {
     pub total_entries_generated: u64,
     pub total_anomalies_injected: u64,
@@ -206,7 +257,7 @@ async fn get_config(State(state): State<AppState>) -> Json<ConfigResponse> {
 
 /// Set configuration.
 async fn set_config(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Json(new_config): Json<GenerationConfigDto>,
 ) -> Json<ConfigResponse> {
     // For now, we just acknowledge the config update
@@ -225,6 +276,20 @@ async fn bulk_generate(
     State(state): State<AppState>,
     Json(req): Json<BulkGenerateRequest>,
 ) -> Result<Json<BulkGenerateResponse>, (StatusCode, String)> {
+    // Validate entry_count bounds
+    const MAX_ENTRY_COUNT: u64 = 1_000_000;
+    if let Some(count) = req.entry_count {
+        if count > MAX_ENTRY_COUNT {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                format!(
+                    "entry_count ({}) exceeds maximum allowed value ({})",
+                    count, MAX_ENTRY_COUNT
+                ),
+            ));
+        }
+    }
+
     let config = state.server_state.config.read().await.clone();
     let start_time = std::time::Instant::now();
 
@@ -337,6 +402,10 @@ async fn websocket_events(
 mod tests {
     use super::*;
 
+    // ==========================================================================
+    // Response Serialization Tests
+    // ==========================================================================
+
     #[test]
     fn test_health_response_serialization() {
         let response = HealthResponse {
@@ -347,6 +416,16 @@ mod tests {
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("healthy"));
         assert!(json.contains("version"));
+        assert!(json.contains("uptime_seconds"));
+    }
+
+    #[test]
+    fn test_health_response_deserialization() {
+        let json = r#"{"healthy":true,"version":"0.1.0","uptime_seconds":100}"#;
+        let response: HealthResponse = serde_json::from_str(json).unwrap();
+        assert!(response.healthy);
+        assert_eq!(response.version, "0.1.0");
+        assert_eq!(response.uptime_seconds, 100);
     }
 
     #[test]
@@ -362,5 +441,288 @@ mod tests {
         };
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("total_entries_generated"));
+        assert!(json.contains("session_entries_per_second"));
+    }
+
+    #[test]
+    fn test_metrics_response_deserialization() {
+        let json = r#"{
+            "total_entries_generated": 5000,
+            "total_anomalies_injected": 50,
+            "uptime_seconds": 300,
+            "session_entries": 5000,
+            "session_entries_per_second": 16.67,
+            "active_streams": 2,
+            "total_stream_events": 10000
+        }"#;
+        let response: MetricsResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.total_entries_generated, 5000);
+        assert_eq!(response.active_streams, 2);
+    }
+
+    #[test]
+    fn test_config_response_serialization() {
+        let response = ConfigResponse {
+            success: true,
+            message: "Configuration loaded".to_string(),
+            config: Some(GenerationConfigDto {
+                industry: "manufacturing".to_string(),
+                start_date: "2024-01-01".to_string(),
+                period_months: 12,
+                seed: Some(42),
+                coa_complexity: "medium".to_string(),
+                companies: vec![],
+                fraud_enabled: false,
+                fraud_rate: 0.0,
+            }),
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("success"));
+        assert!(json.contains("config"));
+    }
+
+    #[test]
+    fn test_config_response_without_config() {
+        let response = ConfigResponse {
+            success: false,
+            message: "No configuration available".to_string(),
+            config: None,
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("null") || json.contains("config\":null"));
+    }
+
+    #[test]
+    fn test_generation_config_dto_roundtrip() {
+        let original = GenerationConfigDto {
+            industry: "retail".to_string(),
+            start_date: "2024-06-01".to_string(),
+            period_months: 6,
+            seed: Some(12345),
+            coa_complexity: "large".to_string(),
+            companies: vec![CompanyConfigDto {
+                code: "1000".to_string(),
+                name: "Test Corp".to_string(),
+                currency: "USD".to_string(),
+                country: "US".to_string(),
+                annual_transaction_volume: 100000,
+                volume_weight: 1.0,
+            }],
+            fraud_enabled: true,
+            fraud_rate: 0.05,
+        };
+
+        let json = serde_json::to_string(&original).unwrap();
+        let deserialized: GenerationConfigDto = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(original.industry, deserialized.industry);
+        assert_eq!(original.seed, deserialized.seed);
+        assert_eq!(original.companies.len(), deserialized.companies.len());
+    }
+
+    #[test]
+    fn test_company_config_dto_serialization() {
+        let company = CompanyConfigDto {
+            code: "2000".to_string(),
+            name: "European Subsidiary".to_string(),
+            currency: "EUR".to_string(),
+            country: "DE".to_string(),
+            annual_transaction_volume: 50000,
+            volume_weight: 0.5,
+        };
+        let json = serde_json::to_string(&company).unwrap();
+        assert!(json.contains("2000"));
+        assert!(json.contains("EUR"));
+        assert!(json.contains("DE"));
+    }
+
+    #[test]
+    fn test_bulk_generate_request_deserialization() {
+        let json = r#"{
+            "entry_count": 5000,
+            "include_master_data": true,
+            "inject_anomalies": true
+        }"#;
+        let request: BulkGenerateRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.entry_count, Some(5000));
+        assert_eq!(request.include_master_data, Some(true));
+        assert_eq!(request.inject_anomalies, Some(true));
+    }
+
+    #[test]
+    fn test_bulk_generate_request_with_defaults() {
+        let json = r#"{}"#;
+        let request: BulkGenerateRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.entry_count, None);
+        assert_eq!(request.include_master_data, None);
+        assert_eq!(request.inject_anomalies, None);
+    }
+
+    #[test]
+    fn test_bulk_generate_response_serialization() {
+        let response = BulkGenerateResponse {
+            success: true,
+            entries_generated: 1000,
+            duration_ms: 250,
+            anomaly_count: 20,
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("entries_generated"));
+        assert!(json.contains("1000"));
+        assert!(json.contains("duration_ms"));
+    }
+
+    #[test]
+    fn test_stream_response_serialization() {
+        let response = StreamResponse {
+            success: true,
+            message: "Stream started successfully".to_string(),
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("success"));
+        assert!(json.contains("Stream started"));
+    }
+
+    #[test]
+    fn test_stream_response_failure() {
+        let response = StreamResponse {
+            success: false,
+            message: "Stream failed to start".to_string(),
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("false"));
+        assert!(json.contains("failed"));
+    }
+
+    // ==========================================================================
+    // CORS Configuration Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_cors_config_default() {
+        let config = CorsConfig::default();
+        assert!(!config.allow_any_origin);
+        assert!(!config.allowed_origins.is_empty());
+        assert!(config.allowed_origins.contains(&"http://localhost:5173".to_string()));
+        assert!(config.allowed_origins.contains(&"tauri://localhost".to_string()));
+    }
+
+    #[test]
+    fn test_cors_config_custom_origins() {
+        let config = CorsConfig {
+            allowed_origins: vec![
+                "https://example.com".to_string(),
+                "https://app.example.com".to_string(),
+            ],
+            allow_any_origin: false,
+        };
+        assert_eq!(config.allowed_origins.len(), 2);
+        assert!(config.allowed_origins.contains(&"https://example.com".to_string()));
+    }
+
+    #[test]
+    fn test_cors_config_permissive() {
+        let config = CorsConfig {
+            allowed_origins: vec![],
+            allow_any_origin: true,
+        };
+        assert!(config.allow_any_origin);
+    }
+
+    // ==========================================================================
+    // Request Validation Tests (edge cases)
+    // ==========================================================================
+
+    #[test]
+    fn test_bulk_generate_request_partial() {
+        let json = r#"{"entry_count": 100}"#;
+        let request: BulkGenerateRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.entry_count, Some(100));
+        assert!(request.include_master_data.is_none());
+    }
+
+    #[test]
+    fn test_generation_config_no_seed() {
+        let config = GenerationConfigDto {
+            industry: "technology".to_string(),
+            start_date: "2024-01-01".to_string(),
+            period_months: 3,
+            seed: None,
+            coa_complexity: "small".to_string(),
+            companies: vec![],
+            fraud_enabled: false,
+            fraud_rate: 0.0,
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("seed"));
+    }
+
+    #[test]
+    fn test_generation_config_multiple_companies() {
+        let config = GenerationConfigDto {
+            industry: "manufacturing".to_string(),
+            start_date: "2024-01-01".to_string(),
+            period_months: 12,
+            seed: Some(42),
+            coa_complexity: "large".to_string(),
+            companies: vec![
+                CompanyConfigDto {
+                    code: "1000".to_string(),
+                    name: "Headquarters".to_string(),
+                    currency: "USD".to_string(),
+                    country: "US".to_string(),
+                    annual_transaction_volume: 100000,
+                    volume_weight: 1.0,
+                },
+                CompanyConfigDto {
+                    code: "2000".to_string(),
+                    name: "European Sub".to_string(),
+                    currency: "EUR".to_string(),
+                    country: "DE".to_string(),
+                    annual_transaction_volume: 50000,
+                    volume_weight: 0.5,
+                },
+                CompanyConfigDto {
+                    code: "3000".to_string(),
+                    name: "APAC Sub".to_string(),
+                    currency: "JPY".to_string(),
+                    country: "JP".to_string(),
+                    annual_transaction_volume: 30000,
+                    volume_weight: 0.3,
+                },
+            ],
+            fraud_enabled: true,
+            fraud_rate: 0.02,
+        };
+        assert_eq!(config.companies.len(), 3);
+    }
+
+    // ==========================================================================
+    // Metrics Calculation Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_metrics_entries_per_second_calculation() {
+        // Test that we can represent the expected calculation
+        let total_entries: u64 = 1000;
+        let uptime: u64 = 60;
+        let eps = if uptime > 0 {
+            total_entries as f64 / uptime as f64
+        } else {
+            0.0
+        };
+        assert!((eps - 16.67).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_metrics_entries_per_second_zero_uptime() {
+        let total_entries: u64 = 1000;
+        let uptime: u64 = 0;
+        let eps = if uptime > 0 {
+            total_entries as f64 / uptime as f64
+        } else {
+            0.0
+        };
+        assert_eq!(eps, 0.0);
     }
 }
