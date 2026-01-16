@@ -86,15 +86,16 @@ impl OpeningBalanceGenerator {
         // Calculate major balance sheet categories
         let total_assets = spec.total_assets;
 
-        // Assets breakdown
-        let current_assets = self.apply_variation(total_assets * asset_comp.current_asset_percent);
-        let fixed_assets = self.apply_variation(total_assets * asset_comp.fixed_asset_percent);
+        // Assets breakdown (percentages are already in decimal form, e.g., 40 means 40%)
+        let current_assets = self.apply_variation(total_assets * asset_comp.current_assets_percent / dec!(100));
+        let non_current_assets = total_assets - current_assets;
+        let fixed_assets = self.apply_variation(non_current_assets * asset_comp.ppe_percent / dec!(100));
         let intangible_assets =
-            self.apply_variation(total_assets * asset_comp.intangible_asset_percent);
-        let other_assets = total_assets - current_assets - fixed_assets - intangible_assets;
+            self.apply_variation(non_current_assets * asset_comp.intangibles_percent / dec!(100));
+        let other_assets = non_current_assets - fixed_assets - intangible_assets;
 
         // Current assets detail
-        let cash = self.apply_variation(current_assets * asset_comp.cash_percent);
+        let cash = self.apply_variation(current_assets * asset_comp.cash_percent / dec!(100));
         let accounts_receivable =
             self.calculate_ar_from_dso(&spec.target_ratios, current_assets - cash, as_of_date);
         let inventory =
@@ -106,7 +107,7 @@ impl OpeningBalanceGenerator {
         let accumulated_depreciation = ppe_gross - fixed_assets;
 
         // Liabilities and equity
-        let total_liabilities = total_assets * capital_struct.debt_percent;
+        let total_liabilities = total_assets * capital_struct.debt_percent / dec!(100);
         let total_equity = total_assets - total_liabilities;
 
         // Current liabilities
@@ -125,7 +126,7 @@ impl OpeningBalanceGenerator {
 
         // Equity breakdown
         let common_stock =
-            self.apply_variation(total_equity * capital_struct.common_equity_percent);
+            self.apply_variation(total_equity * capital_struct.common_stock_percent / dec!(100));
         let retained_earnings = total_equity - common_stock;
 
         // Create account balances using chart of accounts
@@ -397,17 +398,22 @@ impl OpeningBalanceGenerator {
         as_of_date: NaiveDate,
         company_code: &str,
     ) {
+        use chrono::Datelike;
+
         if amount == Decimal::ZERO {
             return;
         }
 
-        let balance = AccountBalance::new(
-            account_code.to_string(),
+        let mut balance = AccountBalance::new(
             company_code.to_string(),
+            account_code.to_string(),
             account_type,
-            as_of_date,
-        )
-        .with_opening_balance(amount);
+            "USD".to_string(),
+            as_of_date.year(),
+            as_of_date.month(),
+        );
+        balance.opening_balance = amount;
+        balance.closing_balance = amount;
 
         balances.insert(account_code.to_string(), balance);
     }
@@ -598,7 +604,7 @@ mod tests {
     #[test]
     fn test_industry_specific_composition() {
         let rng = ChaCha8Rng::seed_from_u64(54321);
-        let mut generator = OpeningBalanceGenerator::with_defaults(rng);
+        let _generator = OpeningBalanceGenerator::with_defaults(rng);
 
         let tech_spec = OpeningBalanceSpec::for_industry(dec!(1_000_000), IndustryType::Technology);
         let mfg_spec =
@@ -606,14 +612,14 @@ mod tests {
 
         // Tech should have higher intangible assets
         assert!(
-            tech_spec.asset_composition.intangible_asset_percent
-                > mfg_spec.asset_composition.intangible_asset_percent
+            tech_spec.asset_composition.intangibles_percent
+                > mfg_spec.asset_composition.intangibles_percent
         );
 
-        // Manufacturing should have higher fixed assets
+        // Manufacturing should have higher fixed assets (PPE)
         assert!(
-            mfg_spec.asset_composition.fixed_asset_percent
-                > tech_spec.asset_composition.fixed_asset_percent
+            mfg_spec.asset_composition.ppe_percent
+                > tech_spec.asset_composition.ppe_percent
         );
     }
 

@@ -3,7 +3,7 @@
 //! Generates matched pairs of intercompany journal entries that offset
 //! between related entities.
 
-use chrono::{Datelike, NaiveDate, NaiveDateTime};
+use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
@@ -11,8 +11,8 @@ use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
 use synth_core::models::intercompany::{
-    ConsolidationMethod, ICLoan, ICMatchedPair, ICSettlementStatus, ICTransactionType,
-    IntercompanyRelationship, OwnershipStructure, RecurringFrequency, TransferPriceCalculation,
+    ICLoan, ICMatchedPair, ICTransactionType,
+    IntercompanyRelationship, OwnershipStructure, RecurringFrequency,
     TransferPricingMethod, TransferPricingPolicy,
 };
 use synth_core::models::{JournalEntry, JournalEntryLine};
@@ -269,40 +269,57 @@ impl ICGenerator {
     fn create_seller_entry(
         &mut self,
         pair: &ICMatchedPair,
-        fiscal_year: i32,
-        fiscal_period: u32,
+        _fiscal_year: i32,
+        _fiscal_period: u32,
         dr_desc: &str,
         cr_desc: &str,
     ) -> JournalEntry {
-        let doc_number = pair.seller_document.clone();
-        let posting_time = NaiveDateTime::new(
+        let mut je = JournalEntry::new_simple(
+            pair.seller_document.clone(),
+            pair.seller_company.clone(),
             pair.posting_date,
-            chrono::NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
+            format!(
+                "IC {} to {}",
+                pair.transaction_type.seller_accounts().1,
+                pair.buyer_company
+            ),
         );
 
-        let mut lines = vec![
-            JournalEntryLine {
-                line_number: 1,
-                gl_account: self.get_seller_receivable_account(&pair.buyer_company),
-                debit_amount: pair.amount,
-                text: Some(format!("{} - {}", dr_desc, pair.description)),
-                assignment: Some(pair.ic_reference.clone()),
-                reference: Some(pair.buyer_document.clone()),
-                ..Default::default()
-            },
-            JournalEntryLine {
-                line_number: 2,
-                gl_account: self.get_seller_revenue_account(pair.transaction_type),
-                credit_amount: pair.amount,
-                text: Some(format!("{} - {}", cr_desc, pair.description)),
-                assignment: Some(pair.ic_reference.clone()),
-                ..Default::default()
-            },
-        ];
+        je.header.reference = Some(pair.ic_reference.clone());
+        je.header.document_type = "IC".to_string();
+        je.header.currency = pair.currency.clone();
+        je.header.exchange_rate = Decimal::ONE;
+        je.header.created_by = "IC_GENERATOR".to_string();
+
+        // Debit line: IC Receivable
+        let mut debit_amount = pair.amount;
+        if pair.withholding_tax.is_some() {
+            debit_amount = pair.net_amount();
+        }
+
+        je.add_line(JournalEntryLine {
+            line_number: 1,
+            gl_account: self.get_seller_receivable_account(&pair.buyer_company),
+            debit_amount,
+            text: Some(format!("{} - {}", dr_desc, pair.description)),
+            assignment: Some(pair.ic_reference.clone()),
+            reference: Some(pair.buyer_document.clone()),
+            ..Default::default()
+        });
+
+        // Credit line: Revenue/Income
+        je.add_line(JournalEntryLine {
+            line_number: 2,
+            gl_account: self.get_seller_revenue_account(pair.transaction_type),
+            credit_amount: pair.amount,
+            text: Some(format!("{} - {}", cr_desc, pair.description)),
+            assignment: Some(pair.ic_reference.clone()),
+            ..Default::default()
+        });
 
         // Add withholding tax line if applicable
         if let Some(wht) = pair.withholding_tax {
-            lines.push(JournalEntryLine {
+            je.add_line(JournalEntryLine {
                 line_number: 3,
                 gl_account: "2180".to_string(), // WHT payable
                 credit_amount: wht,
@@ -310,117 +327,60 @@ impl ICGenerator {
                 assignment: Some(pair.ic_reference.clone()),
                 ..Default::default()
             });
-
-            // Adjust receivable for net amount
-            lines[0].debit_amount = pair.net_amount();
         }
 
-        JournalEntry {
-            document_number: doc_number,
-            company_code: pair.seller_company.clone(),
-            fiscal_year,
-            fiscal_period,
-            document_type: "IC".to_string(),
-            posting_date: pair.posting_date,
-            document_date: pair.transaction_date,
-            entry_date: pair.posting_date,
-            posting_time,
-            reference: Some(pair.ic_reference.clone()),
-            header_text: Some(format!(
-                "IC {} to {}",
-                pair.transaction_type.seller_accounts().1,
-                pair.buyer_company
-            )),
-            currency: pair.currency.clone(),
-            exchange_rate: Some(Decimal::ONE),
-            total_debit: pair.net_amount(),
-            total_credit: pair.amount,
-            line_count: lines.len() as u32,
-            lines,
-            created_by: "IC_GENERATOR".to_string(),
-            created_at: chrono::Utc::now().naive_utc(),
-            is_posted: true,
-            is_reversed: false,
-            reversal_document: None,
-            reversal_reason: None,
-            source_system: Some("IC".to_string()),
-            business_process: Some("IC_TRANSACTION".to_string()),
-            approval_status: Some("APPROVED".to_string()),
-            approved_by: None,
-            approved_at: None,
-        }
+        je
     }
 
     /// Create buyer-side journal entry.
     fn create_buyer_entry(
         &mut self,
         pair: &ICMatchedPair,
-        fiscal_year: i32,
-        fiscal_period: u32,
+        _fiscal_year: i32,
+        _fiscal_period: u32,
         dr_desc: &str,
         cr_desc: &str,
     ) -> JournalEntry {
-        let doc_number = pair.buyer_document.clone();
-        let posting_time = NaiveDateTime::new(
+        let mut je = JournalEntry::new_simple(
+            pair.buyer_document.clone(),
+            pair.buyer_company.clone(),
             pair.posting_date,
-            chrono::NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
-        );
-
-        let lines = vec![
-            JournalEntryLine {
-                line_number: 1,
-                gl_account: self.get_buyer_expense_account(pair.transaction_type),
-                debit_amount: pair.amount,
-                cost_center: Some("CC100".to_string()),
-                text: Some(format!("{} - {}", dr_desc, pair.description)),
-                assignment: Some(pair.ic_reference.clone()),
-                reference: Some(pair.seller_document.clone()),
-                ..Default::default()
-            },
-            JournalEntryLine {
-                line_number: 2,
-                gl_account: self.get_buyer_payable_account(&pair.seller_company),
-                credit_amount: pair.amount,
-                text: Some(format!("{} - {}", cr_desc, pair.description)),
-                assignment: Some(pair.ic_reference.clone()),
-                ..Default::default()
-            },
-        ];
-
-        JournalEntry {
-            document_number: doc_number,
-            company_code: pair.buyer_company.clone(),
-            fiscal_year,
-            fiscal_period,
-            document_type: "IC".to_string(),
-            posting_date: pair.posting_date,
-            document_date: pair.transaction_date,
-            entry_date: pair.posting_date,
-            posting_time,
-            reference: Some(pair.ic_reference.clone()),
-            header_text: Some(format!(
+            format!(
                 "IC {} from {}",
                 pair.transaction_type.buyer_accounts().0,
                 pair.seller_company
-            )),
-            currency: pair.currency.clone(),
-            exchange_rate: Some(Decimal::ONE),
-            total_debit: pair.amount,
-            total_credit: pair.amount,
-            line_count: lines.len() as u32,
-            lines,
-            created_by: "IC_GENERATOR".to_string(),
-            created_at: chrono::Utc::now().naive_utc(),
-            is_posted: true,
-            is_reversed: false,
-            reversal_document: None,
-            reversal_reason: None,
-            source_system: Some("IC".to_string()),
-            business_process: Some("IC_TRANSACTION".to_string()),
-            approval_status: Some("APPROVED".to_string()),
-            approved_by: None,
-            approved_at: None,
-        }
+            ),
+        );
+
+        je.header.reference = Some(pair.ic_reference.clone());
+        je.header.document_type = "IC".to_string();
+        je.header.currency = pair.currency.clone();
+        je.header.exchange_rate = Decimal::ONE;
+        je.header.created_by = "IC_GENERATOR".to_string();
+
+        // Debit line: Expense/Asset
+        je.add_line(JournalEntryLine {
+            line_number: 1,
+            gl_account: self.get_buyer_expense_account(pair.transaction_type),
+            debit_amount: pair.amount,
+            cost_center: Some("CC100".to_string()),
+            text: Some(format!("{} - {}", dr_desc, pair.description)),
+            assignment: Some(pair.ic_reference.clone()),
+            reference: Some(pair.seller_document.clone()),
+            ..Default::default()
+        });
+
+        // Credit line: IC Payable
+        je.add_line(JournalEntryLine {
+            line_number: 2,
+            gl_account: self.get_buyer_payable_account(&pair.seller_company),
+            credit_amount: pair.amount,
+            text: Some(format!("{} - {}", cr_desc, pair.description)),
+            assignment: Some(pair.ic_reference.clone()),
+            ..Default::default()
+        });
+
+        je
     }
 
     /// Get IC receivable account for seller.

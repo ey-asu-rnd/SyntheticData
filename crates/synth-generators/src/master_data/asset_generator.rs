@@ -199,6 +199,7 @@ impl AssetGenerator {
             asset_id,
             description.to_string(),
             asset_class,
+            company_code,
             acquisition_date,
             self.generate_acquisition_cost(),
         );
@@ -256,6 +257,7 @@ impl AssetGenerator {
             asset_id,
             description.to_string(),
             asset_class,
+            company_code,
             acquisition_date,
             self.generate_acquisition_cost_for_class(&asset_class),
         );
@@ -532,7 +534,7 @@ impl AssetGenerator {
                 depreciation_expense_account: "680000".to_string(),
                 gain_loss_account: "790000".to_string(),
             },
-            AssetClass::Machinery => AssetAccountDetermination {
+            AssetClass::Machinery | AssetClass::MachineryEquipment => AssetAccountDetermination {
                 asset_account: "161000".to_string(),
                 accumulated_depreciation_account: "166000".to_string(),
                 depreciation_expense_account: "681000".to_string(),
@@ -544,19 +546,19 @@ impl AssetGenerator {
                 depreciation_expense_account: "682000".to_string(),
                 gain_loss_account: "792000".to_string(),
             },
-            AssetClass::Furniture => AssetAccountDetermination {
+            AssetClass::Furniture | AssetClass::FurnitureFixtures => AssetAccountDetermination {
                 asset_account: "163000".to_string(),
                 accumulated_depreciation_account: "168000".to_string(),
                 depreciation_expense_account: "683000".to_string(),
                 gain_loss_account: "793000".to_string(),
             },
-            AssetClass::ItEquipment => AssetAccountDetermination {
+            AssetClass::ItEquipment | AssetClass::ComputerHardware => AssetAccountDetermination {
                 asset_account: "164000".to_string(),
                 accumulated_depreciation_account: "169000".to_string(),
                 depreciation_expense_account: "684000".to_string(),
                 gain_loss_account: "794000".to_string(),
             },
-            AssetClass::Software => AssetAccountDetermination {
+            AssetClass::Software | AssetClass::Intangibles => AssetAccountDetermination {
                 asset_account: "170000".to_string(),
                 accumulated_depreciation_account: "175000".to_string(),
                 depreciation_expense_account: "685000".to_string(),
@@ -581,6 +583,12 @@ impl AssetGenerator {
                 accumulated_depreciation_account: "".to_string(),
                 depreciation_expense_account: "".to_string(),
                 gain_loss_account: "".to_string(),
+            },
+            AssetClass::LowValueAssets => AssetAccountDetermination {
+                asset_account: "172000".to_string(),
+                accumulated_depreciation_account: "177000".to_string(),
+                depreciation_expense_account: "687000".to_string(),
+                gain_loss_account: "797000".to_string(),
             },
         }
     }

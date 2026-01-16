@@ -3,7 +3,7 @@
 //! Maintains real-time account balances as journal entries are processed,
 //! with continuous validation of balance sheet integrity.
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
@@ -244,10 +244,12 @@ impl RunningBalanceTracker {
             .entry(line.account_code.clone())
             .or_insert_with(|| {
                 AccountBalance::new(
-                    line.account_code.clone(),
                     company_code.to_string(),
+                    line.account_code.clone(),
                     account_type,
-                    date,
+                    "USD".to_string(), // Default currency
+                    date.year(),
+                    date.month(),
                 )
             });
 
@@ -470,10 +472,10 @@ impl RunningBalanceTracker {
     }
 
     /// Rolls forward balances to a new period.
-    pub fn roll_forward(&mut self, new_period_start: NaiveDate) {
+    pub fn roll_forward(&mut self, _new_period_start: NaiveDate) {
         for company_balances in self.balances.values_mut() {
             for balance in company_balances.values_mut() {
-                balance.roll_forward(new_period_start);
+                balance.roll_forward();
             }
         }
     }
