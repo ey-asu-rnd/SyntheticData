@@ -6,7 +6,7 @@ use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 use synth_core::models::{
     BomComponent, Material, MaterialAccountDetermination, MaterialGroup, MaterialPool,
-    MaterialType, ValuationMethod,
+    MaterialType, UnitOfMeasure, ValuationMethod,
 };
 
 /// Configuration for material generation.
@@ -33,8 +33,8 @@ impl Default for MaterialGeneratorConfig {
                 (MaterialType::FinishedGood, 0.30),
                 (MaterialType::RawMaterial, 0.35),
                 (MaterialType::SemiFinished, 0.15),
-                (MaterialType::Trading, 0.10),
-                (MaterialType::Service, 0.05),
+                (MaterialType::TradingGood, 0.10),
+                (MaterialType::OperatingSupplies, 0.05),
                 (MaterialType::Packaging, 0.05),
             ],
             valuation_method_distribution: vec![
@@ -93,7 +93,7 @@ const MATERIAL_DESCRIPTIONS: &[(MaterialType, &[&str])] = &[
         ],
     ),
     (
-        MaterialType::Trading,
+        MaterialType::TradingGood,
         &[
             "Resale Item A",
             "Trading Good B",
@@ -106,16 +106,16 @@ const MATERIAL_DESCRIPTIONS: &[(MaterialType, &[&str])] = &[
         ],
     ),
     (
-        MaterialType::Service,
+        MaterialType::OperatingSupplies,
         &[
-            "Consulting Service",
-            "Installation Service",
-            "Maintenance Contract",
-            "Support Agreement",
-            "Training Service",
-            "Technical Support",
-            "Professional Service",
-            "Advisory Service",
+            "Cleaning Supplies",
+            "Office Supplies",
+            "Maintenance Supplies",
+            "Workshop Consumables",
+            "Safety Supplies",
+            "Facility Supplies",
+            "General Supplies",
+            "Operating Materials",
         ],
     ),
     (
@@ -138,10 +138,10 @@ const MATERIAL_GROUPS: &[(MaterialGroup, &str)] = &[
     (MaterialGroup::Electronics, "ELEC"),
     (MaterialGroup::Mechanical, "MECH"),
     (MaterialGroup::Chemical, "CHEM"),
-    (MaterialGroup::Packaging, "PACK"),
-    (MaterialGroup::RawMaterial, "RAWM"),
+    (MaterialGroup::PackagingMaterials, "PACK"),
+    (MaterialGroup::Chemicals, "RAWM"),
     (MaterialGroup::FinishedGoods, "FING"),
-    (MaterialGroup::SparesParts, "SPAR"),
+    (MaterialGroup::Tools, "TOOL"),
     (MaterialGroup::Consumables, "CONS"),
     (MaterialGroup::Services, "SERV"),
 ];
@@ -192,28 +192,24 @@ impl MaterialGenerator {
         // Set costs and prices
         let standard_cost = self.generate_standard_cost();
         material.standard_cost = standard_cost;
-        material.moving_average_price = standard_cost;
+        material.purchase_price = standard_cost;
         material.list_price = self.generate_list_price(standard_cost);
 
         // Set unit of measure
-        material.base_uom = if material_type == MaterialType::Service {
-            "HR".to_string()
+        material.base_uom = if material_type == MaterialType::OperatingSupplies {
+            UnitOfMeasure::hour()
         } else {
-            self.config.default_uom.clone()
+            UnitOfMeasure::each()
         };
 
         // Set account determination
         material.account_determination = self.generate_account_determination(&material_type);
 
         // Set stock and reorder info
-        if material_type != MaterialType::Service {
+        if material_type != MaterialType::OperatingSupplies {
             material.safety_stock = self.generate_safety_stock();
             material.reorder_point = material.safety_stock * Decimal::from(2);
-            material.max_stock = material.reorder_point * Decimal::from(3);
         }
-
-        // Set effective date
-        material.effective_date = effective_date;
 
         // Add to created materials for BOM references
         self.created_materials.push(material_id);
@@ -241,24 +237,22 @@ impl MaterialGenerator {
 
         let standard_cost = self.generate_standard_cost();
         material.standard_cost = standard_cost;
-        material.moving_average_price = standard_cost;
+        material.purchase_price = standard_cost;
         material.list_price = self.generate_list_price(standard_cost);
 
-        material.base_uom = if material_type == MaterialType::Service {
-            "HR".to_string()
+        material.base_uom = if material_type == MaterialType::OperatingSupplies {
+            UnitOfMeasure::hour()
         } else {
-            self.config.default_uom.clone()
+            UnitOfMeasure::each()
         };
 
         material.account_determination = self.generate_account_determination(&material_type);
 
-        if material_type != MaterialType::Service {
+        if material_type != MaterialType::OperatingSupplies {
             material.safety_stock = self.generate_safety_stock();
             material.reorder_point = material.safety_stock * Decimal::from(2);
-            material.max_stock = material.reorder_point * Decimal::from(3);
         }
 
-        material.effective_date = effective_date;
         self.created_materials.push(material_id);
 
         material
@@ -286,7 +280,7 @@ impl MaterialGenerator {
             components.push(BomComponent {
                 component_id: component.material_id.clone(),
                 quantity,
-                uom: component.base_uom.clone(),
+                uom: component.base_uom.code.clone(),
                 position: (i + 1) as u16 * 10,
                 is_phantom: false,
             });
@@ -392,7 +386,7 @@ impl MaterialGenerator {
                 components.push(BomComponent {
                     component_id: component_id.clone(),
                     quantity: Decimal::from(self.rng.gen_range(1..5)),
-                    uom: self.config.default_uom.clone(),
+                    uom: "EA".to_string(),
                     position: (i + 1) as u16 * 10,
                     is_phantom: false,
                 });
@@ -460,7 +454,7 @@ impl MaterialGenerator {
             }
             MaterialType::RawMaterial => {
                 let options = [
-                    MaterialGroup::RawMaterial,
+                    MaterialGroup::Chemicals,
                     MaterialGroup::Chemical,
                     MaterialGroup::Mechanical,
                 ];
@@ -470,11 +464,10 @@ impl MaterialGenerator {
                 let options = [MaterialGroup::Electronics, MaterialGroup::Mechanical];
                 options[self.rng.gen_range(0..options.len())]
             }
-            MaterialType::Trading => MaterialGroup::FinishedGoods,
-            MaterialType::Service => MaterialGroup::Services,
-            MaterialType::Packaging | MaterialType::NonStock | MaterialType::Maintenance => {
-                MaterialGroup::Consumables
-            }
+            MaterialType::TradingGood => MaterialGroup::FinishedGoods,
+            MaterialType::OperatingSupplies => MaterialGroup::Services,
+            MaterialType::Packaging | MaterialType::SparePart => MaterialGroup::Consumables,
+            _ => MaterialGroup::Consumables,
         }
     }
 
@@ -507,7 +500,7 @@ impl MaterialGenerator {
         material_type: &MaterialType,
     ) -> MaterialAccountDetermination {
         match material_type {
-            MaterialType::FinishedGood | MaterialType::Trading => MaterialAccountDetermination {
+            MaterialType::FinishedGood | MaterialType::TradingGood => MaterialAccountDetermination {
                 inventory_account: "140000".to_string(),
                 cogs_account: "500000".to_string(),
                 revenue_account: "400000".to_string(),
@@ -523,7 +516,7 @@ impl MaterialGenerator {
                     gr_ir_clearing_account: "290000".to_string(),
                 }
             }
-            MaterialType::Service => MaterialAccountDetermination {
+            MaterialType::OperatingSupplies => MaterialAccountDetermination {
                 inventory_account: "".to_string(),
                 cogs_account: "520000".to_string(),
                 revenue_account: "410000".to_string(),
