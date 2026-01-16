@@ -298,17 +298,18 @@ impl EliminationGenerator {
         investment_amounts: &HashMap<String, Decimal>,
         equity_amounts: &HashMap<String, HashMap<String, Decimal>>,
     ) {
-        for relationship in &self.ownership_structure.relationships {
-            // Only generate for full consolidation
-            if relationship.consolidation_method != ConsolidationMethod::Full {
-                continue;
-            }
+        // Collect relationships that need processing to avoid borrow issues
+        let relationships_to_process: Vec<_> = self
+            .ownership_structure
+            .relationships
+            .iter()
+            .filter(|r| r.consolidation_method == ConsolidationMethod::Full)
+            .map(|r| (r.parent_company.clone(), r.subsidiary_company.clone(), r.ownership_percentage))
+            .collect();
 
+        for (parent, subsidiary, ownership_pct) in relationships_to_process {
             let investment = investment_amounts
-                .get(&format!(
-                    "{}_{}",
-                    relationship.parent_company, relationship.subsidiary_company
-                ))
+                .get(&format!("{}_{}", parent, subsidiary))
                 .copied()
                 .unwrap_or(Decimal::ZERO);
 
@@ -318,7 +319,7 @@ impl EliminationGenerator {
 
             // Get equity components
             let equity_components: Vec<(String, Decimal)> = equity_amounts
-                .get(&relationship.subsidiary_company)
+                .get(&subsidiary)
                 .map(|eq| eq.iter().map(|(k, v)| (k.clone(), *v)).collect())
                 .unwrap_or_else(|| {
                     // Default equity components if not provided
@@ -339,25 +340,29 @@ impl EliminationGenerator {
             };
 
             // Calculate minority interest for non-100% ownership
-            let minority_interest = if relationship.ownership_percentage < dec!(100) {
-                let minority_pct = (dec!(100) - relationship.ownership_percentage) / dec!(100);
+            let minority_interest = if ownership_pct < dec!(100) {
+                let minority_pct = (dec!(100) - ownership_pct) / dec!(100);
                 Some(total_equity * minority_pct)
             } else {
                 None
             };
 
+            let entry_id = self.generate_entry_id(EliminationType::InvestmentEquity);
+            let consolidation_entity = self.config.consolidation_entity.clone();
+            let base_currency = self.config.base_currency.clone();
+
             let entry = EliminationEntry::create_investment_equity_elimination(
-                self.generate_entry_id(EliminationType::InvestmentEquity),
-                self.config.consolidation_entity.clone(),
+                entry_id,
+                consolidation_entity,
                 fiscal_period.to_string(),
                 entry_date,
-                &relationship.parent_company,
-                &relationship.subsidiary_company,
+                &parent,
+                &subsidiary,
                 investment,
                 equity_components,
                 goodwill,
                 minority_interest,
-                self.config.base_currency.clone(),
+                base_currency,
             );
 
             let journal = self.get_or_create_journal(fiscal_period, entry_date);

@@ -273,7 +273,7 @@ impl EmployeeGenerator {
             let role_idx = self.rng.gen_range(0..department.system_roles.len());
             employee
                 .system_roles
-                .push(department.system_roles[role_idx]);
+                .push(department.system_roles[role_idx].clone());
         }
 
         // Assign transaction codes

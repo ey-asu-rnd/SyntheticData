@@ -210,6 +210,8 @@ impl ICGenerator {
         let transfer_price = self.apply_transfer_pricing(base_amount, &relationship_id);
 
         let ic_reference = self.generate_ic_reference(date);
+        let seller_doc = self.generate_doc_number("ICS");
+        let buyer_doc = self.generate_doc_number("ICB");
 
         let mut pair = ICMatchedPair::new(
             ic_reference,
@@ -222,8 +224,8 @@ impl ICGenerator {
         );
 
         // Assign document numbers
-        pair.seller_document = self.generate_doc_number("ICS");
-        pair.buyer_document = self.generate_doc_number("ICB");
+        pair.seller_document = seller_doc;
+        pair.buyer_document = buyer_doc;
 
         // Calculate withholding tax if applicable
         if tx_type.has_withholding_tax() {
@@ -495,8 +497,12 @@ impl ICGenerator {
             let interest = loan.calculate_interest(period_start, as_of_date);
 
             if interest > Decimal::ZERO {
+                let ic_ref = self.generate_ic_reference(as_of_date);
+                let seller_doc = self.generate_doc_number("INT");
+                let buyer_doc = self.generate_doc_number("INT");
+
                 let mut pair = ICMatchedPair::new(
-                    self.generate_ic_reference(as_of_date),
+                    ic_ref,
                     ICTransactionType::LoanInterest,
                     loan.lender_company.clone(),
                     loan.borrower_company.clone(),
@@ -504,8 +510,8 @@ impl ICGenerator {
                     loan.currency.clone(),
                     as_of_date,
                 );
-                pair.seller_document = self.generate_doc_number("INT");
-                pair.buyer_document = self.generate_doc_number("INT");
+                pair.seller_document = seller_doc;
+                pair.buyer_document = buyer_doc;
                 pair.description = format!("Interest on loan {}", loan.loan_id);
 
                 let (seller_je, buyer_je) =
