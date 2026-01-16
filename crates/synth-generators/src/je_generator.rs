@@ -606,14 +606,69 @@ impl JournalEntryGenerator {
             _ => return, // Don't inject errors for unknown personas
         };
 
-        // Check if error should occur based on persona's error rate
-        let error_rate = persona.error_rate();
-        if self.rng.gen::<f64>() >= error_rate {
+        // Get base error rate from persona
+        let base_error_rate = persona.error_rate();
+
+        // Apply stress factors based on posting date
+        let adjusted_rate = self.apply_stress_factors(base_error_rate, entry.header.posting_date);
+
+        // Check if error should occur based on adjusted rate
+        if self.rng.gen::<f64>() >= adjusted_rate {
             return; // No error this time
         }
 
         // Select and inject persona-appropriate error
         self.inject_human_error(entry, persona);
+    }
+
+    /// Apply contextual stress factors to the base error rate.
+    ///
+    /// Stress factors increase error likelihood during:
+    /// - Month-end (day >= 28): 1.5x more errors due to deadline pressure
+    /// - Quarter-end (Mar, Jun, Sep, Dec): additional 25% boost
+    /// - Year-end (December 28-31): 2.0x more errors due to audit pressure
+    /// - Monday morning (catch-up work): 20% more errors
+    /// - Friday afternoon (rushing to leave): 30% more errors
+    fn apply_stress_factors(&self, base_rate: f64, posting_date: chrono::NaiveDate) -> f64 {
+        use chrono::Datelike;
+
+        let mut rate = base_rate;
+        let day = posting_date.day();
+        let month = posting_date.month();
+
+        // Year-end stress (December 28-31): double the error rate
+        if month == 12 && day >= 28 {
+            rate *= 2.0;
+            return rate.min(0.5); // Cap at 50% to keep it realistic
+        }
+
+        // Quarter-end stress (last days of Mar, Jun, Sep, Dec)
+        if matches!(month, 3 | 6 | 9 | 12) && day >= 28 {
+            rate *= 1.75; // 75% more errors at quarter end
+            return rate.min(0.4);
+        }
+
+        // Month-end stress (last 3 days of month)
+        if day >= 28 {
+            rate *= 1.5; // 50% more errors at month end
+        }
+
+        // Day-of-week stress effects
+        let weekday = posting_date.weekday();
+        match weekday {
+            chrono::Weekday::Mon => {
+                // Monday: catching up, often rushed
+                rate *= 1.2;
+            }
+            chrono::Weekday::Fri => {
+                // Friday: rushing to finish before weekend
+                rate *= 1.3;
+            }
+            _ => {}
+        }
+
+        // Cap at 40% to keep it realistic
+        rate.min(0.4)
     }
 
     /// Inject a human-like error based on the persona.
@@ -1277,5 +1332,63 @@ mod tests {
         .with_master_data(&vendors, &customers, &materials);
 
         assert!(generator.is_using_real_master_data());
+    }
+
+    #[test]
+    fn test_stress_factors_increase_error_rate() {
+        let mut coa_gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
+        let coa = Arc::new(coa_gen.generate());
+
+        let generator = JournalEntryGenerator::new_with_params(
+            TransactionConfig::default(),
+            coa,
+            vec!["1000".to_string()],
+            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            42,
+        );
+
+        let base_rate = 0.1;
+
+        // Regular day - no stress factors
+        let regular_day = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap(); // Mid-June Wednesday
+        let regular_rate = generator.apply_stress_factors(base_rate, regular_day);
+        assert!(
+            (regular_rate - base_rate).abs() < 0.01,
+            "Regular day should have minimal stress factor adjustment"
+        );
+
+        // Month end - 50% more errors
+        let month_end = NaiveDate::from_ymd_opt(2024, 6, 29).unwrap(); // June 29 (Saturday)
+        let month_end_rate = generator.apply_stress_factors(base_rate, month_end);
+        assert!(
+            month_end_rate > regular_rate,
+            "Month end should have higher error rate than regular day"
+        );
+
+        // Year end - double the error rate
+        let year_end = NaiveDate::from_ymd_opt(2024, 12, 30).unwrap(); // December 30
+        let year_end_rate = generator.apply_stress_factors(base_rate, year_end);
+        assert!(
+            year_end_rate > month_end_rate,
+            "Year end should have highest error rate"
+        );
+
+        // Friday stress
+        let friday = NaiveDate::from_ymd_opt(2024, 6, 14).unwrap(); // Friday
+        let friday_rate = generator.apply_stress_factors(base_rate, friday);
+        assert!(
+            friday_rate > regular_rate,
+            "Friday should have higher error rate than mid-week"
+        );
+
+        // Monday stress
+        let monday = NaiveDate::from_ymd_opt(2024, 6, 17).unwrap(); // Monday
+        let monday_rate = generator.apply_stress_factors(base_rate, monday);
+        assert!(
+            monday_rate > regular_rate,
+            "Monday should have higher error rate than mid-week"
+        );
     }
 }
