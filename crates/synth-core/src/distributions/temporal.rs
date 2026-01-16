@@ -35,6 +35,19 @@ pub struct SeasonalityConfig {
     pub weekend_activity: f64,
     /// Activity level on holidays
     pub holiday_activity: f64,
+
+    /// Enable day-of-week patterns (Monday catch-up, Friday slowdown)
+    pub day_of_week_patterns: bool,
+    /// Monday activity multiplier (catch-up from weekend)
+    pub monday_multiplier: f64,
+    /// Tuesday activity multiplier
+    pub tuesday_multiplier: f64,
+    /// Wednesday activity multiplier
+    pub wednesday_multiplier: f64,
+    /// Thursday activity multiplier
+    pub thursday_multiplier: f64,
+    /// Friday activity multiplier (early departures)
+    pub friday_multiplier: f64,
 }
 
 impl Default for SeasonalityConfig {
@@ -49,6 +62,13 @@ impl Default for SeasonalityConfig {
             year_end_multiplier: 6.0,
             weekend_activity: 0.1,
             holiday_activity: 0.05,
+            // Day-of-week patterns: humans work differently across the week
+            day_of_week_patterns: true,
+            monday_multiplier: 1.3,    // Catch-up from weekend backlog
+            tuesday_multiplier: 1.1,   // Still catching up
+            wednesday_multiplier: 1.0, // Midweek normal
+            thursday_multiplier: 1.0,  // Midweek normal
+            friday_multiplier: 0.85,   // Early departures, winding down
         }
     }
 }
@@ -199,6 +219,29 @@ impl TemporalSampler {
         matches!(date.weekday(), Weekday::Sat | Weekday::Sun)
     }
 
+    /// Get the day-of-week activity multiplier.
+    ///
+    /// Returns a multiplier based on the day of the week:
+    /// - Monday: Higher activity (catch-up from weekend)
+    /// - Tuesday: Slightly elevated
+    /// - Wednesday/Thursday: Normal
+    /// - Friday: Reduced (early departures, winding down)
+    /// - Saturday/Sunday: Uses weekend_activity setting
+    pub fn get_day_of_week_multiplier(&self, date: NaiveDate) -> f64 {
+        if !self.seasonality_config.day_of_week_patterns {
+            return 1.0;
+        }
+
+        match date.weekday() {
+            Weekday::Mon => self.seasonality_config.monday_multiplier,
+            Weekday::Tue => self.seasonality_config.tuesday_multiplier,
+            Weekday::Wed => self.seasonality_config.wednesday_multiplier,
+            Weekday::Thu => self.seasonality_config.thursday_multiplier,
+            Weekday::Fri => self.seasonality_config.friday_multiplier,
+            Weekday::Sat | Weekday::Sun => 1.0, // Weekend activity handled separately
+        }
+    }
+
     /// Check if a date is a holiday.
     pub fn is_holiday(&self, date: NaiveDate) -> bool {
         // Check legacy holidays list
@@ -269,6 +312,7 @@ impl TemporalSampler {
     ///
     /// Combines:
     /// - Base seasonality (month-end, quarter-end, year-end spikes)
+    /// - Day-of-week patterns (Monday catch-up, Friday slowdown)
     /// - Weekend activity reduction
     /// - Holiday activity reduction (from calendar or legacy list)
     /// - Industry-specific seasonality (if configured)
@@ -278,6 +322,9 @@ impl TemporalSampler {
         // Weekend reduction
         if self.is_weekend(date) {
             multiplier *= self.seasonality_config.weekend_activity;
+        } else {
+            // Day-of-week patterns (only for weekdays)
+            multiplier *= self.get_day_of_week_multiplier(date);
         }
 
         // Holiday reduction (using enhanced calendar if available)
@@ -312,6 +359,9 @@ impl TemporalSampler {
 
         if self.is_weekend(date) {
             multiplier *= self.seasonality_config.weekend_activity;
+        } else {
+            // Day-of-week patterns (only for weekdays)
+            multiplier *= self.get_day_of_week_multiplier(date);
         }
 
         let holiday_mult = self.get_holiday_multiplier(date);
@@ -510,7 +560,7 @@ mod tests {
     fn test_date_multiplier() {
         let sampler = TemporalSampler::new(42);
 
-        // Regular weekday
+        // Regular weekday (Wednesday = 1.0)
         let regular_day = NaiveDate::from_ymd_opt(2024, 6, 12).unwrap(); // Wednesday
         assert!((sampler.get_date_multiplier(regular_day) - 1.0).abs() < 0.01);
 
@@ -521,6 +571,40 @@ mod tests {
         // Month end
         let month_end = NaiveDate::from_ymd_opt(2024, 6, 28).unwrap();
         assert!(sampler.get_date_multiplier(month_end) > 2.0);
+    }
+
+    #[test]
+    fn test_day_of_week_patterns() {
+        let sampler = TemporalSampler::new(42);
+
+        // June 2024: 10=Mon, 11=Tue, 12=Wed, 13=Thu, 14=Fri
+        let monday = NaiveDate::from_ymd_opt(2024, 6, 10).unwrap();
+        let tuesday = NaiveDate::from_ymd_opt(2024, 6, 11).unwrap();
+        let wednesday = NaiveDate::from_ymd_opt(2024, 6, 12).unwrap();
+        let thursday = NaiveDate::from_ymd_opt(2024, 6, 13).unwrap();
+        let friday = NaiveDate::from_ymd_opt(2024, 6, 14).unwrap();
+
+        // Monday should have highest weekday multiplier (catch-up)
+        let mon_mult = sampler.get_day_of_week_multiplier(monday);
+        assert!((mon_mult - 1.3).abs() < 0.01);
+
+        // Tuesday slightly elevated
+        let tue_mult = sampler.get_day_of_week_multiplier(tuesday);
+        assert!((tue_mult - 1.1).abs() < 0.01);
+
+        // Wednesday/Thursday normal
+        let wed_mult = sampler.get_day_of_week_multiplier(wednesday);
+        let thu_mult = sampler.get_day_of_week_multiplier(thursday);
+        assert!((wed_mult - 1.0).abs() < 0.01);
+        assert!((thu_mult - 1.0).abs() < 0.01);
+
+        // Friday reduced (winding down)
+        let fri_mult = sampler.get_day_of_week_multiplier(friday);
+        assert!((fri_mult - 0.85).abs() < 0.01);
+
+        // Verify the pattern is applied in get_date_multiplier
+        // (excluding period-end effects)
+        assert!(sampler.get_date_multiplier(monday) > sampler.get_date_multiplier(friday));
     }
 
     #[test]
