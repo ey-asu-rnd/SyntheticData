@@ -414,50 +414,82 @@ impl TranslatedTrialBalanceLine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use synth_core::models::balance::TrialBalanceLine;
+    use synth_core::models::balance::{TrialBalanceLine, TrialBalanceType, AccountCategory, AccountType};
     use synth_core::models::FxRate;
 
     fn create_test_trial_balance() -> TrialBalance {
-        TrialBalance {
-            company_code: "1200".to_string(),
-            company_name: "Test Subsidiary".to_string(),
-            currency: "EUR".to_string(),
-            period_end_date: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
-            fiscal_year: 2024,
-            fiscal_period: 12,
-            lines: vec![
-                TrialBalanceLine {
-                    account_code: "1000".to_string(),
-                    account_description: Some("Cash".to_string()),
-                    debit_balance: dec!(100000),
-                    credit_balance: Decimal::ZERO,
-                    account_category: None,
-                },
-                TrialBalanceLine {
-                    account_code: "2000".to_string(),
-                    account_description: Some("Accounts Payable".to_string()),
-                    debit_balance: Decimal::ZERO,
-                    credit_balance: dec!(50000),
-                    account_category: None,
-                },
-                TrialBalanceLine {
-                    account_code: "4000".to_string(),
-                    account_description: Some("Revenue".to_string()),
-                    debit_balance: Decimal::ZERO,
-                    credit_balance: dec!(150000),
-                    account_category: None,
-                },
-                TrialBalanceLine {
-                    account_code: "5000".to_string(),
-                    account_description: Some("Expenses".to_string()),
-                    debit_balance: dec!(100000),
-                    credit_balance: Decimal::ZERO,
-                    account_category: None,
-                },
-            ],
-            total_debits: dec!(200000),
-            total_credits: dec!(200000),
-        }
+        let mut tb = TrialBalance::new(
+            "TB-TEST-2024-12".to_string(),
+            "1200".to_string(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            2024,
+            12,
+            "EUR".to_string(),
+            TrialBalanceType::Closing,
+        );
+        tb.company_name = Some("Test Subsidiary".to_string());
+
+        tb.add_line(TrialBalanceLine {
+            account_code: "1000".to_string(),
+            account_description: "Cash".to_string(),
+            category: AccountCategory::CurrentAssets,
+            account_type: AccountType::Asset,
+            opening_balance: Decimal::ZERO,
+            period_debits: dec!(100000),
+            period_credits: Decimal::ZERO,
+            closing_balance: dec!(100000),
+            debit_balance: dec!(100000),
+            credit_balance: Decimal::ZERO,
+            cost_center: None,
+            profit_center: None,
+        });
+
+        tb.add_line(TrialBalanceLine {
+            account_code: "2000".to_string(),
+            account_description: "Accounts Payable".to_string(),
+            category: AccountCategory::CurrentLiabilities,
+            account_type: AccountType::Liability,
+            opening_balance: Decimal::ZERO,
+            period_debits: Decimal::ZERO,
+            period_credits: dec!(50000),
+            closing_balance: dec!(50000),
+            debit_balance: Decimal::ZERO,
+            credit_balance: dec!(50000),
+            cost_center: None,
+            profit_center: None,
+        });
+
+        tb.add_line(TrialBalanceLine {
+            account_code: "4000".to_string(),
+            account_description: "Revenue".to_string(),
+            category: AccountCategory::Revenue,
+            account_type: AccountType::Revenue,
+            opening_balance: Decimal::ZERO,
+            period_debits: Decimal::ZERO,
+            period_credits: dec!(150000),
+            closing_balance: dec!(150000),
+            debit_balance: Decimal::ZERO,
+            credit_balance: dec!(150000),
+            cost_center: None,
+            profit_center: None,
+        });
+
+        tb.add_line(TrialBalanceLine {
+            account_code: "5000".to_string(),
+            account_description: "Expenses".to_string(),
+            category: AccountCategory::OperatingExpenses,
+            account_type: AccountType::Expense,
+            opening_balance: Decimal::ZERO,
+            period_debits: dec!(100000),
+            period_credits: Decimal::ZERO,
+            closing_balance: dec!(100000),
+            debit_balance: dec!(100000),
+            credit_balance: Decimal::ZERO,
+            cost_center: None,
+            profit_center: None,
+        });
+
+        tb
     }
 
     #[test]
