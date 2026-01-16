@@ -6,7 +6,7 @@
 //! - Support configurable debt-to-equity ratios
 //! - Provide realistic starting positions for simulation
 
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
@@ -14,7 +14,7 @@ use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
 use synth_core::models::balance::{
-    AccountBalance, AccountType, AssetComposition, BalanceSnapshot, CapitalStructure,
+    AccountBalance, AccountType, AssetComposition, CapitalStructure,
     GeneratedOpeningBalance, IndustryType, OpeningBalanceSpec, TargetRatios,
 };
 use synth_core::models::ChartOfAccounts;
@@ -277,19 +277,49 @@ impl OpeningBalanceGenerator {
             company_code,
         );
 
-        // Create the snapshot
-        let snapshot = BalanceSnapshot::new(as_of_date, company_code.to_string(), balances);
+        // Calculate totals from balances
+        let total_assets = self.calculate_total_type(&balances, AccountType::Asset);
+        let total_liabilities = self.calculate_total_type(&balances, AccountType::Liability);
+        let total_equity = self.calculate_total_type(&balances, AccountType::Equity);
+        let is_balanced = (total_assets - total_liabilities - total_equity).abs() < dec!(1.00);
+
+        // Convert AccountBalance map to simple Decimal map
+        let simple_balances: HashMap<String, Decimal> = balances
+            .iter()
+            .map(|(k, v)| (k.clone(), v.closing_balance))
+            .collect();
 
         // Calculate actual ratios
-        let calculated_ratios = self.calculate_ratios(&snapshot);
+        let calculated_ratios = self.calculate_ratios_simple(
+            &simple_balances,
+            total_assets,
+            total_liabilities,
+            total_equity,
+        );
 
         GeneratedOpeningBalance {
             company_code: company_code.to_string(),
             as_of_date,
-            snapshot,
-            spec: spec.clone(),
+            balances: simple_balances,
+            total_assets,
+            total_liabilities,
+            total_equity,
+            is_balanced,
             calculated_ratios,
         }
+    }
+
+    /// Calculate total for an account type.
+    fn calculate_total_type(
+        &self,
+        balances: &HashMap<String, AccountBalance>,
+        account_type: AccountType,
+    ) -> Decimal {
+        balances
+            .values()
+            .filter(|b| b.account_type == account_type)
+            .map(|b| b.closing_balance)
+            .sum()
     }
 
     /// Generates opening balances from configuration defaults.
@@ -418,71 +448,69 @@ impl OpeningBalanceGenerator {
         balances.insert(account_code.to_string(), balance);
     }
 
-    /// Calculates financial ratios from the generated snapshot.
-    fn calculate_ratios(
+    /// Calculates financial ratios from the generated balances.
+    fn calculate_ratios_simple(
         &self,
-        snapshot: &BalanceSnapshot,
+        balances: &HashMap<String, Decimal>,
+        total_assets: Decimal,
+        total_liabilities: Decimal,
+        total_equity: Decimal,
     ) -> synth_core::models::balance::CalculatedRatios {
-        let totals = snapshot.calculate_totals();
-
         // Calculate current ratio
-        let current_assets = self.sum_accounts(snapshot, &["1000", "1100", "1200", "1300"]);
-        let current_liabilities = self.sum_accounts(snapshot, &["2000", "2100", "2200", "2300"]);
+        let current_assets = self.sum_balances(balances, &["1000", "1100", "1200", "1300"]);
+        let current_liabilities = self.sum_balances(balances, &["2000", "2100", "2200", "2300"]);
         let current_ratio = if current_liabilities > Decimal::ZERO {
-            current_assets / current_liabilities
+            Some(current_assets / current_liabilities)
         } else {
-            Decimal::ZERO
+            None
         };
 
         // Calculate quick ratio (current assets - inventory) / current liabilities
-        let inventory = self.get_account_balance(snapshot, "1200");
+        let inventory = self.get_balance(balances, "1200");
         let quick_ratio = if current_liabilities > Decimal::ZERO {
-            (current_assets - inventory) / current_liabilities
+            Some((current_assets - inventory) / current_liabilities)
         } else {
-            Decimal::ZERO
+            None
         };
 
         // Calculate debt to equity
-        let total_debt = self.sum_accounts(snapshot, &["2200", "2500"]);
-        let total_equity = self.sum_accounts(snapshot, &["3000", "3200"]);
+        let total_debt = self.sum_balances(balances, &["2200", "2500"]);
         let debt_to_equity = if total_equity > Decimal::ZERO {
-            total_debt / total_equity
+            Some(total_debt / total_equity)
         } else {
-            Decimal::ZERO
+            None
         };
+
+        // Working capital = current assets - current liabilities
+        let working_capital = current_assets - current_liabilities;
 
         synth_core::models::balance::CalculatedRatios {
             current_ratio,
             quick_ratio,
             debt_to_equity,
-            total_assets: totals.total_assets,
-            total_liabilities: totals.total_liabilities,
-            total_equity: totals.total_equity,
-            is_balanced: snapshot.is_balanced,
+            working_capital,
         }
     }
 
     /// Sums balances for a set of account codes.
-    fn sum_accounts(&self, snapshot: &BalanceSnapshot, account_prefixes: &[&str]) -> Decimal {
-        snapshot
-            .balances
+    fn sum_balances(&self, balances: &HashMap<String, Decimal>, account_prefixes: &[&str]) -> Decimal {
+        balances
             .iter()
             .filter(|(code, _)| {
                 account_prefixes
                     .iter()
                     .any(|prefix| code.starts_with(prefix))
             })
-            .map(|(_, balance)| balance.closing_balance.abs())
+            .map(|(_, amount)| amount.abs())
             .sum()
     }
 
     /// Gets a single account balance.
-    fn get_account_balance(&self, snapshot: &BalanceSnapshot, account_prefix: &str) -> Decimal {
-        snapshot
-            .balances
+    fn get_balance(&self, balances: &HashMap<String, Decimal>, account_prefix: &str) -> Decimal {
+        balances
             .iter()
             .filter(|(code, _)| code.starts_with(account_prefix))
-            .map(|(_, balance)| balance.closing_balance.abs())
+            .map(|(_, amount)| amount.abs())
             .sum()
     }
 }
