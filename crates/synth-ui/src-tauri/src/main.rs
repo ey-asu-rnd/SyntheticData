@@ -322,3 +322,211 @@ fn main() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_state_default() {
+        let state = AppState::default();
+        let url = state.server_url.blocking_read();
+        assert_eq!(*url, "http://localhost:3000");
+    }
+
+    #[test]
+    fn test_health_response_serialization() {
+        let response = HealthResponse {
+            healthy: true,
+            version: "1.0.0".to_string(),
+            uptime_seconds: 3600,
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("\"healthy\":true"));
+        assert!(json.contains("\"version\":\"1.0.0\""));
+        assert!(json.contains("\"uptime_seconds\":3600"));
+    }
+
+    #[test]
+    fn test_health_response_deserialization() {
+        let json = r#"{"healthy":true,"version":"1.0.0","uptime_seconds":3600}"#;
+        let response: HealthResponse = serde_json::from_str(json).unwrap();
+
+        assert!(response.healthy);
+        assert_eq!(response.version, "1.0.0");
+        assert_eq!(response.uptime_seconds, 3600);
+    }
+
+    #[test]
+    fn test_metrics_response_serialization() {
+        let response = MetricsResponse {
+            total_entries_generated: 1000,
+            total_anomalies_injected: 50,
+            uptime_seconds: 120,
+            session_entries: 500,
+            session_entries_per_second: 4.5,
+            active_streams: 2,
+            total_stream_events: 100,
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("\"total_entries_generated\":1000"));
+        assert!(json.contains("\"session_entries_per_second\":4.5"));
+    }
+
+    #[test]
+    fn test_metrics_response_deserialization() {
+        let json = r#"{
+            "total_entries_generated": 1000,
+            "total_anomalies_injected": 50,
+            "uptime_seconds": 120,
+            "session_entries": 500,
+            "session_entries_per_second": 4.5,
+            "active_streams": 2,
+            "total_stream_events": 100
+        }"#;
+
+        let response: MetricsResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.total_entries_generated, 1000);
+        assert_eq!(response.session_entries_per_second, 4.5);
+    }
+
+    #[test]
+    fn test_bulk_generate_request_serialization() {
+        let request = BulkGenerateRequest {
+            entry_count: Some(1000),
+            include_master_data: Some(false),
+            inject_anomalies: Some(true),
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"entry_count\":1000"));
+        assert!(json.contains("\"inject_anomalies\":true"));
+    }
+
+    #[test]
+    fn test_bulk_generate_request_optional_fields() {
+        let json = r#"{"entry_count":null,"include_master_data":null,"inject_anomalies":null}"#;
+        let request: BulkGenerateRequest = serde_json::from_str(json).unwrap();
+
+        assert!(request.entry_count.is_none());
+        assert!(request.include_master_data.is_none());
+        assert!(request.inject_anomalies.is_none());
+    }
+
+    #[test]
+    fn test_bulk_generate_response_serialization() {
+        let response = BulkGenerateResponse {
+            success: true,
+            entries_generated: 1000,
+            duration_ms: 500,
+            anomaly_count: 10,
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("\"success\":true"));
+        assert!(json.contains("\"entries_generated\":1000"));
+    }
+
+    #[test]
+    fn test_stream_response_serialization() {
+        let response = StreamResponse {
+            success: true,
+            message: "Stream started".to_string(),
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("\"success\":true"));
+        assert!(json.contains("\"message\":\"Stream started\""));
+    }
+
+    #[test]
+    fn test_generation_config_dto_serialization() {
+        let config = GenerationConfigDto {
+            industry: "manufacturing".to_string(),
+            start_date: "2024-01-01".to_string(),
+            period_months: 12,
+            seed: Some(42),
+            coa_complexity: "medium".to_string(),
+            companies: vec![],
+            fraud_enabled: false,
+            fraud_rate: 0.0,
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("\"industry\":\"manufacturing\""));
+        assert!(json.contains("\"period_months\":12"));
+    }
+
+    #[test]
+    fn test_company_config_dto_serialization() {
+        let company = CompanyConfigDto {
+            code: "1000".to_string(),
+            name: "Test Company".to_string(),
+            currency: "USD".to_string(),
+            country: "US".to_string(),
+            annual_transaction_volume: 100000,
+            volume_weight: 1.0,
+        };
+
+        let json = serde_json::to_string(&company).unwrap();
+        assert!(json.contains("\"code\":\"1000\""));
+        assert!(json.contains("\"volume_weight\":1.0"));
+    }
+
+    #[test]
+    fn test_config_response_with_config() {
+        let config = GenerationConfigDto {
+            industry: "retail".to_string(),
+            start_date: "2024-01-01".to_string(),
+            period_months: 6,
+            seed: None,
+            coa_complexity: "small".to_string(),
+            companies: vec![],
+            fraud_enabled: true,
+            fraud_rate: 0.05,
+        };
+
+        let response = ConfigResponse {
+            success: true,
+            message: "Config loaded".to_string(),
+            config: Some(config),
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("\"success\":true"));
+        assert!(json.contains("\"industry\":\"retail\""));
+    }
+
+    #[test]
+    fn test_config_response_without_config() {
+        let response = ConfigResponse {
+            success: false,
+            message: "Config not found".to_string(),
+            config: None,
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("\"success\":false"));
+        assert!(json.contains("\"config\":null"));
+    }
+
+    #[test]
+    fn test_server_config_urls() {
+        // Test different URL formats work
+        let urls = vec![
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "https://example.com",
+            "http://server.local:8080",
+        ];
+
+        for url in urls {
+            let state = AppState::default();
+            *state.server_url.blocking_write() = url.to_string();
+            let stored = state.server_url.blocking_read();
+            assert_eq!(*stored, url);
+        }
+    }
+}
