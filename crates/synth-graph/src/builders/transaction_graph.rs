@@ -345,50 +345,28 @@ mod tests {
     use synth_core::models::JournalEntryLine;
 
     fn create_test_entry() -> JournalEntry {
-        let mut entry = JournalEntry::new(
+        let mut entry = JournalEntry::new_simple(
             "JE001".to_string(),
             "1000".to_string(),
             chrono::NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
             "Test Entry".to_string(),
         );
 
-        entry.add_line(JournalEntryLine {
-            line_number: 1,
-            account_code: "1000".to_string(),
-            account_description: Some("Cash".to_string()),
-            debit_amount: dec!(1000),
-            credit_amount: Decimal::ZERO,
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
-        });
+        let doc_id = entry.header.document_id;
 
-        entry.add_line(JournalEntryLine {
-            line_number: 2,
-            account_code: "4000".to_string(),
-            account_description: Some("Revenue".to_string()),
-            debit_amount: Decimal::ZERO,
-            credit_amount: dec!(1000),
-            cost_center: None,
-            profit_center: None,
-            project_code: None,
-            reference: None,
-            assignment: None,
-            text: None,
-            quantity: None,
-            unit: None,
-            tax_code: None,
-            trading_partner: None,
-            value_date: None,
-        });
+        entry.add_line(JournalEntryLine::debit(
+            doc_id,
+            1,
+            "1000".to_string(),
+            dec!(1000),
+        ));
+
+        entry.add_line(JournalEntryLine::credit(
+            doc_id,
+            2,
+            "4000".to_string(),
+            dec!(1000),
+        ));
 
         entry
     }

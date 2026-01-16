@@ -370,7 +370,10 @@ mod tests {
             effective_date: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
             end_date: None,
             transfer_pricing_policy: None,
-            ic_account_mappings: vec![],
+            holding_type: synth_core::models::intercompany::HoldingType::Direct,
+            functional_currency: "USD".to_string(),
+            requires_elimination: true,
+            reporting_segment: None,
         }
     }
 
