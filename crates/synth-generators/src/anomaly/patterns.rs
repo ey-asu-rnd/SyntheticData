@@ -81,7 +81,7 @@ impl TemporalPattern {
                 1.0
             }
             TemporalPattern::TimeBased {
-                after_hours_multiplier,
+                after_hours_multiplier: _,
                 weekend_multiplier,
             } => {
                 let weekday = date.weekday();
@@ -267,9 +267,10 @@ impl ClusterManager {
 }
 
 /// Entity targeting pattern.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum EntityTargetingPattern {
     /// Random entity selection.
+    #[default]
     Random,
     /// Weighted by transaction volume.
     VolumeWeighted,
@@ -283,12 +284,6 @@ pub enum EntityTargetingPattern {
         /// Probability of targeting same entity.
         repeat_probability: f64,
     },
-}
-
-impl Default for EntityTargetingPattern {
-    fn default() -> Self {
-        EntityTargetingPattern::Random
-    }
 }
 
 /// Manages entity targeting for anomalies.

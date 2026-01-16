@@ -85,7 +85,7 @@ impl DepreciationRun {
 
     /// Calculates period end date.
     fn calculate_period_end(year: i32, period: u32) -> NaiveDate {
-        let month = period as u32;
+        let month = period;
         let next_month = if month == 12 { 1 } else { month + 1 };
         let next_year = if month == 12 { year + 1 } else { year };
         NaiveDate::from_ymd_opt(next_year, next_month, 1)

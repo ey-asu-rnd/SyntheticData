@@ -173,7 +173,11 @@ impl MaterialGenerator {
     }
 
     /// Generate a single material.
-    pub fn generate_material(&mut self, company_code: &str, effective_date: NaiveDate) -> Material {
+    pub fn generate_material(
+        &mut self,
+        _company_code: &str,
+        _effective_date: NaiveDate,
+    ) -> Material {
         self.material_counter += 1;
 
         let material_id = format!("MAT-{:06}", self.material_counter);
@@ -221,8 +225,8 @@ impl MaterialGenerator {
     pub fn generate_material_of_type(
         &mut self,
         material_type: MaterialType,
-        company_code: &str,
-        effective_date: NaiveDate,
+        _company_code: &str,
+        _effective_date: NaiveDate,
     ) -> Material {
         self.material_counter += 1;
 
@@ -502,14 +506,16 @@ impl MaterialGenerator {
         material_type: &MaterialType,
     ) -> MaterialAccountDetermination {
         match material_type {
-            MaterialType::FinishedGood | MaterialType::TradingGood => MaterialAccountDetermination {
-                inventory_account: "140000".to_string(),
-                cogs_account: "500000".to_string(),
-                revenue_account: "400000".to_string(),
-                purchase_expense_account: "500000".to_string(),
-                price_difference_account: "590000".to_string(),
-                gr_ir_account: "290000".to_string(),
-            },
+            MaterialType::FinishedGood | MaterialType::TradingGood => {
+                MaterialAccountDetermination {
+                    inventory_account: "140000".to_string(),
+                    cogs_account: "500000".to_string(),
+                    revenue_account: "400000".to_string(),
+                    purchase_expense_account: "500000".to_string(),
+                    price_difference_account: "590000".to_string(),
+                    gr_ir_account: "290000".to_string(),
+                }
+            }
             MaterialType::RawMaterial | MaterialType::SemiFinished => {
                 MaterialAccountDetermination {
                     inventory_account: "141000".to_string(),
@@ -651,7 +657,7 @@ mod tests {
             );
 
             // Check margin is within configured range
-            let margin = material.gross_margin();
+            let margin = material.gross_margin_percent();
             assert!(
                 margin >= Decimal::from(15) && margin <= Decimal::from(55),
                 "Margin {} should be within expected range",

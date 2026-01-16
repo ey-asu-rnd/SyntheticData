@@ -145,10 +145,11 @@ impl OpeningBalanceSpec {
 }
 
 /// Industry type for composition defaults.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum IndustryType {
     /// Manufacturing company.
+    #[default]
     Manufacturing,
     /// Retail/wholesale trade.
     Retail,
@@ -164,12 +165,6 @@ pub enum IndustryType {
     Utilities,
     /// Real estate.
     RealEstate,
-}
-
-impl Default for IndustryType {
-    fn default() -> Self {
-        Self::Manufacturing
-    }
 }
 
 /// Asset composition specification.

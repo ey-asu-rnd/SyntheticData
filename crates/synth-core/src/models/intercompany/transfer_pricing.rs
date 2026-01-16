@@ -5,10 +5,11 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 /// Transfer pricing method for intercompany transactions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TransferPricingMethod {
     /// Cost plus a markup percentage.
+    #[default]
     CostPlus,
     /// Comparable uncontrolled price (market-based).
     ComparableUncontrolled,
@@ -20,12 +21,6 @@ pub enum TransferPricingMethod {
     ProfitSplit,
     /// Fixed fee arrangement.
     FixedFee,
-}
-
-impl Default for TransferPricingMethod {
-    fn default() -> Self {
-        Self::CostPlus
-    }
 }
 
 impl TransferPricingMethod {
@@ -169,23 +164,18 @@ impl TransferPricingPolicy {
 }
 
 /// Level of documentation required for transfer pricing compliance.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum DocumentationLevel {
     /// Minimal documentation.
     Minimal,
     /// Standard documentation.
+    #[default]
     Standard,
     /// Comprehensive documentation (for high-risk transactions).
     Comprehensive,
     /// Country-by-country reporting level.
     CbCR,
-}
-
-impl Default for DocumentationLevel {
-    fn default() -> Self {
-        Self::Standard
-    }
 }
 
 /// Result of a transfer pricing calculation.
@@ -299,9 +289,7 @@ impl ArmsLengthRange {
 
     /// Get adjustment needed to bring margin within range.
     pub fn get_adjustment(&self, margin: Decimal) -> Option<Decimal> {
-        if margin < self.lower_quartile {
-            Some(self.median - margin)
-        } else if margin > self.upper_quartile {
+        if margin < self.lower_quartile || margin > self.upper_quartile {
             Some(self.median - margin)
         } else {
             None

@@ -5,6 +5,15 @@
 //! subledger transactions, FX rates, period close processes, anomaly injection,
 //! and data quality variations.
 
+// Allow dead code for methods that are part of the public API but not yet used internally
+#![allow(dead_code)]
+// Allow complex types for return types that model business domain complexity
+#![allow(clippy::type_complexity)]
+// Allow functions with many arguments for domain-specific operations
+#![allow(clippy::too_many_arguments)]
+// Allow large error types as they contain useful diagnostic information
+#![allow(clippy::result_large_err)]
+
 pub mod anomaly;
 pub mod balance;
 pub mod coa_generator;

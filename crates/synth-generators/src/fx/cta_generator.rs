@@ -4,12 +4,9 @@
 
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-use synth_core::models::{
-    CTAComponent, CTAEntry, FxRateTable, JournalEntry, JournalEntryLine, RateType,
-};
+use synth_core::models::{CTAEntry, FxRateTable, JournalEntry, JournalEntryLine};
 
 use super::currency_translator::TranslatedTrialBalance;
 
@@ -405,7 +402,8 @@ impl CTAAnalysis {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use synth_core::models::FxRate;
+    use rust_decimal_macros::dec;
+    use synth_core::models::{FxRate, RateType};
 
     #[test]
     fn test_generate_cta() {

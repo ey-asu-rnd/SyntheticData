@@ -10,7 +10,6 @@ use std::collections::HashMap;
 
 use synth_core::models::intercompany::{
     ICAggregatedBalance, ICMatchedPair, ICNettingArrangement, ICNettingPosition,
-    ICSettlementStatus, ICTransactionType,
 };
 use synth_core::models::JournalEntry;
 
@@ -632,9 +631,11 @@ mod tests {
 
     #[test]
     fn test_matching_by_amount() {
-        let mut config = ICMatchingConfig::default();
-        config.tolerance = dec!(1);
-        config.date_range_days = 3;
+        let config = ICMatchingConfig {
+            tolerance: dec!(1),
+            date_range_days: 3,
+            ..Default::default()
+        };
 
         let mut engine = ICMatchingEngine::new(config);
 
@@ -678,8 +679,10 @@ mod tests {
 
     #[test]
     fn test_identify_discrepancies() {
-        let mut config = ICMatchingConfig::default();
-        config.auto_adjust_threshold = dec!(100);
+        let config = ICMatchingConfig {
+            auto_adjust_threshold: dec!(100),
+            ..Default::default()
+        };
 
         let mut engine = ICMatchingEngine::new(config);
         let date = NaiveDate::from_ymd_opt(2022, 6, 15).unwrap();

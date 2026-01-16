@@ -11,7 +11,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::{EdgeType, Graph, NodeType};
+use crate::models::Graph;
 
 /// Configuration for Neo4j export.
 #[derive(Debug, Clone)]
@@ -504,7 +504,7 @@ impl Default for CypherQueryBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{GraphEdge, GraphNode, GraphType};
+    use crate::models::{EdgeType, GraphEdge, GraphNode, GraphType, NodeType};
     use tempfile::tempdir;
 
     fn create_test_graph() -> Graph {

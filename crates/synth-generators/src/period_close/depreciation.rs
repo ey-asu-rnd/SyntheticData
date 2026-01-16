@@ -1,6 +1,5 @@
 //! Depreciation run generator for period close.
 
-use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
@@ -72,7 +71,7 @@ impl DepreciationRunGenerator {
         run.start();
 
         let mut journal_entries = Vec::new();
-        let mut errors = Vec::new();
+        let errors = Vec::new();
 
         for asset in assets.iter_mut() {
             // Skip non-active assets
@@ -296,6 +295,8 @@ pub struct DepreciationForecastEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
+    use rust_decimal_macros::dec;
     use synth_core::models::subledger::fa::{AssetClass, DepreciationArea, DepreciationMethod};
 
     fn create_test_asset() -> FixedAssetRecord {

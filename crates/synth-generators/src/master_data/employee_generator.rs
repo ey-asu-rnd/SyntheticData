@@ -551,7 +551,7 @@ mod tests {
             gen.generate_employee("1000", &dept, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert!(!employee.employee_id.is_empty());
-        assert!(!employee.name.is_empty());
+        assert!(!employee.display_name.is_empty());
         assert!(!employee.email.is_empty());
         assert!(employee.approval_limit > Decimal::ZERO);
     }
@@ -604,10 +604,7 @@ mod tests {
         assert!(executives.len() >= 3); // CEO, CFO, COO
 
         // Executives should have direct reports
-        let cfo = pool
-            .employees
-            .iter()
-            .find(|e| e.title.as_ref().map_or(false, |t| t == "CFO"));
+        let cfo = pool.employees.iter().find(|e| e.job_title == "CFO");
         assert!(cfo.is_some());
     }
 
@@ -626,7 +623,7 @@ mod tests {
         let non_ceo_without_manager: Vec<_> = pool
             .employees
             .iter()
-            .filter(|e| e.title.as_ref().map_or(true, |t| t != "CEO"))
+            .filter(|e| e.job_title != "CEO")
             .filter(|e| e.manager_id.is_none())
             .collect();
 
@@ -646,7 +643,7 @@ mod tests {
             gen2.generate_employee("1000", &dept, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
 
         assert_eq!(employee1.employee_id, employee2.employee_id);
-        assert_eq!(employee1.name, employee2.name);
+        assert_eq!(employee1.display_name, employee2.display_name);
     }
 
     #[test]

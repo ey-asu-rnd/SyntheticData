@@ -2,13 +2,11 @@
 //!
 //! Strategies determine how anomalies are applied to existing data.
 
-use chrono::{Datelike, NaiveDate};
 use rand::Rng;
 use rust_decimal::Decimal;
 
 use synth_core::models::{
-    AnomalyType, ErrorType, FraudType, JournalEntry, JournalEntryLine, ProcessIssueType,
-    StatisticalAnomalyType,
+    AnomalyType, ErrorType, FraudType, JournalEntry, ProcessIssueType, StatisticalAnomalyType,
 };
 
 /// Base trait for injection strategies.
@@ -226,7 +224,7 @@ impl InjectionStrategy for DateModificationStrategy {
                 // Move to previous or next month
                 let direction: i64 = if rng.gen_bool(0.5) { -1 } else { 1 };
                 let days = direction * 32; // Ensure crossing month boundary
-                (days, format!("Posted to wrong period"))
+                (days, "Posted to wrong period".to_string())
             }
             AnomalyType::ProcessIssue(ProcessIssueType::LatePosting) => {
                 let days = rng.gen_range(5..=15);
@@ -515,6 +513,7 @@ impl InjectionStrategy for BenfordViolationStrategy {
 }
 
 /// Collection of all available strategies.
+#[derive(Default)]
 pub struct StrategyCollection {
     pub amount_modification: AmountModificationStrategy,
     pub date_modification: DateModificationStrategy,
@@ -522,19 +521,6 @@ pub struct StrategyCollection {
     pub approval_anomaly: ApprovalAnomalyStrategy,
     pub description_anomaly: DescriptionAnomalyStrategy,
     pub benford_violation: BenfordViolationStrategy,
-}
-
-impl Default for StrategyCollection {
-    fn default() -> Self {
-        Self {
-            amount_modification: AmountModificationStrategy::default(),
-            date_modification: DateModificationStrategy::default(),
-            duplication: DuplicationStrategy::default(),
-            approval_anomaly: ApprovalAnomalyStrategy::default(),
-            description_anomaly: DescriptionAnomalyStrategy::default(),
-            benford_violation: BenfordViolationStrategy::default(),
-        }
-    }
 }
 
 impl StrategyCollection {
@@ -603,9 +589,11 @@ impl StrategyCollection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
     use rand::SeedableRng;
     use rand_chacha::ChaCha8Rng;
     use rust_decimal_macros::dec;
+    use synth_core::models::JournalEntryLine;
 
     fn create_test_entry() -> JournalEntry {
         let mut entry = JournalEntry::new_simple(

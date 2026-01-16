@@ -273,10 +273,10 @@ impl MissingValueInjector {
             MissingValueStrategy::MNAR { value_patterns } => {
                 if let Some(val) = value {
                     for pattern in value_patterns {
-                        if pattern.field == field {
-                            if self.check_value_pattern(&pattern.pattern_type, val) {
-                                return pattern.probability;
-                            }
+                        if pattern.field == field
+                            && self.check_value_pattern(&pattern.pattern_type, val)
+                        {
+                            return pattern.probability;
                         }
                     }
                 }

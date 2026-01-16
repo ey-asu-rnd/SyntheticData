@@ -9,7 +9,6 @@
 use chrono::NaiveDate;
 use rand::Rng;
 use rust_decimal::Decimal;
-use std::collections::HashMap;
 
 /// Date format variations.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -436,7 +435,7 @@ impl FormatVariationInjector {
         if rng.gen::<f64>() < self.config.identifier_variation_rate {
             self.stats.identifier_variations += 1;
 
-            let variations = vec![
+            let variations = [
                 IdentifierFormat::Upper,
                 IdentifierFormat::Lower,
                 IdentifierFormat::ZeroPadded(10),
@@ -458,7 +457,7 @@ impl FormatVariationInjector {
         if rng.gen::<f64>() < self.config.text_variation_rate {
             self.stats.text_variations += 1;
 
-            let variations = vec![
+            let variations = [
                 TextFormat::Upper,
                 TextFormat::Lower,
                 TextFormat::Title,
@@ -551,8 +550,8 @@ mod tests {
         let date = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
         let formatted = injector.vary_date(date, &mut rng);
 
-        // Should not be ISO format (variation applied)
-        assert!(formatted != "2024-01-15" || formatted == "2024-01-15"); // May still be ISO by chance
+        // Formatted date should not be empty and stats should be updated
+        assert!(!formatted.is_empty());
         assert_eq!(injector.stats().date_variations, 1);
     }
 }

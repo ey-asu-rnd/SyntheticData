@@ -79,10 +79,11 @@ impl IntercompanyRelationship {
 }
 
 /// Consolidation method based on level of control.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ConsolidationMethod {
     /// Full consolidation (>50% ownership, control).
+    #[default]
     Full,
     /// Proportional consolidation (joint ventures).
     Proportional,
@@ -125,28 +126,17 @@ impl ConsolidationMethod {
     }
 }
 
-impl Default for ConsolidationMethod {
-    fn default() -> Self {
-        Self::Full
-    }
-}
-
 /// Type of holding in the ownership structure.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum HoldingType {
     /// Direct ownership by the parent.
+    #[default]
     Direct,
     /// Indirect ownership through another subsidiary.
     Indirect,
     /// Reciprocal/cross-holding.
     Reciprocal,
-}
-
-impl Default for HoldingType {
-    fn default() -> Self {
-        Self::Direct
-    }
 }
 
 /// Represents the complete ownership structure of a corporate group.

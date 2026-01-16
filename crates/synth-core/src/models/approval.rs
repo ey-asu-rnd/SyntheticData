@@ -87,6 +87,7 @@ pub struct ApprovalAction {
 
 impl ApprovalAction {
     /// Create a new approval action.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         actor_id: String,
         actor_name: String,
@@ -557,6 +558,7 @@ pub struct ApprovalRecord {
 
 impl ApprovalRecord {
     /// Creates a new approval record.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         document_number: String,
         approver_id: String,

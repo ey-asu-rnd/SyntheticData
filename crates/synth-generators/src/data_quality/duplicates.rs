@@ -9,7 +9,6 @@
 use chrono::{Duration, NaiveDate};
 use rand::Rng;
 use rust_decimal::Decimal;
-use std::collections::HashMap;
 
 /// Type of duplicate.
 #[derive(Debug, Clone, PartialEq)]
@@ -193,7 +192,7 @@ impl DuplicateGenerator {
             } => {
                 self.stats.cross_system_duplicates += 1;
                 // Change system identifier
-                if let Some(current_id) = duplicate.get_field("system_id") {
+                if let Some(_current_id) = duplicate.get_field("system_id") {
                     duplicate.set_field("system_id", target_system);
                     differing_fields.push("system_id".to_string());
                 }
@@ -259,7 +258,7 @@ impl DuplicateGenerator {
                 "description" => {
                     if let Some(desc) = record.get_field("description") {
                         // Add minor variation
-                        let variations = vec![
+                        let variations = [
                             format!("{} ", desc),
                             format!(" {}", desc),
                             desc.to_uppercase(),
@@ -484,9 +483,8 @@ mod tests {
         }
 
         fn set_field(&mut self, field: &str, value: &str) {
-            match field {
-                "description" => self.description = value.to_string(),
-                _ => {}
+            if field == "description" {
+                self.description = value.to_string();
             }
         }
 

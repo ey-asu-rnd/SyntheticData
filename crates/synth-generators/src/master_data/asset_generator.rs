@@ -299,7 +299,8 @@ impl AssetGenerator {
         for month_offset in 0..months_elapsed {
             if asset.status == AssetStatus::Active {
                 // Calculate the depreciation date for this month
-                let dep_date = acquisition_date + chrono::Duration::days((month_offset as i64 + 1) * 30);
+                let dep_date =
+                    acquisition_date + chrono::Duration::days((month_offset as i64 + 1) * 30);
                 let depreciation = asset.calculate_monthly_depreciation(dep_date);
                 asset.apply_depreciation(depreciation);
             }
@@ -737,7 +738,8 @@ mod tests {
         let initial_nbv = asset.net_book_value;
 
         // Apply one month of depreciation
-        let depreciation = asset.calculate_monthly_depreciation(0);
+        let depreciation =
+            asset.calculate_monthly_depreciation(NaiveDate::from_ymd_opt(2024, 2, 1).unwrap());
         asset.apply_depreciation(depreciation);
 
         assert!(asset.accumulated_depreciation > Decimal::ZERO);

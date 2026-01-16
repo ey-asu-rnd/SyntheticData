@@ -8,8 +8,8 @@ use rust_decimal_macros::dec;
 
 use synth_core::models::subledger::fa::{
     AssetClass, AssetDisposal, AssetStatus, DepreciationArea, DepreciationAreaType,
-    DepreciationEntry, DepreciationMethod, DepreciationRun, DisposalReason,
-    DisposalType, FixedAssetRecord,
+    DepreciationEntry, DepreciationMethod, DepreciationRun, DisposalReason, DisposalType,
+    FixedAssetRecord,
 };
 use synth_core::models::{JournalEntry, JournalEntryLine};
 
@@ -115,7 +115,7 @@ impl FAGenerator {
         // Add a depreciation area
         let mut depreciation_area = DepreciationArea::new(
             DepreciationAreaType::Book,
-            self.config.default_depreciation_method.clone(),
+            self.config.default_depreciation_method,
             self.config.default_useful_life_months,
             acquisition_cost,
         );
@@ -348,7 +348,10 @@ impl FAGenerator {
         // Debit Accumulated Depreciation
         je.add_line(JournalEntryLine {
             line_number: line_num,
-            gl_account: asset.account_determination.accumulated_depreciation_account.clone(),
+            gl_account: asset
+                .account_determination
+                .accumulated_depreciation_account
+                .clone(),
             debit_amount: disposal.accumulated_depreciation,
             reference: Some(disposal.disposal_id.clone()),
             ..Default::default()

@@ -7,10 +7,7 @@
 use chrono::NaiveDate;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
-use synth_core::models::{
-    documents::{DocumentReference, DocumentType, ReferenceType},
-    CustomerPool, MaterialPool, VendorPool,
-};
+use synth_core::models::{documents::DocumentReference, CustomerPool, MaterialPool, VendorPool};
 
 use super::{
     O2CDocumentChain, O2CGenerator, O2CGeneratorConfig, P2PDocumentChain, P2PGenerator,
@@ -322,10 +319,12 @@ impl DocumentChainManager {
         p2p_chains: &[P2PDocumentChain],
         o2c_chains: &[O2CDocumentChain],
     ) -> DocumentChainStats {
-        let mut stats = DocumentChainStats::default();
+        let mut stats = DocumentChainStats {
+            p2p_chains: p2p_chains.len(),
+            ..Default::default()
+        };
 
         // P2P stats
-        stats.p2p_chains = p2p_chains.len();
         for chain in p2p_chains {
             stats.purchase_orders += 1;
             stats.goods_receipts += chain.goods_receipts.len();
@@ -460,16 +459,19 @@ mod tests {
         let mut vendors = VendorPool::new();
         for i in 1..=5 {
             vendors.add_vendor(Vendor::new(
-                format!("V-{:06}", i),
-                format!("Vendor {}", i),
-                "1000",
+                &format!("V-{:06}", i),
+                &format!("Vendor {}", i),
+                synth_core::models::VendorType::Supplier,
             ));
         }
 
         let mut customers = CustomerPool::new();
         for i in 1..=5 {
-            let mut customer =
-                Customer::new(format!("C-{:06}", i), format!("Customer {}", i), "1000");
+            let mut customer = Customer::new(
+                &format!("C-{:06}", i),
+                &format!("Customer {}", i),
+                synth_core::models::CustomerType::Corporate,
+            );
             customer.credit_rating = CreditRating::A;
             customer.credit_limit = rust_decimal::Decimal::from(1_000_000);
             customer.payment_behavior = CustomerPaymentBehavior::OnTime;
@@ -632,8 +634,8 @@ mod tests {
         let (vendors, customers, materials) = create_test_pools();
 
         let flows = manager.generate_flows(
-            30,
             "1000",
+            30,
             &vendors,
             &customers,
             &materials,

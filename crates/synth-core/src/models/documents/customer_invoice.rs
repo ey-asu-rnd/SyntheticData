@@ -121,6 +121,7 @@ pub struct CustomerInvoiceItem {
 
 impl CustomerInvoiceItem {
     /// Create a new customer invoice item.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         line_number: u16,
         description: impl Into<String>,
@@ -143,6 +144,7 @@ impl CustomerInvoiceItem {
     }
 
     /// Create from delivery reference.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_delivery(
         line_number: u16,
         description: impl Into<String>,
@@ -324,6 +326,7 @@ pub struct CustomerInvoice {
 
 impl CustomerInvoice {
     /// Create a new customer invoice.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         invoice_id: impl Into<String>,
         company_code: impl Into<String>,
@@ -388,6 +391,7 @@ impl CustomerInvoice {
     }
 
     /// Create from delivery reference.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_delivery(
         invoice_id: impl Into<String>,
         company_code: impl Into<String>,

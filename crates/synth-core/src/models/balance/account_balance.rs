@@ -188,10 +188,11 @@ impl AccountBalance {
 }
 
 /// Account type classification.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AccountType {
     /// Assets (debit normal).
+    #[default]
     Asset,
     /// Contra-asset (credit normal, e.g., accumulated depreciation).
     ContraAsset,
@@ -227,12 +228,6 @@ impl AccountType {
     pub fn is_contra_from_code(code: &str) -> bool {
         // Common patterns for contra accounts
         code.contains("ACCUM") || code.contains("ALLOW") || code.contains("CONTRA")
-    }
-}
-
-impl Default for AccountType {
-    fn default() -> Self {
-        Self::Asset
     }
 }
 
@@ -472,7 +467,7 @@ impl BalanceChange {
         };
 
         let is_significant = change_amount.abs() >= significance_threshold
-            || change_percent.map_or(false, |p| p.abs() >= dec!(10));
+            || change_percent.is_some_and(|p| p.abs() >= dec!(10));
 
         Self {
             account_code,

@@ -11,8 +11,7 @@ use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
 use synth_core::models::intercompany::{
-    ICLoan, ICMatchedPair, ICTransactionType,
-    IntercompanyRelationship, OwnershipStructure, RecurringFrequency,
+    ICLoan, ICMatchedPair, ICTransactionType, OwnershipStructure, RecurringFrequency,
     TransferPricingMethod, TransferPricingPolicy,
 };
 use synth_core::models::{JournalEntry, JournalEntryLine};
@@ -194,7 +193,7 @@ impl ICGenerator {
     pub fn generate_ic_transaction(
         &mut self,
         date: NaiveDate,
-        fiscal_period: &str,
+        _fiscal_period: &str,
     ) -> Option<ICMatchedPair> {
         // Check if we should generate an IC transaction
         if !self.rng.gen_bool(self.config.ic_transaction_rate) {
@@ -583,6 +582,9 @@ impl ICGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
+    use rust_decimal_macros::dec;
+    use synth_core::models::intercompany::IntercompanyRelationship;
 
     fn create_test_ownership_structure() -> OwnershipStructure {
         let mut structure = OwnershipStructure::new("1000".to_string());
@@ -615,8 +617,10 @@ mod tests {
 
     #[test]
     fn test_generate_ic_transaction() {
-        let mut config = ICGeneratorConfig::default();
-        config.ic_transaction_rate = 1.0; // Always generate
+        let config = ICGeneratorConfig {
+            ic_transaction_rate: 1.0, // Always generate
+            ..Default::default()
+        };
 
         let structure = create_test_ownership_structure();
         let mut generator = ICGenerator::new(config, structure, 12345);
@@ -632,8 +636,10 @@ mod tests {
 
     #[test]
     fn test_generate_journal_entries() {
-        let mut config = ICGeneratorConfig::default();
-        config.ic_transaction_rate = 1.0;
+        let config = ICGeneratorConfig {
+            ic_transaction_rate: 1.0,
+            ..Default::default()
+        };
 
         let structure = create_test_ownership_structure();
         let mut generator = ICGenerator::new(config, structure, 12345);
@@ -643,10 +649,10 @@ mod tests {
 
         let (seller_je, buyer_je) = generator.generate_journal_entries(&pair, 2022, 6);
 
-        assert_eq!(seller_je.company_code, pair.seller_company);
-        assert_eq!(buyer_je.company_code, pair.buyer_company);
-        assert_eq!(seller_je.reference, Some(pair.ic_reference.clone()));
-        assert_eq!(buyer_je.reference, Some(pair.ic_reference));
+        assert_eq!(seller_je.company_code(), pair.seller_company);
+        assert_eq!(buyer_je.company_code(), pair.buyer_company);
+        assert_eq!(seller_je.header.reference, Some(pair.ic_reference.clone()));
+        assert_eq!(buyer_je.header.reference, Some(pair.ic_reference));
     }
 
     #[test]
@@ -670,8 +676,10 @@ mod tests {
 
     #[test]
     fn test_generate_transactions_for_period() {
-        let mut config = ICGeneratorConfig::default();
-        config.ic_transaction_rate = 1.0;
+        let config = ICGeneratorConfig {
+            ic_transaction_rate: 1.0,
+            ..Default::default()
+        };
 
         let structure = create_test_ownership_structure();
         let mut generator = ICGenerator::new(config, structure, 12345);

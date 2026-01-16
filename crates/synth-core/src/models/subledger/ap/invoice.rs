@@ -78,6 +78,7 @@ pub struct APInvoice {
 
 impl APInvoice {
     /// Creates a new AP invoice.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         invoice_number: String,
         vendor_invoice_number: String,
@@ -266,9 +267,10 @@ impl APInvoice {
 }
 
 /// Type of AP invoice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum APInvoiceType {
     /// Standard invoice.
+    #[default]
     Standard,
     /// Down payment request.
     DownPayment,
@@ -284,16 +286,11 @@ pub enum APInvoiceType {
     Expense,
 }
 
-impl Default for APInvoiceType {
-    fn default() -> Self {
-        Self::Standard
-    }
-}
-
 /// Three-way match status.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum MatchStatus {
     /// Not yet matched.
+    #[default]
     NotMatched,
     /// Fully matched (PO = GR = Invoice).
     Matched,
@@ -308,12 +305,6 @@ pub enum MatchStatus {
     TwoWayMatched,
     /// Match not required (e.g., expense invoice).
     NotRequired,
-}
-
-impl Default for MatchStatus {
-    fn default() -> Self {
-        Self::NotMatched
-    }
 }
 
 /// Payment block reason.
@@ -601,6 +592,8 @@ mod tests {
     #[test]
     fn test_payment_block() {
         let mut invoice = create_test_invoice();
+        // Set match status to NotRequired so invoice is payable
+        invoice.set_match_status(MatchStatus::NotRequired);
         assert!(invoice.is_payable());
 
         invoice.block_payment(PaymentBlockReason::QualityHold);

@@ -79,6 +79,7 @@ pub struct InventoryMovement {
 
 impl InventoryMovement {
     /// Creates a new inventory movement.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         document_number: String,
         item_number: u32,
@@ -136,6 +137,7 @@ impl InventoryMovement {
     }
 
     /// Creates a goods receipt from purchase order.
+    #[allow(clippy::too_many_arguments)]
     pub fn goods_receipt_po(
         document_number: String,
         item_number: u32,
@@ -179,6 +181,7 @@ impl InventoryMovement {
     }
 
     /// Creates a goods issue to sales order.
+    #[allow(clippy::too_many_arguments)]
     pub fn goods_issue_sales(
         document_number: String,
         item_number: u32,

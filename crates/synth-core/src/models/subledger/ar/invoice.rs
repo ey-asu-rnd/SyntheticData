@@ -211,9 +211,10 @@ impl ARInvoice {
 }
 
 /// Type of AR invoice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ARInvoiceType {
     /// Standard invoice.
+    #[default]
     Standard,
     /// Down payment request.
     DownPaymentRequest,
@@ -227,12 +228,6 @@ pub enum ARInvoiceType {
     ProForma,
     /// Intercompany invoice.
     Intercompany,
-}
-
-impl Default for ARInvoiceType {
-    fn default() -> Self {
-        Self::Standard
-    }
 }
 
 /// AR invoice line item.

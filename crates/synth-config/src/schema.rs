@@ -870,7 +870,7 @@ pub struct CustomDepartmentConfig {
 // ============================================================================
 
 /// Master data generation configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MasterDataConfig {
     /// Vendor master data settings
     #[serde(default)]
@@ -890,19 +890,6 @@ pub struct MasterDataConfig {
     /// Cost center master data settings
     #[serde(default)]
     pub cost_centers: CostCenterMasterConfig,
-}
-
-impl Default for MasterDataConfig {
-    fn default() -> Self {
-        Self {
-            vendors: VendorMasterConfig::default(),
-            customers: CustomerMasterConfig::default(),
-            materials: MaterialMasterConfig::default(),
-            fixed_assets: FixedAssetMasterConfig::default(),
-            employees: EmployeeMasterConfig::default(),
-            cost_centers: CostCenterMasterConfig::default(),
-        }
-    }
 }
 
 /// Vendor master data configuration.

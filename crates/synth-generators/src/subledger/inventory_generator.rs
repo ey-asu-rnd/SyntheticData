@@ -8,7 +8,7 @@ use rust_decimal_macros::dec;
 
 use synth_core::models::subledger::inventory::{
     InventoryMovement, InventoryPosition, MovementType, PositionValuation, ReferenceDocType,
-    StockStatus, ValuationMethod,
+    ValuationMethod,
 };
 use synth_core::models::{JournalEntry, JournalEntryLine};
 
@@ -86,7 +86,7 @@ impl InventoryGenerator {
         position.quantity_on_hand = initial_quantity;
         position.quantity_available = initial_quantity;
         position.valuation = PositionValuation {
-            method: self.config.default_valuation_method.clone(),
+            method: self.config.default_valuation_method,
             standard_cost: cost,
             unit_cost: cost,
             total_value,

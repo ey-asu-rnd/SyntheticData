@@ -110,6 +110,7 @@ pub enum ThreeWayMatchStatus {
 
 impl VendorInvoiceItem {
     /// Create a new vendor invoice item.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         line_number: u16,
         description: impl Into<String>,
@@ -134,6 +135,7 @@ impl VendorInvoiceItem {
     }
 
     /// Create from PO/GR reference.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_po_gr(
         line_number: u16,
         description: impl Into<String>,
@@ -279,6 +281,7 @@ pub struct VendorInvoice {
 
 impl VendorInvoice {
     /// Create a new vendor invoice.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         invoice_id: impl Into<String>,
         company_code: impl Into<String>,
@@ -332,6 +335,7 @@ impl VendorInvoice {
     }
 
     /// Create invoice referencing PO and GR.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_po_gr(
         invoice_id: impl Into<String>,
         company_code: impl Into<String>,
@@ -466,7 +470,7 @@ impl VendorInvoice {
 
     /// Check if discount is still available.
     pub fn discount_available(&self, as_of_date: NaiveDate) -> bool {
-        self.discount_due_date.map_or(false, |d| as_of_date <= d)
+        self.discount_due_date.is_some_and(|d| as_of_date <= d)
     }
 
     /// Get amount with discount.

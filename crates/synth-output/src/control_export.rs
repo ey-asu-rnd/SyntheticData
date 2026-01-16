@@ -45,19 +45,16 @@ impl ControlExporter {
     ) -> SynthResult<ExportSummary> {
         std::fs::create_dir_all(&self.output_dir)?;
 
-        let mut summary = ExportSummary::default();
-
-        summary.controls_count = self.export_controls(controls)?;
-        summary.account_mappings_count =
-            self.export_account_mappings(&registry.account_mappings)?;
-        summary.process_mappings_count =
-            self.export_process_mappings(&registry.process_mappings)?;
-        summary.threshold_mappings_count =
-            self.export_threshold_mappings(&registry.threshold_mappings)?;
-        summary.doctype_mappings_count =
-            self.export_doctype_mappings(&registry.doc_type_mappings)?;
-        summary.sod_conflicts_count = self.export_sod_conflicts(sod_conflicts)?;
-        summary.sod_rules_count = self.export_sod_rules(sod_rules)?;
+        let summary = ExportSummary {
+            controls_count: self.export_controls(controls)?,
+            account_mappings_count: self.export_account_mappings(&registry.account_mappings)?,
+            process_mappings_count: self.export_process_mappings(&registry.process_mappings)?,
+            threshold_mappings_count: self
+                .export_threshold_mappings(&registry.threshold_mappings)?,
+            doctype_mappings_count: self.export_doctype_mappings(&registry.doc_type_mappings)?,
+            sod_conflicts_count: self.export_sod_conflicts(sod_conflicts)?,
+            sod_rules_count: self.export_sod_rules(sod_rules)?,
+        };
 
         Ok(summary)
     }
@@ -78,16 +75,16 @@ impl ControlExporter {
         for control in controls {
             writeln!(
                 writer,
-                "{},{},{},{},{},{},{},{},{}",
+                "{},{},{:?},{},{:?},{:?},{:?},{},{:?}",
                 escape_csv(&control.control_id),
                 escape_csv(&control.control_name),
-                format!("{:?}", control.control_type),
+                control.control_type,
                 escape_csv(&control.objective),
-                format!("{:?}", control.frequency),
-                format!("{:?}", control.owner_role),
-                format!("{:?}", control.risk_level),
+                control.frequency,
+                control.owner_role,
+                control.risk_level,
                 control.is_key_control,
-                format!("{:?}", control.sox_assertion),
+                control.sox_assertion,
             )?;
         }
 
@@ -229,12 +226,12 @@ impl ControlExporter {
         for conflict in conflicts {
             writeln!(
                 writer,
-                "{},{},{},{},{}",
-                format!("{:?}", conflict.conflict_type),
-                format!("{:?}", conflict.role_a),
-                format!("{:?}", conflict.role_b),
+                "{:?},{:?},{:?},{},{:?}",
+                conflict.conflict_type,
+                conflict.role_a,
+                conflict.role_b,
                 escape_csv(&conflict.description),
-                format!("{:?}", conflict.severity)
+                conflict.severity
             )?;
         }
 
@@ -257,13 +254,13 @@ impl ControlExporter {
         for rule in rules {
             writeln!(
                 writer,
-                "{},{},{},{},{},{}",
+                "{},{},{:?},{},{},{:?}",
                 escape_csv(&rule.rule_id),
                 escape_csv(&rule.name),
-                format!("{:?}", rule.conflict_type),
+                rule.conflict_type,
                 escape_csv(&rule.description),
                 rule.is_active,
-                format!("{:?}", rule.risk_level)
+                rule.risk_level
             )?;
         }
 

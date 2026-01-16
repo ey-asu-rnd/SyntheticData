@@ -98,7 +98,7 @@ impl FeatureNormalizer {
         let mut sorted = values.to_vec();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        let median = if sorted.len() % 2 == 0 {
+        let median = if sorted.len().is_multiple_of(2) {
             (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
         } else {
             sorted[sorted.len() / 2]
@@ -299,7 +299,7 @@ pub fn compute_benford_features(amount: f64) -> Vec<f64> {
     let expected_benford = [
         0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046,
     ];
-    if first_digit >= 1 && first_digit <= 9 {
+    if (1..=9).contains(&first_digit) {
         let deviation = (expected_benford[first_digit as usize - 1] - benford_prob).abs();
         features.push(deviation);
     } else {
@@ -367,7 +367,7 @@ pub fn compute_amount_features(amount: Decimal) -> Vec<f64> {
     let magnitude = if amount_f64.abs() < 1.0 {
         0
     } else {
-        (amount_f64.abs().log10().floor() as i32).max(0).min(9)
+        (amount_f64.abs().log10().floor() as i32).clamp(0, 9)
     };
     for m in 0..10 {
         features.push(if magnitude == m { 1.0 } else { 0.0 });

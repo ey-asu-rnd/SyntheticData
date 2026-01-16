@@ -6,18 +6,18 @@
 
 use chrono::NaiveDate;
 use synth_core::models::{
-    CustomerPool, Employee, EmployeePool, EntityId, EntityRegistry, EntityStatus,
-    EntityType, FixedAsset, FixedAssetPool, Material, MaterialPool, Vendor, VendorPool,
+    CustomerPool, Employee, EmployeePool, EntityId, EntityRegistry, EntityType, FixedAsset,
+    FixedAssetPool, Material, MaterialPool, Vendor, VendorPool,
 };
 
 use super::{
     AssetGenerator, AssetGeneratorConfig, CustomerGenerator, CustomerGeneratorConfig,
-    DepartmentDefinition, EmployeeGenerator, EmployeeGeneratorConfig, MaterialGenerator,
-    MaterialGeneratorConfig, VendorGenerator, VendorGeneratorConfig,
+    EmployeeGenerator, EmployeeGeneratorConfig, MaterialGenerator, MaterialGeneratorConfig,
+    VendorGenerator, VendorGeneratorConfig,
 };
 
 /// Configuration for the entity registry manager.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct EntityRegistryManagerConfig {
     /// Vendor generator configuration
     pub vendor_config: VendorGeneratorConfig,
@@ -29,18 +29,6 @@ pub struct EntityRegistryManagerConfig {
     pub asset_config: AssetGeneratorConfig,
     /// Employee generator configuration
     pub employee_config: EmployeeGeneratorConfig,
-}
-
-impl Default for EntityRegistryManagerConfig {
-    fn default() -> Self {
-        Self {
-            vendor_config: VendorGeneratorConfig::default(),
-            customer_config: CustomerGeneratorConfig::default(),
-            material_config: MaterialGeneratorConfig::default(),
-            asset_config: AssetGeneratorConfig::default(),
-            employee_config: EmployeeGeneratorConfig::default(),
-        }
-    }
 }
 
 /// Counts for master data generation.
@@ -207,7 +195,7 @@ impl EntityRegistryManager {
 
             // Register vendors
             for vendor in &vendors.vendors {
-                self.register_vendor(vendor, effective_date);
+                self.register_vendor(vendor, company_code, effective_date);
             }
 
             // Generate customers with IC
@@ -220,7 +208,7 @@ impl EntityRegistryManager {
 
             // Register customers
             for customer in &customers.customers {
-                self.register_customer(customer, effective_date);
+                self.register_customer(customer, company_code, effective_date);
             }
 
             // Generate materials
@@ -258,7 +246,7 @@ impl EntityRegistryManager {
 
         // Register each vendor in the entity registry
         for vendor in &pool.vendors {
-            self.register_vendor(vendor, effective_date);
+            self.register_vendor(vendor, company_code, effective_date);
         }
 
         pool
@@ -277,7 +265,7 @@ impl EntityRegistryManager {
 
         // Register each customer in the entity registry
         for customer in &pool.customers {
-            self.register_customer(customer, effective_date);
+            self.register_customer(customer, company_code, effective_date);
         }
 
         pool
@@ -299,7 +287,7 @@ impl EntityRegistryManager {
 
         // Register each material in the entity registry
         for material in &pool.materials {
-            self.register_material(material, effective_date);
+            self.register_material(material, company_code, effective_date);
         }
 
         pool
@@ -318,7 +306,7 @@ impl EntityRegistryManager {
 
         // Register each asset in the entity registry
         for asset in &pool.assets {
-            self.register_asset(asset, asset.acquisition_date);
+            self.register_asset(asset, company_code, asset.acquisition_date);
         }
 
         pool
@@ -337,7 +325,7 @@ impl EntityRegistryManager {
         // Register each employee in the entity registry
         for employee in &pool.employees {
             if let Some(hire_date) = employee.hire_date {
-                self.register_employee(employee, hire_date);
+                self.register_employee(employee, company_code, hire_date);
             }
         }
 
@@ -345,9 +333,10 @@ impl EntityRegistryManager {
     }
 
     /// Register a vendor in the entity registry.
-    fn register_vendor(&mut self, vendor: &Vendor, effective_date: NaiveDate) {
+    fn register_vendor(&mut self, vendor: &Vendor, company_code: &str, effective_date: NaiveDate) {
         let entity_id = EntityId::vendor(&vendor.vendor_id);
-        let record = synth_core::models::EntityRecord::new(entity_id, &vendor.name, effective_date);
+        let record = synth_core::models::EntityRecord::new(entity_id, &vendor.name, effective_date)
+            .with_company_code(company_code);
         self.registry.register(record);
     }
 
@@ -355,31 +344,58 @@ impl EntityRegistryManager {
     fn register_customer(
         &mut self,
         customer: &synth_core::models::Customer,
+        company_code: &str,
         effective_date: NaiveDate,
     ) {
         let entity_id = EntityId::customer(&customer.customer_id);
-        let record = synth_core::models::EntityRecord::new(entity_id, &customer.name, effective_date);
+        let record =
+            synth_core::models::EntityRecord::new(entity_id, &customer.name, effective_date)
+                .with_company_code(company_code);
         self.registry.register(record);
     }
 
     /// Register a material in the entity registry.
-    fn register_material(&mut self, material: &Material, effective_date: NaiveDate) {
+    fn register_material(
+        &mut self,
+        material: &Material,
+        company_code: &str,
+        effective_date: NaiveDate,
+    ) {
         let entity_id = EntityId::material(&material.material_id);
-        let record = synth_core::models::EntityRecord::new(entity_id, &material.description, effective_date);
+        let record =
+            synth_core::models::EntityRecord::new(entity_id, &material.description, effective_date)
+                .with_company_code(company_code);
         self.registry.register(record);
     }
 
     /// Register an asset in the entity registry.
-    fn register_asset(&mut self, asset: &FixedAsset, effective_date: NaiveDate) {
+    fn register_asset(
+        &mut self,
+        asset: &FixedAsset,
+        company_code: &str,
+        effective_date: NaiveDate,
+    ) {
         let entity_id = EntityId::fixed_asset(&asset.asset_id);
-        let record = synth_core::models::EntityRecord::new(entity_id, &asset.description, effective_date);
+        let record =
+            synth_core::models::EntityRecord::new(entity_id, &asset.description, effective_date)
+                .with_company_code(company_code);
         self.registry.register(record);
     }
 
     /// Register an employee in the entity registry.
-    fn register_employee(&mut self, employee: &Employee, effective_date: NaiveDate) {
+    fn register_employee(
+        &mut self,
+        employee: &Employee,
+        company_code: &str,
+        effective_date: NaiveDate,
+    ) {
         let entity_id = EntityId::employee(&employee.employee_id);
-        let record = synth_core::models::EntityRecord::new(entity_id, &employee.display_name, effective_date);
+        let record = synth_core::models::EntityRecord::new(
+            entity_id,
+            &employee.display_name,
+            effective_date,
+        )
+        .with_company_code(company_code);
         self.registry.register(record);
     }
 
@@ -476,7 +492,7 @@ mod tests {
     #[test]
     fn test_manager_creation() {
         let manager = EntityRegistryManager::new(42);
-        assert!(manager.registry().is_empty());
+        assert_eq!(manager.registry().total_count(), 0);
     }
 
     #[test]
@@ -507,7 +523,7 @@ mod tests {
         assert!(!data.employees.employees.is_empty());
 
         // Registry should have all entities
-        assert!(!data.registry.is_empty());
+        assert!(data.registry.total_count() > 0);
     }
 
     #[test]
@@ -596,7 +612,7 @@ mod tests {
             .iter()
             .filter(|v| v.is_intercompany)
             .collect();
-        assert!(ic_vendors.len() >= 1);
+        assert!(!ic_vendors.is_empty());
     }
 
     #[test]

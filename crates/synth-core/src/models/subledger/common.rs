@@ -6,9 +6,10 @@ use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 
 /// Status of a subledger document.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SubledgerDocumentStatus {
     /// Document is open/outstanding.
+    #[default]
     Open,
     /// Document is partially cleared.
     PartiallyCleared,
@@ -20,12 +21,6 @@ pub enum SubledgerDocumentStatus {
     OnHold,
     /// Document is in dispute.
     InDispute,
-}
-
-impl Default for SubledgerDocumentStatus {
-    fn default() -> Self {
-        Self::Open
-    }
 }
 
 /// Clearing information for a subledger document.
@@ -366,9 +361,10 @@ impl CurrencyAmount {
 }
 
 /// Baseline date type for payment terms.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum BaselineDateType {
     /// Document date.
+    #[default]
     DocumentDate,
     /// Posting date.
     PostingDate,
@@ -380,14 +376,8 @@ pub enum BaselineDateType {
     CustomDate,
 }
 
-impl Default for BaselineDateType {
-    fn default() -> Self {
-        Self::DocumentDate
-    }
-}
-
 /// Dunning information for AR items.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DunningInfo {
     /// Current dunning level (0 = not dunned).
     pub dunning_level: u8,
@@ -401,19 +391,6 @@ pub struct DunningInfo {
     pub dunning_blocked: bool,
     /// Block reason.
     pub block_reason: Option<String>,
-}
-
-impl Default for DunningInfo {
-    fn default() -> Self {
-        Self {
-            dunning_level: 0,
-            max_dunning_level: 0,
-            last_dunning_date: None,
-            last_dunning_run: None,
-            dunning_blocked: false,
-            block_reason: None,
-        }
-    }
 }
 
 impl DunningInfo {

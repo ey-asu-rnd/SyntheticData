@@ -9,9 +9,9 @@ use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 use synth_core::models::{
     documents::{
-        DocumentReference, DocumentStatus, DocumentType, GoodsReceipt, GoodsReceiptItem,
-        MovementType, Payment, PaymentAllocation, PaymentMethod, PurchaseOrder, PurchaseOrderItem,
-        PurchaseOrderType, ReferenceType, VendorInvoice, VendorInvoiceItem, VendorInvoiceType,
+        DocumentReference, DocumentType, GoodsReceipt, GoodsReceiptItem, MovementType, Payment,
+        PaymentMethod, PurchaseOrder, PurchaseOrderItem, ReferenceType, VendorInvoice,
+        VendorInvoiceItem,
     },
     Material, MaterialPool, PaymentTerms, Vendor, VendorPool,
 };
@@ -386,7 +386,7 @@ impl P2PGenerator {
         let vendor_invoice_number = format!("INV-{:08}", self.rng.gen_range(10000000..99999999));
 
         // Calculate due date based on payment terms
-        let due_date = self.calculate_due_date(invoice_date, &vendor.payment_terms);
+        let _due_date = self.calculate_due_date(invoice_date, &vendor.payment_terms);
 
         let net_days = vendor.payment_terms.net_days() as i64;
 
@@ -447,7 +447,9 @@ impl P2PGenerator {
                     unit_price,
                     &po.header.document_id,
                     po_item.base.line_number,
-                    goods_receipts.first().map(|gr| gr.header.document_id.clone()),
+                    goods_receipts
+                        .first()
+                        .map(|gr| gr.header.document_id.clone()),
                     Some(po_item.base.line_number),
                 );
 
@@ -506,7 +508,7 @@ impl P2PGenerator {
         let payment_id = format!("PAY-{}-{:010}", company_code, self.pay_counter);
 
         // Determine if early payment discount applies
-        let take_discount = invoice.discount_due_date.map_or(false, |disc_date| {
+        let take_discount = invoice.discount_due_date.is_some_and(|disc_date| {
             payment_date <= disc_date
                 && self.rng.gen::<f64>() < self.config.early_payment_discount_rate
         });
@@ -669,16 +671,23 @@ impl P2PGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use synth_core::models::{MaterialType, ValuationMethod};
+    use synth_core::models::documents::DocumentStatus;
+    use synth_core::models::MaterialType;
 
     fn create_test_vendor() -> Vendor {
-        Vendor::new("V-000001", "Test Vendor Inc.", "1000")
+        Vendor::new(
+            "V-000001",
+            "Test Vendor Inc.",
+            synth_core::models::VendorType::Supplier,
+        )
     }
 
     fn create_test_materials() -> Vec<Material> {
         vec![
-            Material::new("MAT-001", "Test Material 1", MaterialType::RawMaterial),
-            Material::new("MAT-002", "Test Material 2", MaterialType::RawMaterial),
+            Material::new("MAT-001", "Test Material 1", MaterialType::RawMaterial)
+                .with_standard_cost(Decimal::from(100)),
+            Material::new("MAT-002", "Test Material 2", MaterialType::RawMaterial)
+                .with_standard_cost(Decimal::from(50)),
         ]
     }
 

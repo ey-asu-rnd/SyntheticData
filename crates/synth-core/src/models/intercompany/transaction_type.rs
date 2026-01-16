@@ -1,14 +1,15 @@
 //! Intercompany transaction types and matched pairs.
 
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 /// Types of intercompany transactions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ICTransactionType {
     /// Sale of goods between entities.
+    #[default]
     GoodsSale,
     /// Services provided between entities.
     ServiceProvided,
@@ -155,12 +156,6 @@ impl ICTransactionType {
     }
 }
 
-impl Default for ICTransactionType {
-    fn default() -> Self {
-        Self::GoodsSale
-    }
-}
-
 /// Frequency for recurring intercompany transactions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -278,10 +273,11 @@ impl ICMatchedPair {
 }
 
 /// Settlement status for IC transactions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ICSettlementStatus {
     /// Open/unsettled.
+    #[default]
     Open,
     /// Partially settled.
     PartiallySettled,
@@ -291,12 +287,6 @@ pub enum ICSettlementStatus {
     SettledViaNettin,
     /// Written off.
     WrittenOff,
-}
-
-impl Default for ICSettlementStatus {
-    fn default() -> Self {
-        Self::Open
-    }
 }
 
 /// Intercompany netting arrangement.
@@ -446,6 +436,7 @@ pub struct ICLoan {
 
 impl ICLoan {
     /// Create a new intercompany loan.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         loan_id: String,
         lender_company: String,
@@ -478,7 +469,7 @@ impl ICLoan {
 
     /// Calculate interest for a period.
     pub fn calculate_interest(&self, from_date: NaiveDate, to_date: NaiveDate) -> Decimal {
-        let days = (to_date - from_date).num_days() as i64;
+        let days = (to_date - from_date).num_days();
         match self.interest_method {
             InterestMethod::SimpleInterest => {
                 self.outstanding_balance * self.interest_rate / Decimal::from(100)
@@ -536,10 +527,11 @@ impl ICLoan {
 }
 
 /// Interest calculation method.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum InterestMethod {
     /// Simple interest.
+    #[default]
     SimpleInterest,
     /// Actual/Actual day count.
     ActualActual,
@@ -549,17 +541,12 @@ pub enum InterestMethod {
     ThirtyThreeSixty,
 }
 
-impl Default for InterestMethod {
-    fn default() -> Self {
-        Self::SimpleInterest
-    }
-}
-
 /// Loan repayment schedule.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum RepaymentSchedule {
     /// Single bullet repayment at maturity.
+    #[default]
     BulletRepayment,
     /// Equal periodic installments.
     EqualInstallments,
@@ -567,12 +554,6 @@ pub enum RepaymentSchedule {
     EqualPrincipal,
     /// Custom schedule.
     Custom,
-}
-
-impl Default for RepaymentSchedule {
-    fn default() -> Self {
-        Self::BulletRepayment
-    }
 }
 
 #[cfg(test)]

@@ -171,7 +171,7 @@ impl FixedAssetRecord {
     }
 
     /// Records an acquisition addition.
-    pub fn add_acquisition(&mut self, amount: Decimal, date: NaiveDate) {
+    pub fn add_acquisition(&mut self, amount: Decimal, _date: NaiveDate) {
         self.acquisition_cost += amount;
         self.net_book_value += amount;
 
@@ -247,7 +247,7 @@ impl FixedAssetRecord {
 
     /// Gets accumulated depreciation account from account determination.
     pub fn accumulated_depreciation_account(&self) -> &str {
-        &self.account_determination.depreciation_account
+        &self.account_determination.accumulated_depreciation_account
     }
 
     /// Marks as inactive (retired).
@@ -316,12 +316,14 @@ impl AssetClass {
             AssetClass::MachineryEquipment | AssetClass::Machinery => 7,
             AssetClass::Vehicles => 5,
             AssetClass::OfficeEquipment => 7,
-            AssetClass::ComputerEquipment | AssetClass::ItEquipment | AssetClass::ComputerHardware => 5,
+            AssetClass::ComputerEquipment
+            | AssetClass::ItEquipment
+            | AssetClass::ComputerHardware => 5,
             AssetClass::Software | AssetClass::Intangibles => 3,
             AssetClass::FurnitureFixtures | AssetClass::Furniture => 7,
             AssetClass::LeaseholdImprovements => 10,
             AssetClass::ConstructionInProgress => 0, // CIP doesn't depreciate
-            AssetClass::LowValueAssets => 1, // Typically expensed immediately
+            AssetClass::LowValueAssets => 1,         // Typically expensed immediately
             AssetClass::Other => 7,
         }
     }
@@ -345,11 +347,12 @@ impl AssetClass {
 }
 
 /// Asset status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum AssetStatus {
     /// Under construction.
     UnderConstruction,
     /// Active and depreciating.
+    #[default]
     Active,
     /// Held for sale.
     HeldForSale,
@@ -359,12 +362,6 @@ pub enum AssetStatus {
     Retired,
     /// Transferred to another entity.
     Transferred,
-}
-
-impl Default for AssetStatus {
-    fn default() -> Self {
-        Self::Active
-    }
 }
 
 /// Depreciation area (book, tax, etc.).
@@ -545,7 +542,9 @@ impl AssetAccountDetermination {
             AssetClass::MachineryEquipment | AssetClass::Machinery => "1530",
             AssetClass::Vehicles => "1540",
             AssetClass::OfficeEquipment => "1550",
-            AssetClass::ComputerEquipment | AssetClass::ItEquipment | AssetClass::ComputerHardware => "1555",
+            AssetClass::ComputerEquipment
+            | AssetClass::ItEquipment
+            | AssetClass::ComputerHardware => "1555",
             AssetClass::Software | AssetClass::Intangibles => "1560",
             AssetClass::FurnitureFixtures | AssetClass::Furniture => "1570",
             AssetClass::LeaseholdImprovements => "1580",

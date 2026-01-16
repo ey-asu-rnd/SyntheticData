@@ -12,16 +12,14 @@ use std::collections::HashMap;
 
 use synth_core::models::{
     AnomalyRateConfig, AnomalySummary, AnomalyType, ErrorType, FraudType, JournalEntry,
-    LabeledAnomaly, ProcessIssueType, RelationalAnomalyType, StatisticalAnomalyType,
+    LabeledAnomaly, RelationalAnomalyType,
 };
 
 use super::patterns::{
     should_inject_anomaly, AnomalyPatternConfig, ClusterManager, EntityTargetingManager,
     TemporalPattern,
 };
-use super::strategies::{
-    DuplicationStrategy, InjectionResult, InjectionStrategy, StrategyCollection,
-};
+use super::strategies::{DuplicationStrategy, StrategyCollection};
 use super::types::AnomalyTypeSelector;
 
 /// Configuration for the anomaly injector.
@@ -78,6 +76,7 @@ pub struct InjectionBatchResult {
 }
 
 /// Main anomaly injection engine.
+#[allow(dead_code)]
 pub struct AnomalyInjector {
     config: AnomalyInjectorConfig,
     rng: ChaCha8Rng,
@@ -95,7 +94,8 @@ pub struct AnomalyInjector {
 
 /// Internal statistics tracking.
 #[derive(Debug, Clone, Default)]
-struct InjectorStats {
+#[allow(dead_code)]
+pub struct InjectorStats {
     total_processed: usize,
     total_injected: usize,
     by_category: HashMap<String, usize>,
@@ -193,7 +193,11 @@ impl AnomalyInjector {
     fn should_process(&mut self, entry: &JournalEntry) -> bool {
         // Check company filter
         if !self.config.target_companies.is_empty()
-            && !self.config.target_companies.iter().any(|c| c == entry.company_code())
+            && !self
+                .config
+                .target_companies
+                .iter()
+                .any(|c| c == entry.company_code())
         {
             self.stats.skipped_company += 1;
             return false;
@@ -263,7 +267,9 @@ impl AnomalyInjector {
         }
 
         // Apply the strategy
-        let result = self.strategies.apply_strategy(entry, &anomaly_type, &mut self.rng);
+        let result = self
+            .strategies
+            .apply_strategy(entry, &anomaly_type, &mut self.rng);
 
         if !result.success {
             return None;
@@ -348,7 +354,7 @@ impl AnomalyInjector {
     ) -> Option<LabeledAnomaly> {
         let anomaly_type = AnomalyType::Fraud(FraudType::SelfApproval);
 
-        let mut label = LabeledAnomaly::new(
+        let label = LabeledAnomaly::new(
             format!("ANO{:08}", self.labels.len() + 1),
             anomaly_type,
             entry.document_number().clone(),
@@ -534,8 +540,9 @@ impl Default for AnomalyInjectorConfigBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
     use rust_decimal_macros::dec;
-    use synth_core::models::JournalEntryLine;
+    use synth_core::models::{JournalEntryLine, StatisticalAnomalyType};
 
     fn create_test_entry(doc_num: &str) -> JournalEntry {
         let mut entry = JournalEntry::new_simple(
@@ -595,7 +602,9 @@ mod tests {
 
         assert!(label.is_some());
         let label = label.unwrap();
-        assert_eq!(label.document_id, "JE001");
+        // document_id is the UUID string from the journal entry header
+        assert!(!label.document_id.is_empty());
+        assert_eq!(label.document_id, entry.document_number());
     }
 
     #[test]

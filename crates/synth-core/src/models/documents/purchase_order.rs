@@ -91,6 +91,7 @@ pub struct PurchaseOrderItem {
 
 impl PurchaseOrderItem {
     /// Create a new purchase order item.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         line_number: u16,
         description: impl Into<String>,

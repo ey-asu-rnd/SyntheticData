@@ -396,7 +396,7 @@ mod tests {
         );
 
         // Should have rates for each business day
-        assert!(rates.len() > 0);
+        assert!(!rates.is_empty());
     }
 
     #[test]

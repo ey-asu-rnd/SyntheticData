@@ -10,8 +10,7 @@ use std::collections::HashMap;
 
 use synth_core::models::intercompany::{
     ConsolidationJournal, ConsolidationMethod, ConsolidationStatus, EliminationEntry,
-    EliminationType, ICAggregatedBalance, ICMatchedPair, ICTransactionType,
-    IntercompanyRelationship, OwnershipStructure,
+    EliminationType, ICAggregatedBalance, ICMatchedPair, ICTransactionType, OwnershipStructure,
 };
 
 /// Configuration for elimination generation.
@@ -304,7 +303,13 @@ impl EliminationGenerator {
             .relationships
             .iter()
             .filter(|r| r.consolidation_method == ConsolidationMethod::Full)
-            .map(|r| (r.parent_company.clone(), r.subsidiary_company.clone(), r.ownership_percentage))
+            .map(|r| {
+                (
+                    r.parent_company.clone(),
+                    r.subsidiary_company.clone(),
+                    r.ownership_percentage,
+                )
+            })
             .collect();
 
         for (parent, subsidiary, ownership_pct) in relationships_to_process {
@@ -595,6 +600,9 @@ pub struct EliminationSummaryReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
+    use rust_decimal_macros::dec;
+    use synth_core::models::intercompany::IntercompanyRelationship;
 
     fn create_test_ownership_structure() -> OwnershipStructure {
         let mut structure = OwnershipStructure::new("1000".to_string());

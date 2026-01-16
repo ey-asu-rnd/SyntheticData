@@ -211,6 +211,7 @@ pub struct Payment {
 
 impl Payment {
     /// Create a new AP payment.
+    #[allow(clippy::too_many_arguments)]
     pub fn new_ap_payment(
         payment_id: impl Into<String>,
         company_code: impl Into<String>,
@@ -263,6 +264,7 @@ impl Payment {
     }
 
     /// Create a new AR receipt.
+    #[allow(clippy::too_many_arguments)]
     pub fn new_ar_receipt(
         payment_id: impl Into<String>,
         company_code: impl Into<String>,

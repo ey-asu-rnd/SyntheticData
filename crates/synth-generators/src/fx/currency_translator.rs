@@ -414,7 +414,9 @@ impl TranslatedTrialBalanceLine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use synth_core::models::balance::{TrialBalanceLine, TrialBalanceType, AccountCategory, AccountType};
+    use synth_core::models::balance::{
+        AccountCategory, AccountType, TrialBalanceLine, TrialBalanceType,
+    };
     use synth_core::models::FxRate;
 
     fn create_test_trial_balance() -> TrialBalance {

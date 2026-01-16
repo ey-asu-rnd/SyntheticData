@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 
-use crate::models::subledger::{CurrencyAmount, GLReference, SubledgerDocumentStatus};
+use crate::models::subledger::{CurrencyAmount, GLReference};
 
 /// AP Payment (payment to vendor).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +70,7 @@ pub struct APPayment {
 
 impl APPayment {
     /// Creates a new AP payment.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         payment_number: String,
         company_code: String,
@@ -226,9 +227,10 @@ impl APPayment {
 }
 
 /// Type of AP payment.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum APPaymentType {
     /// Standard payment.
+    #[default]
     Standard,
     /// Down payment.
     DownPayment,
@@ -242,16 +244,11 @@ pub enum APPaymentType {
     Intercompany,
 }
 
-impl Default for APPaymentType {
-    fn default() -> Self {
-        Self::Standard
-    }
-}
-
 /// Payment status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum PaymentStatus {
     /// Created, awaiting approval.
+    #[default]
     Created,
     /// Approved, awaiting release.
     Approved,
@@ -267,16 +264,11 @@ pub enum PaymentStatus {
     Returned,
 }
 
-impl Default for PaymentStatus {
-    fn default() -> Self {
-        Self::Created
-    }
-}
-
 /// Payment method for AP.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum APPaymentMethod {
     /// Wire transfer.
+    #[default]
     WireTransfer,
     /// ACH/Direct debit.
     ACH,
@@ -292,12 +284,6 @@ pub enum APPaymentMethod {
     Netting,
     /// Letter of credit.
     LetterOfCredit,
-}
-
-impl Default for APPaymentMethod {
-    fn default() -> Self {
-        Self::WireTransfer
-    }
 }
 
 /// Allocation of payment to an invoice.

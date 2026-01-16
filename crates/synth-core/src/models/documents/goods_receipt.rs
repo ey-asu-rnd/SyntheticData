@@ -144,6 +144,7 @@ pub enum StockType {
 
 impl GoodsReceiptItem {
     /// Create a new goods receipt item.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         line_number: u16,
         description: impl Into<String>,
@@ -280,6 +281,7 @@ pub struct GoodsReceipt {
 
 impl GoodsReceipt {
     /// Create a new goods receipt.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         gr_id: impl Into<String>,
         company_code: impl Into<String>,
@@ -320,6 +322,7 @@ impl GoodsReceipt {
     }
 
     /// Create from PO reference.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_purchase_order(
         gr_id: impl Into<String>,
         company_code: impl Into<String>,

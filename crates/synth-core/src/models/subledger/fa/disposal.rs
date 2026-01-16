@@ -2,10 +2,9 @@
 
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 
-use super::{AssetClass, DepreciationAreaType, FixedAssetRecord};
+use super::{AssetClass, FixedAssetRecord};
 use crate::models::subledger::GLReference;
 
 /// Asset disposal transaction.
@@ -228,9 +227,10 @@ impl AssetDisposal {
 }
 
 /// Type of disposal.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DisposalType {
     /// Sale to external party.
+    #[default]
     Sale,
     /// Intercompany transfer.
     IntercompanyTransfer,
@@ -246,16 +246,11 @@ pub enum DisposalType {
     PartialDisposal,
 }
 
-impl Default for DisposalType {
-    fn default() -> Self {
-        Self::Sale
-    }
-}
-
 /// Reason for disposal.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DisposalReason {
     /// Normal sale.
+    #[default]
     Sale,
     /// End of useful life.
     EndOfLife,
@@ -279,16 +274,11 @@ pub enum DisposalReason {
     Other,
 }
 
-impl Default for DisposalReason {
-    fn default() -> Self {
-        Self::Sale
-    }
-}
-
 /// Disposal approval status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DisposalApprovalStatus {
     /// Pending approval.
+    #[default]
     Pending,
     /// Approved.
     Approved,
@@ -298,12 +288,6 @@ pub enum DisposalApprovalStatus {
     Posted,
     /// Cancelled.
     Cancelled,
-}
-
-impl Default for DisposalApprovalStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 /// Asset transfer (between locations or entities).
@@ -556,6 +540,7 @@ pub enum ImpairmentReason {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rust_decimal_macros::dec;
 
     fn create_test_asset() -> FixedAssetRecord {
         let mut asset = FixedAssetRecord::new(

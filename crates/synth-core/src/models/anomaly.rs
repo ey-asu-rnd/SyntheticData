@@ -596,9 +596,10 @@ pub struct AnomalySummary {
 impl AnomalySummary {
     /// Creates a summary from a list of anomalies.
     pub fn from_anomalies(anomalies: &[LabeledAnomaly]) -> Self {
-        let mut summary = AnomalySummary::default();
-
-        summary.total_count = anomalies.len();
+        let mut summary = AnomalySummary {
+            total_count: anomalies.len(),
+            ..Default::default()
+        };
 
         let mut min_date: Option<NaiveDate> = None;
         let mut max_date: Option<NaiveDate> = None;

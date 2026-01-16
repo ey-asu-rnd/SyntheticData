@@ -74,8 +74,10 @@ impl TrialBalanceGenerator {
     /// Registers category mappings from chart of accounts.
     pub fn register_from_chart(&mut self, chart: &ChartOfAccounts) {
         for account in &chart.accounts {
-            self.account_descriptions
-                .insert(account.account_code().to_string(), account.description().to_string());
+            self.account_descriptions.insert(
+                account.account_code().to_string(),
+                account.description().to_string(),
+            );
 
             // Determine category from account code prefix
             let category = self.determine_category(account.account_code());
@@ -243,10 +245,9 @@ impl TrialBalanceGenerator {
                         period_changes: HashMap::new(),
                     });
 
-                entry.period_balances.insert(
-                    (tb.fiscal_year, tb.fiscal_period),
-                    line.closing_balance,
-                );
+                entry
+                    .period_balances
+                    .insert((tb.fiscal_year, tb.fiscal_period), line.closing_balance);
             }
         }
 
@@ -595,7 +596,6 @@ impl TrialBalanceBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     fn create_test_balance(
         company: &str,

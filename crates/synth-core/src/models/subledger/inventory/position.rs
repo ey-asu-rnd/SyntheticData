@@ -2,7 +2,6 @@
 
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -499,6 +498,7 @@ impl InventorySummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rust_decimal_macros::dec;
 
     fn create_test_position() -> InventoryPosition {
         InventoryPosition::new(
@@ -545,14 +545,18 @@ mod tests {
         let mut pos =
             create_test_position().with_stock_levels(dec!(10), dec!(200), dec!(50), dec!(20));
 
-        pos.quantity_on_hand = dec!(100);
-        pos.calculate_available();
+        // Use add_quantity to properly update status
+        pos.add_quantity(
+            dec!(100),
+            dec!(1000),
+            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+        );
         assert_eq!(pos.status, StockStatus::Normal);
 
-        pos.quantity_on_hand = dec!(40);
-        pos.calculate_available();
-        // Need to trigger status update
-        let _ = pos.remove_quantity(dec!(0), NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
+        // Remove quantity to go below reorder point (50) but above safety (20)
+        let _ = pos.remove_quantity(dec!(70), NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
+        // Now quantity is 30, which is below reorder (50) but above safety (20)
+        assert_eq!(pos.status, StockStatus::BelowReorder);
     }
 
     #[test]

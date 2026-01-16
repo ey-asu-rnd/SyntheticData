@@ -110,6 +110,7 @@ pub struct DeliveryItem {
 
 impl DeliveryItem {
     /// Create a new delivery item.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         line_number: u16,
         description: impl Into<String>,
@@ -136,6 +137,7 @@ impl DeliveryItem {
     }
 
     /// Create from SO reference.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_sales_order(
         line_number: u16,
         description: impl Into<String>,
@@ -313,6 +315,7 @@ pub struct Delivery {
 
 impl Delivery {
     /// Create a new delivery.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         delivery_id: impl Into<String>,
         company_code: impl Into<String>,
@@ -366,6 +369,7 @@ impl Delivery {
     }
 
     /// Create from sales order reference.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_sales_order(
         delivery_id: impl Into<String>,
         company_code: impl Into<String>,

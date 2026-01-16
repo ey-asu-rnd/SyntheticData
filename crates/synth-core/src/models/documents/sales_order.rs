@@ -109,6 +109,7 @@ pub struct ScheduleLine {
 
 impl SalesOrderItem {
     /// Create a new sales order item.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         line_number: u16,
         description: impl Into<String>,

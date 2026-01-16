@@ -497,6 +497,7 @@ impl JournalEntryLine {
     // Convenience accessors for compatibility
 
     /// Get the account code (alias for gl_account).
+    #[allow(clippy::misnamed_getters)]
     pub fn account_code(&self) -> &str {
         &self.gl_account
     }

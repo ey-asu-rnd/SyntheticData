@@ -123,10 +123,11 @@ impl std::fmt::Display for EntityType {
 }
 
 /// Status of an entity at a point in time.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntityStatus {
     /// Entity is active and can be used in transactions
+    #[default]
     Active,
     /// Entity is blocked for new transactions
     Blocked,
@@ -134,12 +135,6 @@ pub enum EntityStatus {
     MarkedForDeletion,
     /// Entity has been archived
     Archived,
-}
-
-impl Default for EntityStatus {
-    fn default() -> Self {
-        Self::Active
-    }
 }
 
 /// Record of an entity in the registry.
@@ -329,14 +324,14 @@ impl EntityRegistry {
     pub fn is_valid(&self, entity_id: &EntityId, date: NaiveDate) -> bool {
         self.entities
             .get(entity_id)
-            .map_or(false, |r| r.is_valid_on(date))
+            .is_some_and(|r| r.is_valid_on(date))
     }
 
     /// Check if an entity can be used in transactions on a given date.
     pub fn can_transact(&self, entity_id: &EntityId, date: NaiveDate) -> bool {
         self.entities
             .get(entity_id)
-            .map_or(false, |r| r.can_transact_on(date))
+            .is_some_and(|r| r.can_transact_on(date))
     }
 
     /// Get all entities of a given type.

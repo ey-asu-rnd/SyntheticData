@@ -10,9 +10,7 @@ use std::collections::HashMap;
 
 use synth_core::models::{ApprovalRecord, User};
 
-use crate::models::{
-    ApprovalEdge, EdgeType, Graph, GraphEdge, GraphType, NodeId, NodeType, UserNode,
-};
+use crate::models::{ApprovalEdge, EdgeType, Graph, GraphEdge, GraphType, NodeId, UserNode};
 
 /// Configuration for approval graph building.
 #[derive(Debug, Clone)]
@@ -111,7 +109,7 @@ impl ApprovalGraphBuilder {
     }
 
     /// Marks a self-approval (user approves own request).
-    pub fn mark_self_approval(&mut self, user_id: &str, document_number: &str, date: NaiveDate) {
+    pub fn mark_self_approval(&mut self, user_id: &str, _document_number: &str, date: NaiveDate) {
         if let Some(&node_id) = self.user_nodes.get(user_id) {
             // Self-loop edge
             let edge = GraphEdge::new(0, node_id, node_id, EdgeType::Approval)
@@ -223,6 +221,7 @@ impl ApprovalGraphBuilder {
 }
 
 /// Aggregated approval data.
+#[allow(dead_code)]
 struct ApprovalAggregation {
     approver: NodeId,
     requester: NodeId,

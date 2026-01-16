@@ -7,10 +7,9 @@
 //! - Accrual definitions and schedules
 //! - Year-end closing entries
 
-use chrono::{Datelike, NaiveDate};
+use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
-use std::collections::HashMap;
 
 /// Fiscal period representation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

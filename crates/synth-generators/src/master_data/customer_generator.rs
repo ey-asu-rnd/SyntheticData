@@ -232,13 +232,21 @@ impl CustomerGenerator {
     }
 
     /// Generate a single customer.
-    pub fn generate_customer(&mut self, company_code: &str, effective_date: NaiveDate) -> Customer {
+    pub fn generate_customer(
+        &mut self,
+        company_code: &str,
+        _effective_date: NaiveDate,
+    ) -> Customer {
         self.customer_counter += 1;
 
         let customer_id = format!("C-{:06}", self.customer_counter);
-        let (industry, name) = self.select_customer_name();
+        let (_industry, name) = self.select_customer_name();
 
-        let mut customer = Customer::new(&customer_id, name, synth_core::models::CustomerType::Corporate);
+        let mut customer = Customer::new(
+            &customer_id,
+            name,
+            synth_core::models::CustomerType::Corporate,
+        );
 
         customer.country = self.config.default_country.clone();
         customer.currency = self.config.default_currency.clone();
@@ -518,9 +526,7 @@ impl CustomerGenerator {
     fn generate_contact_email(&mut self, company_name: &str) -> String {
         let domain = company_name
             .to_lowercase()
-            .replace(' ', "")
-            .replace('.', "")
-            .replace(',', "")
+            .replace([' ', '.', ','], "")
             .chars()
             .filter(|c| c.is_alphanumeric())
             .take(15)

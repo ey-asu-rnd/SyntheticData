@@ -156,6 +156,7 @@ impl EliminationEntry {
     }
 
     /// Create an IC balance elimination (receivable/payable).
+    #[allow(clippy::too_many_arguments)]
     pub fn create_ic_balance_elimination(
         entry_id: String,
         consolidation_entity: String,
@@ -206,6 +207,7 @@ impl EliminationEntry {
     }
 
     /// Create an IC revenue/expense elimination.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_ic_revenue_expense_elimination(
         entry_id: String,
         consolidation_entity: String,
@@ -259,6 +261,7 @@ impl EliminationEntry {
     }
 
     /// Create an unrealized profit in inventory elimination.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_unrealized_profit_elimination(
         entry_id: String,
         consolidation_entity: String,
@@ -310,6 +313,7 @@ impl EliminationEntry {
     }
 
     /// Create investment/equity elimination.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_investment_equity_elimination(
         entry_id: String,
         consolidation_entity: String,
@@ -634,10 +638,11 @@ impl ConsolidationJournal {
 }
 
 /// Status of consolidation journal.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ConsolidationStatus {
     /// Draft - still being prepared.
+    #[default]
     Draft,
     /// Submitted for approval.
     PendingApproval,
@@ -647,12 +652,6 @@ pub enum ConsolidationStatus {
     Posted,
     /// Reversed.
     Reversed,
-}
-
-impl Default for ConsolidationStatus {
-    fn default() -> Self {
-        Self::Draft
-    }
 }
 
 /// Summary statistics for an elimination type.

@@ -236,8 +236,8 @@ impl DataSplitter {
         }
 
         // Determine node splits based on when they first appear
-        let train_edge_set: HashSet<_> = train_edges.iter().copied().collect();
-        let val_edge_set: HashSet<_> = val_edges.iter().copied().collect();
+        let _train_edge_set: HashSet<_> = train_edges.iter().copied().collect();
+        let _val_edge_set: HashSet<_> = val_edges.iter().copied().collect();
 
         let mut train_nodes = HashSet::new();
         let mut val_nodes = HashSet::new();

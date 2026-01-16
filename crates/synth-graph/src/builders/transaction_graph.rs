@@ -329,6 +329,7 @@ impl TransactionGraphBuilder {
 }
 
 /// Aggregated edge data.
+#[allow(dead_code)]
 struct AggregatedEdge {
     source: NodeId,
     target: NodeId,

@@ -22,6 +22,7 @@ pub struct CurrencyPair {
 
 impl CurrencyPair {
     /// Creates a new currency pair.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(from: &str, to: &str) -> Self {
         Self {
             from_currency: from.to_uppercase(),
@@ -510,6 +511,7 @@ pub struct RealizedFxGainLoss {
 
 impl RealizedFxGainLoss {
     /// Creates a new realized FX gain/loss entry.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         document_number: String,
         company_code: String,

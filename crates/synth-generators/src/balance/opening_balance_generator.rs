@@ -87,9 +87,11 @@ impl OpeningBalanceGenerator {
         let total_assets = spec.total_assets;
 
         // Assets breakdown (percentages are already in decimal form, e.g., 40 means 40%)
-        let current_assets = self.apply_variation(total_assets * asset_comp.current_assets_percent / dec!(100));
+        let current_assets =
+            self.apply_variation(total_assets * asset_comp.current_assets_percent / dec!(100));
         let non_current_assets = total_assets - current_assets;
-        let fixed_assets = self.apply_variation(non_current_assets * asset_comp.ppe_percent / dec!(100));
+        let fixed_assets =
+            self.apply_variation(non_current_assets * asset_comp.ppe_percent / dec!(100));
         let intangible_assets =
             self.apply_variation(non_current_assets * asset_comp.intangibles_percent / dec!(100));
         let other_assets = non_current_assets - fixed_assets - intangible_assets;
@@ -278,7 +280,10 @@ impl OpeningBalanceGenerator {
         );
 
         // Calculate totals from balances
-        let total_assets = self.calculate_total_type(&balances, AccountType::Asset);
+        // Assets = gross assets - contra assets (accumulated depreciation)
+        let gross_assets = self.calculate_total_type(&balances, AccountType::Asset);
+        let contra_assets = self.calculate_total_type(&balances, AccountType::ContraAsset);
+        let total_assets = gross_assets - contra_assets;
         let total_liabilities = self.calculate_total_type(&balances, AccountType::Liability);
         let total_equity = self.calculate_total_type(&balances, AccountType::Equity);
         let is_balanced = (total_assets - total_liabilities - total_equity).abs() < dec!(1.00);
@@ -452,8 +457,8 @@ impl OpeningBalanceGenerator {
     fn calculate_ratios_simple(
         &self,
         balances: &HashMap<String, Decimal>,
-        total_assets: Decimal,
-        total_liabilities: Decimal,
+        _total_assets: Decimal,
+        _total_liabilities: Decimal,
         total_equity: Decimal,
     ) -> synth_core::models::balance::CalculatedRatios {
         // Calculate current ratio
@@ -493,7 +498,11 @@ impl OpeningBalanceGenerator {
     }
 
     /// Sums balances for a set of account codes.
-    fn sum_balances(&self, balances: &HashMap<String, Decimal>, account_prefixes: &[&str]) -> Decimal {
+    fn sum_balances(
+        &self,
+        balances: &HashMap<String, Decimal>,
+        account_prefixes: &[&str],
+    ) -> Decimal {
         balances
             .iter()
             .filter(|(code, _)| {
@@ -635,7 +644,7 @@ impl OpeningBalanceSpecBuilder {
 mod tests {
     use super::*;
     use rand::SeedableRng;
-    use synth_core::models::{IndustrySector, CoAComplexity};
+    use synth_core::models::{CoAComplexity, IndustrySector};
 
     fn create_test_chart() -> ChartOfAccounts {
         ChartOfAccounts::new(
@@ -691,34 +700,22 @@ mod tests {
         );
 
         // Manufacturing should have higher fixed assets (PPE)
-        assert!(
-            mfg_spec.asset_composition.ppe_percent
-                > tech_spec.asset_composition.ppe_percent
-        );
+        assert!(mfg_spec.asset_composition.ppe_percent > tech_spec.asset_composition.ppe_percent);
     }
 
     #[test]
     fn test_builder_pattern() {
         let as_of = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
 
-        let spec = OpeningBalanceSpecBuilder::new(
-            "TEST",
-            as_of,
-            dec!(5_000_000),
-            IndustryType::Retail,
-        )
-        .with_target_ratios(TargetRatios {
-            target_dso_days: 30,
-            target_dpo_days: 45,
-            ..TargetRatios::for_industry(IndustryType::Retail)
-        })
-        .with_account_override(
-            "1000",
-            "Cash",
-            AccountType::Asset,
-            dec!(500_000),
-        )
-        .build();
+        let spec =
+            OpeningBalanceSpecBuilder::new("TEST", as_of, dec!(5_000_000), IndustryType::Retail)
+                .with_target_ratios(TargetRatios {
+                    target_dso_days: 30,
+                    target_dpo_days: 45,
+                    ..TargetRatios::for_industry(IndustryType::Retail)
+                })
+                .with_account_override("1000", "Cash", AccountType::Asset, dec!(500_000))
+                .build();
 
         assert_eq!(spec.total_assets, dec!(5_000_000));
         assert_eq!(spec.target_ratios.target_dso_days, 30);

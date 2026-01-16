@@ -8,9 +8,8 @@ use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 
 use synth_core::models::{
-    AccountSubType, BusinessProcess, ChartOfAccounts, ControlMappingRegistry, ControlStatus,
-    GLAccount, InternalControl, JournalEntry, RiskLevel, SodConflictPair, SodConflictType,
-    SodViolation, UserPersona,
+    BusinessProcess, ChartOfAccounts, ControlMappingRegistry, ControlStatus, InternalControl,
+    JournalEntry, RiskLevel, SodConflictPair, SodConflictType, SodViolation,
 };
 
 /// Configuration for the control generator.
@@ -84,9 +83,7 @@ impl ControlGenerator {
             };
 
             // Get account sub-type from CoA
-            let account_sub_type = coa
-                .get_account(&line.gl_account)
-                .map(|acc| acc.sub_type);
+            let account_sub_type = coa.get_account(&line.gl_account).map(|acc| acc.sub_type);
 
             let control_ids = self.registry.get_applicable_controls(
                 &line.gl_account,
@@ -413,7 +410,13 @@ mod tests {
     }
 
     fn create_test_coa() -> ChartOfAccounts {
-        ChartOfAccounts::new()
+        ChartOfAccounts::new(
+            "TEST".to_string(),
+            "Test CoA".to_string(),
+            "US".to_string(),
+            synth_core::IndustrySector::Manufacturing,
+            synth_core::CoAComplexity::Small,
+        )
     }
 
     #[test]

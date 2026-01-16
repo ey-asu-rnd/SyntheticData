@@ -67,6 +67,7 @@ pub struct ARCreditMemo {
 
 impl ARCreditMemo {
     /// Creates a new credit memo.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         credit_memo_number: String,
         company_code: String,
@@ -109,6 +110,7 @@ impl ARCreditMemo {
     }
 
     /// Creates credit memo for a specific invoice.
+    #[allow(clippy::too_many_arguments)]
     pub fn for_invoice(
         credit_memo_number: String,
         company_code: String,
@@ -213,9 +215,10 @@ impl ARCreditMemo {
 }
 
 /// Type of credit memo.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ARCreditMemoType {
     /// Standard credit memo.
+    #[default]
     Standard,
     /// Return credit memo.
     Return,
@@ -231,14 +234,8 @@ pub enum ARCreditMemoType {
     Cancellation,
 }
 
-impl Default for ARCreditMemoType {
-    fn default() -> Self {
-        Self::Standard
-    }
-}
-
 /// Reason code for credit memo.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CreditMemoReason {
     /// Goods returned.
     Return,
@@ -265,13 +262,8 @@ pub enum CreditMemoReason {
     /// Contract adjustment.
     ContractAdjustment,
     /// Other.
+    #[default]
     Other,
-}
-
-impl Default for CreditMemoReason {
-    fn default() -> Self {
-        Self::Other
-    }
 }
 
 /// Credit memo line item.
@@ -367,9 +359,10 @@ pub struct CreditMemoApplication {
 }
 
 /// Approval status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ApprovalStatus {
     /// Pending approval.
+    #[default]
     Pending,
     /// Approved.
     Approved,
@@ -377,12 +370,6 @@ pub enum ApprovalStatus {
     Rejected,
     /// Not required (under threshold).
     NotRequired,
-}
-
-impl Default for ApprovalStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 #[cfg(test)]

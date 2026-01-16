@@ -3,14 +3,11 @@
 //! Defines rules for validating relationships between balance sheet and
 //! income statement items (DSO, DPO, gross margin, etc.).
 
-use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use super::account_balance::BalanceSnapshot;
-use super::trial_balance::TrialBalance;
 
 /// Balance relationship rule types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -201,23 +198,18 @@ impl BalanceRelationshipRule {
 }
 
 /// Severity level for rule violations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum RuleSeverity {
     /// Informational only.
     Info,
     /// Warning - should be investigated.
+    #[default]
     Warning,
     /// Error - significant issue.
     Error,
     /// Critical - must be resolved.
     Critical,
-}
-
-impl Default for RuleSeverity {
-    fn default() -> Self {
-        Self::Warning
-    }
 }
 
 /// Result of validating a balance relationship.
@@ -309,6 +301,7 @@ pub struct BalanceCoherenceValidator {
     /// Rules to validate.
     rules: Vec<BalanceRelationshipRule>,
     /// Account groupings for calculations.
+    #[allow(dead_code)]
     account_groups: AccountGroups,
 }
 

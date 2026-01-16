@@ -640,8 +640,7 @@ impl HolidayCalendar {
             + 7)
             % 7;
 
-        let date = first + Duration::days(days_until + (n - 1) as i64 * 7);
-        date
+        first + Duration::days(days_until + (n - 1) as i64 * 7)
     }
 
     /// Get last weekday of a month (e.g., last Monday of May).
@@ -685,15 +684,14 @@ impl HolidayCalendar {
 
         // Ensure it falls in Jan-Feb range
         while result.month() > 2 || (result.month() == 2 && result.day() > 20) {
-            result = result - Duration::days(29);
+            result -= Duration::days(29);
         }
         while result.month() < 1 || (result.month() == 1 && result.day() < 21) {
-            result = result + Duration::days(29);
+            result += Duration::days(29);
         }
 
         // Adjust year if needed
         if result.year() != year {
-            let year_diff = year - result.year();
             result = NaiveDate::from_ymd_opt(year, result.month(), result.day().min(28))
                 .unwrap_or_else(|| NaiveDate::from_ymd_opt(year, result.month(), 28).unwrap());
         }

@@ -173,7 +173,7 @@ impl ARGenerator {
 
         // Add credit memo lines proportional to original invoice
         for (idx, inv_line) in invoice.lines.iter().enumerate() {
-            let credit_amount = (inv_line.net_amount * percent_of_invoice).round_dp(2);
+            let _credit_amount = (inv_line.net_amount * percent_of_invoice).round_dp(2);
             let line = ARCreditMemoLine::new(
                 (idx + 1) as u32,
                 inv_line.description.clone(),
@@ -355,7 +355,7 @@ impl ARGenerator {
     }
 
     /// Generates receipt journal entry.
-    fn generate_receipt_je(&mut self, receipt: &ARReceipt, currency: &str) -> JournalEntry {
+    fn generate_receipt_je(&mut self, receipt: &ARReceipt, _currency: &str) -> JournalEntry {
         let mut je = JournalEntry::new_simple(
             format!("JE-{}", receipt.receipt_number),
             receipt.company_code.clone(),

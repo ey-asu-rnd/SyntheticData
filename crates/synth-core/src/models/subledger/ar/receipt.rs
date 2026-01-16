@@ -2,7 +2,6 @@
 
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 
 use crate::models::subledger::{CurrencyAmount, GLReference, SubledgerDocumentStatus};
@@ -62,6 +61,7 @@ pub struct ARReceipt {
 
 impl ARReceipt {
     /// Creates a new AR receipt.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         receipt_number: String,
         company_code: String,
@@ -170,6 +170,7 @@ impl ARReceipt {
     }
 
     /// Creates on-account receipt (not applied to specific invoices).
+    #[allow(clippy::too_many_arguments)]
     pub fn on_account(
         receipt_number: String,
         company_code: String,
@@ -198,9 +199,10 @@ impl ARReceipt {
 }
 
 /// Type of AR receipt.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ARReceiptType {
     /// Standard receipt applied to invoices.
+    #[default]
     Standard,
     /// On-account receipt (unapplied).
     OnAccount,
@@ -214,16 +216,11 @@ pub enum ARReceiptType {
     Netting,
 }
 
-impl Default for ARReceiptType {
-    fn default() -> Self {
-        Self::Standard
-    }
-}
-
 /// Payment method for receipts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum PaymentMethod {
     /// Wire transfer.
+    #[default]
     WireTransfer,
     /// Check.
     Check,
@@ -239,12 +236,6 @@ pub enum PaymentMethod {
     Netting,
     /// Other.
     Other,
-}
-
-impl Default for PaymentMethod {
-    fn default() -> Self {
-        Self::WireTransfer
-    }
 }
 
 /// Application of receipt to an invoice.
@@ -387,6 +378,7 @@ impl BankStatementLine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rust_decimal_macros::dec;
 
     #[test]
     fn test_receipt_creation() {

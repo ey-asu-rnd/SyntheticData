@@ -262,25 +262,25 @@ impl DataQualityInjector {
         let mut had_issue = false;
 
         // Check for missing value
-        if self.config.enable_missing_values {
-            if self.missing_value_injector.should_be_missing(
+        if self.config.enable_missing_values
+            && self.missing_value_injector.should_be_missing(
                 field,
                 Some(value),
                 context,
                 &mut self.rng,
-            ) {
-                let issue_id = self.next_issue_id();
-                self.record_issue(QualityIssue {
-                    issue_id,
-                    issue_type: QualityIssueType::MissingValue,
-                    record_id: record_id.to_string(),
-                    field: Some(field.to_string()),
-                    original_value: Some(value.to_string()),
-                    modified_value: None,
-                    description: format!("Field '{}' set to missing", field),
-                });
-                return None;
-            }
+            )
+        {
+            let issue_id = self.next_issue_id();
+            self.record_issue(QualityIssue {
+                issue_id,
+                issue_type: QualityIssueType::MissingValue,
+                record_id: record_id.to_string(),
+                field: Some(field.to_string()),
+                original_value: Some(value.to_string()),
+                modified_value: None,
+                description: format!("Field '{}' set to missing", field),
+            });
+            return None;
         }
 
         // Apply typos
@@ -366,25 +366,25 @@ impl DataQualityInjector {
         context: &HashMap<String, String>,
     ) -> Option<String> {
         // Check for missing value
-        if self.config.enable_missing_values {
-            if self.missing_value_injector.should_be_missing(
+        if self.config.enable_missing_values
+            && self.missing_value_injector.should_be_missing(
                 field,
                 Some(&date.to_string()),
                 context,
                 &mut self.rng,
-            ) {
-                let issue_id = self.next_issue_id();
-                self.record_issue(QualityIssue {
-                    issue_id,
-                    issue_type: QualityIssueType::MissingValue,
-                    record_id: record_id.to_string(),
-                    field: Some(field.to_string()),
-                    original_value: Some(date.to_string()),
-                    modified_value: None,
-                    description: format!("Date field '{}' set to missing", field),
-                });
-                return None;
-            }
+            )
+        {
+            let issue_id = self.next_issue_id();
+            self.record_issue(QualityIssue {
+                issue_id,
+                issue_type: QualityIssueType::MissingValue,
+                record_id: record_id.to_string(),
+                field: Some(field.to_string()),
+                original_value: Some(date.to_string()),
+                modified_value: None,
+                description: format!("Date field '{}' set to missing", field),
+            });
+            return None;
         }
 
         // Apply format variations
@@ -420,25 +420,25 @@ impl DataQualityInjector {
         context: &HashMap<String, String>,
     ) -> Option<String> {
         // Check for missing value
-        if self.config.enable_missing_values {
-            if self.missing_value_injector.should_be_missing(
+        if self.config.enable_missing_values
+            && self.missing_value_injector.should_be_missing(
                 field,
                 Some(&amount.to_string()),
                 context,
                 &mut self.rng,
-            ) {
-                let issue_id = self.next_issue_id();
-                self.record_issue(QualityIssue {
-                    issue_id,
-                    issue_type: QualityIssueType::MissingValue,
-                    record_id: record_id.to_string(),
-                    field: Some(field.to_string()),
-                    original_value: Some(amount.to_string()),
-                    modified_value: None,
-                    description: format!("Amount field '{}' set to missing", field),
-                });
-                return None;
-            }
+            )
+        {
+            let issue_id = self.next_issue_id();
+            self.record_issue(QualityIssue {
+                issue_id,
+                issue_type: QualityIssueType::MissingValue,
+                record_id: record_id.to_string(),
+                field: Some(field.to_string()),
+                original_value: Some(amount.to_string()),
+                modified_value: None,
+                description: format!("Amount field '{}' set to missing", field),
+            });
+            return None;
         }
 
         // Apply format variations
@@ -474,25 +474,25 @@ impl DataQualityInjector {
         context: &HashMap<String, String>,
     ) -> Option<String> {
         // Check for missing value (rare for identifiers)
-        if self.config.enable_missing_values {
-            if self.missing_value_injector.should_be_missing(
+        if self.config.enable_missing_values
+            && self.missing_value_injector.should_be_missing(
                 field,
                 Some(id),
                 context,
                 &mut self.rng,
-            ) {
-                let issue_id = self.next_issue_id();
-                self.record_issue(QualityIssue {
-                    issue_id,
-                    issue_type: QualityIssueType::MissingValue,
-                    record_id: record_id.to_string(),
-                    field: Some(field.to_string()),
-                    original_value: Some(id.to_string()),
-                    modified_value: None,
-                    description: format!("Identifier field '{}' set to missing", field),
-                });
-                return None;
-            }
+            )
+        {
+            let issue_id = self.next_issue_id();
+            self.record_issue(QualityIssue {
+                issue_id,
+                issue_type: QualityIssueType::MissingValue,
+                record_id: record_id.to_string(),
+                field: Some(field.to_string()),
+                original_value: Some(id.to_string()),
+                modified_value: None,
+                description: format!("Identifier field '{}' set to missing", field),
+            });
+            return None;
         }
 
         // Apply format variations

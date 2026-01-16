@@ -2,7 +2,6 @@
 
 use rand::Rng;
 use rust_decimal::Decimal;
-use std::collections::HashMap;
 
 use synth_core::models::{
     AnomalyType, ErrorType, FraudType, ProcessIssueType, RelationalAnomalyType,

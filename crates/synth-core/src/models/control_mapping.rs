@@ -66,10 +66,10 @@ impl ControlAccountMapping {
         sub_type: Option<&AccountSubType>,
     ) -> bool {
         // Check specific account numbers first
-        if !self.account_numbers.is_empty() {
-            if self.account_numbers.iter().any(|a| a == account_number) {
-                return true;
-            }
+        if !self.account_numbers.is_empty()
+            && self.account_numbers.iter().any(|a| a == account_number)
+        {
+            return true;
         }
 
         // Then check sub-types

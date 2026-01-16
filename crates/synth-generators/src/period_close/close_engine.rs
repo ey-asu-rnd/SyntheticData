@@ -1,6 +1,5 @@
 //! Period close engine for orchestrating the close process.
 
-use chrono::NaiveDate;
 use rust_decimal::Decimal;
 
 use synth_core::models::{
@@ -63,7 +62,7 @@ impl CloseEngine {
         run.started_at = Some(fiscal_period.end_date);
 
         // Execute tasks in sequence order
-        let mut current_sequence = 0u32;
+        let mut _current_sequence = 0u32;
         for scheduled_task in &schedule.tasks {
             // Skip year-end tasks if not year-end
             if scheduled_task.task.is_year_end_only() && !fiscal_period.is_year_end {
@@ -112,7 +111,7 @@ impl CloseEngine {
             }
 
             run.task_results.push(result);
-            current_sequence = scheduled_task.sequence;
+            _current_sequence = scheduled_task.sequence;
         }
 
         // Determine final status
@@ -381,6 +380,7 @@ impl CloseEngine {
 }
 
 /// Context for close execution containing handlers and state.
+#[derive(Default)]
 pub struct CloseContext {
     /// Journal entries generated during close.
     pub journal_entries: Vec<JournalEntry>,
@@ -421,27 +421,6 @@ pub struct CloseContext {
     /// Handler for inventory revaluation.
     pub inventory_reval_handler:
         Option<Box<dyn Fn(&str, &FiscalPeriod) -> (Vec<JournalEntry>, Decimal)>>,
-}
-
-impl Default for CloseContext {
-    fn default() -> Self {
-        Self {
-            journal_entries: Vec::new(),
-            depreciation_handler: None,
-            accrual_handler: None,
-            prepaid_handler: None,
-            reconciliation_handler: None,
-            fx_revaluation_handler: None,
-            overhead_handler: None,
-            ic_settlement_handler: None,
-            translation_handler: None,
-            elimination_handler: None,
-            tax_provision_handler: None,
-            income_close_handler: None,
-            re_rollforward_handler: None,
-            inventory_reval_handler: None,
-        }
-    }
 }
 
 /// Result of close readiness validation.

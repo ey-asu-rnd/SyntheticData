@@ -321,10 +321,10 @@ impl TypoGenerator {
     /// Introduces typos word by word.
     fn introduce_typos_by_word<R: Rng>(&mut self, text: &str, rng: &mut R) -> String {
         let mut result = String::new();
-        let mut chars = text.chars().peekable();
+        let chars = text.chars().peekable();
         let mut current_word = String::new();
 
-        while let Some(c) = chars.next() {
+        for c in chars {
             if c.is_alphanumeric() {
                 current_word.push(c);
             } else {
@@ -607,7 +607,7 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(42);
 
         let text = "Hello World";
-        let with_typos = generator.introduce_typos(text, &mut rng);
+        let _with_typos = generator.introduce_typos(text, &mut rng);
 
         // With high error rate, should have some typos
         assert!(generator.stats().total_typos > 0);

@@ -74,7 +74,9 @@ impl AssetClass {
                 DepreciationMethod::StraightLine
             }
             Self::MachineryEquipment | Self::Machinery => DepreciationMethod::StraightLine,
-            Self::ComputerHardware | Self::ItEquipment => DepreciationMethod::DoubleDecliningBalance,
+            Self::ComputerHardware | Self::ItEquipment => {
+                DepreciationMethod::DoubleDecliningBalance
+            }
             Self::FurnitureFixtures | Self::Furniture => DepreciationMethod::StraightLine,
             Self::Vehicles => DepreciationMethod::DoubleDecliningBalance,
             Self::Intangibles | Self::Software => DepreciationMethod::StraightLine,

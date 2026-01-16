@@ -6,7 +6,7 @@ use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{APInvoice, APPaymentMethod};
+use super::APInvoice;
 use crate::models::subledger::SubledgerDocumentStatus;
 
 /// AP Aging bucket (similar to AR but for payables).

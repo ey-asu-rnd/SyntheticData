@@ -671,7 +671,7 @@ impl Customer {
     pub fn with_credit_rating(mut self, rating: CreditRating) -> Self {
         self.credit_rating = rating;
         // Adjust credit limit based on rating
-        self.credit_limit = self.credit_limit * rating.credit_limit_multiplier();
+        self.credit_limit *= rating.credit_limit_multiplier();
         if rating.is_credit_blocked() {
             self.credit_blocked = true;
             self.credit_block_reason = Some("Credit rating D".to_string());

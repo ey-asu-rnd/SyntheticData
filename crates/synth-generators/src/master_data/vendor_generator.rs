@@ -3,7 +3,6 @@
 use chrono::NaiveDate;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
-use rust_decimal::Decimal;
 use synth_core::models::{BankAccount, PaymentTerms, Vendor, VendorBehavior, VendorPool};
 
 /// Configuration for vendor generation.
@@ -171,11 +170,11 @@ impl VendorGenerator {
     }
 
     /// Generate a single vendor.
-    pub fn generate_vendor(&mut self, company_code: &str, effective_date: NaiveDate) -> Vendor {
+    pub fn generate_vendor(&mut self, company_code: &str, _effective_date: NaiveDate) -> Vendor {
         self.vendor_counter += 1;
 
         let vendor_id = format!("V-{:06}", self.vendor_counter);
-        let (category, name) = self.select_vendor_name();
+        let (_category, name) = self.select_vendor_name();
         let tax_id = self.generate_tax_id();
 
         let mut vendor = Vendor::new(&vendor_id, name, synth_core::models::VendorType::Supplier);

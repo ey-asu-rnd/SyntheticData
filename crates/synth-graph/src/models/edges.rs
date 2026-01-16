@@ -357,7 +357,7 @@ impl ApprovalEdge {
         let edge = GraphEdge::new(id, approver_node, requester_node, EdgeType::Approval)
             .with_weight(amount_f64)
             .with_timestamp(approval_date)
-            .with_property("action".into(), EdgeProperty::String(action.to_string()));
+            .with_property("action", EdgeProperty::String(action.to_string()));
 
         Self {
             edge,

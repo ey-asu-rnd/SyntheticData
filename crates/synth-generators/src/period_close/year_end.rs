@@ -6,8 +6,8 @@ use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
 use synth_core::models::{
-    FiscalPeriod, JournalEntry, JournalEntryLine, TaxAdjustment, TaxProvisionInput,
-    TaxProvisionResult, YearEndClosingSpec,
+    JournalEntry, JournalEntryLine, TaxAdjustment, TaxProvisionInput, TaxProvisionResult,
+    YearEndClosingSpec,
 };
 
 /// Configuration for year-end closing.

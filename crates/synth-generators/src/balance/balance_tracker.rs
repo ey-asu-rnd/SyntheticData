@@ -8,7 +8,9 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-use synth_core::models::balance::{AccountBalance, AccountPeriodActivity, AccountType, BalanceSnapshot};
+use synth_core::models::balance::{
+    AccountBalance, AccountPeriodActivity, AccountType, BalanceSnapshot,
+};
 use synth_core::models::{JournalEntry, JournalEntryLine};
 
 /// Configuration for the balance tracker.
@@ -163,7 +165,9 @@ impl RunningBalanceTracker {
                 error_type: ValidationErrorType::UnbalancedEntry,
                 message: format!(
                     "Entry {} is unbalanced: debits={}, credits={}",
-                    entry.document_number(), entry.total_debit(), entry.total_credit()
+                    entry.document_number(),
+                    entry.total_debit(),
+                    entry.total_credit()
                 ),
                 details: {
                     let mut d = HashMap::new();
@@ -186,7 +190,9 @@ impl RunningBalanceTracker {
         let track_history = self.config.track_history;
 
         // Pre-compute account types for all lines
-        let line_data: Vec<_> = entry.lines.iter()
+        let line_data: Vec<_> = entry
+            .lines
+            .iter()
             .map(|line| {
                 let account_type = self.determine_account_type(&line.account_code);
                 (line.clone(), account_type)
@@ -201,9 +207,6 @@ impl RunningBalanceTracker {
 
         // Apply each line
         for (line, account_type) in &line_data {
-            let previous_balance;
-            let new_balance;
-
             // Get or create account balance
             let balance = company_balances
                 .entry(line.account_code.clone())
@@ -218,7 +221,7 @@ impl RunningBalanceTracker {
                     )
                 });
 
-            previous_balance = balance.closing_balance;
+            let previous_balance = balance.closing_balance;
 
             // Apply debit or credit
             if line.debit_amount > Decimal::ZERO {
@@ -228,7 +231,7 @@ impl RunningBalanceTracker {
                 balance.apply_credit(line.credit_amount);
             }
 
-            new_balance = balance.closing_balance;
+            let new_balance = balance.closing_balance;
 
             // Record history if configured
             if track_history {
@@ -293,8 +296,6 @@ impl RunningBalanceTracker {
         company_code: &str,
     ) {
         let account_type = self.determine_account_type(&line.account_code);
-        let previous_balance;
-        let new_balance;
 
         // Get or create account balance
         let balance = company_balances
@@ -310,7 +311,7 @@ impl RunningBalanceTracker {
                 )
             });
 
-        previous_balance = balance.closing_balance;
+        let previous_balance = balance.closing_balance;
 
         // Apply debit or credit based on account type
         if line.debit_amount > Decimal::ZERO {
@@ -320,7 +321,7 @@ impl RunningBalanceTracker {
             balance.apply_credit(line.credit_amount);
         }
 
-        new_balance = balance.closing_balance;
+        let new_balance = balance.closing_balance;
 
         // Record history if configured
         if self.config.track_history {
@@ -598,6 +599,7 @@ mod tests {
         entry.add_line(JournalEntryLine {
             line_number: 1,
             gl_account: account1.to_string(),
+            account_code: account1.to_string(),
             debit_amount: amount,
             ..Default::default()
         });
@@ -605,6 +607,7 @@ mod tests {
         entry.add_line(JournalEntryLine {
             line_number: 2,
             gl_account: account2.to_string(),
+            account_code: account2.to_string(),
             credit_amount: amount,
             ..Default::default()
         });

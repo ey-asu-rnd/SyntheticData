@@ -111,12 +111,10 @@ impl TrialBalance {
             } else {
                 (Decimal::ZERO, balance.closing_balance.abs())
             }
+        } else if balance.closing_balance >= Decimal::ZERO {
+            (Decimal::ZERO, balance.closing_balance)
         } else {
-            if balance.closing_balance >= Decimal::ZERO {
-                (Decimal::ZERO, balance.closing_balance)
-            } else {
-                (balance.closing_balance.abs(), Decimal::ZERO)
-            }
+            (balance.closing_balance.abs(), Decimal::ZERO)
         };
 
         let line = TrialBalanceLine {
@@ -252,12 +250,13 @@ impl TrialBalance {
 }
 
 /// Type of trial balance.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TrialBalanceType {
     /// Unadjusted trial balance (before adjusting entries).
     Unadjusted,
     /// Adjusted trial balance (after adjusting entries).
+    #[default]
     Adjusted,
     /// Post-closing trial balance (after closing entries).
     PostClosing,
@@ -265,17 +264,12 @@ pub enum TrialBalanceType {
     Consolidated,
 }
 
-impl Default for TrialBalanceType {
-    fn default() -> Self {
-        Self::Adjusted
-    }
-}
-
 /// Status of trial balance.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TrialBalanceStatus {
     /// Draft - still being prepared.
+    #[default]
     Draft,
     /// Final - period closed.
     Final,
@@ -283,12 +277,6 @@ pub enum TrialBalanceStatus {
     Approved,
     /// Archived.
     Archived,
-}
-
-impl Default for TrialBalanceStatus {
-    fn default() -> Self {
-        Self::Draft
-    }
 }
 
 /// A single line in a trial balance.

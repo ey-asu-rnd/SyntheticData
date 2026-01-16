@@ -10,8 +10,7 @@ use rust_decimal::Decimal;
 use synth_core::models::{
     documents::{
         CustomerInvoice, CustomerInvoiceItem, Delivery, DeliveryItem, DocumentReference,
-        DocumentStatus, DocumentType, Payment, PaymentMethod, ReferenceType, SalesOrder,
-        SalesOrderItem, SalesOrderType,
+        DocumentType, Payment, PaymentMethod, ReferenceType, SalesOrder, SalesOrderItem,
     },
     CreditRating, Customer, CustomerPool, Material, MaterialPool, PaymentTerms,
 };
@@ -538,7 +537,7 @@ impl O2CGenerator {
         let receipt_id = format!("REC-{}-{:010}", company_code, self.rec_counter);
 
         // Determine if cash discount taken
-        let take_discount = invoice.discount_date_1.map_or(false, |disc_date| {
+        let take_discount = invoice.discount_date_1.is_some_and(|disc_date| {
             payment_date <= disc_date && self.rng.gen::<f64>() < self.config.cash_discount_take_rate
         });
 
@@ -752,7 +751,11 @@ mod tests {
     use synth_core::models::{CustomerPaymentBehavior, MaterialType};
 
     fn create_test_customer() -> Customer {
-        let mut customer = Customer::new("C-000001", "Test Customer Inc.", "1000");
+        let mut customer = Customer::new(
+            "C-000001",
+            "Test Customer Inc.",
+            synth_core::models::CustomerType::Corporate,
+        );
         customer.credit_rating = CreditRating::A;
         customer.credit_limit = Decimal::from(1_000_000);
         customer.payment_behavior = CustomerPaymentBehavior::OnTime;

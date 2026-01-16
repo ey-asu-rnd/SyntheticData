@@ -72,6 +72,7 @@ pub struct APDebitMemo {
 
 impl APDebitMemo {
     /// Creates a new debit memo.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         debit_memo_number: String,
         company_code: String,
@@ -116,6 +117,7 @@ impl APDebitMemo {
     }
 
     /// Creates debit memo for a specific invoice.
+    #[allow(clippy::too_many_arguments)]
     pub fn for_invoice(
         debit_memo_number: String,
         company_code: String,
@@ -229,9 +231,10 @@ impl APDebitMemo {
 }
 
 /// Type of debit memo.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum APDebitMemoType {
     /// Standard debit memo.
+    #[default]
     Standard,
     /// Return to vendor.
     Return,
@@ -247,14 +250,8 @@ pub enum APDebitMemoType {
     Cancellation,
 }
 
-impl Default for APDebitMemoType {
-    fn default() -> Self {
-        Self::Standard
-    }
-}
-
 /// Reason code for debit memo.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DebitMemoReason {
     /// Goods returned.
     Return,
@@ -277,13 +274,8 @@ pub enum DebitMemoReason {
     /// Contract adjustment.
     ContractAdjustment,
     /// Other.
+    #[default]
     Other,
-}
-
-impl Default for DebitMemoReason {
-    fn default() -> Self {
-        Self::Other
-    }
 }
 
 /// Debit memo line item.
@@ -376,9 +368,10 @@ pub struct DebitMemoApplication {
 }
 
 /// Approval status for AP documents.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum APApprovalStatus {
     /// Pending approval.
+    #[default]
     Pending,
     /// Approved.
     Approved,
@@ -386,12 +379,6 @@ pub enum APApprovalStatus {
     Rejected,
     /// Not required (under threshold).
     NotRequired,
-}
-
-impl Default for APApprovalStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 #[cfg(test)]
