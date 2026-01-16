@@ -230,6 +230,64 @@ async fn test_set_config_endpoint() {
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(json["success"], true);
+    // Verify the message indicates config was applied
+    assert!(json["message"].as_str().unwrap().contains("applied"));
+}
+
+#[tokio::test]
+async fn test_set_config_invalid_industry() {
+    let router = test_router();
+    let config_json = serde_json::json!({
+        "industry": "invalid_industry",
+        "start_date": "2024-01-01",
+        "period_months": 6,
+        "seed": 42,
+        "coa_complexity": "medium",
+        "companies": [],
+        "fraud_enabled": false,
+        "fraud_rate": 0.0
+    });
+
+    let request = Request::builder()
+        .uri("/api/config")
+        .method("POST")
+        .header("content-type", "application/json")
+        .body(Body::from(config_json.to_string()))
+        .unwrap();
+
+    let (status, json) = json_response(router, request).await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(json["success"], false);
+    assert!(json["message"].as_str().unwrap().contains("Unknown industry"));
+}
+
+#[tokio::test]
+async fn test_set_config_invalid_complexity() {
+    let router = test_router();
+    let config_json = serde_json::json!({
+        "industry": "retail",
+        "start_date": "2024-01-01",
+        "period_months": 6,
+        "seed": 42,
+        "coa_complexity": "invalid_complexity",
+        "companies": [],
+        "fraud_enabled": false,
+        "fraud_rate": 0.0
+    });
+
+    let request = Request::builder()
+        .uri("/api/config")
+        .method("POST")
+        .header("content-type", "application/json")
+        .body(Body::from(config_json.to_string()))
+        .unwrap();
+
+    let (status, json) = json_response(router, request).await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(json["success"], false);
+    assert!(json["message"].as_str().unwrap().contains("Unknown CoA complexity"));
 }
 
 // ==========================================================================
@@ -450,7 +508,7 @@ async fn test_stream_control_lifecycle() {
 async fn test_trigger_pattern_endpoint() {
     let router = test_router();
     let request = Request::builder()
-        .uri("/api/stream/trigger/year_end")
+        .uri("/api/stream/trigger/year_end_spike")
         .method("POST")
         .body(Body::empty())
         .unwrap();
@@ -458,9 +516,40 @@ async fn test_trigger_pattern_endpoint() {
     let (status, json) = json_response(router, request).await;
 
     assert_eq!(status, StatusCode::OK);
-    // Pattern trigger is not implemented yet
+    assert_eq!(json["success"], true);
+    assert!(json["message"].as_str().unwrap().contains("will be applied"));
+}
+
+#[tokio::test]
+async fn test_trigger_pattern_invalid() {
+    let router = test_router();
+    let request = Request::builder()
+        .uri("/api/stream/trigger/invalid_pattern")
+        .method("POST")
+        .body(Body::empty())
+        .unwrap();
+
+    let (status, json) = json_response(router, request).await;
+
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(json["success"], false);
-    assert!(json["message"].as_str().unwrap().contains("not yet implemented"));
+    assert!(json["message"].as_str().unwrap().contains("Unknown pattern"));
+}
+
+#[tokio::test]
+async fn test_trigger_pattern_custom() {
+    let router = test_router();
+    let request = Request::builder()
+        .uri("/api/stream/trigger/custom:my_pattern")
+        .method("POST")
+        .body(Body::empty())
+        .unwrap();
+
+    let (status, json) = json_response(router, request).await;
+
+    assert_eq!(status, StatusCode::OK);
+    // Custom patterns starting with "custom:" are allowed
+    assert_eq!(json["success"], true);
 }
 
 // ==========================================================================

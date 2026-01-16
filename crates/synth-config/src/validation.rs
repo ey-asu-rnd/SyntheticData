@@ -3,16 +3,43 @@
 use crate::schema::GeneratorConfig;
 use synth_core::error::{SynthError, SynthResult};
 
+/// Maximum allowed period in months (10 years).
+const MAX_PERIOD_MONTHS: u32 = 120;
+
 /// Validate a generator configuration.
 pub fn validate_config(config: &GeneratorConfig) -> SynthResult<()> {
-    // Validate global settings
+    validate_global_settings(config)?;
+    validate_companies(config)?;
+    validate_transactions(config)?;
+    validate_output(config)?;
+    validate_fraud(config)?;
+    validate_internal_controls(config)?;
+    validate_approval(config)?;
+    validate_master_data(config)?;
+    validate_document_flows(config)?;
+    validate_intercompany(config)?;
+    validate_balance(config)?;
+    Ok(())
+}
+
+/// Validate global settings.
+fn validate_global_settings(config: &GeneratorConfig) -> SynthResult<()> {
     if config.global.period_months == 0 {
         return Err(SynthError::validation(
             "period_months must be greater than 0",
         ));
     }
+    if config.global.period_months > MAX_PERIOD_MONTHS {
+        return Err(SynthError::validation(format!(
+            "period_months must be at most {} (10 years), got {}",
+            MAX_PERIOD_MONTHS, config.global.period_months
+        )));
+    }
+    Ok(())
+}
 
-    // Validate companies
+/// Validate company configuration.
+fn validate_companies(config: &GeneratorConfig) -> SynthResult<()> {
     if config.companies.is_empty() {
         return Err(SynthError::validation(
             "At least one company must be configured",
@@ -29,9 +56,19 @@ pub fn validate_config(config: &GeneratorConfig) -> SynthResult<()> {
                 company.currency, company.code
             )));
         }
+        if company.volume_weight < 0.0 {
+            return Err(SynthError::validation(format!(
+                "volume_weight must be non-negative for company '{}'",
+                company.code
+            )));
+        }
     }
+    Ok(())
+}
 
-    // Validate transaction distribution
+/// Validate transaction configuration.
+fn validate_transactions(config: &GeneratorConfig) -> SynthResult<()> {
+    // Validate line item distribution
     let line_dist = &config.transactions.line_item_distribution;
     if let Err(e) = line_dist.validate() {
         return Err(SynthError::validation(e));
@@ -62,13 +99,310 @@ pub fn validate_config(config: &GeneratorConfig) -> SynthResult<()> {
         )));
     }
 
-    // Validate fraud config if enabled
-    if config.fraud.enabled && (config.fraud.fraud_rate < 0.0 || config.fraud.fraud_rate > 1.0) {
+    // Validate Benford tolerance
+    let tolerance = config.transactions.benford.tolerance;
+    if tolerance < 0.0 || tolerance > 1.0 {
+        return Err(SynthError::validation(format!(
+            "benford.tolerance must be between 0.0 and 1.0, got {}",
+            tolerance
+        )));
+    }
+
+    Ok(())
+}
+
+/// Validate output configuration.
+fn validate_output(config: &GeneratorConfig) -> SynthResult<()> {
+    let level = config.output.compression.level;
+    if config.output.compression.enabled && (level < 1 || level > 9) {
+        return Err(SynthError::validation(format!(
+            "compression.level must be between 1 and 9, got {}",
+            level
+        )));
+    }
+
+    if config.output.batch_size == 0 {
+        return Err(SynthError::validation("batch_size must be greater than 0"));
+    }
+
+    Ok(())
+}
+
+/// Validate fraud configuration.
+fn validate_fraud(config: &GeneratorConfig) -> SynthResult<()> {
+    if !config.fraud.enabled {
+        return Ok(());
+    }
+
+    if config.fraud.fraud_rate < 0.0 || config.fraud.fraud_rate > 1.0 {
         return Err(SynthError::validation(
             "fraud_rate must be between 0.0 and 1.0",
         ));
     }
 
+    if config.fraud.clustering_factor < 0.0 {
+        return Err(SynthError::validation(
+            "clustering_factor must be non-negative",
+        ));
+    }
+
+    // Validate approval thresholds are in ascending order
+    let thresholds = &config.fraud.approval_thresholds;
+    for i in 1..thresholds.len() {
+        if thresholds[i] <= thresholds[i - 1] {
+            return Err(SynthError::validation(format!(
+                "fraud.approval_thresholds must be in strictly ascending order: {} is not greater than {}",
+                thresholds[i], thresholds[i - 1]
+            )));
+        }
+    }
+
+    // Validate fraud type distribution sums to ~1.0
+    let dist = &config.fraud.fraud_type_distribution;
+    let sum = dist.suspense_account_abuse
+        + dist.fictitious_transaction
+        + dist.revenue_manipulation
+        + dist.expense_capitalization
+        + dist.split_transaction
+        + dist.timing_anomaly
+        + dist.unauthorized_access
+        + dist.duplicate_payment;
+    if (sum - 1.0).abs() > 0.01 {
+        return Err(SynthError::validation(format!(
+            "fraud_type_distribution must sum to 1.0, got {}",
+            sum
+        )));
+    }
+
+    Ok(())
+}
+
+/// Validate internal controls configuration.
+fn validate_internal_controls(config: &GeneratorConfig) -> SynthResult<()> {
+    if !config.internal_controls.enabled {
+        return Ok(());
+    }
+
+    let exception_rate = config.internal_controls.exception_rate;
+    if exception_rate < 0.0 || exception_rate > 1.0 {
+        return Err(SynthError::validation(format!(
+            "exception_rate must be between 0.0 and 1.0, got {}",
+            exception_rate
+        )));
+    }
+
+    let sod_rate = config.internal_controls.sod_violation_rate;
+    if sod_rate < 0.0 || sod_rate > 1.0 {
+        return Err(SynthError::validation(format!(
+            "sod_violation_rate must be between 0.0 and 1.0, got {}",
+            sod_rate
+        )));
+    }
+
+    if config.internal_controls.sox_materiality_threshold < 0.0 {
+        return Err(SynthError::validation(
+            "sox_materiality_threshold must be non-negative",
+        ));
+    }
+
+    Ok(())
+}
+
+/// Validate approval configuration.
+fn validate_approval(config: &GeneratorConfig) -> SynthResult<()> {
+    if !config.approval.enabled {
+        return Ok(());
+    }
+
+    if config.approval.auto_approve_threshold < 0.0 {
+        return Err(SynthError::validation(
+            "auto_approve_threshold must be non-negative",
+        ));
+    }
+
+    let rejection_rate = config.approval.rejection_rate;
+    if rejection_rate < 0.0 || rejection_rate > 1.0 {
+        return Err(SynthError::validation(format!(
+            "rejection_rate must be between 0.0 and 1.0, got {}",
+            rejection_rate
+        )));
+    }
+
+    let revision_rate = config.approval.revision_rate;
+    if revision_rate < 0.0 || revision_rate > 1.0 {
+        return Err(SynthError::validation(format!(
+            "revision_rate must be between 0.0 and 1.0, got {}",
+            revision_rate
+        )));
+    }
+
+    // rejection + revision should not exceed 1.0
+    if rejection_rate + revision_rate > 1.0 {
+        return Err(SynthError::validation(format!(
+            "rejection_rate + revision_rate must not exceed 1.0, got {}",
+            rejection_rate + revision_rate
+        )));
+    }
+
+    // Validate approval thresholds are in ascending order by amount
+    let thresholds = &config.approval.thresholds;
+    for i in 1..thresholds.len() {
+        if thresholds[i].amount <= thresholds[i - 1].amount {
+            return Err(SynthError::validation(format!(
+                "approval.thresholds must have strictly ascending amounts: {} is not greater than {}",
+                thresholds[i].amount, thresholds[i - 1].amount
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate master data configuration.
+fn validate_master_data(config: &GeneratorConfig) -> SynthResult<()> {
+    // Vendor config
+    let vendor_ic = config.master_data.vendors.intercompany_percent;
+    if vendor_ic < 0.0 || vendor_ic > 1.0 {
+        return Err(SynthError::validation(format!(
+            "vendors.intercompany_percent must be between 0.0 and 1.0, got {}",
+            vendor_ic
+        )));
+    }
+
+    // Customer config
+    let customer_ic = config.master_data.customers.intercompany_percent;
+    if customer_ic < 0.0 || customer_ic > 1.0 {
+        return Err(SynthError::validation(format!(
+            "customers.intercompany_percent must be between 0.0 and 1.0, got {}",
+            customer_ic
+        )));
+    }
+
+    // Material config
+    let bom_percent = config.master_data.materials.bom_percent;
+    if bom_percent < 0.0 || bom_percent > 1.0 {
+        return Err(SynthError::validation(format!(
+            "materials.bom_percent must be between 0.0 and 1.0, got {}",
+            bom_percent
+        )));
+    }
+
+    // Fixed asset config
+    let fully_dep = config.master_data.fixed_assets.fully_depreciated_percent;
+    if fully_dep < 0.0 || fully_dep > 1.0 {
+        return Err(SynthError::validation(format!(
+            "fixed_assets.fully_depreciated_percent must be between 0.0 and 1.0, got {}",
+            fully_dep
+        )));
+    }
+
+    Ok(())
+}
+
+/// Validate document flow configuration.
+fn validate_document_flows(config: &GeneratorConfig) -> SynthResult<()> {
+    // P2P config
+    let p2p = &config.document_flows.p2p;
+    if p2p.enabled {
+        validate_rate("p2p.three_way_match_rate", p2p.three_way_match_rate)?;
+        validate_rate("p2p.partial_delivery_rate", p2p.partial_delivery_rate)?;
+        validate_rate("p2p.price_variance_rate", p2p.price_variance_rate)?;
+        validate_rate("p2p.quantity_variance_rate", p2p.quantity_variance_rate)?;
+
+        if p2p.max_price_variance_percent < 0.0 {
+            return Err(SynthError::validation(
+                "p2p.max_price_variance_percent must be non-negative",
+            ));
+        }
+    }
+
+    // O2C config
+    let o2c = &config.document_flows.o2c;
+    if o2c.enabled {
+        validate_rate("o2c.credit_check_failure_rate", o2c.credit_check_failure_rate)?;
+        validate_rate("o2c.partial_shipment_rate", o2c.partial_shipment_rate)?;
+        validate_rate("o2c.return_rate", o2c.return_rate)?;
+        validate_rate("o2c.bad_debt_rate", o2c.bad_debt_rate)?;
+
+        // Cash discount config
+        validate_rate("o2c.cash_discount.eligible_rate", o2c.cash_discount.eligible_rate)?;
+        validate_rate("o2c.cash_discount.taken_rate", o2c.cash_discount.taken_rate)?;
+        validate_rate("o2c.cash_discount.discount_percent", o2c.cash_discount.discount_percent)?;
+    }
+
+    Ok(())
+}
+
+/// Validate intercompany configuration.
+fn validate_intercompany(config: &GeneratorConfig) -> SynthResult<()> {
+    if !config.intercompany.enabled {
+        return Ok(());
+    }
+
+    validate_rate(
+        "intercompany.ic_transaction_rate",
+        config.intercompany.ic_transaction_rate,
+    )?;
+
+    if config.intercompany.markup_percent < 0.0 {
+        return Err(SynthError::validation(
+            "intercompany.markup_percent must be non-negative",
+        ));
+    }
+
+    // Validate IC transaction type distribution sums to ~1.0
+    let dist = &config.intercompany.transaction_type_distribution;
+    let sum = dist.goods_sale
+        + dist.service_provided
+        + dist.loan
+        + dist.dividend
+        + dist.management_fee
+        + dist.royalty
+        + dist.cost_sharing;
+    if (sum - 1.0).abs() > 0.01 {
+        return Err(SynthError::validation(format!(
+            "intercompany.transaction_type_distribution must sum to 1.0, got {}",
+            sum
+        )));
+    }
+
+    Ok(())
+}
+
+/// Validate balance configuration.
+fn validate_balance(config: &GeneratorConfig) -> SynthResult<()> {
+    let balance = &config.balance;
+
+    if balance.target_gross_margin < 0.0 || balance.target_gross_margin > 1.0 {
+        return Err(SynthError::validation(format!(
+            "target_gross_margin must be between 0.0 and 1.0, got {}",
+            balance.target_gross_margin
+        )));
+    }
+
+    if balance.target_current_ratio < 0.0 {
+        return Err(SynthError::validation(
+            "target_current_ratio must be non-negative",
+        ));
+    }
+
+    if balance.target_debt_to_equity < 0.0 {
+        return Err(SynthError::validation(
+            "target_debt_to_equity must be non-negative",
+        ));
+    }
+
+    Ok(())
+}
+
+/// Helper to validate a rate field is between 0.0 and 1.0.
+fn validate_rate(field_name: &str, value: f64) -> SynthResult<()> {
+    if value < 0.0 || value > 1.0 {
+        return Err(SynthError::validation(format!(
+            "{} must be between 0.0 and 1.0, got {}",
+            field_name, value
+        )));
+    }
     Ok(())
 }
 
@@ -146,8 +480,17 @@ mod tests {
     #[test]
     fn test_large_period_months_accepted() {
         let mut config = minimal_valid_config();
-        config.global.period_months = 120; // 10 years
+        config.global.period_months = 120; // 10 years - maximum allowed
         assert!(validate_config(&config).is_ok());
+    }
+
+    #[test]
+    fn test_period_months_exceeds_max_rejected() {
+        let mut config = minimal_valid_config();
+        config.global.period_months = 121; // Exceeds 10 year max
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("period_months"));
     }
 
     // ==========================================================================
@@ -586,5 +929,202 @@ mod tests {
             + dist.royalty
             + dist.cost_sharing;
         assert!((sum - 1.0).abs() < 0.001);
+    }
+
+    // ==========================================================================
+    // Compression Level Validation Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_compression_level_valid() {
+        let mut config = minimal_valid_config();
+        config.output.compression.enabled = true;
+        config.output.compression.level = 5;
+        assert!(validate_config(&config).is_ok());
+    }
+
+    #[test]
+    fn test_compression_level_zero_rejected() {
+        let mut config = minimal_valid_config();
+        config.output.compression.enabled = true;
+        config.output.compression.level = 0;
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("compression.level"));
+    }
+
+    #[test]
+    fn test_compression_level_ten_rejected() {
+        let mut config = minimal_valid_config();
+        config.output.compression.enabled = true;
+        config.output.compression.level = 10;
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("compression.level"));
+    }
+
+    #[test]
+    fn test_compression_disabled_ignores_level() {
+        let mut config = minimal_valid_config();
+        config.output.compression.enabled = false;
+        config.output.compression.level = 0; // Invalid but ignored
+        assert!(validate_config(&config).is_ok());
+    }
+
+    // ==========================================================================
+    // Approval Threshold Ordering Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_approval_thresholds_ascending_accepted() {
+        let mut config = minimal_valid_config();
+        config.approval.enabled = true;
+        config.approval.thresholds = vec![
+            ApprovalThresholdConfig {
+                amount: 1000.0,
+                level: 1,
+                roles: vec!["accountant".to_string()],
+            },
+            ApprovalThresholdConfig {
+                amount: 5000.0,
+                level: 2,
+                roles: vec!["manager".to_string()],
+            },
+            ApprovalThresholdConfig {
+                amount: 10000.0,
+                level: 3,
+                roles: vec!["director".to_string()],
+            },
+        ];
+        assert!(validate_config(&config).is_ok());
+    }
+
+    #[test]
+    fn test_approval_thresholds_not_ascending_rejected() {
+        let mut config = minimal_valid_config();
+        config.approval.enabled = true;
+        config.approval.thresholds = vec![
+            ApprovalThresholdConfig {
+                amount: 5000.0,
+                level: 1,
+                roles: vec!["accountant".to_string()],
+            },
+            ApprovalThresholdConfig {
+                amount: 1000.0, // Less than previous - invalid
+                level: 2,
+                roles: vec!["manager".to_string()],
+            },
+        ];
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("ascending"));
+    }
+
+    #[test]
+    fn test_fraud_approval_thresholds_ascending_accepted() {
+        let mut config = minimal_valid_config();
+        config.fraud.enabled = true;
+        config.fraud.fraud_rate = 0.05;
+        config.fraud.approval_thresholds = vec![1000.0, 5000.0, 10000.0];
+        assert!(validate_config(&config).is_ok());
+    }
+
+    #[test]
+    fn test_fraud_approval_thresholds_not_ascending_rejected() {
+        let mut config = minimal_valid_config();
+        config.fraud.enabled = true;
+        config.fraud.fraud_rate = 0.05;
+        config.fraud.approval_thresholds = vec![5000.0, 1000.0, 10000.0]; // Not ascending
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("ascending"));
+    }
+
+    // ==========================================================================
+    // Rate/Percentage Validation Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_internal_controls_rates_valid() {
+        let mut config = minimal_valid_config();
+        config.internal_controls.enabled = true;
+        config.internal_controls.exception_rate = 0.05;
+        config.internal_controls.sod_violation_rate = 0.02;
+        assert!(validate_config(&config).is_ok());
+    }
+
+    #[test]
+    fn test_internal_controls_exception_rate_invalid() {
+        let mut config = minimal_valid_config();
+        config.internal_controls.enabled = true;
+        config.internal_controls.exception_rate = 1.5; // > 1.0
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("exception_rate"));
+    }
+
+    #[test]
+    fn test_approval_rejection_plus_revision_exceeds_one_rejected() {
+        let mut config = minimal_valid_config();
+        config.approval.enabled = true;
+        config.approval.rejection_rate = 0.6;
+        config.approval.revision_rate = 0.6; // Sum > 1.0
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must not exceed 1.0"));
+    }
+
+    #[test]
+    fn test_master_data_intercompany_percent_invalid() {
+        let mut config = minimal_valid_config();
+        config.master_data.vendors.intercompany_percent = 1.5; // > 1.0
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("intercompany_percent"));
+    }
+
+    #[test]
+    fn test_balance_gross_margin_invalid() {
+        let mut config = minimal_valid_config();
+        config.balance.target_gross_margin = 1.5; // > 1.0
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("target_gross_margin"));
+    }
+
+    #[test]
+    fn test_negative_volume_weight_rejected() {
+        let mut config = minimal_valid_config();
+        config.companies[0].volume_weight = -0.5;
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("volume_weight"));
+    }
+
+    #[test]
+    fn test_benford_tolerance_invalid() {
+        let mut config = minimal_valid_config();
+        config.transactions.benford.tolerance = 1.5; // > 1.0
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("benford.tolerance"));
+    }
+
+    #[test]
+    fn test_batch_size_zero_rejected() {
+        let mut config = minimal_valid_config();
+        config.output.batch_size = 0;
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("batch_size"));
     }
 }

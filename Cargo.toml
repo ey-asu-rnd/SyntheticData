@@ -62,7 +62,7 @@ prost-types = "0.13"
 # HTTP/REST
 axum = { version = "0.7", features = ["ws"] }
 tower = "0.5"
-tower-http = { version = "0.5", features = ["cors", "trace"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "timeout"] }
 
 # Data formats - Arrow/Parquet for analytics-ready output
 arrow = { version = "53", features = ["prettyprint"] }
@@ -91,6 +91,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 rayon = "1.10"
 num_cpus = "1.16"
 crossbeam-channel = "0.5"
+
+# Signal handling
+signal-hook = "0.3"
 
 # Testing
 proptest = "1.5"

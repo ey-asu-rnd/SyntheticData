@@ -1,6 +1,8 @@
 //! Generation orchestrator for coordinating data generation.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use synth_config::schema::GeneratorConfig;
@@ -37,6 +39,8 @@ pub struct GenerationStatistics {
 pub struct GenerationOrchestrator {
     config: GeneratorConfig,
     coa: Option<Arc<ChartOfAccounts>>,
+    /// Optional pause flag for external control (e.g., signal handlers).
+    pause_flag: Option<Arc<AtomicBool>>,
 }
 
 impl GenerationOrchestrator {
@@ -45,7 +49,42 @@ impl GenerationOrchestrator {
         // Validate config
         synth_config::validate_config(&config)?;
 
-        Ok(Self { config, coa: None })
+        Ok(Self {
+            config,
+            coa: None,
+            pause_flag: None,
+        })
+    }
+
+    /// Set a pause flag that can be controlled externally (e.g., by a signal handler).
+    /// When the flag is true, generation will pause until it becomes false.
+    pub fn with_pause_flag(mut self, flag: Arc<AtomicBool>) -> Self {
+        self.pause_flag = Some(flag);
+        self
+    }
+
+    /// Check if generation is currently paused.
+    fn is_paused(&self) -> bool {
+        self.pause_flag
+            .as_ref()
+            .map(|f| f.load(Ordering::Relaxed))
+            .unwrap_or(false)
+    }
+
+    /// Wait while paused, checking periodically.
+    fn wait_while_paused(&self, pb: &ProgressBar) {
+        let was_paused = self.is_paused();
+        if was_paused {
+            pb.set_message("PAUSED - send SIGUSR1 to resume");
+        }
+
+        while self.is_paused() {
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        if was_paused {
+            pb.set_message("");
+        }
     }
 
     /// Generate the chart of accounts.
@@ -100,7 +139,7 @@ impl GenerationOrchestrator {
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({per_sec})")
-                .unwrap()
+                .expect("Progress bar template is a compile-time constant and should always be valid")
                 .progress_chars("#>-"),
         );
 
@@ -126,6 +165,9 @@ impl GenerationOrchestrator {
         let mut total_lines = 0u64;
 
         for _ in 0..total {
+            // Check and wait if paused
+            self.wait_while_paused(&pb);
+
             let entry = generator.generate();
             total_lines += entry.line_count() as u64;
             entries.push(entry);

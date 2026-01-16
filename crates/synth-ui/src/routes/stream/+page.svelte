@@ -13,10 +13,45 @@
 
   let events: StreamEvent[] = $state([]);
   let connected = $state(false);
+  let paused = $state(false);
   let socket: WebSocket | null = null;
   let serverUrl = $state('ws://localhost:3000/ws/events');
   let autoScroll = $state(true);
-  let maxEvents = 100;
+  let maxEvents = $state(100);
+
+  // Filtering state
+  let filterText = $state('');
+  let filterAnomalyOnly = $state(false);
+  let filterCompanyCode = $state('');
+
+  // Derived filtered events
+  let filteredEvents = $derived(() => {
+    return events.filter(event => {
+      // Anomaly filter
+      if (filterAnomalyOnly && !event.is_anomaly) return false;
+
+      // Company code filter
+      if (filterCompanyCode && event.company_code !== filterCompanyCode) return false;
+
+      // Text filter (searches event type, document ID, company code)
+      if (filterText) {
+        const searchLower = filterText.toLowerCase();
+        const matchesText =
+          event.event_type.toLowerCase().includes(searchLower) ||
+          event.document_id.toLowerCase().includes(searchLower) ||
+          event.company_code.toLowerCase().includes(searchLower);
+        if (!matchesText) return false;
+      }
+
+      return true;
+    });
+  });
+
+  // Get unique company codes from events
+  let companyCodes = $derived(() => {
+    const codes = new Set(events.map(e => e.company_code));
+    return Array.from(codes).sort();
+  });
 
   function connect() {
     if (socket) {
@@ -31,6 +66,9 @@
     };
 
     socket.onmessage = (event) => {
+      // Skip processing if paused
+      if (paused) return;
+
       try {
         const data = JSON.parse(event.data) as StreamEvent;
         events = [...events.slice(-maxEvents + 1), data];
@@ -68,6 +106,31 @@
 
   function clearEvents() {
     events = [];
+  }
+
+  function togglePause() {
+    paused = !paused;
+  }
+
+  function exportEvents() {
+    const dataToExport = filterAnomalyOnly || filterCompanyCode || filterText
+      ? filteredEvents()
+      : events;
+
+    const json = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stream-events-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function clearFilters() {
+    filterText = '';
+    filterAnomalyOnly = false;
+    filterCompanyCode = '';
   }
 
   function formatTimestamp(ts: string): string {
@@ -114,14 +177,31 @@
           disabled={connected}
         />
       </div>
+      <div class="form-group small">
+        <label for="max-events">Max Events</label>
+        <input
+          type="number"
+          id="max-events"
+          bind:value={maxEvents}
+          min="10"
+          max="1000"
+          step="10"
+        />
+      </div>
       <div class="form-actions">
         {#if connected}
+          <button class="btn-warning" onclick={togglePause}>
+            {paused ? 'Resume' : 'Pause'}
+          </button>
           <button class="btn-danger" onclick={disconnect}>Disconnect</button>
         {:else}
           <button class="btn-success" onclick={connect}>Connect</button>
         {/if}
         <button class="btn-secondary" onclick={clearEvents} disabled={events.length === 0}>
-          Clear Events
+          Clear
+        </button>
+        <button class="btn-secondary" onclick={exportEvents} disabled={events.length === 0}>
+          Export
         </button>
       </div>
     </div>
@@ -131,7 +211,49 @@
         <input type="checkbox" bind:checked={autoScroll} />
         <span>Auto-scroll</span>
       </label>
-      <span class="event-count mono">{events.length} events</span>
+      <span class="event-count mono">
+        {filteredEvents().length === events.length
+          ? `${events.length} events`
+          : `${filteredEvents().length} / ${events.length} events`}
+      </span>
+      {#if paused}
+        <span class="status-badge paused">PAUSED</span>
+      {/if}
+    </div>
+  </section>
+
+  <!-- Filter Panel -->
+  <section class="filter-panel">
+    <div class="filter-row">
+      <div class="form-group">
+        <label for="filter-text">Search</label>
+        <input
+          type="text"
+          id="filter-text"
+          bind:value={filterText}
+          placeholder="Search events..."
+        />
+      </div>
+      <div class="form-group">
+        <label for="filter-company">Company</label>
+        <select id="filter-company" bind:value={filterCompanyCode}>
+          <option value="">All Companies</option>
+          {#each companyCodes() as code}
+            <option value={code}>{code}</option>
+          {/each}
+        </select>
+      </div>
+      <label class="checkbox-label filter-checkbox">
+        <input type="checkbox" bind:checked={filterAnomalyOnly} />
+        <span>Anomalies only</span>
+      </label>
+      <button
+        class="btn-ghost"
+        onclick={clearFilters}
+        disabled={!filterText && !filterAnomalyOnly && !filterCompanyCode}
+      >
+        Clear Filters
+      </button>
     </div>
   </section>
 
@@ -152,8 +274,12 @@
         <div class="no-events">
           <p>{connected ? 'Waiting for events...' : 'Connect to start receiving events'}</p>
         </div>
+      {:else if filteredEvents().length === 0}
+        <div class="no-events">
+          <p>No events match the current filters</p>
+        </div>
       {:else}
-        {#each events as event}
+        {#each filteredEvents() as event}
           <div class="event-row" class:anomaly={event.is_anomaly}>
             <div class="col-seq mono">{event.sequence}</div>
             <div class="col-time mono">{formatTimestamp(event.timestamp)}</div>
@@ -224,7 +350,11 @@
   }
 
   .connection-form .form-group {
-    min-width: 400px;
+    min-width: 300px;
+  }
+
+  .connection-form .form-group.small {
+    min-width: 100px;
   }
 
   .form-actions {
@@ -236,6 +366,80 @@
     display: flex;
     align-items: center;
     gap: var(--space-4);
+  }
+
+  .status-badge {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+  }
+
+  .status-badge.paused {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #856404;
+  }
+
+  .filter-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .filter-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-4);
+  }
+
+  .filter-row .form-group {
+    flex: 1;
+    max-width: 200px;
+  }
+
+  .filter-row .form-group label {
+    font-size: 0.6875rem;
+  }
+
+  .filter-checkbox {
+    margin-bottom: 0.4rem;
+  }
+
+  .btn-warning {
+    background-color: #ffc107;
+    color: #212529;
+    border: none;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .btn-warning:hover {
+    background-color: #e0a800;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    cursor: pointer;
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+  }
+
+  .btn-ghost:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .checkbox-label {

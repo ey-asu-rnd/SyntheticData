@@ -1,7 +1,23 @@
 <script lang="ts">
   import '../app.css';
+  import { page } from '$app/stores';
 
   let { children } = $props();
+
+  // Navigation links configuration
+  const navLinks = [
+    { href: '/', label: 'Dashboard' },
+    { href: '/config', label: 'Configuration' },
+    { href: '/stream', label: 'Stream' },
+  ];
+
+  // Check if a nav link is active based on current path
+  function isActive(href: string, currentPath: string): boolean {
+    if (href === '/') {
+      return currentPath === '/';
+    }
+    return currentPath.startsWith(href);
+  }
 </script>
 
 <div class="app-container">
@@ -12,9 +28,15 @@
         <span class="logo-subtext">Data Generator</span>
       </div>
       <nav class="nav">
-        <a href="/" class="nav-link active">Dashboard</a>
-        <a href="/config" class="nav-link">Configuration</a>
-        <a href="/stream" class="nav-link">Stream</a>
+        {#each navLinks as link}
+          <a
+            href={link.href}
+            class="nav-link"
+            class:active={isActive(link.href, $page.url.pathname)}
+          >
+            {link.label}
+          </a>
+        {/each}
       </nav>
     </div>
   </header>

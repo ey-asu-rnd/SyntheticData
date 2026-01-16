@@ -1,6 +1,7 @@
 //! REST API routes.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::{
     extract::{State, WebSocketUpgrade},
@@ -11,6 +12,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::timeout::TimeoutLayer;
 use tracing::info;
 
 use crate::grpc::service::{ServerState, SynthService};
@@ -23,6 +25,31 @@ use super::websocket;
 pub struct AppState {
     pub service: Arc<SynthService>,
     pub server_state: Arc<ServerState>,
+}
+
+/// Timeout configuration for the REST API.
+#[derive(Clone, Debug)]
+pub struct TimeoutConfig {
+    /// Request timeout in seconds.
+    pub request_timeout_secs: u64,
+}
+
+impl Default for TimeoutConfig {
+    fn default() -> Self {
+        Self {
+            // 5 minutes default - bulk generation can take a while
+            request_timeout_secs: 300,
+        }
+    }
+}
+
+impl TimeoutConfig {
+    /// Create a new timeout config.
+    pub fn new(timeout_secs: u64) -> Self {
+        Self {
+            request_timeout_secs: timeout_secs,
+        }
+    }
 }
 
 /// CORS configuration for the REST API.
@@ -49,9 +76,146 @@ impl Default for CorsConfig {
     }
 }
 
+use super::auth::{auth_middleware, AuthConfig};
+use super::rate_limit::{rate_limit_middleware, RateLimitConfig, RateLimiter};
+
 /// Create the REST API router with default CORS settings.
 pub fn create_router(service: SynthService) -> Router {
     create_router_with_cors(service, CorsConfig::default())
+}
+
+/// Create the REST API router with full configuration (CORS, auth, rate limiting, and timeout).
+pub fn create_router_full(
+    service: SynthService,
+    cors_config: CorsConfig,
+    auth_config: AuthConfig,
+    rate_limit_config: RateLimitConfig,
+    timeout_config: TimeoutConfig,
+) -> Router {
+    let server_state = service.state.clone();
+    let state = AppState {
+        service: Arc::new(service),
+        server_state,
+    };
+
+    let cors = if cors_config.allow_any_origin {
+        CorsLayer::permissive()
+    } else {
+        let origins: Vec<_> = cors_config
+            .allowed_origins
+            .iter()
+            .filter_map(|o| o.parse().ok())
+            .collect();
+
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
+            .allow_headers([
+                header::CONTENT_TYPE,
+                header::AUTHORIZATION,
+                header::ACCEPT,
+            ])
+    };
+
+    let rate_limiter = RateLimiter::new(rate_limit_config);
+
+    Router::new()
+        // Health and metrics (exempt from auth and rate limiting by default)
+        .route("/health", get(health_check))
+        .route("/ready", get(readiness_check))
+        .route("/live", get(liveness_check))
+        .route("/api/metrics", get(get_metrics))
+        .route("/metrics", get(prometheus_metrics))
+        // Configuration
+        .route("/api/config", get(get_config))
+        .route("/api/config", post(set_config))
+        // Generation
+        .route("/api/generate/bulk", post(bulk_generate))
+        .route("/api/stream/start", post(start_stream))
+        .route("/api/stream/stop", post(stop_stream))
+        .route("/api/stream/pause", post(pause_stream))
+        .route("/api/stream/resume", post(resume_stream))
+        .route("/api/stream/trigger/:pattern", post(trigger_pattern))
+        // WebSocket
+        .route("/ws/metrics", get(websocket_metrics))
+        .route("/ws/events", get(websocket_events))
+        // Middleware (order matters: timeout outermost, then rate limit, then auth)
+        .layer(axum::middleware::from_fn(auth_middleware))
+        .layer(axum::Extension(auth_config))
+        .layer(axum::middleware::from_fn(rate_limit_middleware))
+        .layer(axum::Extension(rate_limiter))
+        .layer(cors)
+        .layer(TimeoutLayer::new(Duration::from_secs(timeout_config.request_timeout_secs)))
+        .with_state(state)
+}
+
+/// Create the REST API router with custom CORS and authentication settings.
+pub fn create_router_with_auth(
+    service: SynthService,
+    cors_config: CorsConfig,
+    auth_config: AuthConfig,
+) -> Router {
+    let server_state = service.state.clone();
+    let state = AppState {
+        service: Arc::new(service),
+        server_state,
+    };
+
+    let cors = if cors_config.allow_any_origin {
+        CorsLayer::permissive()
+    } else {
+        let origins: Vec<_> = cors_config
+            .allowed_origins
+            .iter()
+            .filter_map(|o| o.parse().ok())
+            .collect();
+
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
+            .allow_headers([
+                header::CONTENT_TYPE,
+                header::AUTHORIZATION,
+                header::ACCEPT,
+            ])
+    };
+
+    Router::new()
+        // Health and metrics (exempt from auth by default)
+        .route("/health", get(health_check))
+        .route("/ready", get(readiness_check))
+        .route("/live", get(liveness_check))
+        .route("/api/metrics", get(get_metrics))
+        .route("/metrics", get(prometheus_metrics))
+        // Configuration
+        .route("/api/config", get(get_config))
+        .route("/api/config", post(set_config))
+        // Generation
+        .route("/api/generate/bulk", post(bulk_generate))
+        .route("/api/stream/start", post(start_stream))
+        .route("/api/stream/stop", post(stop_stream))
+        .route("/api/stream/pause", post(pause_stream))
+        .route("/api/stream/resume", post(resume_stream))
+        .route("/api/stream/trigger/:pattern", post(trigger_pattern))
+        // WebSocket
+        .route("/ws/metrics", get(websocket_metrics))
+        .route("/ws/events", get(websocket_events))
+        .layer(axum::middleware::from_fn(auth_middleware))
+        .layer(axum::Extension(auth_config))
+        .layer(cors)
+        .with_state(state)
 }
 
 /// Create the REST API router with custom CORS settings.
@@ -373,18 +537,91 @@ async fn get_config(State(state): State<AppState>) -> Json<ConfigResponse> {
 
 /// Set configuration.
 async fn set_config(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Json(new_config): Json<GenerationConfigDto>,
-) -> Json<ConfigResponse> {
-    // For now, we just acknowledge the config update
-    // Full implementation would convert DTO back to GeneratorConfig
-    info!("Configuration update requested");
+) -> Result<Json<ConfigResponse>, (StatusCode, Json<ConfigResponse>)> {
+    use synth_config::schema::{CompanyConfig, TransactionVolume};
+    use synth_core::models::{CoAComplexity, IndustrySector};
 
-    Json(ConfigResponse {
+    info!("Configuration update requested: industry={}, period_months={}",
+          new_config.industry, new_config.period_months);
+
+    // Parse industry from string
+    let industry = match new_config.industry.to_lowercase().as_str() {
+        "manufacturing" => IndustrySector::Manufacturing,
+        "retail" => IndustrySector::Retail,
+        "financial_services" | "financialservices" => IndustrySector::FinancialServices,
+        "healthcare" => IndustrySector::Healthcare,
+        "technology" => IndustrySector::Technology,
+        "professional_services" | "professionalservices" => IndustrySector::ProfessionalServices,
+        "energy" => IndustrySector::Energy,
+        "transportation" => IndustrySector::Transportation,
+        "real_estate" | "realestate" => IndustrySector::RealEstate,
+        "telecommunications" => IndustrySector::Telecommunications,
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ConfigResponse {
+                    success: false,
+                    message: format!("Unknown industry: '{}'. Valid values: manufacturing, retail, financial_services, healthcare, technology, professional_services, energy, transportation, real_estate, telecommunications", new_config.industry),
+                    config: None,
+                }),
+            ));
+        }
+    };
+
+    // Parse CoA complexity from string
+    let complexity = match new_config.coa_complexity.to_lowercase().as_str() {
+        "small" => CoAComplexity::Small,
+        "medium" => CoAComplexity::Medium,
+        "large" => CoAComplexity::Large,
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ConfigResponse {
+                    success: false,
+                    message: format!("Unknown CoA complexity: '{}'. Valid values: small, medium, large", new_config.coa_complexity),
+                    config: None,
+                }),
+            ));
+        }
+    };
+
+    // Convert CompanyConfigDto to CompanyConfig
+    let companies: Vec<CompanyConfig> = new_config.companies.iter().map(|c| {
+        CompanyConfig {
+            code: c.code.clone(),
+            name: c.name.clone(),
+            currency: c.currency.clone(),
+            country: c.country.clone(),
+            fiscal_year_variant: "K4".to_string(),
+            annual_transaction_volume: TransactionVolume::Custom(c.annual_transaction_volume),
+            volume_weight: c.volume_weight as f64,
+        }
+    }).collect();
+
+    // Update the configuration
+    let mut config = state.server_state.config.write().await;
+    config.global.industry = industry;
+    config.global.start_date = new_config.start_date.clone();
+    config.global.period_months = new_config.period_months;
+    config.global.seed = new_config.seed;
+    config.chart_of_accounts.complexity = complexity;
+    config.fraud.enabled = new_config.fraud_enabled;
+    config.fraud.fraud_rate = new_config.fraud_rate as f64;
+
+    // Only update companies if provided
+    if !companies.is_empty() {
+        config.companies = companies;
+    }
+
+    info!("Configuration updated successfully");
+
+    Ok(Json(ConfigResponse {
         success: true,
-        message: "Configuration updated".to_string(),
+        message: "Configuration updated and applied".to_string(),
         config: Some(new_config),
-    })
+    }))
 }
 
 /// Bulk generation endpoint.
@@ -486,16 +723,51 @@ async fn resume_stream(State(state): State<AppState>) -> Json<StreamResponse> {
 }
 
 /// Trigger a specific pattern.
+///
+/// Valid patterns: year_end_spike, period_end_spike, holiday_cluster,
+/// fraud_cluster, error_cluster, uniform, or custom:* patterns.
 async fn trigger_pattern(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     axum::extract::Path(pattern): axum::extract::Path<String>,
 ) -> Json<StreamResponse> {
     info!("Pattern trigger requested: {}", pattern);
 
-    Json(StreamResponse {
-        success: false,
-        message: format!("Pattern '{}' trigger not yet implemented", pattern),
-    })
+    // Validate pattern name
+    let valid_patterns = [
+        "year_end_spike",
+        "period_end_spike",
+        "holiday_cluster",
+        "fraud_cluster",
+        "error_cluster",
+        "uniform",
+    ];
+
+    let is_valid = valid_patterns.contains(&pattern.as_str()) || pattern.starts_with("custom:");
+
+    if !is_valid {
+        return Json(StreamResponse {
+            success: false,
+            message: format!(
+                "Unknown pattern '{}'. Valid patterns: {:?}, or use 'custom:name' for custom patterns",
+                pattern, valid_patterns
+            ),
+        });
+    }
+
+    // Store the pattern for the stream generator to pick up
+    match state.server_state.triggered_pattern.try_write() {
+        Ok(mut triggered) => {
+            *triggered = Some(pattern.clone());
+            Json(StreamResponse {
+                success: true,
+                message: format!("Pattern '{}' will be applied to upcoming entries", pattern),
+            })
+        }
+        Err(_) => Json(StreamResponse {
+            success: false,
+            message: "Failed to acquire lock for pattern trigger".to_string(),
+        }),
+    }
 }
 
 /// WebSocket endpoint for metrics stream.

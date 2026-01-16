@@ -10,8 +10,36 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Get current process memory usage in MB.
+///
+/// Returns `None` if memory tracking is not available on the current platform.
+#[cfg(target_os = "linux")]
+fn get_memory_usage_mb() -> Option<usize> {
+    use std::fs;
+    // Read /proc/self/statm - format: size resident shared text lib data dt
+    // We want 'resident' (2nd field) which is memory pages, multiply by page size
+    if let Ok(content) = fs::read_to_string("/proc/self/statm") {
+        let parts: Vec<&str> = content.split_whitespace().collect();
+        if parts.len() >= 2 {
+            if let Ok(pages) = parts[1].parse::<usize>() {
+                // Page size is typically 4KB on Linux
+                let page_size_kb = 4;
+                return Some((pages * page_size_kb) / 1024);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(not(target_os = "linux"))]
+fn get_memory_usage_mb() -> Option<usize> {
+    // Memory tracking not available on this platform
+    None
+}
+
 use chrono::{Datelike, NaiveDate};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use tracing::{debug, info, warn};
 
 use synth_config::schema::GeneratorConfig;
 use synth_core::error::{SynthError, SynthResult};
@@ -267,38 +295,105 @@ impl EnhancedOrchestrator {
         self
     }
 
+    /// Check if memory limit is exceeded.
+    ///
+    /// Returns an error if the configured memory limit is exceeded.
+    /// Returns Ok(()) if:
+    /// - Memory limit is 0 (disabled)
+    /// - Memory tracking is not available on this platform
+    /// - Current memory usage is within limits
+    fn check_memory_limit(&self) -> SynthResult<()> {
+        let limit_mb = self.config.global.memory_limit_mb;
+        if limit_mb == 0 {
+            return Ok(()); // Memory limit disabled
+        }
+
+        if let Some(current_mb) = get_memory_usage_mb() {
+            if current_mb > limit_mb {
+                return Err(SynthError::resource(format!(
+                    "Memory limit exceeded: using {} MB, limit is {} MB. \
+                     Reduce transaction volume or increase memory_limit_mb in config.",
+                    current_mb, limit_mb
+                )));
+            }
+        }
+        Ok(())
+    }
+
     /// Run the complete generation workflow.
     pub fn generate(&mut self) -> SynthResult<EnhancedGenerationResult> {
+        info!("Starting enhanced generation workflow");
+        info!(
+            "Config: industry={:?}, period_months={}, companies={}",
+            self.config.global.industry,
+            self.config.global.period_months,
+            self.config.companies.len()
+        );
+
+        // Initial memory check before starting
+        self.check_memory_limit()?;
+
         let mut stats = EnhancedGenerationStatistics::default();
         stats.companies_count = self.config.companies.len();
         stats.period_months = self.config.global.period_months;
 
         // Phase 1: Generate Chart of Accounts
+        info!("Phase 1: Generating Chart of Accounts");
         let coa = self.generate_coa()?;
         stats.accounts_count = coa.account_count();
+        info!("Chart of Accounts generated: {} accounts", stats.accounts_count);
+
+        // Check memory after CoA generation
+        self.check_memory_limit()?;
 
         // Phase 2: Generate Master Data
         if self.phase_config.generate_master_data {
+            info!("Phase 2: Generating Master Data");
             self.generate_master_data()?;
             stats.vendor_count = self.master_data.vendors.len();
             stats.customer_count = self.master_data.customers.len();
             stats.material_count = self.master_data.materials.len();
             stats.asset_count = self.master_data.assets.len();
             stats.employee_count = self.master_data.employees.len();
+            info!(
+                "Master data generated: {} vendors, {} customers, {} materials, {} assets, {} employees",
+                stats.vendor_count, stats.customer_count, stats.material_count,
+                stats.asset_count, stats.employee_count
+            );
+
+            // Check memory after master data generation
+            self.check_memory_limit()?;
+        } else {
+            debug!("Phase 2: Skipped (master data generation disabled)");
         }
 
         // Phase 3: Generate Document Flows
         let mut document_flows = DocumentFlowSnapshot::default();
         let mut subledger = SubledgerSnapshot::default();
         if self.phase_config.generate_document_flows && !self.master_data.vendors.is_empty() {
+            info!("Phase 3: Generating Document Flows");
             self.generate_document_flows(&mut document_flows)?;
             stats.p2p_chain_count = document_flows.p2p_chains.len();
             stats.o2c_chain_count = document_flows.o2c_chains.len();
+            info!(
+                "Document flows generated: {} P2P chains, {} O2C chains",
+                stats.p2p_chain_count, stats.o2c_chain_count
+            );
 
             // Phase 3b: Link document flows to subledgers (for data coherence)
+            debug!("Phase 3b: Linking document flows to subledgers");
             subledger = self.link_document_flows_to_subledgers(&document_flows)?;
             stats.ap_invoice_count = subledger.ap_invoices.len();
             stats.ar_invoice_count = subledger.ar_invoices.len();
+            debug!(
+                "Subledgers linked: {} AP invoices, {} AR invoices",
+                stats.ap_invoice_count, stats.ar_invoice_count
+            );
+
+            // Check memory after document flow generation
+            self.check_memory_limit()?;
+        } else {
+            debug!("Phase 3: Skipped (document flow generation disabled or no master data)");
         }
 
         // Phase 4: Generate Journal Entries
@@ -306,41 +401,70 @@ impl EnhancedOrchestrator {
 
         // Phase 4a: Generate JEs from document flows (for data coherence)
         if self.phase_config.generate_document_flows && !document_flows.p2p_chains.is_empty() {
+            debug!("Phase 4a: Generating JEs from document flows");
             let flow_entries = self.generate_jes_from_document_flows(&document_flows)?;
+            debug!("Generated {} JEs from document flows", flow_entries.len());
             entries.extend(flow_entries);
         }
 
         // Phase 4b: Generate standalone journal entries
         if self.phase_config.generate_journal_entries {
+            info!("Phase 4: Generating Journal Entries");
             let je_entries = self.generate_journal_entries(&coa)?;
+            info!("Generated {} standalone journal entries", je_entries.len());
             entries.extend(je_entries);
+        } else {
+            debug!("Phase 4: Skipped (journal entry generation disabled)");
         }
 
         if !entries.is_empty() {
             stats.total_entries = entries.len() as u64;
             stats.total_line_items = entries.iter().map(|e| e.line_count() as u64).sum();
+            info!(
+                "Total entries: {}, total line items: {}",
+                stats.total_entries, stats.total_line_items
+            );
         }
 
         // Phase 5: Inject Anomalies
         let mut anomaly_labels = AnomalyLabels::default();
         if self.phase_config.inject_anomalies && !entries.is_empty() {
+            info!("Phase 5: Injecting Anomalies");
             let result = self.inject_anomalies(&mut entries)?;
             stats.anomalies_injected = result.labels.len();
             anomaly_labels = result;
+            info!("Injected {} anomalies", stats.anomalies_injected);
+        } else {
+            debug!("Phase 5: Skipped (anomaly injection disabled or no entries)");
         }
 
         // Phase 6: Validate Balances
         let mut balance_validation = BalanceValidationResult::default();
         if self.phase_config.validate_balances && !entries.is_empty() {
+            debug!("Phase 6: Validating Balances");
             balance_validation = self.validate_journal_entries(&entries)?;
+            if balance_validation.is_balanced {
+                debug!("Balance validation passed");
+            } else {
+                warn!(
+                    "Balance validation found {} errors",
+                    balance_validation.validation_errors.len()
+                );
+            }
         }
 
         // Phase 7: Inject Data Quality Variations
         let mut data_quality_stats = DataQualityStats::default();
         if self.phase_config.inject_data_quality && !entries.is_empty() {
+            info!("Phase 7: Injecting Data Quality Variations");
             data_quality_stats = self.inject_data_quality(&mut entries)?;
             stats.data_quality_issues = data_quality_stats.records_with_issues;
+            info!("Injected {} data quality issues", stats.data_quality_issues);
+        } else {
+            debug!("Phase 7: Skipped (data quality injection disabled or no entries)");
         }
+
+        info!("Generation workflow complete");
 
         Ok(EnhancedGenerationResult {
             chart_of_accounts: (*coa).clone(),
@@ -592,10 +716,21 @@ impl EnhancedOrchestrator {
 
         let mut entries = Vec::with_capacity(total as usize);
 
-        for _ in 0..total {
+        // Check memory limit at start
+        self.check_memory_limit()?;
+
+        // Check every 1000 entries to avoid overhead
+        const MEMORY_CHECK_INTERVAL: u64 = 1000;
+
+        for i in 0..total {
             let entry = generator.generate();
             entries.push(entry);
             if let Some(pb) = &pb { pb.inc(1); }
+
+            // Periodic memory limit check
+            if (i + 1) % MEMORY_CHECK_INTERVAL == 0 {
+                self.check_memory_limit()?;
+            }
         }
 
         if let Some(pb) = pb {
@@ -957,7 +1092,7 @@ impl EnhancedOrchestrator {
                     "{{spinner:.green}} {} [{{elapsed_precise}}] [{{bar:40.cyan/blue}}] {{pos}}/{{len}} ({{per_sec}})",
                     message
                 ))
-                .unwrap()
+                .expect("Progress bar template should be valid - uses only standard indicatif placeholders")
                 .progress_chars("#>-"),
         );
 

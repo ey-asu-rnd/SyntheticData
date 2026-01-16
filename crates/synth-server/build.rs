@@ -12,23 +12,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if generated file already exists
     let generated_file = Path::new("src/grpc/synth.synth.rs");
+    let generated_exists = generated_file.exists()
+        && std::fs::metadata(generated_file)
+            .map(|m| m.len() > 100) // More than just a stub comment
+            .unwrap_or(false);
 
-    if !protoc_available && generated_file.exists() {
-        // Use existing pre-generated file
+    if !protoc_available && generated_exists {
+        // Use existing pre-generated file (this is fine for release builds)
         println!("cargo:warning=protoc not found, using pre-generated proto code");
         return Ok(());
     }
 
     if !protoc_available {
-        println!("cargo:warning=protoc not found and no pre-generated code exists.");
-        println!("cargo:warning=Please install protoc or run the build on a system with protoc installed.");
-        println!("cargo:warning=Building without gRPC support.");
-        // Create a stub file
-        std::fs::write(
-            "src/grpc/synth.synth.rs",
-            "// Proto code not generated - protoc not available\n",
-        )?;
-        return Ok(());
+        // FAIL the build - don't create a stub that leads to non-functional gRPC
+        eprintln!();
+        eprintln!("===========================================");
+        eprintln!("ERROR: protoc (Protocol Buffers compiler) is required but not found.");
+        eprintln!();
+        eprintln!("The gRPC functionality requires protoc to compile .proto files.");
+        eprintln!();
+        eprintln!("To fix this:");
+        eprintln!("  - Linux: apt install protobuf-compiler");
+        eprintln!("  - macOS: brew install protobuf");
+        eprintln!("  - Windows: choco install protoc");
+        eprintln!();
+        eprintln!("Or download from: https://github.com/protocolbuffers/protobuf/releases");
+        eprintln!("===========================================");
+        eprintln!();
+        return Err("protoc not found and no pre-generated gRPC code available. \
+                    Install protoc or use pre-generated code from the repository.".into());
     }
 
     tonic_build::configure()

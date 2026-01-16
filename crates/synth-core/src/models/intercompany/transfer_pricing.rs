@@ -150,9 +150,20 @@ impl TransferPricingPolicy {
             TransferPricingMethod::TransactionalNetMargin => {
                 cost * (Decimal::ONE + self.markup_percent / Decimal::from(100))
             }
-            TransferPricingMethod::ProfitSplit | TransferPricingMethod::ComparableUncontrolled => {
-                // These require external data; return cost as placeholder
-                cost
+            TransferPricingMethod::ProfitSplit => {
+                // Profit split: apply the markup_percent as the seller's profit share
+                // For example, if markup_percent is 50, seller keeps 50% of total profit
+                // We approximate total profit as a percentage of cost (typical 10-20% industry margin)
+                let industry_margin = Decimal::new(15, 2); // Assume 15% industry profit
+                let total_profit = cost * industry_margin;
+                let seller_share = total_profit * self.markup_percent / Decimal::from(100);
+                cost + seller_share
+            }
+            TransferPricingMethod::ComparableUncontrolled => {
+                // Comparable uncontrolled price: use market adjustment
+                // The markup_percent represents market price premium/discount vs cost
+                // Positive = market price above cost, negative = below cost
+                cost * (Decimal::ONE + self.markup_percent / Decimal::from(100))
             }
         }
     }

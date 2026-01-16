@@ -318,8 +318,20 @@ impl CloseEngine {
                 }
             }
             CloseTask::Custom(name) => {
-                result.status =
-                    CloseTaskStatus::Skipped(format!("Custom task '{}' not implemented", name));
+                if let Some(handler) = context.custom_handlers.get(name) {
+                    let (entries, total) = handler(company_code, fiscal_period);
+                    result.journal_entries_created = entries.len() as u32;
+                    result.total_amount = total;
+                    context.journal_entries.extend(entries);
+                    result.status = CloseTaskStatus::Completed;
+                } else {
+                    // Return error status instead of silently skipping
+                    result.status = CloseTaskStatus::Failed(format!(
+                        "Custom close task '{}' has no registered handler. \
+                         Register a handler via CloseContext.custom_handlers.insert(\"{}\",...)",
+                        name, name
+                    ));
+                }
             }
         }
 
@@ -421,6 +433,9 @@ pub struct CloseContext {
     /// Handler for inventory revaluation.
     pub inventory_reval_handler:
         Option<Box<dyn Fn(&str, &FiscalPeriod) -> (Vec<JournalEntry>, Decimal)>>,
+    /// Handlers for custom close tasks, keyed by task name.
+    pub custom_handlers:
+        std::collections::HashMap<String, Box<dyn Fn(&str, &FiscalPeriod) -> (Vec<JournalEntry>, Decimal)>>,
 }
 
 /// Result of close readiness validation.

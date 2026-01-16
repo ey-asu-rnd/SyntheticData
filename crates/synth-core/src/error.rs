@@ -62,6 +62,16 @@ impl SynthError {
     pub fn invalid_data(msg: impl Into<String>) -> Self {
         Self::InvalidData(msg.into())
     }
+
+    /// Create a resource exhausted error.
+    pub fn resource(msg: impl Into<String>) -> Self {
+        Self::ResourceExhausted(msg.into())
+    }
+
+    /// Create a not supported error.
+    pub fn not_supported(msg: impl Into<String>) -> Self {
+        Self::NotSupported(msg.into())
+    }
 }
 
 /// Result type alias for synthetic data operations.

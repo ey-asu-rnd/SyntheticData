@@ -45,14 +45,30 @@ synth-data validate --config config.yaml
 
 # Generate from config
 synth-data generate --config config.yaml --output ./output
+
+# Pause/resume during generation (Unix only)
+# Send SIGUSR1 to toggle pause state
+kill -USR1 $(pgrep synth-data)
+```
+
+## Server Usage
+
+```bash
+# Start REST/gRPC server
+cargo run -p synth-server -- --port 3000
+
+# With worker threads
+cargo run -p synth-server -- --port 3000 --worker-threads 4
 ```
 
 ## Architecture
 
-This is a Rust workspace with 7 crates following a layered architecture:
+This is a Rust workspace with 10 crates following a layered architecture:
 
 ```
 synth-cli          → Binary entry point (commands: generate, validate, init, info)
+synth-server       → REST/gRPC/WebSocket server with auth, rate limiting, timeouts
+synth-ui           → Tauri/SvelteKit desktop UI
     ↓
 synth-runtime      → Orchestration layer (GenerationOrchestrator coordinates workflow)
     ↓
@@ -204,6 +220,34 @@ synth-output       → Output sinks (CSV, JSON, Parquet, ControlExport)
 - `format_variations.rs`: Date, amount, identifier format variations
 - `duplicates.rs`: Exact, near, fuzzy duplicate generation
 - `typos.rs`: Keyboard-aware typos, OCR errors, homophones
+
+### Server Module (synth-server/src/)
+
+**REST API (rest/):**
+
+- `routes.rs`: Axum REST endpoints for config, streaming, pattern triggers
+- `auth.rs`: API key authentication middleware
+- `rate_limit.rs`: Sliding window rate limiter with per-client tracking
+- `websocket.rs`: WebSocket handler for real-time event streaming
+
+**gRPC API (grpc/):**
+
+- `service.rs`: Tonic gRPC service implementation
+- `synth.proto`: Protocol buffer definitions
+
+**Key Endpoints:**
+
+- `GET/POST /api/config`: Configuration management
+- `POST /api/stream/start|stop|pause|resume`: Stream control
+- `POST /api/stream/trigger/{pattern}`: Trigger patterns (month_end, quarter_end, year_end)
+- `WS /ws/events`: Real-time event streaming
+
+**Production Features:**
+
+- Authentication: API key validation via `X-API-Key` header
+- Rate Limiting: Configurable max requests per time window
+- Timeout: Request timeout with `TimeoutLayer`
+- Memory Limits: Enforced via `/proc/self/statm` on Linux
 
 ### Graph Module (synth-graph/src/)
 
@@ -507,3 +551,41 @@ The generator validates:
 - Single-threaded: ~100K+ entries/second
 - Parallel: Scales with available cores
 - Memory-efficient streaming for large volumes
+
+## Production Readiness
+
+The codebase has been hardened for production use with the following features:
+
+### Data Integrity
+- Parquet output properly implemented (no silent data loss)
+- All transfer pricing methods produce correct calculations
+- Custom close tasks return errors instead of silently skipping
+- Comprehensive config validation with bounds checking
+
+### API Robustness
+- REST/gRPC pattern triggers fully implemented
+- REST set_config actually applies configuration changes
+- Proper error responses for invalid requests
+
+### Resource Management
+- Memory limit enforcement (Linux: via /proc/self/statm)
+- Configurable request timeouts
+- Worker thread configuration support
+- CLI pause/resume via SIGUSR1 signal
+
+### Security
+- API key authentication middleware
+- Rate limiting with sliding window algorithm
+- Configurable exempt paths for health checks
+
+### Observability
+- Comprehensive logging throughout generation pipeline
+- Progress bar with pause state indication
+- Detailed error messages with context
+
+### Configuration Validation
+- period_months: 1-120 (max 10 years)
+- compression level: 1-9 when enabled
+- All rate/percentage fields: 0.0-1.0
+- Approval thresholds: strictly ascending order
+- Distribution sums: must equal 1.0 (±0.01 tolerance)

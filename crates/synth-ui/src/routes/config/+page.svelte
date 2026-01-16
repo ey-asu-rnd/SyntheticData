@@ -34,8 +34,24 @@
   let error: string | null = $state(null);
   let success: string | null = $state(null);
 
-  const industries = ['Manufacturing', 'Retail', 'FinancialServices', 'Healthcare', 'Technology'];
-  const complexities = ['Small', 'Medium', 'Large'];
+  // Industry values must match backend parsing (lowercase/underscore variants accepted)
+  const industries = [
+    { value: 'manufacturing', label: 'Manufacturing' },
+    { value: 'retail', label: 'Retail' },
+    { value: 'financial_services', label: 'Financial Services' },
+    { value: 'healthcare', label: 'Healthcare' },
+    { value: 'technology', label: 'Technology' },
+    { value: 'professional_services', label: 'Professional Services' },
+    { value: 'energy', label: 'Energy' },
+    { value: 'transportation', label: 'Transportation' },
+    { value: 'real_estate', label: 'Real Estate' },
+    { value: 'telecommunications', label: 'Telecommunications' },
+  ];
+  const complexities = [
+    { value: 'small', label: 'Small (~100 accounts)' },
+    { value: 'medium', label: 'Medium (~400 accounts)' },
+    { value: 'large', label: 'Large (~2500 accounts)' },
+  ];
 
   async function loadConfig() {
     try {
@@ -52,8 +68,58 @@
     }
   }
 
+  function validateConfig(): string | null {
+    if (!config) return 'No configuration loaded';
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(config.start_date)) {
+      return 'Start date must be in YYYY-MM-DD format';
+    }
+
+    // Validate period months
+    if (config.period_months < 1 || config.period_months > 120) {
+      return 'Period must be between 1 and 120 months';
+    }
+
+    // Validate fraud rate
+    if (config.fraud_enabled && (config.fraud_rate < 0 || config.fraud_rate > 100)) {
+      return 'Fraud rate must be between 0 and 100';
+    }
+
+    // Validate companies
+    if (config.companies.length === 0) {
+      return 'At least one company is required';
+    }
+
+    for (const company of config.companies) {
+      if (!company.code || company.code.length === 0) {
+        return 'All companies must have a code';
+      }
+      if (!company.name || company.name.length === 0) {
+        return 'All companies must have a name';
+      }
+      if (company.annual_transaction_volume < 100) {
+        return `Company ${company.code}: Annual volume must be at least 100`;
+      }
+      if (company.volume_weight < 0) {
+        return `Company ${company.code}: Volume weight must be positive`;
+      }
+    }
+
+    return null;
+  }
+
   async function saveConfig() {
     if (!config) return;
+
+    // Validate before saving
+    const validationError = validateConfig();
+    if (validationError) {
+      error = validationError;
+      return;
+    }
+
     try {
       saving = true;
       error = null;
@@ -62,6 +128,8 @@
       if (response.success) {
         success = 'Configuration saved successfully';
         setTimeout(() => success = null, 3000);
+      } else {
+        error = response.message || 'Failed to save configuration';
       }
     } catch (e) {
       error = String(e);
@@ -127,7 +195,7 @@
             <label for="industry">Industry</label>
             <select id="industry" bind:value={config.industry}>
               {#each industries as industry}
-                <option value={industry}>{industry}</option>
+                <option value={industry.value}>{industry.label}</option>
               {/each}
             </select>
           </div>
@@ -136,7 +204,7 @@
             <label for="complexity">CoA Complexity</label>
             <select id="complexity" bind:value={config.coa_complexity}>
               {#each complexities as complexity}
-                <option value={complexity}>{complexity}</option>
+                <option value={complexity.value}>{complexity.label}</option>
               {/each}
             </select>
           </div>

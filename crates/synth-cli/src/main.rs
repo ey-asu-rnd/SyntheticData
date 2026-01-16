@@ -1,6 +1,8 @@
 //! CLI for synthetic accounting data generation.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -9,6 +11,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use synth_config::{presets, GeneratorConfig};
 use synth_core::models::{CoAComplexity, IndustrySector};
 use synth_runtime::GenerationOrchestrator;
+
+#[cfg(unix)]
+use signal_hook::consts::SIGUSR1;
 
 #[derive(Parser)]
 #[command(name = "synth-data")]
@@ -111,7 +116,44 @@ fn main() -> Result<()> {
             tracing::info!("Period: {} months", generator_config.global.period_months);
             tracing::info!("Companies: {}", generator_config.companies.len());
 
-            let mut orchestrator = GenerationOrchestrator::new(generator_config)?;
+            // Set up pause flag for signal handling
+            let pause_flag = Arc::new(AtomicBool::new(false));
+
+            // Register signal handler on Unix systems
+            #[cfg(unix)]
+            {
+                let pause_flag_clone = Arc::clone(&pause_flag);
+                // Use register to set flag to true, then spawn a thread to toggle
+                let signal_flag = Arc::new(AtomicBool::new(false));
+                let signal_flag_clone = Arc::clone(&signal_flag);
+
+                if signal_hook::flag::register(SIGUSR1, signal_flag_clone).is_ok() {
+                    let pid = std::process::id();
+                    tracing::info!("Pause/resume: send SIGUSR1 to toggle (kill -USR1 {})", pid);
+
+                    // Spawn a thread to monitor the signal and toggle pause state
+                    std::thread::spawn(move || {
+                        loop {
+                            if signal_flag.swap(false, Ordering::Relaxed) {
+                                // Signal received - toggle pause state
+                                let was_paused = pause_flag_clone.load(Ordering::Relaxed);
+                                pause_flag_clone.store(!was_paused, Ordering::Relaxed);
+                                if was_paused {
+                                    eprintln!("\n>>> RESUMED");
+                                } else {
+                                    eprintln!("\n>>> PAUSED - send SIGUSR1 again to resume");
+                                }
+                            }
+                            std::thread::sleep(std::time::Duration::from_millis(50));
+                        }
+                    });
+                } else {
+                    tracing::warn!("Failed to register SIGUSR1 handler");
+                }
+            }
+
+            let mut orchestrator = GenerationOrchestrator::new(generator_config)?
+                .with_pause_flag(pause_flag);
             let result = orchestrator.generate()?;
 
             tracing::info!("Generation complete!");

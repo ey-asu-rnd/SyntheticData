@@ -40,6 +40,8 @@ pub struct ServerState {
     pub stream_paused: AtomicBool,
     /// Stream stop flag
     pub stream_stopped: AtomicBool,
+    /// Triggered pattern name (if any) - will be applied to next generated entries
+    pub triggered_pattern: RwLock<Option<String>>,
 }
 
 impl ServerState {
@@ -53,6 +55,7 @@ impl ServerState {
             total_stream_events: AtomicU64::new(0),
             stream_paused: AtomicBool::new(false),
             stream_stopped: AtomicBool::new(false),
+            triggered_pattern: RwLock::new(None),
         }
     }
 
@@ -539,14 +542,48 @@ impl synthetic_data_service_server::SyntheticDataService for SynthService {
                 (true, "Stream stopped".to_string(), StreamStatus::Stopped)
             }
             ControlAction::TriggerPattern => {
-                // Pattern triggering would be implemented here
                 let pattern = cmd.pattern_name.unwrap_or_default();
-                warn!("Pattern trigger not yet implemented: {}", pattern);
-                (
-                    false,
-                    format!("Pattern '{}' trigger not implemented", pattern),
-                    StreamStatus::Running,
-                )
+                if pattern.is_empty() {
+                    (
+                        false,
+                        "Pattern name is required for TriggerPattern action".to_string(),
+                        StreamStatus::Running,
+                    )
+                } else {
+                    // Valid patterns: year_end_spike, period_end_spike, holiday_cluster,
+                    // fraud_cluster, error_cluster, or any custom pattern name
+                    let valid_patterns = [
+                        "year_end_spike",
+                        "period_end_spike",
+                        "holiday_cluster",
+                        "fraud_cluster",
+                        "error_cluster",
+                        "uniform",
+                    ];
+                    let is_valid = valid_patterns.contains(&pattern.as_str()) || pattern.starts_with("custom:");
+
+                    if is_valid {
+                        // Store the pattern for the stream generator to pick up
+                        if let Ok(mut triggered) = self.state.triggered_pattern.try_write() {
+                            *triggered = Some(pattern.clone());
+                        }
+                        info!("Pattern trigger activated: {}", pattern);
+                        (
+                            true,
+                            format!("Pattern '{}' will be applied to upcoming entries", pattern),
+                            StreamStatus::Running,
+                        )
+                    } else {
+                        (
+                            false,
+                            format!(
+                                "Unknown pattern '{}'. Valid patterns: {:?}",
+                                pattern, valid_patterns
+                            ),
+                            StreamStatus::Running,
+                        )
+                    }
+                }
             }
             ControlAction::Unspecified => (
                 false,

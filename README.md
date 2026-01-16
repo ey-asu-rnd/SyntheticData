@@ -115,6 +115,32 @@ SyntheticData generates coherent enterprise data that is indistinguishable from 
 - **Deterministic Generation**: Seeded RNG ensures reproducible output for testing
 - **Multiple Output Formats**: CSV, Parquet, JSON with optional compression
 
+### Server & API (NEW)
+
+#### REST API
+- **Configuration Management**: GET/POST `/api/config` for runtime configuration
+- **Generation Control**: Start, pause, resume, stop generation streams
+- **Real-time Streaming**: WebSocket endpoint for live event streaming
+- **Authentication**: API key-based authentication middleware
+- **Rate Limiting**: Configurable request rate limiting
+
+#### gRPC API
+- **Streaming Generation**: Server-side streaming for high-performance data delivery
+- **Pattern Triggers**: Trigger specific generation patterns programmatically
+- **Control Commands**: Pause, resume, and stop generation streams
+
+#### Security & Production Features
+- **Authentication**: API key validation with configurable exempt paths
+- **Rate Limiting**: Sliding window rate limiter with per-client tracking
+- **Timeout Handling**: Configurable request timeouts
+- **Memory Limits**: Enforced memory limits to prevent OOM conditions
+- **Comprehensive Logging**: Detailed logging throughout the generation pipeline
+
+### CLI Features (NEW)
+- **Pause/Resume**: Send `SIGUSR1` signal to toggle pause during generation (Unix)
+- **Worker Threads**: Configure number of worker threads for parallel generation
+- **Verbose Mode**: Detailed logging with `-v` flag
+
 ## Installation
 
 ### From Source
@@ -171,6 +197,59 @@ synth-data generate --config <CONFIG_FILE> --output <OUTPUT_DIR>
 
 ```bash
 synth-data info
+```
+
+## Server Usage
+
+### Starting the Server
+
+```bash
+# Start with default settings
+cargo run -p synth-server -- --port 3000
+
+# With worker threads and authentication
+cargo run -p synth-server -- --port 3000 --worker-threads 4
+```
+
+### REST API Endpoints
+
+```bash
+# Get current configuration
+curl http://localhost:3000/api/config
+
+# Update configuration
+curl -X POST http://localhost:3000/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"industry": "manufacturing", "period_months": 12}'
+
+# Start generation stream
+curl -X POST http://localhost:3000/api/stream/start
+
+# Pause/Resume generation
+curl -X POST http://localhost:3000/api/stream/pause
+curl -X POST http://localhost:3000/api/stream/resume
+
+# Stop generation
+curl -X POST http://localhost:3000/api/stream/stop
+
+# Trigger specific pattern
+curl -X POST http://localhost:3000/api/stream/trigger/month_end
+```
+
+### WebSocket Streaming
+
+Connect to `ws://localhost:3000/ws/events` for real-time event streaming.
+
+### CLI Pause/Resume (Unix)
+
+During generation, send SIGUSR1 to toggle pause:
+
+```bash
+# Start generation in background
+synth-data generate --demo &
+
+# Get PID and toggle pause
+kill -USR1 $(pgrep synth-data)
 ```
 
 ## Configuration
@@ -497,7 +576,12 @@ SyntheticData/
     │   └── ml/                  # Feature computation, splits
     ├── synth-output/            # Output sinks
     ├── synth-runtime/           # Orchestration
-    └── synth-cli/               # Command-line interface
+    ├── synth-cli/               # Command-line interface
+    ├── synth-server/            # REST/gRPC/WebSocket server
+    │   ├── rest/                # Axum REST API with auth & rate limiting
+    │   ├── grpc/                # Tonic gRPC service
+    │   └── websocket/           # Real-time event streaming
+    └── synth-ui/                # Tauri/SvelteKit desktop UI
 ```
 
 ## Example Enterprise Configuration
