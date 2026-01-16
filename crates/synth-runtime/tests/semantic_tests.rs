@@ -10,6 +10,9 @@ use synth_test_utils::{
 };
 
 /// Test that all generated journal entries are balanced (debits = credits).
+///
+/// Note: Entries marked as anomalies (including human errors) are excluded from
+/// this test since they may be intentionally unbalanced for ML detection training.
 #[test]
 fn test_all_journal_entries_balanced() {
     let mut config = minimal_config();
@@ -35,8 +38,27 @@ fn test_all_journal_entries_balanced() {
         "Should generate at least one entry"
     );
 
-    // Verify all entries are balanced
-    assert_all_balanced!(result.journal_entries);
+    // Filter out entries with human errors before checking balance
+    // Human errors (marked with [HUMAN_ERROR:*] tags) may be intentionally unbalanced
+    // for ML detection training (e.g., transposed digits, decimal shifts)
+    let normal_entries: Vec<_> = result
+        .journal_entries
+        .iter()
+        .filter(|e| {
+            e.header.header_text.as_ref()
+                .map(|text| !text.contains("[HUMAN_ERROR:"))
+                .unwrap_or(true)
+        })
+        .cloned()
+        .collect();
+
+    assert!(
+        !normal_entries.is_empty(),
+        "Should have at least some entries without human errors"
+    );
+
+    // Verify all entries without human errors are balanced
+    assert_all_balanced!(normal_entries);
 }
 
 /// Test that generated amounts are analyzed for Benford's Law distribution.

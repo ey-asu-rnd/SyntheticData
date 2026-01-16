@@ -45,6 +45,8 @@ pub struct JournalEntryGenerator {
     using_real_master_data: bool,
     // Fraud generation
     fraud_config: FraudConfig,
+    // Persona-based error injection
+    persona_errors_enabled: bool,
 }
 
 impl JournalEntryGenerator {
@@ -179,6 +181,7 @@ impl JournalEntryGenerator {
             material_pool: None,
             using_real_master_data: false,
             fraud_config: FraudConfig::default(),
+            persona_errors_enabled: true, // Enable by default for realism
         }
     }
 
@@ -558,7 +561,162 @@ impl JournalEntryGenerator {
             entry.add_line(line);
         }
 
+        // Apply persona-based errors if enabled and it's a human user
+        if self.persona_errors_enabled && !is_automated {
+            self.maybe_inject_persona_error(&mut entry);
+        }
+
         entry
+    }
+
+    /// Enable or disable persona-based error injection.
+    ///
+    /// When enabled, entries created by human personas have a chance
+    /// to contain realistic human errors based on their experience level.
+    pub fn with_persona_errors(mut self, enabled: bool) -> Self {
+        self.persona_errors_enabled = enabled;
+        self
+    }
+
+    /// Check if persona errors are enabled.
+    pub fn persona_errors_enabled(&self) -> bool {
+        self.persona_errors_enabled
+    }
+
+    /// Maybe inject a persona-appropriate error based on the persona's error rate.
+    fn maybe_inject_persona_error(&mut self, entry: &mut JournalEntry) {
+        // Parse persona from the entry header
+        let persona_str = &entry.header.user_persona;
+        let persona = match persona_str.to_lowercase().as_str() {
+            s if s.contains("junior") => UserPersona::JuniorAccountant,
+            s if s.contains("senior") => UserPersona::SeniorAccountant,
+            s if s.contains("controller") => UserPersona::Controller,
+            s if s.contains("manager") => UserPersona::Manager,
+            s if s.contains("executive") => UserPersona::Executive,
+            _ => return, // Don't inject errors for unknown personas
+        };
+
+        // Check if error should occur based on persona's error rate
+        let error_rate = persona.error_rate();
+        if self.rng.gen::<f64>() >= error_rate {
+            return; // No error this time
+        }
+
+        // Select and inject persona-appropriate error
+        self.inject_human_error(entry, persona);
+    }
+
+    /// Inject a human-like error based on the persona.
+    ///
+    /// Error types 0, 1, and 3 modify amounts and create unbalanced entries.
+    /// These entries are marked with [HUMAN_ERROR:*] tags in header_text for ML detection.
+    /// Error types 2 and 4 don't affect amounts and entries remain balanced.
+    fn inject_human_error(&mut self, entry: &mut JournalEntry, persona: UserPersona) {
+        use rust_decimal::Decimal;
+
+        // Different personas make different types of errors
+        let error_type: u8 = match persona {
+            UserPersona::JuniorAccountant => {
+                // Junior accountants make more varied errors
+                self.rng.gen_range(0..5)
+            }
+            UserPersona::SeniorAccountant => {
+                // Senior accountants mainly make transposition errors
+                self.rng.gen_range(0..3)
+            }
+            UserPersona::Controller | UserPersona::Manager => {
+                // Controllers/managers mainly make rounding or cutoff errors
+                self.rng.gen_range(3..5)
+            }
+            _ => return,
+        };
+
+        match error_type {
+            0 => {
+                // Transposed digits in an amount
+                if let Some(line) = entry.lines.get_mut(0) {
+                    let amount = if line.debit_amount > Decimal::ZERO {
+                        &mut line.debit_amount
+                    } else {
+                        &mut line.credit_amount
+                    };
+
+                    // Simple digit swap in the string representation
+                    let s = amount.to_string();
+                    if s.len() >= 2 {
+                        let chars: Vec<char> = s.chars().collect();
+                        let pos = self.rng.gen_range(0..chars.len().saturating_sub(1));
+                        if chars[pos].is_ascii_digit() && chars.get(pos + 1).map_or(false, |c| c.is_ascii_digit()) {
+                            let mut new_chars = chars;
+                            new_chars.swap(pos, pos + 1);
+                            if let Ok(new_amount) = new_chars.into_iter().collect::<String>().parse::<Decimal>() {
+                                *amount = new_amount;
+                                entry.header.header_text = Some(
+                                    entry.header.header_text.clone().unwrap_or_default()
+                                        + " [HUMAN_ERROR:TRANSPOSITION]"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            1 => {
+                // Wrong decimal place (off by factor of 10)
+                if let Some(line) = entry.lines.get_mut(0) {
+                    if line.debit_amount > Decimal::ZERO {
+                        line.debit_amount = line.debit_amount * Decimal::new(10, 0);
+                    } else if line.credit_amount > Decimal::ZERO {
+                        line.credit_amount = line.credit_amount * Decimal::new(10, 0);
+                    }
+                    entry.header.header_text = Some(
+                        entry.header.header_text.clone().unwrap_or_default()
+                            + " [HUMAN_ERROR:DECIMAL_SHIFT]"
+                    );
+                }
+            }
+            2 => {
+                // Typo in description (doesn't affect balance)
+                if let Some(ref mut text) = entry.header.header_text {
+                    let typos = ["teh", "adn", "wiht", "taht", "recieve"];
+                    let correct = ["the", "and", "with", "that", "receive"];
+                    let idx = self.rng.gen_range(0..typos.len());
+                    if text.to_lowercase().contains(correct[idx]) {
+                        *text = text.replace(correct[idx], typos[idx]);
+                        *text = format!("{} [HUMAN_ERROR:TYPO]", text);
+                    }
+                }
+            }
+            3 => {
+                // Rounding to round number
+                if let Some(line) = entry.lines.get_mut(0) {
+                    if line.debit_amount > Decimal::ZERO {
+                        line.debit_amount = (line.debit_amount / Decimal::new(100, 0)).round()
+                            * Decimal::new(100, 0);
+                    } else if line.credit_amount > Decimal::ZERO {
+                        line.credit_amount = (line.credit_amount / Decimal::new(100, 0)).round()
+                            * Decimal::new(100, 0);
+                    }
+                    entry.header.header_text = Some(
+                        entry.header.header_text.clone().unwrap_or_default()
+                            + " [HUMAN_ERROR:ROUNDED]"
+                    );
+                }
+            }
+            4 => {
+                // Late posting marker (document date much earlier than posting date)
+                // This doesn't create an imbalance
+                if entry.header.document_date == entry.header.posting_date {
+                    let days_late = self.rng.gen_range(5..15);
+                    entry.header.document_date =
+                        entry.header.posting_date - chrono::Duration::days(days_late);
+                    entry.header.header_text = Some(
+                        entry.header.header_text.clone().unwrap_or_default()
+                            + " [HUMAN_ERROR:LATE_POSTING]"
+                    );
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Select a user from the pool or generate a generic user ID.

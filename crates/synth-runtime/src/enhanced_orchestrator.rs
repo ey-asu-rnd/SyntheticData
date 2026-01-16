@@ -564,11 +564,14 @@ impl EnhancedOrchestrator {
         );
 
         // Connect generated master data to ensure JEs reference real entities
-        let mut generator = generator.with_master_data(
-            &self.master_data.vendors,
-            &self.master_data.customers,
-            &self.master_data.materials,
-        );
+        // Enable persona-based error injection for realistic human behavior
+        let mut generator = generator
+            .with_master_data(
+                &self.master_data.vendors,
+                &self.master_data.customers,
+                &self.master_data.materials,
+            )
+            .with_persona_errors(true);
 
         let mut entries = Vec::with_capacity(total as usize);
 
