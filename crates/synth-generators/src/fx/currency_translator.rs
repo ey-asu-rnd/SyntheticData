@@ -425,7 +425,7 @@ mod tests {
             2024,
             12,
             "EUR".to_string(),
-            TrialBalanceType::Closing,
+            TrialBalanceType::PostClosing,
         );
         tb.company_name = Some("Test Subsidiary".to_string());
 
