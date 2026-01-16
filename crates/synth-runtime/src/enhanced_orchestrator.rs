@@ -31,6 +31,8 @@ use synth_generators::{
     AnomalyInjector, AnomalyInjectorConfig,
     // Balance validation
     RunningBalanceTracker, BalanceTrackerConfig, ValidationError,
+    // Data quality
+    DataQualityInjector, DataQualityConfig, DataQualityStats,
 };
 use synth_core::models::subledger::ap::APInvoice;
 use synth_core::models::subledger::ar::ARInvoice;
@@ -46,6 +48,8 @@ pub struct PhaseConfig {
     pub generate_journal_entries: bool,
     /// Inject anomalies.
     pub inject_anomalies: bool,
+    /// Inject data quality variations (typos, missing values, format variations).
+    pub inject_data_quality: bool,
     /// Validate balance sheet equation after generation.
     pub validate_balances: bool,
     /// Show progress bars.
@@ -73,6 +77,7 @@ impl Default for PhaseConfig {
             generate_document_flows: true,
             generate_journal_entries: true,
             inject_anomalies: false,
+            inject_data_quality: false, // Off by default (to preserve clean test data)
             validate_balances: true,
             show_progress: true,
             vendors_per_company: 50,
@@ -184,6 +189,8 @@ pub struct EnhancedGenerationResult {
     pub anomaly_labels: AnomalyLabels,
     /// Balance validation results (if validation enabled).
     pub balance_validation: BalanceValidationResult,
+    /// Data quality statistics (if injection enabled).
+    pub data_quality_stats: DataQualityStats,
     /// Generation statistics.
     pub statistics: EnhancedGenerationStatistics,
 }
@@ -215,6 +222,8 @@ pub struct EnhancedGenerationStatistics {
     pub ar_invoice_count: usize,
     /// Anomaly counts.
     pub anomalies_injected: usize,
+    /// Data quality issue counts.
+    pub data_quality_issues: usize,
 }
 
 /// Enhanced orchestrator with full feature integration.
@@ -326,6 +335,13 @@ impl EnhancedOrchestrator {
             balance_validation = self.validate_journal_entries(&entries)?;
         }
 
+        // Phase 7: Inject Data Quality Variations
+        let mut data_quality_stats = DataQualityStats::default();
+        if self.phase_config.inject_data_quality && !entries.is_empty() {
+            data_quality_stats = self.inject_data_quality(&mut entries)?;
+            stats.data_quality_issues = data_quality_stats.records_with_issues;
+        }
+
         Ok(EnhancedGenerationResult {
             chart_of_accounts: (*coa).clone(),
             master_data: self.master_data.clone(),
@@ -334,6 +350,7 @@ impl EnhancedOrchestrator {
             journal_entries: entries,
             anomaly_labels,
             balance_validation,
+            data_quality_stats,
             statistics: stats,
         })
     }
@@ -790,6 +807,128 @@ impl EnhancedOrchestrator {
         })
     }
 
+    /// Inject data quality variations into journal entries.
+    ///
+    /// Applies typos, missing values, and format variations to make
+    /// the synthetic data more realistic for testing data cleaning pipelines.
+    fn inject_data_quality(
+        &mut self,
+        entries: &mut [JournalEntry],
+    ) -> SynthResult<DataQualityStats> {
+        let pb = self.create_progress_bar(entries.len() as u64, "Injecting Data Quality Issues");
+
+        // Use minimal configuration by default for realistic but not overwhelming issues
+        let config = DataQualityConfig::minimal();
+        let mut injector = DataQualityInjector::new(config);
+
+        // Build context for missing value decisions
+        let context = HashMap::new();
+
+        for entry in entries.iter_mut() {
+            // Process header_text field (common target for typos)
+            if let Some(text) = &entry.header.header_text {
+                let processed = injector.process_text_field(
+                    "header_text",
+                    text,
+                    &entry.header.document_id.to_string(),
+                    &context,
+                );
+                match processed {
+                    Some(new_text) if new_text != *text => {
+                        entry.header.header_text = Some(new_text);
+                    }
+                    None => {
+                        entry.header.header_text = None; // Missing value
+                    }
+                    _ => {}
+                }
+            }
+
+            // Process reference field
+            if let Some(ref_text) = &entry.header.reference {
+                let processed = injector.process_text_field(
+                    "reference",
+                    ref_text,
+                    &entry.header.document_id.to_string(),
+                    &context,
+                );
+                match processed {
+                    Some(new_text) if new_text != *ref_text => {
+                        entry.header.reference = Some(new_text);
+                    }
+                    None => {
+                        entry.header.reference = None;
+                    }
+                    _ => {}
+                }
+            }
+
+            // Process user_persona field (potential for typos in user IDs)
+            let user_persona = entry.header.user_persona.clone();
+            if let Some(processed) = injector.process_text_field(
+                "user_persona",
+                &user_persona,
+                &entry.header.document_id.to_string(),
+                &context,
+            ) {
+                if processed != user_persona {
+                    entry.header.user_persona = processed;
+                }
+            }
+
+            // Process line items
+            for line in &mut entry.lines {
+                // Process line description if present
+                if let Some(ref text) = line.line_text {
+                    let processed = injector.process_text_field(
+                        "line_text",
+                        text,
+                        &entry.header.document_id.to_string(),
+                        &context,
+                    );
+                    match processed {
+                        Some(new_text) if new_text != *text => {
+                            line.line_text = Some(new_text);
+                        }
+                        None => {
+                            line.line_text = None;
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Process cost_center if present
+                if let Some(cc) = &line.cost_center {
+                    let processed = injector.process_text_field(
+                        "cost_center",
+                        cc,
+                        &entry.header.document_id.to_string(),
+                        &context,
+                    );
+                    match processed {
+                        Some(new_cc) if new_cc != *cc => {
+                            line.cost_center = Some(new_cc);
+                        }
+                        None => {
+                            line.cost_center = None;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            if let Some(pb) = &pb {
+                pb.inc(1);
+            }
+        }
+
+        if let Some(pb) = pb {
+            pb.finish_with_message("Data quality injection complete");
+        }
+
+        Ok(injector.stats().clone())
+    }
+
     /// Calculate total transactions to generate.
     fn calculate_total_transactions(&self) -> u64 {
         let months = self.config.global.period_months as f64;
@@ -945,6 +1084,7 @@ mod tests {
             generate_document_flows: true,
             generate_journal_entries: false,
             inject_anomalies: false,
+            inject_data_quality: false,
             validate_balances: false,
             show_progress: false,
             vendors_per_company: 5,
@@ -999,6 +1139,7 @@ mod tests {
             generate_document_flows: true,
             generate_journal_entries: true,
             inject_anomalies: false,
+            inject_data_quality: false,
             validate_balances: true,
             show_progress: false,
             vendors_per_company: 3,
@@ -1038,6 +1179,7 @@ mod tests {
             generate_document_flows: true,
             generate_journal_entries: false,
             inject_anomalies: false,
+            inject_data_quality: false,
             validate_balances: false,
             show_progress: false,
             vendors_per_company: 5,
