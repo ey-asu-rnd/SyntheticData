@@ -204,6 +204,8 @@ pub struct AssetAccountDetermination {
     pub loss_on_disposal_account: String,
     /// Clearing account for acquisitions
     pub acquisition_clearing_account: String,
+    /// Gain/loss account (combined, for backward compatibility).
+    pub gain_loss_account: String,
 }
 
 impl Default for AssetAccountDetermination {
@@ -215,6 +217,7 @@ impl Default for AssetAccountDetermination {
             gain_on_disposal_account: "810000".to_string(),
             loss_on_disposal_account: "840000".to_string(),
             acquisition_clearing_account: "299000".to_string(),
+            gain_loss_account: "810000".to_string(),
         }
     }
 }

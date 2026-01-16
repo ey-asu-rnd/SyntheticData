@@ -61,6 +61,8 @@ pub enum MaterialGroup {
     Mechanical,
     /// Chemicals and raw materials
     Chemicals,
+    /// Chemical (alias for Chemicals)
+    Chemical,
     /// Office supplies
     OfficeSupplies,
     /// IT equipment
@@ -75,6 +77,10 @@ pub enum MaterialGroup {
     Tools,
     /// Services
     Services,
+    /// Consumables
+    Consumables,
+    /// Finished goods
+    FinishedGoods,
 }
 
 impl MaterialGroup {
@@ -82,9 +88,9 @@ impl MaterialGroup {
     pub fn typical_uom(&self) -> &'static str {
         match self {
             Self::Electronics | Self::Mechanical | Self::ItEquipment => "EA",
-            Self::Chemicals => "KG",
-            Self::OfficeSupplies | Self::PackagingMaterials => "EA",
-            Self::Furniture => "EA",
+            Self::Chemicals | Self::Chemical => "KG",
+            Self::OfficeSupplies | Self::PackagingMaterials | Self::Consumables => "EA",
+            Self::Furniture | Self::FinishedGoods => "EA",
             Self::SafetyEquipment | Self::Tools => "EA",
             Self::Services => "HR",
         }

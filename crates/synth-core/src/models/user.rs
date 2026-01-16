@@ -494,6 +494,18 @@ pub enum SystemRole {
     PeriodClose,
     /// System administrator
     Admin,
+    /// AP Accountant
+    ApAccountant,
+    /// AR Accountant
+    ArAccountant,
+    /// Buyer / Procurement
+    Buyer,
+    /// Executive / Management
+    Executive,
+    /// Financial Analyst
+    FinancialAnalyst,
+    /// General Accountant
+    GeneralAccountant,
     /// Custom role with name
     Custom(String),
 }

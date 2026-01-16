@@ -195,11 +195,11 @@ impl ICMatchingEngine {
                         // Extract counterparty from account code
                         let counterparty = line.account_code[4..].to_string();
                         self.add_receivable(
-                            &entry.company_code,
+                            entry.company_code(),
                             &counterparty,
                             amount,
-                            entry.reference.as_deref(),
-                            entry.posting_date,
+                            entry.header.reference.as_deref(),
+                            entry.posting_date(),
                         );
                     }
                 }
@@ -209,11 +209,11 @@ impl ICMatchingEngine {
                     if let Some(amount) = line.credit_amount {
                         let counterparty = line.account_code[4..].to_string();
                         self.add_payable(
-                            &entry.company_code,
+                            entry.company_code(),
                             &counterparty,
                             amount,
-                            entry.reference.as_deref(),
-                            entry.posting_date,
+                            entry.header.reference.as_deref(),
+                            entry.posting_date(),
                         );
                     }
                 }

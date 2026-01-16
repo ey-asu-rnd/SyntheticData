@@ -307,6 +307,8 @@ pub enum MovementType {
     GoodsReceiptProduction,
     /// Goods receipt without reference.
     GoodsReceiptOther,
+    /// Goods receipt (generic).
+    GoodsReceipt,
     /// Return to vendor.
     ReturnToVendor,
     /// Goods issue for sales order.
@@ -317,16 +319,28 @@ pub enum MovementType {
     GoodsIssueCostCenter,
     /// Goods issue scrapping.
     GoodsIssueScrapping,
+    /// Goods issue (generic).
+    GoodsIssue,
+    /// Scrap (alias for GoodsIssueScrapping).
+    Scrap,
     /// Transfer posting between plants.
     TransferPlant,
     /// Transfer posting between storage locations.
     TransferStorageLocation,
+    /// Transfer in.
+    TransferIn,
+    /// Transfer out.
+    TransferOut,
     /// Transfer to quality inspection.
     TransferToInspection,
     /// Transfer from quality inspection.
     TransferFromInspection,
     /// Physical inventory difference.
     PhysicalInventory,
+    /// Inventory adjustment in.
+    InventoryAdjustmentIn,
+    /// Inventory adjustment out.
+    InventoryAdjustmentOut,
     /// Initial stock entry.
     InitialStock,
     /// Reversal of goods receipt.
@@ -342,7 +356,10 @@ impl MovementType {
             MovementType::GoodsReceiptPO
             | MovementType::GoodsReceiptProduction
             | MovementType::GoodsReceiptOther
+            | MovementType::GoodsReceipt
             | MovementType::TransferFromInspection
+            | MovementType::TransferIn
+            | MovementType::InventoryAdjustmentIn
             | MovementType::InitialStock
             | MovementType::ReversalGoodsIssue => 1,
 
@@ -351,6 +368,10 @@ impl MovementType {
             | MovementType::GoodsIssueProduction
             | MovementType::GoodsIssueCostCenter
             | MovementType::GoodsIssueScrapping
+            | MovementType::GoodsIssue
+            | MovementType::Scrap
+            | MovementType::TransferOut
+            | MovementType::InventoryAdjustmentOut
             | MovementType::TransferToInspection
             | MovementType::ReversalGoodsReceipt => -1,
 
@@ -366,16 +387,23 @@ impl MovementType {
             MovementType::GoodsReceiptPO => ("1200".to_string(), "2100".to_string()), // Inventory, GR/IR
             MovementType::GoodsReceiptProduction => ("1200".to_string(), "1300".to_string()), // Inventory, WIP
             MovementType::GoodsReceiptOther => ("1200".to_string(), "1299".to_string()), // Inventory, Clearing
+            MovementType::GoodsReceipt => ("1200".to_string(), "1299".to_string()), // Generic receipt
             MovementType::ReturnToVendor => ("2100".to_string(), "1200".to_string()), // GR/IR, Inventory
             MovementType::GoodsIssueSales => ("5000".to_string(), "1200".to_string()), // COGS, Inventory
             MovementType::GoodsIssueProduction => ("1300".to_string(), "1200".to_string()), // WIP, Inventory
             MovementType::GoodsIssueCostCenter => ("7000".to_string(), "1200".to_string()), // Expense, Inventory
             MovementType::GoodsIssueScrapping => ("7900".to_string(), "1200".to_string()), // Loss, Inventory
+            MovementType::GoodsIssue => ("7000".to_string(), "1200".to_string()), // Generic issue
+            MovementType::Scrap => ("7900".to_string(), "1200".to_string()), // Loss, Inventory (alias)
             MovementType::TransferPlant => ("1200".to_string(), "1200".to_string()), // Inventory to Inventory
             MovementType::TransferStorageLocation => ("1200".to_string(), "1200".to_string()),
+            MovementType::TransferIn => ("1200".to_string(), "1299".to_string()), // Inventory in
+            MovementType::TransferOut => ("1299".to_string(), "1200".to_string()), // Inventory out
             MovementType::TransferToInspection => ("1210".to_string(), "1200".to_string()),
             MovementType::TransferFromInspection => ("1200".to_string(), "1210".to_string()),
             MovementType::PhysicalInventory => ("7910".to_string(), "1200".to_string()), // Gain/Loss, Inventory
+            MovementType::InventoryAdjustmentIn => ("1200".to_string(), "7910".to_string()), // Inventory, Gain
+            MovementType::InventoryAdjustmentOut => ("7910".to_string(), "1200".to_string()), // Loss, Inventory
             MovementType::InitialStock => ("1200".to_string(), "3000".to_string()), // Inventory, Equity
             MovementType::ReversalGoodsReceipt => ("2100".to_string(), "1200".to_string()),
             MovementType::ReversalGoodsIssue => ("1200".to_string(), "5000".to_string()),
@@ -387,11 +415,19 @@ impl MovementType {
         match self {
             MovementType::GoodsReceiptPO
             | MovementType::GoodsReceiptProduction
-            | MovementType::GoodsReceiptOther => MovementType::ReversalGoodsReceipt,
+            | MovementType::GoodsReceiptOther
+            | MovementType::GoodsReceipt
+            | MovementType::TransferIn
+            | MovementType::InventoryAdjustmentIn => MovementType::ReversalGoodsReceipt,
 
             MovementType::GoodsIssueSales
             | MovementType::GoodsIssueProduction
-            | MovementType::GoodsIssueCostCenter => MovementType::ReversalGoodsIssue,
+            | MovementType::GoodsIssueCostCenter
+            | MovementType::GoodsIssue
+            | MovementType::Scrap
+            | MovementType::TransferOut
+            | MovementType::InventoryAdjustmentOut
+            | MovementType::GoodsIssueScrapping => MovementType::ReversalGoodsIssue,
 
             _ => *self, // Others reverse themselves
         }

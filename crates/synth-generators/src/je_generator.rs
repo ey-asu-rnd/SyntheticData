@@ -295,14 +295,37 @@ impl JournalEntryGenerator {
     /// Map a fraud type to an amount pattern for suspicious amounts.
     fn fraud_type_to_amount_pattern(&self, fraud_type: FraudType) -> FraudAmountPattern {
         match fraud_type {
-            FraudType::SplitTransaction => FraudAmountPattern::ThresholdAdjacent,
-            FraudType::FictitiousTransaction => FraudAmountPattern::ObviousRoundNumbers,
-            FraudType::SuspenseAccountAbuse => FraudAmountPattern::ObviousRoundNumbers,
-            FraudType::RevenueManipulation => FraudAmountPattern::StatisticallyImprobable,
-            FraudType::ExpenseCapitalization => FraudAmountPattern::StatisticallyImprobable,
-            FraudType::DuplicatePayment => FraudAmountPattern::Normal, // Same as original
-            FraudType::TimingAnomaly => FraudAmountPattern::Normal,
-            FraudType::UnauthorizedAccess => FraudAmountPattern::StatisticallyImprobable,
+            FraudType::SplitTransaction | FraudType::JustBelowThreshold => {
+                FraudAmountPattern::ThresholdAdjacent
+            }
+            FraudType::FictitiousTransaction
+            | FraudType::FictitiousEntry
+            | FraudType::SuspenseAccountAbuse
+            | FraudType::RoundDollarManipulation => FraudAmountPattern::ObviousRoundNumbers,
+            FraudType::RevenueManipulation
+            | FraudType::ExpenseCapitalization
+            | FraudType::ImproperCapitalization
+            | FraudType::ReserveManipulation
+            | FraudType::UnauthorizedAccess
+            | FraudType::PrematureRevenue
+            | FraudType::UnderstatedLiabilities
+            | FraudType::OverstatedAssets
+            | FraudType::ChannelStuffing => FraudAmountPattern::StatisticallyImprobable,
+            FraudType::DuplicatePayment
+            | FraudType::TimingAnomaly
+            | FraudType::SelfApproval
+            | FraudType::ExceededApprovalLimit
+            | FraudType::SegregationOfDutiesViolation
+            | FraudType::UnauthorizedApproval
+            | FraudType::CollusiveApproval
+            | FraudType::FictitiousVendor
+            | FraudType::ShellCompanyPayment
+            | FraudType::Kickback
+            | FraudType::KickbackScheme
+            | FraudType::InvoiceManipulation
+            | FraudType::AssetMisappropriation
+            | FraudType::InventoryTheft
+            | FraudType::GhostEmployee => FraudAmountPattern::Normal,
         }
     }
 

@@ -469,16 +469,25 @@ impl AssetGenerator {
         let (min, max) = match asset_class {
             AssetClass::Buildings => (Decimal::from(500_000), Decimal::from(10_000_000)),
             AssetClass::BuildingImprovements => (Decimal::from(50_000), Decimal::from(500_000)),
-            AssetClass::Machinery => (Decimal::from(50_000), Decimal::from(1_000_000)),
+            AssetClass::Machinery | AssetClass::MachineryEquipment => {
+                (Decimal::from(50_000), Decimal::from(1_000_000))
+            }
             AssetClass::Vehicles => (Decimal::from(20_000), Decimal::from(100_000)),
-            AssetClass::Furniture => (Decimal::from(1_000), Decimal::from(50_000)),
-            AssetClass::ItEquipment => (Decimal::from(2_000), Decimal::from(200_000)),
-            AssetClass::Software => (Decimal::from(5_000), Decimal::from(500_000)),
+            AssetClass::Furniture | AssetClass::FurnitureFixtures => {
+                (Decimal::from(1_000), Decimal::from(50_000))
+            }
+            AssetClass::ItEquipment | AssetClass::ComputerHardware => {
+                (Decimal::from(2_000), Decimal::from(200_000))
+            }
+            AssetClass::Software | AssetClass::Intangibles => {
+                (Decimal::from(5_000), Decimal::from(500_000))
+            }
             AssetClass::LeaseholdImprovements => (Decimal::from(10_000), Decimal::from(300_000)),
             AssetClass::Land => (Decimal::from(100_000), Decimal::from(5_000_000)),
             AssetClass::ConstructionInProgress => {
                 (Decimal::from(100_000), Decimal::from(2_000_000))
             }
+            AssetClass::LowValueAssets => (Decimal::from(100), Decimal::from(5_000)),
         };
 
         let range = (max - min).to_string().parse::<f64>().unwrap_or(0.0);

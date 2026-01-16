@@ -311,8 +311,8 @@ impl CustomerGenerator {
             }
             CreditRating::A | CreditRating::BBB => CustomerPaymentBehavior::OnTime,
             CreditRating::BB | CreditRating::B => CustomerPaymentBehavior::SlightlyLate,
-            CreditRating::CCC => CustomerPaymentBehavior::OftenLate,
-            CreditRating::D => CustomerPaymentBehavior::HighRisk,
+            CreditRating::CCC | CreditRating::CC => CustomerPaymentBehavior::OftenLate,
+            CreditRating::C | CreditRating::D => CustomerPaymentBehavior::HighRisk,
         };
 
         customer

@@ -273,6 +273,8 @@ pub enum DisposalReason {
     Compliance,
     /// Environmental disposal.
     Environmental,
+    /// Donated to charity.
+    Donated,
     /// Other.
     Other,
 }

@@ -277,8 +277,12 @@ impl DuplicationStrategy {
         let mut duplicate = entry.clone();
 
         if self.change_doc_number {
-            duplicate.document_number =
-                format!("{}-DUP{}", entry.document_number, rng.gen_range(1..999));
+            // Generate a new UUID for the duplicate
+            duplicate.header.document_id = uuid::Uuid::new_v4();
+            // Update line items to reference the new document ID
+            for line in &mut duplicate.lines {
+                line.document_id = duplicate.header.document_id;
+            }
         }
 
         if self.vary_amounts {

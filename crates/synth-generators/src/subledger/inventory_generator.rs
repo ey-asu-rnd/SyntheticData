@@ -44,6 +44,7 @@ pub struct InventoryGenerator {
     config: InventoryGeneratorConfig,
     rng: ChaCha8Rng,
     movement_counter: u64,
+    #[allow(dead_code)]
     position_counter: u64,
 }
 
@@ -65,45 +66,38 @@ impl InventoryGenerator {
         plant: &str,
         storage_location: &str,
         material_id: &str,
-        material_description: &str,
+        description: &str,
         initial_quantity: Decimal,
         unit_cost: Option<Decimal>,
-        currency: &str,
+        _currency: &str,
     ) -> InventoryPosition {
-        self.position_counter += 1;
         let cost = unit_cost.unwrap_or_else(|| self.generate_unit_cost());
         let total_value = (initial_quantity * cost).round_dp(2);
 
-        InventoryPosition {
-            position_id: format!("POS{:08}", self.position_counter),
-            company_code: company_code.to_string(),
-            plant: plant.to_string(),
-            storage_location: storage_location.to_string(),
-            material_id: material_id.to_string(),
-            material_description: material_description.to_string(),
-            quantity_on_hand: initial_quantity,
-            quantity_reserved: Decimal::ZERO,
-            quantity_available: initial_quantity,
-            quantity_in_transit: Decimal::ZERO,
-            quantity_in_quality: Decimal::ZERO,
-            base_unit: "EA".to_string(),
-            valuation: PositionValuation {
-                method: self.config.default_valuation_method.clone(),
-                unit_cost: cost,
-                total_value,
-                standard_cost: Some(cost),
-                last_purchase_price: Some(cost),
-                moving_average_price: Some(cost),
-            },
-            currency: currency.to_string(),
-            last_movement_date: None,
-            last_count_date: None,
-            abc_indicator: None,
-            stock_status: StockStatus::Unrestricted,
-            minimum_stock: Some(dec!(10)),
-            maximum_stock: Some(dec!(1000)),
-            reorder_point: Some(dec!(50)),
-        }
+        let mut position = InventoryPosition::new(
+            material_id.to_string(),
+            description.to_string(),
+            plant.to_string(),
+            storage_location.to_string(),
+            company_code.to_string(),
+            "EA".to_string(),
+        );
+
+        position.quantity_on_hand = initial_quantity;
+        position.quantity_available = initial_quantity;
+        position.valuation = PositionValuation {
+            method: self.config.default_valuation_method.clone(),
+            standard_cost: cost,
+            unit_cost: cost,
+            total_value,
+            price_variance: Decimal::ZERO,
+            last_price_change: None,
+        };
+        position.min_stock = Some(dec!(10));
+        position.max_stock = Some(dec!(1000));
+        position.reorder_point = Some(dec!(50));
+
+        position
     }
 
     /// Generates a goods receipt (inventory increase).
@@ -116,41 +110,32 @@ impl InventoryGenerator {
         po_number: Option<&str>,
     ) -> (InventoryMovement, JournalEntry) {
         self.movement_counter += 1;
-        let movement_id = format!("INVMV{:08}", self.movement_counter);
+        let document_number = format!("INVMV{:08}", self.movement_counter);
+        let batch_number = format!("BATCH{:06}", self.rng.gen::<u32>() % 1000000);
 
-        let total_value = (quantity * unit_cost).round_dp(2);
-
-        let movement = InventoryMovement {
-            movement_id: movement_id.clone(),
-            company_code: position.company_code.clone(),
-            plant: position.plant.clone(),
-            storage_location: position.storage_location.clone(),
-            material_id: position.material_id.clone(),
-            material_description: position.material_description.clone(),
-            movement_type: MovementType::GoodsReceipt,
-            movement_date: receipt_date,
-            posting_date: receipt_date,
+        let mut movement = InventoryMovement::new(
+            document_number,
+            1, // item_number
+            position.company_code.clone(),
+            receipt_date,
+            MovementType::GoodsReceipt,
+            position.material_id.clone(),
+            position.description.clone(),
+            position.plant.clone(),
+            position.storage_location.clone(),
             quantity,
-            base_unit: position.base_unit.clone(),
+            position.unit.clone(),
             unit_cost,
-            total_value,
-            currency: position.currency.clone(),
-            reference_doc_type: po_number.map(|_| ReferenceDocType::PurchaseOrder),
-            reference_doc_number: po_number.map(|s| s.to_string()),
-            reference_doc_line: None,
-            cost_center: None,
-            profit_center: None,
-            gl_account: Some("1300".to_string()),
-            movement_reason: Some("Goods Receipt from PO".to_string()),
-            batch_number: Some(format!("BATCH{:06}", self.rng.gen::<u32>() % 1000000)),
-            serial_numbers: None,
-            special_stock_type: None,
-            special_stock_number: None,
-            created_by: "SYSTEM".to_string(),
-            created_at: receipt_date,
-            reversed: false,
-            reversal_document: None,
-        };
+            "USD".to_string(),
+            "SYSTEM".to_string(),
+        );
+
+        movement.batch_number = Some(batch_number);
+        if let Some(po) = po_number {
+            movement.reference_doc_type = Some(ReferenceDocType::PurchaseOrder);
+            movement.reference_doc_number = Some(po.to_string());
+        }
+        movement.reason_code = Some("Goods Receipt from PO".to_string());
 
         let je = self.generate_goods_receipt_je(&movement);
         (movement, je)
@@ -166,51 +151,33 @@ impl InventoryGenerator {
         production_order: Option<&str>,
     ) -> (InventoryMovement, JournalEntry) {
         self.movement_counter += 1;
-        let movement_id = format!("INVMV{:08}", self.movement_counter);
+        let document_number = format!("INVMV{:08}", self.movement_counter);
 
         let unit_cost = position.valuation.unit_cost;
-        let total_value = (quantity * unit_cost).round_dp(2);
 
-        let (ref_type, ref_num) = if let Some(po) = production_order {
-            (
-                Some(ReferenceDocType::ProductionOrder),
-                Some(po.to_string()),
-            )
-        } else {
-            (None, None)
-        };
-
-        let movement = InventoryMovement {
-            movement_id: movement_id.clone(),
-            company_code: position.company_code.clone(),
-            plant: position.plant.clone(),
-            storage_location: position.storage_location.clone(),
-            material_id: position.material_id.clone(),
-            material_description: position.material_description.clone(),
-            movement_type: MovementType::GoodsIssue,
-            movement_date: issue_date,
-            posting_date: issue_date,
+        let mut movement = InventoryMovement::new(
+            document_number,
+            1, // item_number
+            position.company_code.clone(),
+            issue_date,
+            MovementType::GoodsIssue,
+            position.material_id.clone(),
+            position.description.clone(),
+            position.plant.clone(),
+            position.storage_location.clone(),
             quantity,
-            base_unit: position.base_unit.clone(),
+            position.unit.clone(),
             unit_cost,
-            total_value,
-            currency: position.currency.clone(),
-            reference_doc_type: ref_type,
-            reference_doc_number: ref_num,
-            reference_doc_line: None,
-            cost_center: cost_center.map(|s| s.to_string()),
-            profit_center: None,
-            gl_account: Some("1300".to_string()),
-            movement_reason: Some("Goods Issue to Production".to_string()),
-            batch_number: None,
-            serial_numbers: None,
-            special_stock_type: None,
-            special_stock_number: None,
-            created_by: "SYSTEM".to_string(),
-            created_at: issue_date,
-            reversed: false,
-            reversal_document: None,
-        };
+            "USD".to_string(),
+            "SYSTEM".to_string(),
+        );
+
+        movement.cost_center = cost_center.map(|s| s.to_string());
+        if let Some(po) = production_order {
+            movement.reference_doc_type = Some(ReferenceDocType::ProductionOrder);
+            movement.reference_doc_number = Some(po.to_string());
+        }
+        movement.reason_code = Some("Goods Issue to Production".to_string());
 
         let je = self.generate_goods_issue_je(&movement);
         (movement, je)
@@ -234,74 +201,49 @@ impl InventoryGenerator {
         let receipt_id = format!("INVMV{:08}", self.movement_counter);
 
         let unit_cost = position.valuation.unit_cost;
-        let total_value = (quantity * unit_cost).round_dp(2);
 
-        let issue = InventoryMovement {
-            movement_id: issue_id.clone(),
-            company_code: position.company_code.clone(),
-            plant: position.plant.clone(),
-            storage_location: position.storage_location.clone(),
-            material_id: position.material_id.clone(),
-            material_description: position.material_description.clone(),
-            movement_type: MovementType::TransferOut,
-            movement_date: transfer_date,
-            posting_date: transfer_date,
+        let mut issue = InventoryMovement::new(
+            issue_id,
+            1, // item_number
+            position.company_code.clone(),
+            transfer_date,
+            MovementType::TransferOut,
+            position.material_id.clone(),
+            position.description.clone(),
+            position.plant.clone(),
+            position.storage_location.clone(),
             quantity,
-            base_unit: position.base_unit.clone(),
+            position.unit.clone(),
             unit_cost,
-            total_value,
-            currency: position.currency.clone(),
-            reference_doc_type: Some(ReferenceDocType::StockTransfer),
-            reference_doc_number: Some(receipt_id.clone()),
-            reference_doc_line: None,
-            cost_center: None,
-            profit_center: None,
-            gl_account: Some("1300".to_string()),
-            movement_reason: Some(format!("Transfer to {}/{}", to_plant, to_storage_location)),
-            batch_number: None,
-            serial_numbers: None,
-            special_stock_type: None,
-            special_stock_number: None,
-            created_by: "SYSTEM".to_string(),
-            created_at: transfer_date,
-            reversed: false,
-            reversal_document: None,
-        };
+            "USD".to_string(),
+            "SYSTEM".to_string(),
+        );
+        issue.reference_doc_type = Some(ReferenceDocType::MaterialDocument);
+        issue.reference_doc_number = Some(receipt_id.clone());
+        issue.reason_code = Some(format!("Transfer to {}/{}", to_plant, to_storage_location));
 
-        let receipt = InventoryMovement {
-            movement_id: receipt_id.clone(),
-            company_code: position.company_code.clone(),
-            plant: to_plant.to_string(),
-            storage_location: to_storage_location.to_string(),
-            material_id: position.material_id.clone(),
-            material_description: position.material_description.clone(),
-            movement_type: MovementType::TransferIn,
-            movement_date: transfer_date,
-            posting_date: transfer_date,
+        let mut receipt = InventoryMovement::new(
+            receipt_id,
+            1, // item_number
+            position.company_code.clone(),
+            transfer_date,
+            MovementType::TransferIn,
+            position.material_id.clone(),
+            position.description.clone(),
+            to_plant.to_string(),
+            to_storage_location.to_string(),
             quantity,
-            base_unit: position.base_unit.clone(),
+            position.unit.clone(),
             unit_cost,
-            total_value,
-            currency: position.currency.clone(),
-            reference_doc_type: Some(ReferenceDocType::StockTransfer),
-            reference_doc_number: Some(issue_id.clone()),
-            reference_doc_line: None,
-            cost_center: None,
-            profit_center: None,
-            gl_account: Some("1300".to_string()),
-            movement_reason: Some(format!(
-                "Transfer from {}/{}",
-                position.plant, position.storage_location
-            )),
-            batch_number: None,
-            serial_numbers: None,
-            special_stock_type: None,
-            special_stock_number: None,
-            created_by: "SYSTEM".to_string(),
-            created_at: transfer_date,
-            reversed: false,
-            reversal_document: None,
-        };
+            "USD".to_string(),
+            "SYSTEM".to_string(),
+        );
+        receipt.reference_doc_type = Some(ReferenceDocType::MaterialDocument);
+        receipt.reference_doc_number = Some(issue.document_number.clone());
+        receipt.reason_code = Some(format!(
+            "Transfer from {}/{}",
+            position.plant, position.storage_location
+        ));
 
         // For intra-company transfer, no GL impact unless different plants have different valuations
         let je = self.generate_transfer_je(&issue, &receipt);
@@ -318,7 +260,7 @@ impl InventoryGenerator {
         reason: &str,
     ) -> (InventoryMovement, JournalEntry) {
         self.movement_counter += 1;
-        let movement_id = format!("INVMV{:08}", self.movement_counter);
+        let document_number = format!("INVMV{:08}", self.movement_counter);
 
         let movement_type = if quantity_change > Decimal::ZERO {
             MovementType::InventoryAdjustmentIn
@@ -327,39 +269,26 @@ impl InventoryGenerator {
         };
 
         let unit_cost = position.valuation.unit_cost;
-        let total_value = (quantity_change.abs() * unit_cost).round_dp(2);
 
-        let movement = InventoryMovement {
-            movement_id: movement_id.clone(),
-            company_code: position.company_code.clone(),
-            plant: position.plant.clone(),
-            storage_location: position.storage_location.clone(),
-            material_id: position.material_id.clone(),
-            material_description: position.material_description.clone(),
+        let mut movement = InventoryMovement::new(
+            document_number,
+            1, // item_number
+            position.company_code.clone(),
+            adjustment_date,
             movement_type,
-            movement_date: adjustment_date,
-            posting_date: adjustment_date,
-            quantity: quantity_change.abs(),
-            base_unit: position.base_unit.clone(),
+            position.material_id.clone(),
+            position.description.clone(),
+            position.plant.clone(),
+            position.storage_location.clone(),
+            quantity_change.abs(),
+            position.unit.clone(),
             unit_cost,
-            total_value,
-            currency: position.currency.clone(),
-            reference_doc_type: Some(ReferenceDocType::PhysicalInventory),
-            reference_doc_number: Some(format!("PI{:08}", self.movement_counter)),
-            reference_doc_line: None,
-            cost_center: None,
-            profit_center: None,
-            gl_account: Some("1300".to_string()),
-            movement_reason: Some(reason.to_string()),
-            batch_number: None,
-            serial_numbers: None,
-            special_stock_type: None,
-            special_stock_number: None,
-            created_by: "SYSTEM".to_string(),
-            created_at: adjustment_date,
-            reversed: false,
-            reversal_document: None,
-        };
+            "USD".to_string(),
+            "SYSTEM".to_string(),
+        );
+        movement.reference_doc_type = Some(ReferenceDocType::PhysicalInventoryDoc);
+        movement.reference_doc_number = Some(format!("PI{:08}", self.movement_counter));
+        movement.reason_code = Some(reason.to_string());
 
         let je = self.generate_adjustment_je(&movement, quantity_change > Decimal::ZERO);
         (movement, je)
@@ -376,7 +305,7 @@ impl InventoryGenerator {
 
     fn generate_goods_receipt_je(&self, movement: &InventoryMovement) -> JournalEntry {
         let mut je = JournalEntry::new_simple(
-            format!("JE-{}", movement.movement_id),
+            format!("JE-{}", movement.document_number),
             movement.company_code.clone(),
             movement.posting_date,
             format!("Goods Receipt {}", movement.material_id),
@@ -386,14 +315,14 @@ impl InventoryGenerator {
         je.add_line(JournalEntryLine {
             line_number: 1,
             gl_account: "1300".to_string(),
-            debit_amount: movement.total_value,
+            debit_amount: movement.value,
             cost_center: movement.cost_center.clone(),
-            profit_center: movement.profit_center.clone(),
-            reference: Some(movement.movement_id.clone()),
+            profit_center: None,
+            reference: Some(movement.document_number.clone()),
             assignment: Some(movement.material_id.clone()),
-            text: Some(movement.material_description.clone()),
+            text: Some(movement.description.clone()),
             quantity: Some(movement.quantity),
-            unit: Some(movement.base_unit.clone()),
+            unit: Some(movement.unit.clone()),
             ..Default::default()
         });
 
@@ -401,7 +330,7 @@ impl InventoryGenerator {
         je.add_line(JournalEntryLine {
             line_number: 2,
             gl_account: "2100".to_string(),
-            credit_amount: movement.total_value,
+            credit_amount: movement.value,
             reference: movement.reference_doc_number.clone(),
             ..Default::default()
         });
@@ -411,7 +340,7 @@ impl InventoryGenerator {
 
     fn generate_goods_issue_je(&self, movement: &InventoryMovement) -> JournalEntry {
         let mut je = JournalEntry::new_simple(
-            format!("JE-{}", movement.movement_id),
+            format!("JE-{}", movement.document_number),
             movement.company_code.clone(),
             movement.posting_date,
             format!("Goods Issue {}", movement.material_id),
@@ -428,14 +357,14 @@ impl InventoryGenerator {
         je.add_line(JournalEntryLine {
             line_number: 1,
             gl_account: debit_account,
-            debit_amount: movement.total_value,
+            debit_amount: movement.value,
             cost_center: movement.cost_center.clone(),
-            profit_center: movement.profit_center.clone(),
-            reference: Some(movement.movement_id.clone()),
+            profit_center: None,
+            reference: Some(movement.document_number.clone()),
             assignment: Some(movement.material_id.clone()),
-            text: Some(movement.material_description.clone()),
+            text: Some(movement.description.clone()),
             quantity: Some(movement.quantity),
-            unit: Some(movement.base_unit.clone()),
+            unit: Some(movement.unit.clone()),
             ..Default::default()
         });
 
@@ -443,11 +372,11 @@ impl InventoryGenerator {
         je.add_line(JournalEntryLine {
             line_number: 2,
             gl_account: "1300".to_string(),
-            credit_amount: movement.total_value,
-            reference: Some(movement.movement_id.clone()),
+            credit_amount: movement.value,
+            reference: Some(movement.document_number.clone()),
             assignment: Some(movement.material_id.clone()),
             quantity: Some(movement.quantity),
-            unit: Some(movement.base_unit.clone()),
+            unit: Some(movement.unit.clone()),
             ..Default::default()
         });
 
@@ -462,7 +391,7 @@ impl InventoryGenerator {
         // For intra-company transfer with same valuation, this might be a memo entry
         // or could involve plant-specific inventory accounts
         let mut je = JournalEntry::new_simple(
-            format!("JE-XFER-{}", issue.movement_id),
+            format!("JE-XFER-{}", issue.document_number),
             issue.company_code.clone(),
             issue.posting_date,
             format!("Stock Transfer {}", issue.material_id),
@@ -472,11 +401,11 @@ impl InventoryGenerator {
         je.add_line(JournalEntryLine {
             line_number: 1,
             gl_account: "1300".to_string(),
-            debit_amount: issue.total_value,
-            reference: Some(issue.movement_id.clone()),
+            debit_amount: issue.value,
+            reference: Some(issue.document_number.clone()),
             assignment: Some(issue.material_id.clone()),
             quantity: Some(issue.quantity),
-            unit: Some(issue.base_unit.clone()),
+            unit: Some(issue.unit.clone()),
             ..Default::default()
         });
 
@@ -484,11 +413,11 @@ impl InventoryGenerator {
         je.add_line(JournalEntryLine {
             line_number: 2,
             gl_account: "1300".to_string(),
-            credit_amount: issue.total_value,
-            reference: Some(issue.movement_id.clone()),
+            credit_amount: issue.value,
+            reference: Some(issue.document_number.clone()),
             assignment: Some(issue.material_id.clone()),
             quantity: Some(issue.quantity),
-            unit: Some(issue.base_unit.clone()),
+            unit: Some(issue.unit.clone()),
             ..Default::default()
         });
 
@@ -501,7 +430,7 @@ impl InventoryGenerator {
         is_increase: bool,
     ) -> JournalEntry {
         let mut je = JournalEntry::new_simple(
-            format!("JE-{}", movement.movement_id),
+            format!("JE-{}", movement.document_number),
             movement.company_code.clone(),
             movement.posting_date,
             format!("Inventory Adjustment {}", movement.material_id),
@@ -512,12 +441,12 @@ impl InventoryGenerator {
             je.add_line(JournalEntryLine {
                 line_number: 1,
                 gl_account: "1300".to_string(),
-                debit_amount: movement.total_value,
-                reference: Some(movement.movement_id.clone()),
+                debit_amount: movement.value,
+                reference: Some(movement.document_number.clone()),
                 assignment: Some(movement.material_id.clone()),
-                text: Some(movement.movement_reason.clone().unwrap_or_default()),
+                text: Some(movement.reason_code.clone().unwrap_or_default()),
                 quantity: Some(movement.quantity),
-                unit: Some(movement.base_unit.clone()),
+                unit: Some(movement.unit.clone()),
                 ..Default::default()
             });
 
@@ -525,9 +454,9 @@ impl InventoryGenerator {
             je.add_line(JournalEntryLine {
                 line_number: 2,
                 gl_account: "4950".to_string(),
-                credit_amount: movement.total_value,
+                credit_amount: movement.value,
                 cost_center: movement.cost_center.clone(),
-                reference: Some(movement.movement_id.clone()),
+                reference: Some(movement.document_number.clone()),
                 ..Default::default()
             });
         } else {
@@ -535,10 +464,10 @@ impl InventoryGenerator {
             je.add_line(JournalEntryLine {
                 line_number: 1,
                 gl_account: "6950".to_string(),
-                debit_amount: movement.total_value,
+                debit_amount: movement.value,
                 cost_center: movement.cost_center.clone(),
-                reference: Some(movement.movement_id.clone()),
-                text: Some(movement.movement_reason.clone().unwrap_or_default()),
+                reference: Some(movement.document_number.clone()),
+                text: Some(movement.reason_code.clone().unwrap_or_default()),
                 ..Default::default()
             });
 
@@ -546,11 +475,11 @@ impl InventoryGenerator {
             je.add_line(JournalEntryLine {
                 line_number: 2,
                 gl_account: "1300".to_string(),
-                credit_amount: movement.total_value,
-                reference: Some(movement.movement_id.clone()),
+                credit_amount: movement.value,
+                reference: Some(movement.document_number.clone()),
                 assignment: Some(movement.material_id.clone()),
                 quantity: Some(movement.quantity),
-                unit: Some(movement.base_unit.clone()),
+                unit: Some(movement.unit.clone()),
                 ..Default::default()
             });
         }
