@@ -8,7 +8,7 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
-use synth_core::models::balance::{AccountBalance, AccountType, BalanceChange, BalanceSnapshot};
+use synth_core::models::balance::{AccountBalance, AccountPeriodActivity, AccountType, BalanceSnapshot};
 use synth_core::models::{JournalEntry, JournalEntryLine};
 
 /// Configuration for the balance tracker.
@@ -395,12 +395,12 @@ impl RunningBalanceTracker {
         company_code: &str,
         from_date: NaiveDate,
         to_date: NaiveDate,
-    ) -> Vec<BalanceChange> {
+    ) -> Vec<AccountPeriodActivity> {
         let Some(history) = self.history.get(company_code) else {
             return Vec::new();
         };
 
-        let mut changes_by_account: HashMap<String, BalanceChange> = HashMap::new();
+        let mut changes_by_account: HashMap<String, AccountPeriodActivity> = HashMap::new();
 
         for entry in history
             .iter()
@@ -408,7 +408,7 @@ impl RunningBalanceTracker {
         {
             let change = changes_by_account
                 .entry(entry.account_code.clone())
-                .or_insert_with(|| BalanceChange {
+                .or_insert_with(|| AccountPeriodActivity {
                     account_code: entry.account_code.clone(),
                     period_start: from_date,
                     period_end: to_date,

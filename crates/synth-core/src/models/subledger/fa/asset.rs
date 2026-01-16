@@ -243,16 +243,22 @@ pub enum AssetClass {
     BuildingImprovements,
     /// Machinery and equipment.
     MachineryEquipment,
+    /// Machinery (alias for MachineryEquipment).
+    Machinery,
     /// Vehicles.
     Vehicles,
     /// Office equipment.
     OfficeEquipment,
     /// Computer equipment.
     ComputerEquipment,
+    /// IT Equipment (alias for ComputerEquipment).
+    ItEquipment,
     /// Software.
     Software,
     /// Furniture and fixtures.
     FurnitureFixtures,
+    /// Furniture (alias for FurnitureFixtures).
+    Furniture,
     /// Leasehold improvements.
     LeaseholdImprovements,
     /// Construction in progress.
@@ -268,12 +274,12 @@ impl AssetClass {
             AssetClass::Land => 0, // Land doesn't depreciate
             AssetClass::Buildings => 39,
             AssetClass::BuildingImprovements => 15,
-            AssetClass::MachineryEquipment => 7,
+            AssetClass::MachineryEquipment | AssetClass::Machinery => 7,
             AssetClass::Vehicles => 5,
             AssetClass::OfficeEquipment => 7,
-            AssetClass::ComputerEquipment => 5,
+            AssetClass::ComputerEquipment | AssetClass::ItEquipment => 5,
             AssetClass::Software => 3,
-            AssetClass::FurnitureFixtures => 7,
+            AssetClass::FurnitureFixtures | AssetClass::Furniture => 7,
             AssetClass::LeaseholdImprovements => 10,
             AssetClass::ConstructionInProgress => 0, // CIP doesn't depreciate
             AssetClass::Other => 7,
@@ -284,10 +290,10 @@ impl AssetClass {
     pub fn default_depreciation_method(&self) -> DepreciationMethod {
         match self {
             AssetClass::Land | AssetClass::ConstructionInProgress => DepreciationMethod::None,
-            AssetClass::ComputerEquipment | AssetClass::Software => {
+            AssetClass::ComputerEquipment | AssetClass::ItEquipment | AssetClass::Software => {
                 DepreciationMethod::StraightLine
             }
-            AssetClass::Vehicles | AssetClass::MachineryEquipment => {
+            AssetClass::Vehicles | AssetClass::MachineryEquipment | AssetClass::Machinery => {
                 DepreciationMethod::DecliningBalance { rate: dec!(0.40) }
             }
             _ => DepreciationMethod::StraightLine,
@@ -489,12 +495,12 @@ impl AssetAccountDetermination {
             AssetClass::Land => "1510",
             AssetClass::Buildings => "1520",
             AssetClass::BuildingImprovements => "1525",
-            AssetClass::MachineryEquipment => "1530",
+            AssetClass::MachineryEquipment | AssetClass::Machinery => "1530",
             AssetClass::Vehicles => "1540",
             AssetClass::OfficeEquipment => "1550",
-            AssetClass::ComputerEquipment => "1555",
+            AssetClass::ComputerEquipment | AssetClass::ItEquipment => "1555",
             AssetClass::Software => "1560",
-            AssetClass::FurnitureFixtures => "1570",
+            AssetClass::FurnitureFixtures | AssetClass::Furniture => "1570",
             AssetClass::LeaseholdImprovements => "1580",
             AssetClass::ConstructionInProgress => "1600",
             AssetClass::Other => "1590",

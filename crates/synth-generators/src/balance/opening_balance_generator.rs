@@ -375,11 +375,11 @@ impl OpeningBalanceGenerator {
         // Try to find account by description pattern
         for account in &chart_of_accounts.accounts {
             if account
-                .description
+                .description()
                 .to_lowercase()
                 .contains(&description.to_lowercase())
             {
-                return account.account_code.clone();
+                return account.account_code().to_string();
             }
         }
 

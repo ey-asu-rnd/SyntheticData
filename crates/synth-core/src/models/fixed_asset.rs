@@ -14,21 +14,31 @@ use serde::{Deserialize, Serialize};
 pub enum AssetClass {
     /// Buildings and structures
     Buildings,
+    /// Building improvements
+    BuildingImprovements,
     /// Land (typically non-depreciable)
     Land,
     /// Machinery and equipment
     #[default]
     MachineryEquipment,
+    /// Machinery (alias for MachineryEquipment)
+    Machinery,
     /// Computer hardware
     ComputerHardware,
+    /// IT Equipment (alias for ComputerHardware)
+    ItEquipment,
     /// Office furniture and fixtures
     FurnitureFixtures,
+    /// Furniture (alias for FurnitureFixtures)
+    Furniture,
     /// Vehicles
     Vehicles,
     /// Leasehold improvements
     LeaseholdImprovements,
     /// Intangible assets (software, patents)
     Intangibles,
+    /// Software
+    Software,
     /// Construction in progress (not yet depreciating)
     ConstructionInProgress,
     /// Low-value assets
@@ -39,16 +49,16 @@ impl AssetClass {
     /// Get default useful life in months for this asset class.
     pub fn default_useful_life_months(&self) -> u32 {
         match self {
-            Self::Buildings => 480,             // 40 years
-            Self::Land => 0,                    // Not depreciated
-            Self::MachineryEquipment => 120,    // 10 years
-            Self::ComputerHardware => 36,       // 3 years
-            Self::FurnitureFixtures => 84,      // 7 years
-            Self::Vehicles => 60,               // 5 years
-            Self::LeaseholdImprovements => 120, // 10 years (or lease term)
-            Self::Intangibles => 60,            // 5 years
-            Self::ConstructionInProgress => 0,  // Not depreciated until complete
-            Self::LowValueAssets => 12,         // 1 year
+            Self::Buildings | Self::BuildingImprovements => 480, // 40 years
+            Self::Land => 0,                                     // Not depreciated
+            Self::MachineryEquipment | Self::Machinery => 120,   // 10 years
+            Self::ComputerHardware | Self::ItEquipment => 36,    // 3 years
+            Self::FurnitureFixtures | Self::Furniture => 84,     // 7 years
+            Self::Vehicles => 60,                                // 5 years
+            Self::LeaseholdImprovements => 120,                  // 10 years (or lease term)
+            Self::Intangibles | Self::Software => 60,            // 5 years
+            Self::ConstructionInProgress => 0,                   // Not depreciated until complete
+            Self::LowValueAssets => 12,                          // 1 year
         }
     }
 
@@ -60,12 +70,14 @@ impl AssetClass {
     /// Get default depreciation method for this asset class.
     pub fn default_depreciation_method(&self) -> DepreciationMethod {
         match self {
-            Self::Buildings | Self::LeaseholdImprovements => DepreciationMethod::StraightLine,
-            Self::MachineryEquipment => DepreciationMethod::StraightLine,
-            Self::ComputerHardware => DepreciationMethod::DoubleDecliningBalance,
-            Self::FurnitureFixtures => DepreciationMethod::StraightLine,
+            Self::Buildings | Self::BuildingImprovements | Self::LeaseholdImprovements => {
+                DepreciationMethod::StraightLine
+            }
+            Self::MachineryEquipment | Self::Machinery => DepreciationMethod::StraightLine,
+            Self::ComputerHardware | Self::ItEquipment => DepreciationMethod::DoubleDecliningBalance,
+            Self::FurnitureFixtures | Self::Furniture => DepreciationMethod::StraightLine,
             Self::Vehicles => DepreciationMethod::DoubleDecliningBalance,
-            Self::Intangibles => DepreciationMethod::StraightLine,
+            Self::Intangibles | Self::Software => DepreciationMethod::StraightLine,
             Self::LowValueAssets => DepreciationMethod::ImmediateExpense,
             Self::Land | Self::ConstructionInProgress => DepreciationMethod::None,
         }

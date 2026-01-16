@@ -486,6 +486,63 @@ impl BalanceChange {
     }
 }
 
+/// Account activity tracking within a period.
+///
+/// Tracks debits, credits, and transaction counts for an account
+/// over a specific period.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AccountPeriodActivity {
+    /// Account code.
+    pub account_code: String,
+    /// Period start date.
+    pub period_start: NaiveDate,
+    /// Period end date.
+    pub period_end: NaiveDate,
+    /// Opening balance at period start.
+    pub opening_balance: Decimal,
+    /// Closing balance at period end.
+    pub closing_balance: Decimal,
+    /// Total debit amounts during period.
+    pub total_debits: Decimal,
+    /// Total credit amounts during period.
+    pub total_credits: Decimal,
+    /// Net change (total_debits - total_credits).
+    pub net_change: Decimal,
+    /// Number of transactions during period.
+    pub transaction_count: u32,
+}
+
+impl AccountPeriodActivity {
+    /// Create a new account period activity tracker.
+    pub fn new(account_code: String, period_start: NaiveDate, period_end: NaiveDate) -> Self {
+        Self {
+            account_code,
+            period_start,
+            period_end,
+            opening_balance: Decimal::ZERO,
+            closing_balance: Decimal::ZERO,
+            total_debits: Decimal::ZERO,
+            total_credits: Decimal::ZERO,
+            net_change: Decimal::ZERO,
+            transaction_count: 0,
+        }
+    }
+
+    /// Add a debit transaction.
+    pub fn add_debit(&mut self, amount: Decimal) {
+        self.total_debits += amount;
+        self.net_change += amount;
+        self.transaction_count += 1;
+    }
+
+    /// Add a credit transaction.
+    pub fn add_credit(&mut self, amount: Decimal) {
+        self.total_credits += amount;
+        self.net_change -= amount;
+        self.transaction_count += 1;
+    }
+}
+
 /// Compare two snapshots and identify changes.
 pub fn compare_snapshots(
     prior: &BalanceSnapshot,

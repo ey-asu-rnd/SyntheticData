@@ -75,12 +75,12 @@ impl TrialBalanceGenerator {
     pub fn register_from_chart(&mut self, chart: &ChartOfAccounts) {
         for account in &chart.accounts {
             self.account_descriptions
-                .insert(account.account_code.clone(), account.description.clone());
+                .insert(account.account_code().to_string(), account.description().to_string());
 
             // Determine category from account code prefix
-            let category = self.determine_category(&account.account_code);
+            let category = self.determine_category(account.account_code());
             self.category_mappings
-                .insert(account.account_code.clone(), category);
+                .insert(account.account_code().to_string(), category);
         }
     }
 
