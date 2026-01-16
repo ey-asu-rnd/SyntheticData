@@ -635,16 +635,16 @@ impl OpeningBalanceSpecBuilder {
 mod tests {
     use super::*;
     use rand::SeedableRng;
-    use synth_core::models::chart_of_accounts::IndustryType as CoaIndustry;
+    use synth_core::models::{IndustrySector, CoAComplexity};
 
     fn create_test_chart() -> ChartOfAccounts {
-        ChartOfAccounts {
-            coa_id: "TEST-COA".to_string(),
-            name: "Test Chart of Accounts".to_string(),
-            country: "US".to_string(),
-            industry: CoaIndustry::Manufacturing,
-            accounts: vec![],
-        }
+        ChartOfAccounts::new(
+            "TEST-COA".to_string(),
+            "Test Chart of Accounts".to_string(),
+            "US".to_string(),
+            IndustrySector::Manufacturing,
+            CoAComplexity::Medium,
+        )
     }
 
     #[test]
@@ -700,14 +700,6 @@ mod tests {
     #[test]
     fn test_builder_pattern() {
         let as_of = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
-        let mut overrides = HashMap::new();
-        overrides.insert(
-            "1000".to_string(),
-            synth_core::models::balance::AccountSpec {
-                amount: dec!(500_000),
-                variance_percent: Decimal::ZERO,
-            },
-        );
 
         let spec = OpeningBalanceSpecBuilder::new(
             "TEST",
@@ -720,7 +712,12 @@ mod tests {
             target_dpo_days: 45,
             ..TargetRatios::for_industry(IndustryType::Retail)
         })
-        .with_account_overrides(overrides)
+        .with_account_override(
+            "1000",
+            "Cash",
+            AccountType::Asset,
+            dec!(500_000),
+        )
         .build();
 
         assert_eq!(spec.total_assets, dec!(5_000_000));
