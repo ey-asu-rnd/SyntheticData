@@ -704,11 +704,26 @@ impl EnhancedOrchestrator {
     /// Applies all entries to the balance tracker and validates:
     /// - Each entry is internally balanced (debits = credits)
     /// - Balance sheet equation holds (Assets = Liabilities + Equity + Net Income)
+    ///
+    /// Note: Entries with human errors (marked with [HUMAN_ERROR:*] tags) are
+    /// excluded from balance validation as they may be intentionally unbalanced.
     fn validate_journal_entries(
         &mut self,
         entries: &[JournalEntry],
     ) -> SynthResult<BalanceValidationResult> {
-        let pb = self.create_progress_bar(entries.len() as u64, "Validating Balances");
+        // Filter out entries with human errors as they may be intentionally unbalanced
+        let clean_entries: Vec<&JournalEntry> = entries
+            .iter()
+            .filter(|e| {
+                e.header
+                    .header_text
+                    .as_ref()
+                    .map(|t| !t.contains("[HUMAN_ERROR:"))
+                    .unwrap_or(true)
+            })
+            .collect();
+
+        let pb = self.create_progress_bar(clean_entries.len() as u64, "Validating Balances");
 
         // Configure tracker to not fail on errors (collect them instead)
         let config = BalanceTrackerConfig {
@@ -720,8 +735,9 @@ impl EnhancedOrchestrator {
 
         let mut tracker = RunningBalanceTracker::new(config);
 
-        // Apply all entries
-        let errors = tracker.apply_entries(entries);
+        // Apply clean entries (without human errors)
+        let clean_refs: Vec<JournalEntry> = clean_entries.into_iter().cloned().collect();
+        let errors = tracker.apply_entries(&clean_refs);
 
         if let Some(pb) = &pb {
             pb.inc(entries.len() as u64);

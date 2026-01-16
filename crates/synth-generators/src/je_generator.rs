@@ -47,6 +47,9 @@ pub struct JournalEntryGenerator {
     fraud_config: FraudConfig,
     // Persona-based error injection
     persona_errors_enabled: bool,
+    // Approval threshold enforcement
+    approval_enabled: bool,
+    approval_threshold: rust_decimal::Decimal,
 }
 
 impl JournalEntryGenerator {
@@ -182,6 +185,8 @@ impl JournalEntryGenerator {
             using_real_master_data: false,
             fraud_config: FraudConfig::default(),
             persona_errors_enabled: true, // Enable by default for realism
+            approval_enabled: true,       // Enable by default for realism
+            approval_threshold: rust_decimal::Decimal::new(10000, 0), // $10,000 default threshold
         }
     }
 
@@ -566,6 +571,11 @@ impl JournalEntryGenerator {
             self.maybe_inject_persona_error(&mut entry);
         }
 
+        // Apply approval workflow if enabled and amount exceeds threshold
+        if self.approval_enabled {
+            self.maybe_apply_approval_workflow(&mut entry, posting_date);
+        }
+
         entry
     }
 
@@ -717,6 +727,151 @@ impl JournalEntryGenerator {
             }
             _ => {}
         }
+    }
+
+    /// Apply approval workflow for high-value transactions.
+    ///
+    /// If the entry amount exceeds the approval threshold, simulate an
+    /// approval workflow with appropriate approvers based on amount.
+    fn maybe_apply_approval_workflow(&mut self, entry: &mut JournalEntry, _posting_date: NaiveDate) {
+        use rust_decimal::Decimal;
+
+        let amount = entry.total_debit();
+
+        // Skip if amount is below threshold
+        if amount <= self.approval_threshold {
+            // Auto-approved below threshold
+            let workflow = ApprovalWorkflow::auto_approved(
+                entry.header.created_by.clone(),
+                entry.header.user_persona.clone(),
+                amount,
+                entry.header.created_at,
+            );
+            entry.header.approval_workflow = Some(workflow);
+            return;
+        }
+
+        // Mark as SOX relevant for high-value transactions
+        entry.header.sox_relevant = true;
+
+        // Determine required approval levels based on amount
+        let required_levels = if amount > Decimal::new(100000, 0) {
+            3 // Executive approval required
+        } else if amount > Decimal::new(50000, 0) {
+            2 // Senior management approval
+        } else {
+            1 // Manager approval
+        };
+
+        // Create the approval workflow
+        let mut workflow = ApprovalWorkflow::new(
+            entry.header.created_by.clone(),
+            entry.header.user_persona.clone(),
+            amount,
+        );
+        workflow.required_levels = required_levels;
+
+        // Simulate submission
+        let submit_time = entry.header.created_at;
+        let submit_action = ApprovalAction::new(
+            entry.header.created_by.clone(),
+            entry.header.user_persona.clone(),
+            self.parse_persona(&entry.header.user_persona),
+            ApprovalActionType::Submit,
+            0,
+        )
+        .with_timestamp(submit_time);
+
+        workflow.actions.push(submit_action);
+        workflow.status = ApprovalStatus::Pending;
+        workflow.submitted_at = Some(submit_time);
+
+        // Simulate approvals with realistic delays
+        let mut current_time = submit_time;
+        for level in 1..=required_levels {
+            // Add delay for approval (1-3 business hours per level)
+            let delay_hours = self.rng.gen_range(1..4);
+            current_time = current_time + chrono::Duration::hours(delay_hours);
+
+            // Skip weekends
+            while current_time.weekday() == chrono::Weekday::Sat
+                || current_time.weekday() == chrono::Weekday::Sun
+            {
+                current_time = current_time + chrono::Duration::days(1);
+            }
+
+            // Generate approver based on level
+            let (approver_id, approver_role) = self.select_approver(level);
+
+            let approve_action = ApprovalAction::new(
+                approver_id.clone(),
+                format!("{:?}", approver_role),
+                approver_role,
+                ApprovalActionType::Approve,
+                level,
+            )
+            .with_timestamp(current_time);
+
+            workflow.actions.push(approve_action);
+            workflow.current_level = level;
+        }
+
+        // Mark as approved
+        workflow.status = ApprovalStatus::Approved;
+        workflow.approved_at = Some(current_time);
+
+        entry.header.approval_workflow = Some(workflow);
+    }
+
+    /// Select an approver based on the required level.
+    fn select_approver(&mut self, level: u8) -> (String, UserPersona) {
+        let persona = match level {
+            1 => UserPersona::Manager,
+            2 => UserPersona::Controller,
+            _ => UserPersona::Executive,
+        };
+
+        // Try to get from user pool first
+        if let Some(ref pool) = self.user_pool {
+            if let Some(user) = pool.get_random_user(persona, &mut self.rng) {
+                return (user.user_id.clone(), persona);
+            }
+        }
+
+        // Fallback to generated approver
+        let approver_id = match persona {
+            UserPersona::Manager => format!("MGR{:04}", self.rng.gen_range(1..100)),
+            UserPersona::Controller => format!("CTRL{:04}", self.rng.gen_range(1..20)),
+            UserPersona::Executive => format!("EXEC{:04}", self.rng.gen_range(1..10)),
+            _ => format!("USR{:04}", self.rng.gen_range(1..1000)),
+        };
+
+        (approver_id, persona)
+    }
+
+    /// Parse user persona from string.
+    fn parse_persona(&self, persona_str: &str) -> UserPersona {
+        match persona_str.to_lowercase().as_str() {
+            s if s.contains("junior") => UserPersona::JuniorAccountant,
+            s if s.contains("senior") => UserPersona::SeniorAccountant,
+            s if s.contains("controller") => UserPersona::Controller,
+            s if s.contains("manager") => UserPersona::Manager,
+            s if s.contains("executive") => UserPersona::Executive,
+            s if s.contains("automated") || s.contains("system") => UserPersona::AutomatedSystem,
+            _ => UserPersona::JuniorAccountant, // Default
+        }
+    }
+
+    /// Enable or disable approval workflow.
+    pub fn with_approval(mut self, enabled: bool) -> Self {
+        self.approval_enabled = enabled;
+        self
+    }
+
+    /// Set the approval threshold amount.
+    pub fn with_approval_threshold(mut self, threshold: rust_decimal::Decimal) -> Self {
+        self.approval_threshold = threshold;
+        self
     }
 
     /// Select a user from the pool or generate a generic user ID.
@@ -886,15 +1041,35 @@ mod tests {
             42,
         );
 
+        let mut balanced_count = 0;
         for _ in 0..100 {
             let entry = je_gen.generate();
-            assert!(
-                entry.is_balanced(),
-                "Entry {:?} is not balanced",
-                entry.header.document_id
-            );
+
+            // Skip entries with human errors as they may be intentionally unbalanced
+            let has_human_error = entry
+                .header
+                .header_text
+                .as_ref()
+                .map(|t| t.contains("[HUMAN_ERROR:"))
+                .unwrap_or(false);
+
+            if !has_human_error {
+                assert!(
+                    entry.is_balanced(),
+                    "Entry {:?} is not balanced",
+                    entry.header.document_id
+                );
+                balanced_count += 1;
+            }
             assert!(entry.line_count() >= 2, "Entry has fewer than 2 lines");
         }
+
+        // Ensure most entries are balanced (human errors are rare)
+        assert!(
+            balanced_count >= 80,
+            "Expected at least 80 balanced entries, got {}",
+            balanced_count
+        );
     }
 
     #[test]

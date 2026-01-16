@@ -137,6 +137,7 @@ pub fn balanced_journal_entry(amount: Decimal) -> JournalEntry {
             control_status: Default::default(),
             sod_violation: false,
             sod_conflict_type: None,
+            approval_workflow: None,
         },
         lines: vec![
             JournalEntryLine::debit(doc_id, 1, "100000".to_string(), amount),

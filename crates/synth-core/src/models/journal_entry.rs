@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::anomaly::FraudType;
+use super::approval::ApprovalWorkflow;
 
 /// Source of a journal entry transaction.
 ///
@@ -235,6 +236,11 @@ pub struct JournalEntryHeader {
     /// Type of SoD conflict if violation occurred
     #[serde(default)]
     pub sod_conflict_type: Option<super::sod::SodConflictType>,
+
+    // --- Approval Workflow ---
+    /// Approval workflow for high-value transactions
+    #[serde(default)]
+    pub approval_workflow: Option<ApprovalWorkflow>,
 }
 
 impl JournalEntryHeader {
@@ -267,6 +273,8 @@ impl JournalEntryHeader {
             control_status: super::internal_control::ControlStatus::default(),
             sod_violation: false,
             sod_conflict_type: None,
+            // Approval workflow
+            approval_workflow: None,
         }
     }
 
@@ -306,6 +314,8 @@ impl JournalEntryHeader {
             control_status: super::internal_control::ControlStatus::default(),
             sod_violation: false,
             sod_conflict_type: None,
+            // Approval workflow
+            approval_workflow: None,
         }
     }
 }
