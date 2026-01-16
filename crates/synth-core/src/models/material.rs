@@ -462,6 +462,18 @@ impl MaterialPool {
         Self::default()
     }
 
+    /// Create a material pool from a vector of materials.
+    ///
+    /// This is the preferred way to create a pool from generated master data,
+    /// ensuring JEs reference real entities.
+    pub fn from_materials(materials: Vec<Material>) -> Self {
+        let mut pool = Self::new();
+        for material in materials {
+            pool.add_material(material);
+        }
+        pool
+    }
+
     /// Add a material to the pool.
     pub fn add_material(&mut self, material: Material) {
         let idx = self.materials.len();

@@ -1,0 +1,294 @@
+//! Links document flows to subledger records.
+//!
+//! This module provides conversion functions to create subledger records
+//! from document flow documents, ensuring data coherence between:
+//! - P2P document flow (VendorInvoice) -> AP subledger (APInvoice)
+//! - O2C document flow (CustomerInvoice) -> AR subledger (ARInvoice)
+
+use rust_decimal::Decimal;
+
+use synth_core::models::documents::{CustomerInvoice, VendorInvoice};
+use synth_core::models::subledger::ap::{APInvoice, APInvoiceLine, MatchStatus};
+use synth_core::models::subledger::ar::{ARInvoice, ARInvoiceLine};
+use synth_core::models::subledger::PaymentTerms;
+
+/// Links document flow invoices to subledger records.
+pub struct DocumentFlowLinker {
+    ap_counter: u64,
+    ar_counter: u64,
+}
+
+impl DocumentFlowLinker {
+    /// Create a new document flow linker.
+    pub fn new() -> Self {
+        Self {
+            ap_counter: 0,
+            ar_counter: 0,
+        }
+    }
+
+    /// Convert a document flow VendorInvoice to an AP subledger APInvoice.
+    ///
+    /// This ensures that vendor invoices from the P2P flow create corresponding
+    /// AP subledger records for complete data coherence.
+    pub fn create_ap_invoice_from_vendor_invoice(
+        &mut self,
+        vendor_invoice: &VendorInvoice,
+    ) -> APInvoice {
+        self.ap_counter += 1;
+
+        // Generate AP invoice number based on vendor invoice
+        let invoice_number = format!("APINV{:08}", self.ap_counter);
+
+        // Create the AP invoice
+        let mut ap_invoice = APInvoice::new(
+            invoice_number,
+            vendor_invoice.vendor_invoice_number.clone(),
+            vendor_invoice.header.company_code.clone(),
+            vendor_invoice.vendor_id.clone(),
+            format!("Vendor {}", vendor_invoice.vendor_id), // Vendor name
+            vendor_invoice.invoice_date,
+            parse_payment_terms(&vendor_invoice.payment_terms),
+            vendor_invoice.header.currency.clone(),
+        );
+
+        // Set PO reference if available
+        if let Some(po_id) = &vendor_invoice.purchase_order_id {
+            ap_invoice.reference_po = Some(po_id.clone());
+            ap_invoice.match_status = match vendor_invoice.verification_status {
+                synth_core::models::documents::InvoiceVerificationStatus::ThreeWayMatchPassed => {
+                    MatchStatus::Matched
+                }
+                synth_core::models::documents::InvoiceVerificationStatus::ThreeWayMatchFailed => {
+                    MatchStatus::MatchedWithVariance {
+                        price_variance: Decimal::ZERO,
+                        quantity_variance: Decimal::ZERO,
+                    }
+                }
+                _ => MatchStatus::NotRequired,
+            };
+        }
+
+        // Add line items
+        for (idx, item) in vendor_invoice.items.iter().enumerate() {
+            let line = APInvoiceLine::new(
+                (idx + 1) as u32,
+                item.base.description.clone(),
+                item.base.quantity,
+                item.base.uom.clone(),
+                item.base.unit_price,
+                item.base.gl_account.clone().unwrap_or_else(|| "5000".to_string()),
+            )
+            .with_tax(
+                item.tax_code.clone().unwrap_or_else(|| "VAT".to_string()),
+                item.base.tax_amount,
+            );
+
+            ap_invoice.add_line(line);
+        }
+
+        ap_invoice
+    }
+
+    /// Convert a document flow CustomerInvoice to an AR subledger ARInvoice.
+    ///
+    /// This ensures that customer invoices from the O2C flow create corresponding
+    /// AR subledger records for complete data coherence.
+    pub fn create_ar_invoice_from_customer_invoice(
+        &mut self,
+        customer_invoice: &CustomerInvoice,
+    ) -> ARInvoice {
+        self.ar_counter += 1;
+
+        // Generate AR invoice number based on customer invoice
+        let invoice_number = format!("ARINV{:08}", self.ar_counter);
+
+        // Create the AR invoice
+        let mut ar_invoice = ARInvoice::new(
+            invoice_number,
+            customer_invoice.header.company_code.clone(),
+            customer_invoice.customer_id.clone(),
+            format!("Customer {}", customer_invoice.customer_id), // Customer name
+            customer_invoice.header.document_date,
+            parse_payment_terms(&customer_invoice.payment_terms),
+            customer_invoice.header.currency.clone(),
+        );
+
+        // Add line items
+        for (idx, item) in customer_invoice.items.iter().enumerate() {
+            let line = ARInvoiceLine::new(
+                (idx + 1) as u32,
+                item.base.description.clone(),
+                item.base.quantity,
+                item.base.uom.clone(),
+                item.base.unit_price,
+                item.revenue_account.clone().unwrap_or_else(|| "4000".to_string()),
+            )
+            .with_tax("VAT".to_string(), item.base.tax_amount);
+
+            ar_invoice.add_line(line);
+        }
+
+        ar_invoice
+    }
+
+    /// Batch convert multiple vendor invoices to AP invoices.
+    pub fn batch_create_ap_invoices(
+        &mut self,
+        vendor_invoices: &[VendorInvoice],
+    ) -> Vec<APInvoice> {
+        vendor_invoices
+            .iter()
+            .map(|vi| self.create_ap_invoice_from_vendor_invoice(vi))
+            .collect()
+    }
+
+    /// Batch convert multiple customer invoices to AR invoices.
+    pub fn batch_create_ar_invoices(
+        &mut self,
+        customer_invoices: &[CustomerInvoice],
+    ) -> Vec<ARInvoice> {
+        customer_invoices
+            .iter()
+            .map(|ci| self.create_ar_invoice_from_customer_invoice(ci))
+            .collect()
+    }
+}
+
+impl Default for DocumentFlowLinker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Parse payment terms string into PaymentTerms struct.
+fn parse_payment_terms(terms_str: &str) -> PaymentTerms {
+    // Try to parse common payment terms formats
+    match terms_str.to_uppercase().as_str() {
+        "NET30" | "N30" => PaymentTerms::net_30(),
+        "NET60" | "N60" => PaymentTerms::net_60(),
+        "NET90" | "N90" => PaymentTerms::net_90(),
+        "DUE ON RECEIPT" | "COD" => PaymentTerms::net(0), // Due immediately
+        _ => {
+            // Default to NET30 if parsing fails
+            PaymentTerms::net_30()
+        }
+    }
+}
+
+/// Result of linking document flows to subledgers.
+#[derive(Debug, Clone, Default)]
+pub struct SubledgerLinkResult {
+    /// AP invoices created from vendor invoices.
+    pub ap_invoices: Vec<APInvoice>,
+    /// AR invoices created from customer invoices.
+    pub ar_invoices: Vec<ARInvoice>,
+    /// Number of vendor invoices processed.
+    pub vendor_invoices_processed: usize,
+    /// Number of customer invoices processed.
+    pub customer_invoices_processed: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+    use rust_decimal_macros::dec;
+    use synth_core::models::documents::VendorInvoiceItem;
+
+    #[test]
+    fn test_create_ap_invoice_from_vendor_invoice() {
+        let mut vendor_invoice = VendorInvoice::new(
+            "VI-001",
+            "1000",
+            "VEND001",
+            "V-INV-001",
+            2024,
+            1,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            "SYSTEM",
+        );
+
+        vendor_invoice.add_item(VendorInvoiceItem::new(
+            1,
+            "Test Item",
+            dec!(10),
+            dec!(100),
+        ));
+
+        let mut linker = DocumentFlowLinker::new();
+        let ap_invoice = linker.create_ap_invoice_from_vendor_invoice(&vendor_invoice);
+
+        assert_eq!(ap_invoice.vendor_id, "VEND001");
+        assert_eq!(ap_invoice.vendor_invoice_number, "V-INV-001");
+        assert_eq!(ap_invoice.lines.len(), 1);
+        assert!(ap_invoice.gross_amount.document_amount > Decimal::ZERO);
+    }
+
+    #[test]
+    fn test_create_ar_invoice_from_customer_invoice() {
+        use synth_core::models::documents::CustomerInvoiceItem;
+
+        let mut customer_invoice = CustomerInvoice::new(
+            "CI-001",
+            "1000",
+            "CUST001",
+            2024,
+            1,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 2, 14).unwrap(),
+            "SYSTEM",
+        );
+
+        customer_invoice.add_item(CustomerInvoiceItem::new(
+            1,
+            "Product A",
+            dec!(5),
+            dec!(200),
+        ));
+
+        let mut linker = DocumentFlowLinker::new();
+        let ar_invoice = linker.create_ar_invoice_from_customer_invoice(&customer_invoice);
+
+        assert_eq!(ar_invoice.customer_id, "CUST001");
+        assert_eq!(ar_invoice.lines.len(), 1);
+        assert!(ar_invoice.gross_amount.document_amount > Decimal::ZERO);
+    }
+
+    #[test]
+    fn test_batch_conversion() {
+        let vendor_invoice = VendorInvoice::new(
+            "VI-001",
+            "1000",
+            "VEND001",
+            "V-INV-001",
+            2024,
+            1,
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+            "SYSTEM",
+        );
+
+        let mut linker = DocumentFlowLinker::new();
+        let ap_invoices = linker.batch_create_ap_invoices(&[vendor_invoice.clone(), vendor_invoice]);
+
+        assert_eq!(ap_invoices.len(), 2);
+        assert_eq!(ap_invoices[0].invoice_number, "APINV00000001");
+        assert_eq!(ap_invoices[1].invoice_number, "APINV00000002");
+    }
+
+    #[test]
+    fn test_parse_payment_terms() {
+        let terms = parse_payment_terms("NET30");
+        assert_eq!(terms.net_due_days, 30);
+
+        let terms = parse_payment_terms("NET60");
+        assert_eq!(terms.net_due_days, 60);
+
+        let terms = parse_payment_terms("DUE ON RECEIPT");
+        assert_eq!(terms.net_due_days, 0);
+
+        // Unknown terms default to NET30
+        let terms = parse_payment_terms("CUSTOM");
+        assert_eq!(terms.net_due_days, 30);
+    }
+}

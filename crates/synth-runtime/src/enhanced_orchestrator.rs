@@ -23,9 +23,17 @@ use synth_generators::{
     VendorGenerator, CustomerGenerator, MaterialGenerator, AssetGenerator, EmployeeGenerator,
     // Document flow generators
     P2PGenerator, P2PDocumentChain, O2CGenerator, O2CDocumentChain,
+    // Document flow JE generator
+    DocumentFlowJeGenerator,
+    // Subledger linker
+    DocumentFlowLinker,
     // Anomaly injection
     AnomalyInjector, AnomalyInjectorConfig,
+    // Balance validation
+    RunningBalanceTracker, BalanceTrackerConfig, ValidationError,
 };
+use synth_core::models::subledger::ap::APInvoice;
+use synth_core::models::subledger::ar::ARInvoice;
 
 /// Configuration for which generation phases to run.
 #[derive(Debug, Clone)]
@@ -38,6 +46,8 @@ pub struct PhaseConfig {
     pub generate_journal_entries: bool,
     /// Inject anomalies.
     pub inject_anomalies: bool,
+    /// Validate balance sheet equation after generation.
+    pub validate_balances: bool,
     /// Show progress bars.
     pub show_progress: bool,
     /// Number of vendors to generate per company.
@@ -63,6 +73,7 @@ impl Default for PhaseConfig {
             generate_document_flows: true,
             generate_journal_entries: true,
             inject_anomalies: false,
+            validate_balances: true,
             show_progress: true,
             vendors_per_company: 50,
             customers_per_company: 100,
@@ -113,6 +124,15 @@ pub struct DocumentFlowSnapshot {
     pub payments: Vec<documents::Payment>,
 }
 
+/// Subledger snapshot containing generated subledger records.
+#[derive(Debug, Clone, Default)]
+pub struct SubledgerSnapshot {
+    /// AP invoices linked from document flow vendor invoices.
+    pub ap_invoices: Vec<APInvoice>,
+    /// AR invoices linked from document flow customer invoices.
+    pub ar_invoices: Vec<ARInvoice>,
+}
+
 /// Anomaly labels generated during injection.
 #[derive(Debug, Clone, Default)]
 pub struct AnomalyLabels {
@@ -124,6 +144,29 @@ pub struct AnomalyLabels {
     pub by_type: HashMap<String, usize>,
 }
 
+/// Balance validation results from running balance tracker.
+#[derive(Debug, Clone, Default)]
+pub struct BalanceValidationResult {
+    /// Whether validation was performed.
+    pub validated: bool,
+    /// Whether balance sheet equation is satisfied.
+    pub is_balanced: bool,
+    /// Number of entries processed.
+    pub entries_processed: u64,
+    /// Total debits across all entries.
+    pub total_debits: rust_decimal::Decimal,
+    /// Total credits across all entries.
+    pub total_credits: rust_decimal::Decimal,
+    /// Number of accounts tracked.
+    pub accounts_tracked: usize,
+    /// Number of companies tracked.
+    pub companies_tracked: usize,
+    /// Validation errors encountered.
+    pub validation_errors: Vec<ValidationError>,
+    /// Whether any unbalanced entries were found.
+    pub has_unbalanced_entries: bool,
+}
+
 /// Complete result of enhanced generation run.
 #[derive(Debug)]
 pub struct EnhancedGenerationResult {
@@ -133,10 +176,14 @@ pub struct EnhancedGenerationResult {
     pub master_data: MasterDataSnapshot,
     /// Document flow snapshot.
     pub document_flows: DocumentFlowSnapshot,
+    /// Subledger snapshot (linked from document flows).
+    pub subledger: SubledgerSnapshot,
     /// Generated journal entries.
     pub journal_entries: Vec<JournalEntry>,
     /// Anomaly labels (if injection enabled).
     pub anomaly_labels: AnomalyLabels,
+    /// Balance validation results (if validation enabled).
+    pub balance_validation: BalanceValidationResult,
     /// Generation statistics.
     pub statistics: EnhancedGenerationStatistics,
 }
@@ -163,6 +210,9 @@ pub struct EnhancedGenerationStatistics {
     /// Document flow counts.
     pub p2p_chain_count: usize,
     pub o2c_chain_count: usize,
+    /// Subledger counts.
+    pub ap_invoice_count: usize,
+    pub ar_invoice_count: usize,
     /// Anomaly counts.
     pub anomalies_injected: usize,
 }
@@ -230,16 +280,34 @@ impl EnhancedOrchestrator {
 
         // Phase 3: Generate Document Flows
         let mut document_flows = DocumentFlowSnapshot::default();
+        let mut subledger = SubledgerSnapshot::default();
         if self.phase_config.generate_document_flows && !self.master_data.vendors.is_empty() {
             self.generate_document_flows(&mut document_flows)?;
             stats.p2p_chain_count = document_flows.p2p_chains.len();
             stats.o2c_chain_count = document_flows.o2c_chains.len();
+
+            // Phase 3b: Link document flows to subledgers (for data coherence)
+            subledger = self.link_document_flows_to_subledgers(&document_flows)?;
+            stats.ap_invoice_count = subledger.ap_invoices.len();
+            stats.ar_invoice_count = subledger.ar_invoices.len();
         }
 
         // Phase 4: Generate Journal Entries
         let mut entries = Vec::new();
+
+        // Phase 4a: Generate JEs from document flows (for data coherence)
+        if self.phase_config.generate_document_flows && !document_flows.p2p_chains.is_empty() {
+            let flow_entries = self.generate_jes_from_document_flows(&document_flows)?;
+            entries.extend(flow_entries);
+        }
+
+        // Phase 4b: Generate standalone journal entries
         if self.phase_config.generate_journal_entries {
-            entries = self.generate_journal_entries(&coa)?;
+            let je_entries = self.generate_journal_entries(&coa)?;
+            entries.extend(je_entries);
+        }
+
+        if !entries.is_empty() {
             stats.total_entries = entries.len() as u64;
             stats.total_line_items = entries.iter().map(|e| e.line_count() as u64).sum();
         }
@@ -252,12 +320,20 @@ impl EnhancedOrchestrator {
             anomaly_labels = result;
         }
 
+        // Phase 6: Validate Balances
+        let mut balance_validation = BalanceValidationResult::default();
+        if self.phase_config.validate_balances && !entries.is_empty() {
+            balance_validation = self.validate_journal_entries(&entries)?;
+        }
+
         Ok(EnhancedGenerationResult {
             chart_of_accounts: (*coa).clone(),
             master_data: self.master_data.clone(),
             document_flows,
+            subledger,
             journal_entries: entries,
             anomaly_labels,
+            balance_validation,
             statistics: stats,
         })
     }
@@ -478,13 +554,20 @@ impl EnhancedOrchestrator {
 
         let company_codes: Vec<String> = self.config.companies.iter().map(|c| c.code.clone()).collect();
 
-        let mut generator = JournalEntryGenerator::new_with_params(
+        let generator = JournalEntryGenerator::new_with_params(
             self.config.transactions.clone(),
             Arc::clone(coa),
             company_codes,
             start_date,
             end_date,
             self.seed,
+        );
+
+        // Connect generated master data to ensure JEs reference real entities
+        let mut generator = generator.with_master_data(
+            &self.master_data.vendors,
+            &self.master_data.customers,
+            &self.master_data.materials,
         );
 
         let mut entries = Vec::with_capacity(total as usize);
@@ -500,6 +583,84 @@ impl EnhancedOrchestrator {
         }
 
         Ok(entries)
+    }
+
+    /// Generate journal entries from document flows.
+    ///
+    /// This creates proper GL entries for each document in the P2P and O2C flows,
+    /// ensuring that document activity is reflected in the general ledger.
+    fn generate_jes_from_document_flows(
+        &mut self,
+        flows: &DocumentFlowSnapshot,
+    ) -> SynthResult<Vec<JournalEntry>> {
+        let total_chains = flows.p2p_chains.len() + flows.o2c_chains.len();
+        let pb = self.create_progress_bar(total_chains as u64, "Generating Document Flow JEs");
+
+        let mut generator = DocumentFlowJeGenerator::new();
+        let mut entries = Vec::new();
+
+        // Generate JEs from P2P chains
+        for chain in &flows.p2p_chains {
+            let chain_entries = generator.generate_from_p2p_chain(chain);
+            entries.extend(chain_entries);
+            if let Some(pb) = &pb {
+                pb.inc(1);
+            }
+        }
+
+        // Generate JEs from O2C chains
+        for chain in &flows.o2c_chains {
+            let chain_entries = generator.generate_from_o2c_chain(chain);
+            entries.extend(chain_entries);
+            if let Some(pb) = &pb {
+                pb.inc(1);
+            }
+        }
+
+        if let Some(pb) = pb {
+            pb.finish_with_message(format!("Generated {} JEs from document flows", entries.len()));
+        }
+
+        Ok(entries)
+    }
+
+    /// Link document flows to subledger records.
+    ///
+    /// Creates AP invoices from vendor invoices and AR invoices from customer invoices,
+    /// ensuring subledger data is coherent with document flow data.
+    fn link_document_flows_to_subledgers(
+        &mut self,
+        flows: &DocumentFlowSnapshot,
+    ) -> SynthResult<SubledgerSnapshot> {
+        let total = flows.vendor_invoices.len() + flows.customer_invoices.len();
+        let pb = self.create_progress_bar(total as u64, "Linking Subledgers");
+
+        let mut linker = DocumentFlowLinker::new();
+
+        // Convert vendor invoices to AP invoices
+        let ap_invoices = linker.batch_create_ap_invoices(&flows.vendor_invoices);
+        if let Some(pb) = &pb {
+            pb.inc(flows.vendor_invoices.len() as u64);
+        }
+
+        // Convert customer invoices to AR invoices
+        let ar_invoices = linker.batch_create_ar_invoices(&flows.customer_invoices);
+        if let Some(pb) = &pb {
+            pb.inc(flows.customer_invoices.len() as u64);
+        }
+
+        if let Some(pb) = pb {
+            pb.finish_with_message(format!(
+                "Linked {} AP and {} AR invoices",
+                ap_invoices.len(),
+                ar_invoices.len()
+            ));
+        }
+
+        Ok(SubledgerSnapshot {
+            ap_invoices,
+            ar_invoices,
+        })
     }
 
     /// Inject anomalies into journal entries.
@@ -532,6 +693,81 @@ impl EnhancedOrchestrator {
             labels: result.labels,
             summary: Some(result.summary),
             by_type,
+        })
+    }
+
+    /// Validate journal entries using running balance tracker.
+    ///
+    /// Applies all entries to the balance tracker and validates:
+    /// - Each entry is internally balanced (debits = credits)
+    /// - Balance sheet equation holds (Assets = Liabilities + Equity + Net Income)
+    fn validate_journal_entries(
+        &mut self,
+        entries: &[JournalEntry],
+    ) -> SynthResult<BalanceValidationResult> {
+        let pb = self.create_progress_bar(entries.len() as u64, "Validating Balances");
+
+        // Configure tracker to not fail on errors (collect them instead)
+        let config = BalanceTrackerConfig {
+            validate_on_each_entry: false, // We'll validate at the end
+            track_history: false, // Skip history for performance
+            fail_on_validation_error: false, // Collect errors, don't fail
+            ..Default::default()
+        };
+
+        let mut tracker = RunningBalanceTracker::new(config);
+
+        // Apply all entries
+        let errors = tracker.apply_entries(entries);
+
+        if let Some(pb) = &pb {
+            pb.inc(entries.len() as u64);
+        }
+
+        // Check if any entries were unbalanced
+        let has_unbalanced = errors
+            .iter()
+            .any(|e| e.error_type == synth_generators::ValidationErrorType::UnbalancedEntry);
+
+        // Validate balance sheet for each company
+        let mut all_errors = errors;
+        let company_codes: Vec<String> = self.config.companies.iter().map(|c| c.code.clone()).collect();
+
+        let end_date = NaiveDate::parse_from_str(&self.config.global.start_date, "%Y-%m-%d")
+            .map(|d| d + chrono::Months::new(self.config.global.period_months))
+            .unwrap_or_else(|_| chrono::Local::now().date_naive());
+
+        for company_code in &company_codes {
+            if let Err(e) = tracker.validate_balance_sheet(company_code, end_date, None) {
+                all_errors.push(e);
+            }
+        }
+
+        // Get statistics after all mutable operations are done
+        let stats = tracker.get_statistics();
+
+        // Determine if balanced overall
+        let is_balanced = all_errors.is_empty();
+
+        if let Some(pb) = pb {
+            let msg = if is_balanced {
+                "Balance validation passed"
+            } else {
+                "Balance validation completed with errors"
+            };
+            pb.finish_with_message(msg);
+        }
+
+        Ok(BalanceValidationResult {
+            validated: true,
+            is_balanced,
+            entries_processed: stats.entries_processed,
+            total_debits: stats.total_debits,
+            total_credits: stats.total_credits,
+            accounts_tracked: stats.accounts_tracked,
+            companies_tracked: stats.companies_tracked,
+            validation_errors: all_errors,
+            has_unbalanced_entries: has_unbalanced,
         })
     }
 
@@ -690,6 +926,7 @@ mod tests {
             generate_document_flows: true,
             generate_journal_entries: false,
             inject_anomalies: false,
+            validate_balances: false,
             show_progress: false,
             vendors_per_company: 5,
             customers_per_company: 5,
@@ -743,6 +980,7 @@ mod tests {
             generate_document_flows: true,
             generate_journal_entries: true,
             inject_anomalies: false,
+            validate_balances: true,
             show_progress: false,
             vendors_per_company: 3,
             customers_per_company: 3,
@@ -763,6 +1001,97 @@ mod tests {
         assert!(!result.document_flows.o2c_chains.is_empty());
         assert!(!result.journal_entries.is_empty());
         assert!(result.statistics.accounts_count > 0);
+
+        // Subledger linking should have run
+        assert!(!result.subledger.ap_invoices.is_empty());
+        assert!(!result.subledger.ar_invoices.is_empty());
+
+        // Balance validation should have run
+        assert!(result.balance_validation.validated);
+        assert!(result.balance_validation.entries_processed > 0);
+    }
+
+    #[test]
+    fn test_subledger_linking() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: true,
+            generate_document_flows: true,
+            generate_journal_entries: false,
+            inject_anomalies: false,
+            validate_balances: false,
+            show_progress: false,
+            vendors_per_company: 5,
+            customers_per_company: 5,
+            materials_per_company: 10,
+            assets_per_company: 3,
+            employees_per_company: 5,
+            p2p_chains: 5,
+            o2c_chains: 5,
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Should have document flows
+        assert!(!result.document_flows.vendor_invoices.is_empty());
+        assert!(!result.document_flows.customer_invoices.is_empty());
+
+        // Subledger should be linked from document flows
+        assert!(!result.subledger.ap_invoices.is_empty());
+        assert!(!result.subledger.ar_invoices.is_empty());
+
+        // AP invoices count should match vendor invoices count
+        assert_eq!(
+            result.subledger.ap_invoices.len(),
+            result.document_flows.vendor_invoices.len()
+        );
+
+        // AR invoices count should match customer invoices count
+        assert_eq!(
+            result.subledger.ar_invoices.len(),
+            result.document_flows.customer_invoices.len()
+        );
+
+        // Statistics should reflect subledger counts
+        assert_eq!(
+            result.statistics.ap_invoice_count,
+            result.subledger.ap_invoices.len()
+        );
+        assert_eq!(
+            result.statistics.ar_invoice_count,
+            result.subledger.ar_invoices.len()
+        );
+    }
+
+    #[test]
+    fn test_balance_validation() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: false,
+            generate_document_flows: false,
+            generate_journal_entries: true,
+            inject_anomalies: false,
+            validate_balances: true,
+            show_progress: false,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Balance validation should run
+        assert!(result.balance_validation.validated);
+        assert!(result.balance_validation.entries_processed > 0);
+
+        // Generated JEs should be balanced (no unbalanced entries)
+        assert!(!result.balance_validation.has_unbalanced_entries);
+
+        // Total debits should equal total credits
+        assert_eq!(
+            result.balance_validation.total_debits,
+            result.balance_validation.total_credits
+        );
     }
 
     #[test]
@@ -799,6 +1128,7 @@ mod tests {
         assert!(config.generate_document_flows);
         assert!(config.generate_journal_entries);
         assert!(!config.inject_anomalies);
+        assert!(config.validate_balances);
         assert!(config.show_progress);
         assert!(config.vendors_per_company > 0);
         assert!(config.customers_per_company > 0);

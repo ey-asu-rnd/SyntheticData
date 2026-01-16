@@ -39,6 +39,10 @@ pub struct JournalEntryGenerator {
     template_config: TemplateConfig,
     vendor_pool: VendorPool,
     customer_pool: CustomerPool,
+    // Material pool for realistic material references
+    material_pool: Option<MaterialPool>,
+    // Flag indicating whether we're using real master data vs defaults
+    using_real_master_data: bool,
     // Fraud generation
     fraud_config: FraudConfig,
 }
@@ -172,6 +176,8 @@ impl JournalEntryGenerator {
             template_config,
             vendor_pool: VendorPool::standard(),
             customer_pool: CustomerPool::standard(),
+            material_pool: None,
+            using_real_master_data: false,
             fraud_config: FraudConfig::default(),
         }
     }
@@ -229,6 +235,61 @@ impl JournalEntryGenerator {
     /// Set fraud configuration.
     pub fn set_fraud_config(&mut self, config: FraudConfig) {
         self.fraud_config = config;
+    }
+
+    /// Set vendors from generated master data.
+    ///
+    /// This replaces the default vendor pool with actual generated vendors,
+    /// ensuring JEs reference real master data entities.
+    pub fn with_vendors(mut self, vendors: &[Vendor]) -> Self {
+        if !vendors.is_empty() {
+            self.vendor_pool = VendorPool::from_vendors(vendors.to_vec());
+            self.using_real_master_data = true;
+        }
+        self
+    }
+
+    /// Set customers from generated master data.
+    ///
+    /// This replaces the default customer pool with actual generated customers,
+    /// ensuring JEs reference real master data entities.
+    pub fn with_customers(mut self, customers: &[Customer]) -> Self {
+        if !customers.is_empty() {
+            self.customer_pool = CustomerPool::from_customers(customers.to_vec());
+            self.using_real_master_data = true;
+        }
+        self
+    }
+
+    /// Set materials from generated master data.
+    ///
+    /// This provides material references for JEs that involve inventory movements.
+    pub fn with_materials(mut self, materials: &[Material]) -> Self {
+        if !materials.is_empty() {
+            self.material_pool = Some(MaterialPool::from_materials(materials.to_vec()));
+            self.using_real_master_data = true;
+        }
+        self
+    }
+
+    /// Set all master data at once for convenience.
+    ///
+    /// This is the recommended way to configure the JE generator with
+    /// generated master data to ensure data coherence.
+    pub fn with_master_data(
+        self,
+        vendors: &[Vendor],
+        customers: &[Customer],
+        materials: &[Material],
+    ) -> Self {
+        self.with_vendors(vendors)
+            .with_customers(customers)
+            .with_materials(materials)
+    }
+
+    /// Check if the generator is using real master data.
+    pub fn is_using_real_master_data(&self) -> bool {
+        self.using_real_master_data
     }
 
     /// Determine if this transaction should be fraudulent.
@@ -808,5 +869,80 @@ mod tests {
             // (though it may still fall back if random selection misses)
             assert!(!entry.header.created_by.is_empty());
         }
+    }
+
+    #[test]
+    fn test_master_data_connection() {
+        let mut coa_gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
+        let coa = Arc::new(coa_gen.generate());
+
+        // Create test vendors
+        let vendors = vec![
+            Vendor::new("V-TEST-001", "Test Vendor Alpha", VendorType::Supplier),
+            Vendor::new("V-TEST-002", "Test Vendor Beta", VendorType::Technology),
+        ];
+
+        // Create test customers
+        let customers = vec![
+            Customer::new("C-TEST-001", "Test Customer One", CustomerType::Corporate),
+            Customer::new("C-TEST-002", "Test Customer Two", CustomerType::SmallBusiness),
+        ];
+
+        // Create test materials
+        let materials = vec![
+            Material::new("MAT-TEST-001", "Test Material A", MaterialType::RawMaterial),
+        ];
+
+        // Create generator with master data
+        let generator = JournalEntryGenerator::new_with_params(
+            TransactionConfig::default(),
+            coa,
+            vec!["1000".to_string()],
+            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            42,
+        );
+
+        // Without master data
+        assert!(!generator.is_using_real_master_data());
+
+        // Connect master data
+        let generator_with_data = generator
+            .with_vendors(&vendors)
+            .with_customers(&customers)
+            .with_materials(&materials);
+
+        // Should now be using real master data
+        assert!(generator_with_data.is_using_real_master_data());
+    }
+
+    #[test]
+    fn test_with_master_data_convenience_method() {
+        let mut coa_gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
+        let coa = Arc::new(coa_gen.generate());
+
+        let vendors = vec![
+            Vendor::new("V-001", "Vendor One", VendorType::Supplier),
+        ];
+        let customers = vec![
+            Customer::new("C-001", "Customer One", CustomerType::Corporate),
+        ];
+        let materials = vec![
+            Material::new("MAT-001", "Material One", MaterialType::RawMaterial),
+        ];
+
+        let generator = JournalEntryGenerator::new_with_params(
+            TransactionConfig::default(),
+            coa,
+            vec!["1000".to_string()],
+            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            42,
+        )
+        .with_master_data(&vendors, &customers, &materials);
+
+        assert!(generator.is_using_real_master_data());
     }
 }

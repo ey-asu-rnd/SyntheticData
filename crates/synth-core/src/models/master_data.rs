@@ -823,6 +823,18 @@ impl VendorPool {
         }
     }
 
+    /// Create a vendor pool from a vector of vendors.
+    ///
+    /// This is the preferred way to create a pool from generated master data,
+    /// ensuring JEs reference real entities.
+    pub fn from_vendors(vendors: Vec<Vendor>) -> Self {
+        let mut pool = Self::new();
+        for vendor in vendors {
+            pool.add_vendor(vendor);
+        }
+        pool
+    }
+
     /// Add a vendor to the pool.
     pub fn add_vendor(&mut self, vendor: Vendor) {
         let idx = self.vendors.len();
@@ -1016,6 +1028,18 @@ impl CustomerPool {
             customers: Vec::new(),
             type_index: HashMap::new(),
         }
+    }
+
+    /// Create a customer pool from a vector of customers.
+    ///
+    /// This is the preferred way to create a pool from generated master data,
+    /// ensuring JEs reference real entities.
+    pub fn from_customers(customers: Vec<Customer>) -> Self {
+        let mut pool = Self::new();
+        for customer in customers {
+            pool.add_customer(customer);
+        }
+        pool
     }
 
     /// Add a customer to the pool.

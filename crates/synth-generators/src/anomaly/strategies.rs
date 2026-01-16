@@ -91,6 +91,10 @@ pub struct AmountModificationStrategy {
     pub max_multiplier: f64,
     /// Whether to use round numbers.
     pub prefer_round_numbers: bool,
+    /// Whether to rebalance the entry after modification.
+    /// If true, a corresponding line will be adjusted to maintain balance.
+    /// If false, the entry will become unbalanced (for intentional fraud detection).
+    pub rebalance_entry: bool,
 }
 
 impl Default for AmountModificationStrategy {
@@ -99,6 +103,7 @@ impl Default for AmountModificationStrategy {
             min_multiplier: 2.0,
             max_multiplier: 10.0,
             prefer_round_numbers: false,
+            rebalance_entry: true, // Default to maintaining balance
         }
     }
 }
@@ -123,12 +128,11 @@ impl InjectionStrategy for AmountModificationStrategy {
         }
 
         let line_idx = rng.gen_range(0..entry.lines.len());
-        let line = &mut entry.lines[line_idx];
-
-        let original_amount = if line.debit_amount > Decimal::ZERO {
-            line.debit_amount
+        let is_debit = entry.lines[line_idx].debit_amount > Decimal::ZERO;
+        let original_amount = if is_debit {
+            entry.lines[line_idx].debit_amount
         } else {
-            line.credit_amount
+            entry.lines[line_idx].credit_amount
         };
 
         let multiplier = rng.gen_range(self.min_multiplier..self.max_multiplier);
@@ -143,33 +147,61 @@ impl InjectionStrategy for AmountModificationStrategy {
         }
 
         let impact = new_amount - original_amount;
+        let account_code = entry.lines[line_idx].account_code.clone();
 
-        if line.debit_amount > Decimal::ZERO {
-            line.debit_amount = new_amount;
+        // Apply the modification
+        if is_debit {
+            entry.lines[line_idx].debit_amount = new_amount;
         } else {
-            line.credit_amount = new_amount;
+            entry.lines[line_idx].credit_amount = new_amount;
         }
 
-        // Entry is now unbalanced - this is intentional for some anomaly types
+        // Rebalance the entry if configured to do so
+        if self.rebalance_entry {
+            // Find a line on the opposite side to adjust
+            let balancing_idx = entry.lines.iter().position(|l| {
+                if is_debit {
+                    l.credit_amount > Decimal::ZERO
+                } else {
+                    l.debit_amount > Decimal::ZERO
+                }
+            });
+
+            if let Some(bal_idx) = balancing_idx {
+                // Adjust the balancing line by the same impact
+                if is_debit {
+                    entry.lines[bal_idx].credit_amount += impact;
+                } else {
+                    entry.lines[bal_idx].debit_amount += impact;
+                }
+            }
+        }
+
         match anomaly_type {
             AnomalyType::Fraud(FraudType::RoundDollarManipulation) => {
                 InjectionResult::success(&format!(
-                    "Modified amount from {} to {} (round dollar)",
-                    original_amount, new_amount
+                    "Modified amount from {} to {} (round dollar){}",
+                    original_amount, new_amount,
+                    if self.rebalance_entry { " [rebalanced]" } else { " [UNBALANCED]" }
                 ))
                 .with_impact(impact)
-                .with_entity(&line.account_code)
+                .with_entity(&account_code)
             }
             AnomalyType::Statistical(StatisticalAnomalyType::UnusuallyHighAmount) => {
                 InjectionResult::success(&format!(
-                    "Inflated amount by {:.1}x to {}",
-                    multiplier, new_amount
+                    "Inflated amount by {:.1}x to {}{}",
+                    multiplier, new_amount,
+                    if self.rebalance_entry { " [rebalanced]" } else { " [UNBALANCED]" }
                 ))
                 .with_impact(impact)
                 .with_metadata("multiplier", &format!("{:.2}", multiplier))
             }
-            _ => InjectionResult::success(&format!("Modified amount to {}", new_amount))
-                .with_impact(impact),
+            _ => InjectionResult::success(&format!(
+                "Modified amount to {}{}",
+                new_amount,
+                if self.rebalance_entry { " [rebalanced]" } else { " [UNBALANCED]" }
+            ))
+            .with_impact(impact),
         }
     }
 }
@@ -443,12 +475,15 @@ impl InjectionStrategy for DescriptionAnomalyStrategy {
 pub struct BenfordViolationStrategy {
     /// Target first digits (rarely occurring).
     pub target_digits: Vec<u32>,
+    /// Whether to rebalance the entry after modification.
+    pub rebalance_entry: bool,
 }
 
 impl Default for BenfordViolationStrategy {
     fn default() -> Self {
         Self {
             target_digits: vec![5, 6, 7, 8, 9], // Less common first digits
+            rebalance_entry: true, // Default to maintaining balance
         }
     }
 }
@@ -473,12 +508,11 @@ impl InjectionStrategy for BenfordViolationStrategy {
         }
 
         let line_idx = rng.gen_range(0..entry.lines.len());
-        let line = &mut entry.lines[line_idx];
-
-        let original_amount = if line.debit_amount > Decimal::ZERO {
-            line.debit_amount
+        let is_debit = entry.lines[line_idx].debit_amount > Decimal::ZERO;
+        let original_amount = if is_debit {
+            entry.lines[line_idx].debit_amount
         } else {
-            line.credit_amount
+            entry.lines[line_idx].credit_amount
         };
 
         // Get target first digit
@@ -494,21 +528,46 @@ impl InjectionStrategy for BenfordViolationStrategy {
         let new_amount = base * Decimal::new(target_digit as i64, 0)
             + Decimal::new(rng.gen_range(0..10_i64.pow(safe_magnitude)), 0);
 
-        if line.debit_amount > Decimal::ZERO {
-            line.debit_amount = new_amount;
+        let impact = new_amount - original_amount;
+
+        // Apply the modification
+        if is_debit {
+            entry.lines[line_idx].debit_amount = new_amount;
         } else {
-            line.credit_amount = new_amount;
+            entry.lines[line_idx].credit_amount = new_amount;
+        }
+
+        // Rebalance the entry if configured to do so
+        if self.rebalance_entry {
+            // Find a line on the opposite side to adjust
+            let balancing_idx = entry.lines.iter().position(|l| {
+                if is_debit {
+                    l.credit_amount > Decimal::ZERO
+                } else {
+                    l.debit_amount > Decimal::ZERO
+                }
+            });
+
+            if let Some(bal_idx) = balancing_idx {
+                // Adjust the balancing line by the same impact
+                if is_debit {
+                    entry.lines[bal_idx].credit_amount += impact;
+                } else {
+                    entry.lines[bal_idx].debit_amount += impact;
+                }
+            }
         }
 
         let first_digit = target_digit;
         let benford_prob = (1.0 + 1.0 / first_digit as f64).log10();
 
         InjectionResult::success(&format!(
-            "Created Benford violation: first digit {} (expected probability {:.1}%)",
+            "Created Benford violation: first digit {} (expected probability {:.1}%){}",
             first_digit,
-            benford_prob * 100.0
+            benford_prob * 100.0,
+            if self.rebalance_entry { " [rebalanced]" } else { " [UNBALANCED]" }
         ))
-        .with_impact(new_amount - original_amount)
+        .with_impact(impact)
         .with_metadata("first_digit", &first_digit.to_string())
         .with_metadata("benford_probability", &format!("{:.4}", benford_prob))
     }
@@ -636,6 +695,75 @@ mod tests {
 
         assert!(result.success);
         assert!(result.monetary_impact.is_some());
+    }
+
+    #[test]
+    fn test_amount_modification_rebalanced() {
+        let strategy = AmountModificationStrategy {
+            rebalance_entry: true,
+            ..Default::default()
+        };
+        let mut entry = create_test_entry();
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+
+        // Entry should start balanced
+        assert!(entry.is_balanced());
+
+        let result = strategy.apply(
+            &mut entry,
+            &AnomalyType::Statistical(StatisticalAnomalyType::UnusuallyHighAmount),
+            &mut rng,
+        );
+
+        assert!(result.success);
+        // Entry should remain balanced after rebalancing
+        assert!(entry.is_balanced(), "Entry should remain balanced after amount modification with rebalancing");
+    }
+
+    #[test]
+    fn test_amount_modification_unbalanced_fraud() {
+        let strategy = AmountModificationStrategy {
+            rebalance_entry: false, // Intentionally create unbalanced entry for fraud detection
+            ..Default::default()
+        };
+        let mut entry = create_test_entry();
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+
+        // Entry should start balanced
+        assert!(entry.is_balanced());
+
+        let result = strategy.apply(
+            &mut entry,
+            &AnomalyType::Fraud(FraudType::RoundDollarManipulation),
+            &mut rng,
+        );
+
+        assert!(result.success);
+        // Entry should be unbalanced when rebalance is disabled
+        assert!(!entry.is_balanced(), "Entry should be unbalanced when rebalance_entry is false");
+    }
+
+    #[test]
+    fn test_benford_violation_rebalanced() {
+        let strategy = BenfordViolationStrategy {
+            rebalance_entry: true,
+            ..Default::default()
+        };
+        let mut entry = create_test_entry();
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+
+        // Entry should start balanced
+        assert!(entry.is_balanced());
+
+        let result = strategy.apply(
+            &mut entry,
+            &AnomalyType::Statistical(StatisticalAnomalyType::BenfordViolation),
+            &mut rng,
+        );
+
+        assert!(result.success);
+        // Entry should remain balanced after rebalancing
+        assert!(entry.is_balanced(), "Entry should remain balanced after Benford violation with rebalancing");
     }
 
     #[test]
