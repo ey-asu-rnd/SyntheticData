@@ -37,8 +37,38 @@ async fn json_response(router: axum::Router, request: Request<Body>) -> (StatusC
 }
 
 // ==========================================================================
-// Health Endpoint Tests
+// Health and Probe Endpoint Tests
 // ==========================================================================
+
+#[tokio::test]
+async fn test_liveness_probe() {
+    let router = test_router();
+    let request = Request::builder()
+        .uri("/live")
+        .body(Body::empty())
+        .unwrap();
+
+    let (status, json) = json_response(router, request).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json["alive"], true);
+    assert!(json["timestamp"].is_string());
+}
+
+#[tokio::test]
+async fn test_readiness_probe() {
+    let router = test_router();
+    let request = Request::builder()
+        .uri("/ready")
+        .body(Body::empty())
+        .unwrap();
+
+    let (status, json) = json_response(router, request).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json["ready"], true);
+    assert!(json["checks"].is_array());
+}
 
 #[tokio::test]
 async fn test_health_endpoint() {
@@ -73,6 +103,41 @@ async fn test_health_endpoint_returns_version() {
 // ==========================================================================
 // Metrics Endpoint Tests
 // ==========================================================================
+
+#[tokio::test]
+async fn test_prometheus_metrics_endpoint() {
+    let router = test_router();
+    let request = Request::builder()
+        .uri("/metrics")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = router.oneshot(request).await.unwrap();
+    let status = response.status();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let text = String::from_utf8(body.to_vec()).unwrap();
+
+    assert_eq!(status, StatusCode::OK);
+    // Check for Prometheus format markers
+    assert!(text.contains("# HELP synth_entries_generated_total"));
+    assert!(text.contains("# TYPE synth_entries_generated_total counter"));
+    assert!(text.contains("synth_uptime_seconds"));
+    assert!(text.contains("synth_info{version="));
+}
+
+#[tokio::test]
+async fn test_prometheus_metrics_content_type() {
+    let router = test_router();
+    let request = Request::builder()
+        .uri("/metrics")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = router.oneshot(request).await.unwrap();
+
+    let content_type = response.headers().get("content-type").unwrap().to_str().unwrap();
+    assert!(content_type.contains("text/plain"));
+}
 
 #[tokio::test]
 async fn test_metrics_endpoint() {

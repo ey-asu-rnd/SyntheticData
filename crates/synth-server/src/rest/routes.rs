@@ -92,7 +92,10 @@ pub fn create_router_with_cors(service: SynthService, cors_config: CorsConfig) -
     Router::new()
         // Health and metrics
         .route("/health", get(health_check))
+        .route("/ready", get(readiness_check))
+        .route("/live", get(liveness_check))
         .route("/api/metrics", get(get_metrics))
+        .route("/metrics", get(prometheus_metrics))
         // Configuration
         .route("/api/config", get(get_config))
         .route("/api/config", post(set_config))
@@ -119,6 +122,28 @@ pub struct HealthResponse {
     pub healthy: bool,
     pub version: String,
     pub uptime_seconds: u64,
+}
+
+/// Readiness check response for Kubernetes.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReadinessResponse {
+    pub ready: bool,
+    pub message: String,
+    pub checks: Vec<HealthCheck>,
+}
+
+/// Individual health check result.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HealthCheck {
+    pub name: String,
+    pub status: String,
+}
+
+/// Liveness check response for Kubernetes.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LivenessResponse {
+    pub alive: bool,
+    pub timestamp: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -193,13 +218,104 @@ pub struct StreamResponse {
 // Handlers
 // ===========================================================================
 
-/// Health check endpoint.
+/// Health check endpoint - returns overall health status.
 async fn health_check(State(state): State<AppState>) -> Json<HealthResponse> {
     Json(HealthResponse {
         healthy: true,
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_seconds: state.server_state.uptime_seconds(),
     })
+}
+
+/// Readiness probe - indicates the service is ready to accept traffic.
+/// Use for Kubernetes readiness probes.
+async fn readiness_check(State(state): State<AppState>) -> Result<Json<ReadinessResponse>, StatusCode> {
+    // Check if configuration is loaded and valid
+    let config = state.server_state.config.read().await;
+    let config_valid = !config.companies.is_empty();
+
+    if config_valid {
+        Ok(Json(ReadinessResponse {
+            ready: true,
+            message: "Service is ready".to_string(),
+            checks: vec![
+                HealthCheck { name: "config".to_string(), status: "ok".to_string() },
+            ],
+        }))
+    } else {
+        Err(StatusCode::SERVICE_UNAVAILABLE)
+    }
+}
+
+/// Liveness probe - indicates the service is alive.
+/// Use for Kubernetes liveness probes.
+async fn liveness_check() -> Json<LivenessResponse> {
+    Json(LivenessResponse {
+        alive: true,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    })
+}
+
+/// Prometheus-compatible metrics endpoint.
+/// Returns metrics in Prometheus text exposition format.
+async fn prometheus_metrics(State(state): State<AppState>) -> impl IntoResponse {
+    use std::sync::atomic::Ordering;
+
+    let uptime = state.server_state.uptime_seconds();
+    let total_entries = state.server_state.total_entries.load(Ordering::Relaxed);
+    let total_anomalies = state.server_state.total_anomalies.load(Ordering::Relaxed);
+    let active_streams = state.server_state.active_streams.load(Ordering::Relaxed);
+    let total_stream_events = state.server_state.total_stream_events.load(Ordering::Relaxed);
+
+    let entries_per_second = if uptime > 0 {
+        total_entries as f64 / uptime as f64
+    } else {
+        0.0
+    };
+
+    let metrics = format!(
+        r#"# HELP synth_entries_generated_total Total number of journal entries generated
+# TYPE synth_entries_generated_total counter
+synth_entries_generated_total {}
+
+# HELP synth_anomalies_injected_total Total number of anomalies injected
+# TYPE synth_anomalies_injected_total counter
+synth_anomalies_injected_total {}
+
+# HELP synth_uptime_seconds Server uptime in seconds
+# TYPE synth_uptime_seconds gauge
+synth_uptime_seconds {}
+
+# HELP synth_entries_per_second Rate of entry generation
+# TYPE synth_entries_per_second gauge
+synth_entries_per_second {:.2}
+
+# HELP synth_active_streams Number of active streaming connections
+# TYPE synth_active_streams gauge
+synth_active_streams {}
+
+# HELP synth_stream_events_total Total events sent through streams
+# TYPE synth_stream_events_total counter
+synth_stream_events_total {}
+
+# HELP synth_info Server version information
+# TYPE synth_info gauge
+synth_info{{version="{}"}} 1
+"#,
+        total_entries,
+        total_anomalies,
+        uptime,
+        entries_per_second,
+        active_streams,
+        total_stream_events,
+        env!("CARGO_PKG_VERSION")
+    );
+
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/plain; version=0.0.4; charset=utf-8")],
+        metrics
+    )
 }
 
 /// Get server metrics.
