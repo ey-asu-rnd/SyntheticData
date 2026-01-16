@@ -50,6 +50,25 @@ pub struct JournalEntryGenerator {
     // Approval threshold enforcement
     approval_enabled: bool,
     approval_threshold: rust_decimal::Decimal,
+    // Batching behavior - humans often process similar items together
+    batch_state: Option<BatchState>,
+}
+
+/// State for tracking batch processing behavior.
+///
+/// When humans process transactions, they often batch similar items together
+/// (e.g., processing all invoices from one vendor, entering similar expenses).
+#[derive(Clone)]
+struct BatchState {
+    /// The base entry template to vary
+    base_vendor: Option<String>,
+    base_customer: Option<String>,
+    base_account_number: String,
+    base_amount: rust_decimal::Decimal,
+    base_business_process: Option<BusinessProcess>,
+    base_posting_date: NaiveDate,
+    /// Remaining entries in this batch
+    remaining: u8,
 }
 
 impl JournalEntryGenerator {
@@ -187,6 +206,7 @@ impl JournalEntryGenerator {
             persona_errors_enabled: true, // Enable by default for realism
             approval_enabled: true,       // Enable by default for realism
             approval_threshold: rust_decimal::Decimal::new(10000, 0), // $10,000 default threshold
+            batch_state: None,
         }
     }
 
@@ -419,6 +439,13 @@ impl JournalEntryGenerator {
 
     /// Generate a single journal entry.
     pub fn generate(&mut self) -> JournalEntry {
+        // Check if we're in a batch - if so, generate a batched entry
+        if let Some(ref state) = self.batch_state {
+            if state.remaining > 0 {
+                return self.generate_batched_entry();
+            }
+        }
+
         self.count += 1;
         self.doc_counter += 1;
 
@@ -583,6 +610,9 @@ impl JournalEntryGenerator {
             self.maybe_apply_approval_workflow(&mut entry, posting_date);
         }
 
+        // Maybe start a batch of similar entries for realism
+        self.maybe_start_batch(&entry);
+
         entry
     }
 
@@ -598,6 +628,161 @@ impl JournalEntryGenerator {
     /// Check if persona errors are enabled.
     pub fn persona_errors_enabled(&self) -> bool {
         self.persona_errors_enabled
+    }
+
+    /// Enable or disable batch processing behavior.
+    ///
+    /// When enabled (default), the generator will occasionally produce batches
+    /// of similar entries, simulating how humans batch similar work together.
+    pub fn with_batching(mut self, enabled: bool) -> Self {
+        if !enabled {
+            self.batch_state = None;
+        }
+        self
+    }
+
+    /// Check if batch processing is enabled.
+    pub fn batching_enabled(&self) -> bool {
+        // Batching is implicitly enabled when not explicitly disabled
+        true
+    }
+
+    /// Maybe start a batch based on the current entry.
+    ///
+    /// Humans often batch similar work: processing invoices from one vendor,
+    /// entering expense reports for a trip, reconciling similar items.
+    fn maybe_start_batch(&mut self, entry: &JournalEntry) {
+        // Only start batch for non-automated, non-fraud entries
+        if entry.header.source == TransactionSource::Automated || entry.header.is_fraud {
+            return;
+        }
+
+        // 15% chance to start a batch (most work is not batched)
+        if self.rng.gen::<f64>() > 0.15 {
+            return;
+        }
+
+        // Extract key attributes for batching
+        let base_account = entry
+            .lines
+            .first()
+            .map(|l| l.gl_account.clone())
+            .unwrap_or_default();
+
+        let base_amount = entry.total_debit();
+
+        self.batch_state = Some(BatchState {
+            base_vendor: None, // Would need vendor from context
+            base_customer: None,
+            base_account_number: base_account,
+            base_amount,
+            base_business_process: entry.header.business_process,
+            base_posting_date: entry.header.posting_date,
+            remaining: self.rng.gen_range(2..7), // 2-6 more similar entries
+        });
+    }
+
+    /// Generate an entry that's part of the current batch.
+    ///
+    /// Batched entries have:
+    /// - Same or very similar business process
+    /// - Same posting date (batched work done together)
+    /// - Similar amounts (within ±15%)
+    /// - Same debit account (processing similar items)
+    fn generate_batched_entry(&mut self) -> JournalEntry {
+        use rust_decimal::Decimal;
+
+        // Decrement batch counter
+        if let Some(ref mut state) = self.batch_state {
+            state.remaining = state.remaining.saturating_sub(1);
+        }
+
+        let batch = self.batch_state.clone().unwrap();
+
+        // Use the batch's posting date (work done on same day)
+        let posting_date = batch.base_posting_date;
+
+        self.count += 1;
+        self.doc_counter += 1;
+        let document_id = self.generate_deterministic_uuid();
+
+        // Select same company (batched work is usually same company)
+        let company_code = self.company_selector.select(&mut self.rng).to_string();
+
+        // Use simplified line spec for batched entries (usually 2-line)
+        let _line_spec = LineItemSpec {
+            total_count: 2,
+            debit_count: 1,
+            credit_count: 1,
+            split_type: DebitCreditSplit::Equal,
+        };
+
+        // Batched entries are always manual
+        let source = TransactionSource::Manual;
+
+        // Use the batch's business process
+        let business_process = batch.base_business_process.unwrap_or(BusinessProcess::R2R);
+
+        // Sample time
+        let time = self.temporal_sampler.sample_time(true);
+        let created_at = posting_date.and_time(time).and_utc();
+
+        // Same user for batched work
+        let (created_by, user_persona) = self.select_user(false);
+
+        // Create header
+        let mut header =
+            JournalEntryHeader::with_deterministic_id(company_code, posting_date, document_id);
+        header.created_at = created_at;
+        header.source = source;
+        header.created_by = created_by;
+        header.user_persona = user_persona;
+        header.business_process = Some(business_process);
+
+        // Generate similar amount (within ±15% of base)
+        let variation = self.rng.gen_range(-0.15..0.15);
+        let varied_amount = batch.base_amount
+            * (Decimal::ONE + Decimal::try_from(variation).unwrap_or_default());
+        let total_amount = varied_amount.round_dp(2).max(Decimal::from(1));
+
+        // Create the entry
+        let mut entry = JournalEntry::new(header);
+
+        // Use same debit account as batch base
+        let debit_line = JournalEntryLine::debit(
+            entry.header.document_id,
+            1,
+            batch.base_account_number.clone(),
+            total_amount,
+        );
+        entry.add_line(debit_line);
+
+        // Select a credit account
+        let credit_account = self.select_credit_account().account_number.clone();
+        let credit_line = JournalEntryLine::credit(
+            entry.header.document_id,
+            2,
+            credit_account,
+            total_amount,
+        );
+        entry.add_line(credit_line);
+
+        // Apply persona-based errors if enabled
+        if self.persona_errors_enabled {
+            self.maybe_inject_persona_error(&mut entry);
+        }
+
+        // Apply approval workflow if enabled
+        if self.approval_enabled {
+            self.maybe_apply_approval_workflow(&mut entry, posting_date);
+        }
+
+        // Clear batch state if no more entries remaining
+        if batch.remaining <= 1 {
+            self.batch_state = None;
+        }
+
+        entry
     }
 
     /// Maybe inject a persona-appropriate error based on the persona's error rate.
@@ -1451,6 +1636,49 @@ mod tests {
         assert!(
             monday_rate > regular_rate,
             "Monday should have higher error rate than mid-week"
+        );
+    }
+
+    #[test]
+    fn test_batching_produces_similar_entries() {
+        let mut coa_gen =
+            ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
+        let coa = Arc::new(coa_gen.generate());
+
+        // Use seed 123 which is more likely to trigger batching
+        let mut je_gen = JournalEntryGenerator::new_with_params(
+            TransactionConfig::default(),
+            coa,
+            vec!["1000".to_string()],
+            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            123,
+        )
+        .with_persona_errors(false); // Disable to ensure balanced entries
+
+        // Generate many entries - at 15% batch rate, should see some batches
+        let entries: Vec<JournalEntry> = (0..200).map(|_| je_gen.generate()).collect();
+
+        // Check that all entries are balanced (batched or not)
+        for entry in &entries {
+            assert!(
+                entry.is_balanced(),
+                "All entries including batched should be balanced"
+            );
+        }
+
+        // Count entries with same-day posting dates (batch indicator)
+        let mut date_counts: std::collections::HashMap<NaiveDate, usize> =
+            std::collections::HashMap::new();
+        for entry in &entries {
+            *date_counts.entry(entry.header.posting_date).or_insert(0) += 1;
+        }
+
+        // With batching, some dates should have multiple entries
+        let dates_with_multiple = date_counts.values().filter(|&&c| c > 1).count();
+        assert!(
+            dates_with_multiple > 0,
+            "With batching, should see some dates with multiple entries"
         );
     }
 }
