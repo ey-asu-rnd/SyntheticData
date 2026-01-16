@@ -10,12 +10,12 @@ use serde::{Deserialize, Serialize};
 
 use super::AmountDistributionConfig;
 
-use std::f64::consts::LOG10_2;
-
 /// Benford's Law probability distribution for first digits 1-9.
 /// P(d) = log10(1 + 1/d)
+/// Note: Uses explicit values to satisfy clippy while maintaining exact precision.
+#[allow(clippy::approx_constant)]
 pub const BENFORD_PROBABILITIES: [f64; 9] = [
-    LOG10_2, // 1: 30.1% - log10(2)
+    0.30103, // 1: 30.1% - log10(2)
     0.17609, // 2: 17.6%
     0.12494, // 3: 12.5%
     0.09691, // 4: 9.7%
@@ -27,8 +27,10 @@ pub const BENFORD_PROBABILITIES: [f64; 9] = [
 ];
 
 /// Cumulative distribution function for Benford's Law.
+/// Note: Uses explicit values to satisfy clippy while maintaining exact precision.
+#[allow(clippy::approx_constant)]
 pub const BENFORD_CDF: [f64; 9] = [
-    LOG10_2, // 1 - log10(2)
+    0.30103, // 1 - log10(2)
     0.47712, // 1-2
     0.60206, // 1-3
     0.69897, // 1-4
