@@ -3,6 +3,7 @@
 use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
+use rust_decimal::Decimal;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -463,13 +464,12 @@ impl JournalEntryGenerator {
         // Sample line item specification
         let line_spec = self.line_sampler.sample();
 
-        // Determine source type and business process
-        let is_automated = self.rng.gen::<f64>() < self.config.source_distribution.automated;
-        let source = if is_automated {
-            TransactionSource::Automated
-        } else {
-            TransactionSource::Manual
-        };
+        // Determine source type using full 4-way distribution
+        let source = self.select_source();
+        let is_automated = matches!(
+            source,
+            TransactionSource::Automated | TransactionSource::Recurring
+        );
 
         // Select business process
         let business_process = self.select_business_process();
@@ -622,6 +622,15 @@ impl JournalEntryGenerator {
     /// to contain realistic human errors based on their experience level.
     pub fn with_persona_errors(mut self, enabled: bool) -> Self {
         self.persona_errors_enabled = enabled;
+        self
+    }
+
+    /// Set fraud configuration for fraud injection.
+    ///
+    /// When fraud is enabled in the config, transactions have a chance
+    /// to be marked as fraudulent based on the configured fraud rate.
+    pub fn with_fraud_config(mut self, config: FraudConfig) -> Self {
+        self.fraud_config = config;
         self
     }
 
@@ -907,17 +916,40 @@ impl JournalEntryGenerator {
             3 => {
                 // Slight under/over payment (±$0.01 to ±$1.00)
                 let cents = Decimal::new(self.rng.gen_range(-100..100), 2);
-                (amount + cents).max(Decimal::ZERO)
+                (amount + cents).max(Decimal::ZERO).round_dp(2)
             }
             _ => amount,
         }
     }
 
+    /// Rebalance an entry after a one-sided amount modification.
+    ///
+    /// When an error modifies one line's amount, this finds a line on the opposite
+    /// side (credit if modified was debit, or vice versa) and adjusts it by the
+    /// same impact to maintain balance.
+    fn rebalance_entry(entry: &mut JournalEntry, modified_was_debit: bool, impact: Decimal) {
+        // Find a line on the opposite side to adjust
+        let balancing_idx = entry.lines.iter().position(|l| {
+            if modified_was_debit {
+                l.credit_amount > Decimal::ZERO
+            } else {
+                l.debit_amount > Decimal::ZERO
+            }
+        });
+
+        if let Some(idx) = balancing_idx {
+            if modified_was_debit {
+                entry.lines[idx].credit_amount += impact;
+            } else {
+                entry.lines[idx].debit_amount += impact;
+            }
+        }
+    }
+
     /// Inject a human-like error based on the persona.
     ///
-    /// Error types 0, 1, and 3 modify amounts and create unbalanced entries.
-    /// These entries are marked with [HUMAN_ERROR:*] tags in header_text for ML detection.
-    /// Error types 2 and 4 don't affect amounts and entries remain balanced.
+    /// All error types maintain balance - amount modifications are applied to both sides.
+    /// Entries are marked with [HUMAN_ERROR:*] tags in header_text for ML detection.
     fn inject_human_error(&mut self, entry: &mut JournalEntry, persona: UserPersona) {
         use rust_decimal::Decimal;
 
@@ -942,14 +974,15 @@ impl JournalEntryGenerator {
             0 => {
                 // Transposed digits in an amount
                 if let Some(line) = entry.lines.get_mut(0) {
-                    let amount = if line.debit_amount > Decimal::ZERO {
-                        &mut line.debit_amount
+                    let is_debit = line.debit_amount > Decimal::ZERO;
+                    let original_amount = if is_debit {
+                        line.debit_amount
                     } else {
-                        &mut line.credit_amount
+                        line.credit_amount
                     };
 
                     // Simple digit swap in the string representation
-                    let s = amount.to_string();
+                    let s = original_amount.to_string();
                     if s.len() >= 2 {
                         let chars: Vec<char> = s.chars().collect();
                         let pos = self.rng.gen_range(0..chars.len().saturating_sub(1));
@@ -961,7 +994,18 @@ impl JournalEntryGenerator {
                             if let Ok(new_amount) =
                                 new_chars.into_iter().collect::<String>().parse::<Decimal>()
                             {
-                                *amount = new_amount;
+                                let impact = new_amount - original_amount;
+
+                                // Apply to the modified line
+                                if is_debit {
+                                    entry.lines[0].debit_amount = new_amount;
+                                } else {
+                                    entry.lines[0].credit_amount = new_amount;
+                                }
+
+                                // Rebalance the entry
+                                Self::rebalance_entry(entry, is_debit, impact);
+
                                 entry.header.header_text = Some(
                                     entry.header.header_text.clone().unwrap_or_default()
                                         + " [HUMAN_ERROR:TRANSPOSITION]",
@@ -974,11 +1018,26 @@ impl JournalEntryGenerator {
             1 => {
                 // Wrong decimal place (off by factor of 10)
                 if let Some(line) = entry.lines.get_mut(0) {
-                    if line.debit_amount > Decimal::ZERO {
-                        line.debit_amount *= Decimal::new(10, 0);
-                    } else if line.credit_amount > Decimal::ZERO {
-                        line.credit_amount *= Decimal::new(10, 0);
+                    let is_debit = line.debit_amount > Decimal::ZERO;
+                    let original_amount = if is_debit {
+                        line.debit_amount
+                    } else {
+                        line.credit_amount
+                    };
+
+                    let new_amount = original_amount * Decimal::new(10, 0);
+                    let impact = new_amount - original_amount;
+
+                    // Apply to the modified line
+                    if is_debit {
+                        entry.lines[0].debit_amount = new_amount;
+                    } else {
+                        entry.lines[0].credit_amount = new_amount;
                     }
+
+                    // Rebalance the entry
+                    Self::rebalance_entry(entry, is_debit, impact);
+
                     entry.header.header_text = Some(
                         entry.header.header_text.clone().unwrap_or_default()
                             + " [HUMAN_ERROR:DECIMAL_SHIFT]",
@@ -1000,13 +1059,27 @@ impl JournalEntryGenerator {
             3 => {
                 // Rounding to round number
                 if let Some(line) = entry.lines.get_mut(0) {
-                    if line.debit_amount > Decimal::ZERO {
-                        line.debit_amount = (line.debit_amount / Decimal::new(100, 0)).round()
-                            * Decimal::new(100, 0);
-                    } else if line.credit_amount > Decimal::ZERO {
-                        line.credit_amount = (line.credit_amount / Decimal::new(100, 0)).round()
-                            * Decimal::new(100, 0);
+                    let is_debit = line.debit_amount > Decimal::ZERO;
+                    let original_amount = if is_debit {
+                        line.debit_amount
+                    } else {
+                        line.credit_amount
+                    };
+
+                    let new_amount =
+                        (original_amount / Decimal::new(100, 0)).round() * Decimal::new(100, 0);
+                    let impact = new_amount - original_amount;
+
+                    // Apply to the modified line
+                    if is_debit {
+                        entry.lines[0].debit_amount = new_amount;
+                    } else {
+                        entry.lines[0].credit_amount = new_amount;
                     }
+
+                    // Rebalance the entry
+                    Self::rebalance_entry(entry, is_debit, impact);
+
                     entry.header.header_text = Some(
                         entry.header.header_text.clone().unwrap_or_default()
                             + " [HUMAN_ERROR:ROUNDED]",
@@ -1217,6 +1290,22 @@ impl JournalEntryGenerator {
                 format!("USER{:04}", self.rng.gen_range(1..=40)),
                 "senior_accountant".to_string(),
             )
+        }
+    }
+
+    /// Select transaction source based on configuration weights.
+    fn select_source(&mut self) -> TransactionSource {
+        let roll: f64 = self.rng.gen();
+        let dist = &self.config.source_distribution;
+
+        if roll < dist.manual {
+            TransactionSource::Manual
+        } else if roll < dist.manual + dist.automated {
+            TransactionSource::Automated
+        } else if roll < dist.manual + dist.automated + dist.recurring {
+            TransactionSource::Recurring
+        } else {
+            TransactionSource::Adjustment
         }
     }
 

@@ -151,7 +151,7 @@ impl GenerationOrchestrator {
             .map(|c| c.code.clone())
             .collect();
 
-        // Generate entries
+        // Generate entries with fraud config
         let mut generator = JournalEntryGenerator::new_with_params(
             self.config.transactions.clone(),
             Arc::clone(&coa),
@@ -159,7 +159,8 @@ impl GenerationOrchestrator {
             start_date,
             end_date,
             seed,
-        );
+        )
+        .with_fraud_config(self.config.fraud.clone());
 
         let mut entries = Vec::with_capacity(total as usize);
         let mut total_lines = 0u64;

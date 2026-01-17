@@ -41,8 +41,7 @@ pub struct LabelDistribution {
 }
 
 /// Input for label analysis.
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct LabelData {
     /// Binary labels (true = anomaly/positive).
     pub binary_labels: Vec<Option<bool>>,
@@ -51,7 +50,6 @@ pub struct LabelData {
     /// Anomaly type labels (for anomalies).
     pub anomaly_types: Vec<Option<String>>,
 }
-
 
 /// Analyzer for label quality.
 pub struct LabelAnalyzer {
@@ -136,7 +134,11 @@ impl LabelAnalyzer {
 
         // Calculate imbalance ratio
         let imbalance_ratio = if !class_distribution.is_empty() {
-            let max_count = class_distribution.iter().map(|d| d.count).max().unwrap_or(1);
+            let max_count = class_distribution
+                .iter()
+                .map(|d| d.count)
+                .max()
+                .unwrap_or(1);
             let min_count = class_distribution
                 .iter()
                 .map(|d| d.count)
@@ -187,10 +189,7 @@ impl LabelAnalyzer {
         }
 
         if imbalance_ratio > self.max_imbalance_ratio {
-            issues.push(format!(
-                "High class imbalance: {:.1}:1",
-                imbalance_ratio
-            ));
+            issues.push(format!("High class imbalance: {:.1}:1", imbalance_ratio));
         }
 
         // Calculate quality score
@@ -201,15 +200,14 @@ impl LabelAnalyzer {
 
         // Anomaly rate factor (penalize if outside ideal range)
         if labeled_binary > 0 {
-            let rate_score = if anomaly_rate >= self.min_anomaly_rate
-                && anomaly_rate <= self.max_anomaly_rate
-            {
-                1.0
-            } else if anomaly_rate < self.min_anomaly_rate {
-                anomaly_rate / self.min_anomaly_rate
-            } else {
-                self.max_anomaly_rate / anomaly_rate
-            };
+            let rate_score =
+                if anomaly_rate >= self.min_anomaly_rate && anomaly_rate <= self.max_anomaly_rate {
+                    1.0
+                } else if anomaly_rate < self.min_anomaly_rate {
+                    anomaly_rate / self.min_anomaly_rate
+                } else {
+                    self.max_anomaly_rate / anomaly_rate
+                };
             quality_factors.push(rate_score.min(1.0));
         }
 

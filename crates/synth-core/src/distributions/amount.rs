@@ -231,7 +231,9 @@ impl AmountSampler {
         // Ensure minimum after rounding
         amount = amount.max(self.config.min_amount);
 
-        Decimal::from_f64_retain(amount).unwrap_or(Decimal::ONE)
+        // Convert to Decimal with explicit 2 decimal place precision to avoid f64 noise
+        let amount_str = format!("{:.2}", amount);
+        amount_str.parse::<Decimal>().unwrap_or(Decimal::ONE)
     }
 
     /// Sample a fraud amount with the specified pattern.
@@ -288,13 +290,28 @@ impl AmountSampler {
 
         // If last amount became negative (rare edge case), redistribute
         if amounts[last_idx] < Decimal::ZERO {
-            let negative_amount = amounts[last_idx];
+            let mut remaining = amounts[last_idx].abs();
             amounts[last_idx] = Decimal::ZERO;
-            // Add the negative difference to the first amount with sufficient value
-            for amt in amounts.iter_mut().take(last_idx) {
-                if *amt > negative_amount.abs() {
-                    *amt += negative_amount;
+
+            // Distribute the negative amount across all earlier amounts
+            for amt in amounts.iter_mut().take(last_idx).rev() {
+                if remaining <= Decimal::ZERO {
                     break;
+                }
+                let take = remaining.min(*amt);
+                *amt -= take;
+                remaining -= take;
+            }
+
+            // If still remaining (shouldn't happen with proper weights),
+            // absorb into the last amount as a negative value for safety
+            if remaining > Decimal::ZERO {
+                // Re-add to first non-zero amount - this ensures sum is correct
+                for amt in amounts.iter_mut() {
+                    if *amt > Decimal::ZERO {
+                        *amt -= remaining;
+                        break;
+                    }
                 }
             }
         }

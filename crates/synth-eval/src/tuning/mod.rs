@@ -200,7 +200,9 @@ impl TuningAnalyzer {
 
         // Filter by priority if needed
         if !self.include_low_priority {
-            opportunities.retain(|o| o.priority != TuningPriority::Low && o.priority != TuningPriority::Info);
+            opportunities.retain(|o| {
+                o.priority != TuningPriority::Low && o.priority != TuningPriority::Info
+            });
         }
 
         // Sort by priority
@@ -336,7 +338,8 @@ impl TuningAnalyzer {
 
         // Check document chains
         if let Some(ref doc_chain) = coherence.document_chain {
-            let avg_completion = (doc_chain.p2p_completion_rate + doc_chain.o2c_completion_rate) / 2.0;
+            let avg_completion =
+                (doc_chain.p2p_completion_rate + doc_chain.o2c_completion_rate) / 2.0;
             if avg_completion < 0.90 {
                 opportunities.push(
                     TuningOpportunity::new(
@@ -409,7 +412,10 @@ impl TuningAnalyzer {
                         "Low Data Completeness",
                         "Many fields have missing values",
                     )
-                    .with_current_value(format!("{:.1}%", completeness.overall_completeness * 100.0))
+                    .with_current_value(format!(
+                        "{:.1}%",
+                        completeness.overall_completeness * 100.0
+                    ))
                     .with_target_value("> 95%")
                     .with_expected_improvement("More complete records")
                     .with_config_path("data_quality.missing_rate"),
@@ -582,17 +588,16 @@ impl ConfigSuggestionGenerator {
     }
 
     /// Generate config suggestions from tuning opportunities.
-    pub fn generate(
-        &self,
-        opportunities: &[TuningOpportunity],
-    ) -> Vec<ConfigSuggestion> {
+    pub fn generate(&self, opportunities: &[TuningOpportunity]) -> Vec<ConfigSuggestion> {
         let mut suggestions = Vec::new();
 
         for opportunity in opportunities {
             for path in &opportunity.config_paths {
                 if let Some(template) = self.templates.get(path) {
                     let current = opportunity.current_value.clone().unwrap_or_default();
-                    let suggested = opportunity.target_value.clone()
+                    let suggested = opportunity
+                        .target_value
+                        .clone()
                         .unwrap_or_else(|| template.default_value.clone());
 
                     let mut suggestion = ConfigSuggestion::new(
@@ -675,14 +680,10 @@ mod tests {
 
     #[test]
     fn test_config_suggestion_creation() {
-        let suggestion = ConfigSuggestion::new(
-            "test.path",
-            "old_value",
-            "new_value",
-            "Test reason",
-        )
-        .with_confidence(0.8)
-        .auto_fixable();
+        let suggestion =
+            ConfigSuggestion::new("test.path", "old_value", "new_value", "Test reason")
+                .with_confidence(0.8)
+                .auto_fixable();
 
         assert_eq!(suggestion.path, "test.path");
         assert_eq!(suggestion.confidence, 0.8);
@@ -698,6 +699,8 @@ mod tests {
     #[test]
     fn test_suggestion_generator() {
         let generator = ConfigSuggestionGenerator::new();
-        assert!(generator.templates.contains_key("anomaly_injection.base_rate"));
+        assert!(generator
+            .templates
+            .contains_key("anomaly_injection.base_rate"));
     }
 }

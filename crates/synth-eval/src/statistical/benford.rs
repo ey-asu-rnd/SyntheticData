@@ -136,8 +136,7 @@ impl BenfordAnalyzer {
 
         // Calculate observed frequencies
         let n_f64 = n as f64;
-        let observed_frequencies: [f64; 9] =
-            std::array::from_fn(|i| counts[i] as f64 / n_f64);
+        let observed_frequencies: [f64; 9] = std::array::from_fn(|i| counts[i] as f64 / n_f64);
 
         // Calculate chi-squared statistic
         let chi_squared: f64 = (0..9)
@@ -179,8 +178,7 @@ impl BenfordAnalyzer {
         let uniform_prob = 1.0 / 9.0;
         let anti_benford_score: f64 = (0..9)
             .map(|i| {
-                let benford_distance =
-                    (observed_frequencies[i] - BENFORD_PROBABILITIES[i]).abs();
+                let benford_distance = (observed_frequencies[i] - BENFORD_PROBABILITIES[i]).abs();
                 let uniform_distance = (observed_frequencies[i] - uniform_prob).abs();
                 // Score increases when closer to uniform than to Benford
                 if benford_distance > uniform_distance {
@@ -235,8 +233,7 @@ impl BenfordAnalyzer {
 
         // Calculate observed frequencies
         let n_f64 = n as f64;
-        let observed_frequencies: [f64; 10] =
-            std::array::from_fn(|i| counts[i] as f64 / n_f64);
+        let observed_frequencies: [f64; 10] = std::array::from_fn(|i| counts[i] as f64 / n_f64);
 
         // Expected second-digit Benford probabilities
         let expected: [f64; 10] = [

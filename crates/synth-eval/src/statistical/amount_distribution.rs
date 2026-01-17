@@ -91,7 +91,11 @@ impl AmountDistributionAnalyzer {
         }
 
         // Filter positive amounts for log-normal analysis
-        let positive_amounts: Vec<Decimal> = amounts.iter().filter(|a| **a > Decimal::ZERO).copied().collect();
+        let positive_amounts: Vec<Decimal> = amounts
+            .iter()
+            .filter(|a| **a > Decimal::ZERO)
+            .copied()
+            .collect();
 
         // Sort for percentile calculations
         let mut sorted = amounts.to_vec();
@@ -117,10 +121,7 @@ impl AmountDistributionAnalyzer {
         let std_dev = decimal_sqrt(variance);
 
         // Convert to f64 for higher moments
-        let amounts_f64: Vec<f64> = amounts
-            .iter()
-            .filter_map(|a| a.to_f64())
-            .collect();
+        let amounts_f64: Vec<f64> = amounts.iter().filter_map(|a| a.to_f64()).collect();
         let mean_f64 = amounts_f64.iter().sum::<f64>() / amounts_f64.len() as f64;
         let std_f64 = (amounts_f64
             .iter()
@@ -228,12 +229,8 @@ impl AmountDistributionAnalyzer {
         // Fit log-normal by MLE (mean and std of log values)
         let n = log_amounts.len() as f64;
         let mu: f64 = log_amounts.iter().sum::<f64>() / n;
-        let sigma: f64 = (log_amounts
-            .iter()
-            .map(|x| (x - mu).powi(2))
-            .sum::<f64>()
-            / (n - 1.0))
-            .sqrt();
+        let sigma: f64 =
+            (log_amounts.iter().map(|x| (x - mu).powi(2)).sum::<f64>() / (n - 1.0)).sqrt();
 
         if sigma <= 0.0 {
             return (None, None, Some(mu), None);

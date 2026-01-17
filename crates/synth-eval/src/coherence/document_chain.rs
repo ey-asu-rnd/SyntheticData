@@ -127,7 +127,10 @@ impl DocumentChainEvaluator {
         let p2p_gr_created = p2p_chains.iter().filter(|c| c.has_gr).count();
         let p2p_invoice_created = p2p_chains.iter().filter(|c| c.has_invoice).count();
         let p2p_payment_created = p2p_chains.iter().filter(|c| c.has_payment).count();
-        let p2p_three_way_match_passed = p2p_chains.iter().filter(|c| c.three_way_match_passed).count();
+        let p2p_three_way_match_passed = p2p_chains
+            .iter()
+            .filter(|c| c.three_way_match_passed)
+            .count();
         let p2p_three_way_match_rate = if p2p_total > 0 {
             p2p_three_way_match_passed as f64 / p2p_total as f64
         } else {
@@ -227,7 +230,9 @@ mod tests {
         };
 
         let evaluator = DocumentChainEvaluator::new();
-        let result = evaluator.evaluate(&p2p_chains, &o2c_chains, &references).unwrap();
+        let result = evaluator
+            .evaluate(&p2p_chains, &o2c_chains, &references)
+            .unwrap();
 
         assert_eq!(result.p2p_total, 2);
         assert_eq!(result.p2p_complete, 2);
@@ -237,16 +242,14 @@ mod tests {
 
     #[test]
     fn test_incomplete_chains() {
-        let p2p_chains = vec![
-            P2PChainData {
-                is_complete: false,
-                has_po: true,
-                has_gr: true,
-                has_invoice: false,
-                has_payment: false,
-                three_way_match_passed: false,
-            },
-        ];
+        let p2p_chains = vec![P2PChainData {
+            is_complete: false,
+            has_po: true,
+            has_gr: true,
+            has_invoice: false,
+            has_payment: false,
+            three_way_match_passed: false,
+        }];
 
         let o2c_chains = vec![];
         let references = DocumentReferenceData {
@@ -256,7 +259,9 @@ mod tests {
         };
 
         let evaluator = DocumentChainEvaluator::new();
-        let result = evaluator.evaluate(&p2p_chains, &o2c_chains, &references).unwrap();
+        let result = evaluator
+            .evaluate(&p2p_chains, &o2c_chains, &references)
+            .unwrap();
 
         assert_eq!(result.p2p_completion_rate, 0.0);
         assert_eq!(result.broken_references, 1);

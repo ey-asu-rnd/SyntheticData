@@ -118,7 +118,11 @@ impl SplitAnalyzer {
 
         // Calculate actual ratios
         let total = data.train.sample_count
-            + data.validation.as_ref().map(|v| v.sample_count).unwrap_or(0)
+            + data
+                .validation
+                .as_ref()
+                .map(|v| v.sample_count)
+                .unwrap_or(0)
             + data.test.sample_count;
 
         let actual_ratios = if total > 0 {
@@ -200,10 +204,8 @@ impl SplitAnalyzer {
         let mut leakage = false;
         let mut details = Vec::new();
 
-        let train_entities: std::collections::HashSet<_> =
-            data.train.entity_ids.iter().collect();
-        let test_entities: std::collections::HashSet<_> =
-            data.test.entity_ids.iter().collect();
+        let train_entities: std::collections::HashSet<_> = data.train.entity_ids.iter().collect();
+        let test_entities: std::collections::HashSet<_> = data.test.entity_ids.iter().collect();
 
         let overlap: Vec<_> = train_entities.intersection(&test_entities).collect();
         if !overlap.is_empty() {
@@ -233,8 +235,7 @@ impl SplitAnalyzer {
         if let Some(ref val) = data.validation {
             let val_entities: std::collections::HashSet<_> = val.entity_ids.iter().collect();
 
-            let train_val_overlap: Vec<_> =
-                train_entities.intersection(&val_entities).collect();
+            let train_val_overlap: Vec<_> = train_entities.intersection(&val_entities).collect();
             if !train_val_overlap.is_empty() {
                 leakage = true;
                 details.push(format!(
@@ -304,11 +305,7 @@ impl SplitAnalyzer {
     }
 
     /// Check distribution preservation between train and test.
-    fn check_distribution(
-        &self,
-        train: &SplitMetrics,
-        test: &SplitMetrics,
-    ) -> (bool, f64) {
+    fn check_distribution(&self, train: &SplitMetrics, test: &SplitMetrics) -> (bool, f64) {
         if train.class_distribution.is_empty() || test.class_distribution.is_empty() {
             return (true, 0.0);
         }

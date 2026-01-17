@@ -125,14 +125,19 @@ impl BalanceSheetEvaluator {
     /// Evaluate a single balance snapshot.
     fn evaluate_snapshot(&self, snapshot: &BalanceSnapshot) -> PeriodBalanceResult {
         let get_balance = |account_type: AccountType| {
-            snapshot.balances.get(&account_type).copied().unwrap_or(Decimal::ZERO)
+            snapshot
+                .balances
+                .get(&account_type)
+                .copied()
+                .unwrap_or(Decimal::ZERO)
         };
 
         // Calculate totals
         let total_assets = get_balance(AccountType::Asset) - get_balance(AccountType::ContraAsset);
         let total_liabilities =
             get_balance(AccountType::Liability) - get_balance(AccountType::ContraLiability);
-        let total_equity = get_balance(AccountType::Equity) - get_balance(AccountType::ContraEquity);
+        let total_equity =
+            get_balance(AccountType::Equity) - get_balance(AccountType::ContraEquity);
         let net_income = get_balance(AccountType::Revenue) - get_balance(AccountType::Expense);
 
         // Balance equation: Assets = Liabilities + Equity + Net Income

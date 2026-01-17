@@ -4,16 +4,16 @@
 //! balance sheet equations, subledger reconciliation, and document chain integrity.
 
 mod balance;
-mod subledger;
 mod document_chain;
 mod intercompany;
 mod referential;
+mod subledger;
 
 pub use balance::{BalanceSheetEvaluation, BalanceSheetEvaluator};
-pub use subledger::{SubledgerReconciliationEvaluation, SubledgerEvaluator};
 pub use document_chain::{DocumentChainEvaluation, DocumentChainEvaluator};
 pub use intercompany::{ICMatchingEvaluation, ICMatchingEvaluator};
 pub use referential::{ReferentialIntegrityEvaluation, ReferentialIntegrityEvaluator};
+pub use subledger::{SubledgerEvaluator, SubledgerReconciliationEvaluation};
 
 use serde::{Deserialize, Serialize};
 

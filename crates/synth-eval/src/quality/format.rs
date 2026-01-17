@@ -101,8 +101,7 @@ pub enum AmountFormat {
 }
 
 /// Input data for format analysis.
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct FormatData {
     /// Date field values: field_name -> values.
     pub date_fields: HashMap<String, Vec<String>>,
@@ -113,7 +112,6 @@ pub struct FormatData {
     /// Currency codes used.
     pub currency_codes: Vec<String>,
 }
-
 
 /// Analyzer for format consistency.
 pub struct FormatAnalyzer {
@@ -150,8 +148,7 @@ impl FormatAnalyzer {
 
         // Analyze date formats
         for (field_name, values) in &data.date_fields {
-            let (formats, field_issues, consistency) =
-                self.analyze_date_field(field_name, values);
+            let (formats, field_issues, consistency) = self.analyze_date_field(field_name, values);
             date_formats.extend(formats);
             issues.extend(field_issues);
             consistency_scores.push(consistency);
@@ -281,17 +278,26 @@ impl FormatAnalyzer {
         let value = value.trim();
 
         // ISO format: 2024-01-15
-        if value.len() == 10 && value.chars().nth(4) == Some('-') && value.chars().nth(7) == Some('-') {
+        if value.len() == 10
+            && value.chars().nth(4) == Some('-')
+            && value.chars().nth(7) == Some('-')
+        {
             return DateFormat::ISO;
         }
 
         // US format: 01/15/2024
-        if value.len() == 10 && value.chars().nth(2) == Some('/') && value.chars().nth(5) == Some('/') {
+        if value.len() == 10
+            && value.chars().nth(2) == Some('/')
+            && value.chars().nth(5) == Some('/')
+        {
             return DateFormat::US;
         }
 
         // EU format: 15.01.2024
-        if value.len() == 10 && value.chars().nth(2) == Some('.') && value.chars().nth(5) == Some('.') {
+        if value.len() == 10
+            && value.chars().nth(2) == Some('.')
+            && value.chars().nth(5) == Some('.')
+        {
             return DateFormat::EU;
         }
 
@@ -418,9 +424,17 @@ impl FormatAnalyzer {
         let mut mixed_count = 0;
 
         for value in values {
-            if value.chars().filter(|c| c.is_alphabetic()).all(|c| c.is_uppercase()) {
+            if value
+                .chars()
+                .filter(|c| c.is_alphabetic())
+                .all(|c| c.is_uppercase())
+            {
                 upper_count += 1;
-            } else if value.chars().filter(|c| c.is_alphabetic()).all(|c| c.is_lowercase()) {
+            } else if value
+                .chars()
+                .filter(|c| c.is_alphabetic())
+                .all(|c| c.is_lowercase())
+            {
                 lower_count += 1;
             } else {
                 mixed_count += 1;
@@ -438,7 +452,11 @@ impl FormatAnalyzer {
                 percentage: upper_count as f64 / total.max(1) as f64,
                 examples: values
                     .iter()
-                    .filter(|v| v.chars().filter(|c| c.is_alphabetic()).all(|c| c.is_uppercase()))
+                    .filter(|v| {
+                        v.chars()
+                            .filter(|c| c.is_alphabetic())
+                            .all(|c| c.is_uppercase())
+                    })
                     .take(3)
                     .cloned()
                     .collect(),
@@ -453,7 +471,11 @@ impl FormatAnalyzer {
                 percentage: lower_count as f64 / total.max(1) as f64,
                 examples: values
                     .iter()
-                    .filter(|v| v.chars().filter(|c| c.is_alphabetic()).all(|c| c.is_lowercase()))
+                    .filter(|v| {
+                        v.chars()
+                            .filter(|c| c.is_alphabetic())
+                            .all(|c| c.is_lowercase())
+                    })
                     .take(3)
                     .cloned()
                     .collect(),
@@ -539,11 +561,7 @@ mod tests {
     #[test]
     fn test_currency_compliance() {
         let mut data = FormatData::default();
-        data.currency_codes = vec![
-            "USD".to_string(),
-            "EUR".to_string(),
-            "INVALID".to_string(),
-        ];
+        data.currency_codes = vec!["USD".to_string(), "EUR".to_string(), "INVALID".to_string()];
 
         let analyzer = FormatAnalyzer::new();
         let result = analyzer.analyze(&data).unwrap();

@@ -199,9 +199,9 @@ impl CompletenessAnalyzer {
         let complete_records = records
             .iter()
             .filter(|record| {
-                required_fields.iter().all(|field| {
-                    matches!(record.get(*field), Some(FieldValue::Present))
-                })
+                required_fields
+                    .iter()
+                    .all(|field| matches!(record.get(*field), Some(FieldValue::Present)))
             })
             .count();
 
@@ -280,7 +280,8 @@ impl CompletenessAnalyzer {
         }
 
         let mean_rate = rates.iter().sum::<f64>() / rates.len() as f64;
-        let variance: f64 = rates.iter().map(|r| (r - mean_rate).powi(2)).sum::<f64>() / rates.len() as f64;
+        let variance: f64 =
+            rates.iter().map(|r| (r - mean_rate).powi(2)).sum::<f64>() / rates.len() as f64;
         let std_dev = variance.sqrt();
 
         // Low variance suggests MCAR

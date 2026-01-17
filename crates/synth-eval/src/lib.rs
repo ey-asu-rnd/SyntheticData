@@ -29,11 +29,11 @@
 pub mod config;
 pub mod error;
 
-pub mod statistical;
 pub mod coherence;
-pub mod quality;
 pub mod ml;
+pub mod quality;
 pub mod report;
+pub mod statistical;
 pub mod tuning;
 
 // Re-exports
@@ -41,48 +41,37 @@ pub use config::{EvaluationConfig, EvaluationThresholds};
 pub use error::{EvalError, EvalResult};
 
 pub use statistical::{
-    BenfordAnalysis, BenfordAnalyzer, BenfordConformity,
-    AmountDistributionAnalysis, AmountDistributionAnalyzer,
-    LineItemAnalysis, LineItemAnalyzer, LineItemEntry,
+    AmountDistributionAnalysis, AmountDistributionAnalyzer, BenfordAnalysis, BenfordAnalyzer,
+    BenfordConformity, LineItemAnalysis, LineItemAnalyzer, LineItemEntry, StatisticalEvaluation,
     TemporalAnalysis, TemporalAnalyzer, TemporalEntry,
-    StatisticalEvaluation,
 };
 
 pub use coherence::{
-    BalanceSheetEvaluation, BalanceSheetEvaluator,
-    SubledgerReconciliationEvaluation, SubledgerEvaluator,
-    DocumentChainEvaluation, DocumentChainEvaluator,
-    ICMatchingEvaluation, ICMatchingEvaluator,
-    ReferentialIntegrityEvaluation, ReferentialIntegrityEvaluator,
-    CoherenceEvaluation,
+    BalanceSheetEvaluation, BalanceSheetEvaluator, CoherenceEvaluation, DocumentChainEvaluation,
+    DocumentChainEvaluator, ICMatchingEvaluation, ICMatchingEvaluator,
+    ReferentialIntegrityEvaluation, ReferentialIntegrityEvaluator, SubledgerEvaluator,
+    SubledgerReconciliationEvaluation,
 };
 
 pub use quality::{
-    UniquenessAnalysis, UniquenessAnalyzer, DuplicateInfo,
-    CompletenessAnalysis, CompletenessAnalyzer, FieldCompleteness,
-    FormatAnalysis, FormatAnalyzer, FormatVariation,
-    ConsistencyAnalysis, ConsistencyAnalyzer, ConsistencyRule,
-    QualityEvaluation,
+    CompletenessAnalysis, CompletenessAnalyzer, ConsistencyAnalysis, ConsistencyAnalyzer,
+    ConsistencyRule, DuplicateInfo, FieldCompleteness, FormatAnalysis, FormatAnalyzer,
+    FormatVariation, QualityEvaluation, UniquenessAnalysis, UniquenessAnalyzer,
 };
 
 pub use ml::{
-    FeatureAnalysis, FeatureAnalyzer, FeatureStats,
-    LabelAnalysis, LabelAnalyzer, LabelDistribution,
-    SplitAnalysis, SplitAnalyzer, SplitMetrics,
-    GraphAnalysis, GraphAnalyzer, GraphMetrics,
-    MLReadinessEvaluation,
+    FeatureAnalysis, FeatureAnalyzer, FeatureStats, GraphAnalysis, GraphAnalyzer, GraphMetrics,
+    LabelAnalysis, LabelAnalyzer, LabelDistribution, MLReadinessEvaluation, SplitAnalysis,
+    SplitAnalyzer, SplitMetrics,
 };
 
 pub use report::{
-    HtmlReportGenerator, JsonReportGenerator,
-    EvaluationReport, ReportMetadata,
-    BaselineComparison, ComparisonResult, MetricChange,
-    ThresholdChecker, ThresholdResult,
+    BaselineComparison, ComparisonResult, EvaluationReport, HtmlReportGenerator,
+    JsonReportGenerator, MetricChange, ReportMetadata, ThresholdChecker, ThresholdResult,
 };
 
 pub use tuning::{
-    TuningOpportunity, TuningCategory, TuningAnalyzer,
-    ConfigSuggestion, ConfigSuggestionGenerator,
+    ConfigSuggestion, ConfigSuggestionGenerator, TuningAnalyzer, TuningCategory, TuningOpportunity,
 };
 
 use serde::{Deserialize, Serialize};

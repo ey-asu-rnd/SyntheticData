@@ -3,13 +3,13 @@
 //! Provides statistical tests and analyses for validating that generated
 //! synthetic data follows expected distributions.
 
-mod benford;
 mod amount_distribution;
+mod benford;
 mod line_item;
 mod temporal;
 
-pub use benford::{BenfordAnalysis, BenfordAnalyzer, BenfordConformity};
 pub use amount_distribution::{AmountDistributionAnalysis, AmountDistributionAnalyzer};
+pub use benford::{BenfordAnalysis, BenfordAnalyzer, BenfordConformity};
 pub use line_item::{LineItemAnalysis, LineItemAnalyzer, LineItemEntry};
 pub use temporal::{TemporalAnalysis, TemporalAnalyzer, TemporalEntry};
 

@@ -113,7 +113,10 @@ impl MetricChange {
 
     /// Check if this change is significant (notable or critical).
     pub fn is_significant(&self) -> bool {
-        matches!(self.severity, ChangeSeverity::Critical | ChangeSeverity::Notable)
+        matches!(
+            self.severity,
+            ChangeSeverity::Critical | ChangeSeverity::Notable
+        )
     }
 }
 
@@ -180,17 +183,26 @@ impl ComparisonResult {
 
     /// Get all regressions.
     pub fn get_regressions(&self) -> Vec<&MetricChange> {
-        self.metric_changes.iter().filter(|c| c.is_regression()).collect()
+        self.metric_changes
+            .iter()
+            .filter(|c| c.is_regression())
+            .collect()
     }
 
     /// Get all improvements.
     pub fn get_improvements(&self) -> Vec<&MetricChange> {
-        self.metric_changes.iter().filter(|c| c.is_improvement()).collect()
+        self.metric_changes
+            .iter()
+            .filter(|c| c.is_improvement())
+            .collect()
     }
 
     /// Get significant changes only.
     pub fn get_significant_changes(&self) -> Vec<&MetricChange> {
-        self.metric_changes.iter().filter(|c| c.is_significant()).collect()
+        self.metric_changes
+            .iter()
+            .filter(|c| c.is_significant())
+            .collect()
     }
 
     /// Get changes by category.
@@ -513,13 +525,7 @@ mod tests {
 
     #[test]
     fn test_critical_severity() {
-        let change = MetricChange::new(
-            "metric",
-            "category",
-            0.50,
-            0.70,
-            true,
-        );
+        let change = MetricChange::new("metric", "category", 0.50, 0.70, true);
 
         assert_eq!(change.severity, ChangeSeverity::Critical);
         assert!(change.percent_change >= 20.0);

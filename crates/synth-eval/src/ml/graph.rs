@@ -323,7 +323,11 @@ impl GraphAnalyzer {
             sorted[sorted.len() / 2] as f64
         };
 
-        let variance: f64 = degrees.iter().map(|&d| (d as f64 - mean).powi(2)).sum::<f64>() / n;
+        let variance: f64 = degrees
+            .iter()
+            .map(|&d| (d as f64 - mean).powi(2))
+            .sum::<f64>()
+            / n;
         let std_dev = variance.sqrt();
 
         // Simple power-law check: log-log linear relationship
@@ -366,7 +370,11 @@ impl GraphAnalyzer {
     }
 
     /// Calculate type balance (usize keys).
-    fn calculate_type_balance(&self, types: &HashMap<usize, String>, total: usize) -> HashMap<String, f64> {
+    fn calculate_type_balance(
+        &self,
+        types: &HashMap<usize, String>,
+        total: usize,
+    ) -> HashMap<String, f64> {
         let mut counts: HashMap<String, usize> = HashMap::new();
         for t in types.values() {
             *counts.entry(t.clone()).or_insert(0) += 1;
@@ -374,12 +382,25 @@ impl GraphAnalyzer {
 
         counts
             .into_iter()
-            .map(|(k, v)| (k, if total > 0 { v as f64 / total as f64 } else { 0.0 }))
+            .map(|(k, v)| {
+                (
+                    k,
+                    if total > 0 {
+                        v as f64 / total as f64
+                    } else {
+                        0.0
+                    },
+                )
+            })
             .collect()
     }
 
     /// Calculate type balance for edge types.
-    fn calculate_type_balance_usize(&self, types: &HashMap<usize, String>, total: usize) -> HashMap<String, f64> {
+    fn calculate_type_balance_usize(
+        &self,
+        types: &HashMap<usize, String>,
+        total: usize,
+    ) -> HashMap<String, f64> {
         self.calculate_type_balance(types, total)
     }
 }

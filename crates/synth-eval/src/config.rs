@@ -4,8 +4,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 /// Main configuration for running an evaluation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EvaluationConfig {
     /// Statistical evaluation settings.
     pub statistical: StatisticalConfig,
@@ -20,7 +19,6 @@ pub struct EvaluationConfig {
     /// Pass/fail thresholds.
     pub thresholds: EvaluationThresholds,
 }
-
 
 /// Statistical evaluation configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]

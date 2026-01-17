@@ -83,8 +83,7 @@ pub struct CorrelationPair {
 }
 
 /// Input for feature analysis.
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct FeatureData {
     /// Numeric features: feature_name -> values.
     pub numeric_features: HashMap<String, Vec<Option<f64>>>,
@@ -93,7 +92,6 @@ pub struct FeatureData {
     /// Boolean features: feature_name -> values.
     pub boolean_features: HashMap<String, Vec<Option<bool>>>,
 }
-
 
 /// Analyzer for feature distributions.
 pub struct FeatureAnalyzer {
@@ -223,9 +221,15 @@ impl FeatureAnalyzer {
 
         // Skewness and kurtosis
         let (skewness, kurtosis) = if std_dev > 0.0 {
-            let m3: f64 = present.iter().map(|x| ((x - mean) / std_dev).powi(3)).sum::<f64>()
+            let m3: f64 = present
+                .iter()
+                .map(|x| ((x - mean) / std_dev).powi(3))
+                .sum::<f64>()
                 / count as f64;
-            let m4: f64 = present.iter().map(|x| ((x - mean) / std_dev).powi(4)).sum::<f64>()
+            let m4: f64 = present
+                .iter()
+                .map(|x| ((x - mean) / std_dev).powi(4))
+                .sum::<f64>()
                 / count as f64;
             (Some(m3), Some(m4 - 3.0)) // Excess kurtosis
         } else {
@@ -285,10 +289,7 @@ impl FeatureAnalyzer {
         } else if unique_count == 1 {
             issues.push("Only one unique value".to_string());
         } else if unique_count > self.max_categorical_cardinality {
-            issues.push(format!(
-                "High cardinality: {} unique values",
-                unique_count
-            ));
+            issues.push(format!("High cardinality: {} unique values", unique_count));
         }
 
         if missing_rate > self.missing_threshold {
@@ -417,7 +418,11 @@ impl FeatureAnalyzer {
         let mean1: f64 = pairs.iter().map(|(a, _)| a).sum::<f64>() / n;
         let mean2: f64 = pairs.iter().map(|(_, b)| b).sum::<f64>() / n;
 
-        let cov: f64 = pairs.iter().map(|(a, b)| (a - mean1) * (b - mean2)).sum::<f64>() / n;
+        let cov: f64 = pairs
+            .iter()
+            .map(|(a, b)| (a - mean1) * (b - mean2))
+            .sum::<f64>()
+            / n;
 
         let std1 = (pairs.iter().map(|(a, _)| (a - mean1).powi(2)).sum::<f64>() / n).sqrt();
         let std2 = (pairs.iter().map(|(_, b)| (b - mean2).powi(2)).sum::<f64>() / n).sqrt();

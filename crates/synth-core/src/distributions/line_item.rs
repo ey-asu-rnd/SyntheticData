@@ -234,6 +234,9 @@ impl LineItemSampler {
     }
 
     /// Sample a line item count with even/odd constraint.
+    ///
+    /// When adjustment is needed, randomly chooses to increment or decrement
+    /// to avoid biasing toward lower counts.
     pub fn sample_count_with_parity(&mut self) -> usize {
         let base_count = self.sample_count();
         let should_be_even = self.sample_even();
@@ -241,10 +244,16 @@ impl LineItemSampler {
         // Adjust to match parity requirement
         let is_even = base_count % 2 == 0;
         if should_be_even != is_even {
-            if base_count > 2 {
-                base_count - 1
-            } else {
+            // Use symmetric adjustment: randomly increment or decrement
+            if base_count <= 2 {
+                // Can only increment for small counts
                 base_count + 1
+            } else if self.rng.gen::<bool>() {
+                // Randomly choose to increment
+                base_count + 1
+            } else {
+                // Randomly choose to decrement
+                base_count - 1
             }
         } else {
             base_count

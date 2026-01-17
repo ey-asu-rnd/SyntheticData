@@ -169,7 +169,11 @@ fn main() -> Result<()> {
             let sample_entries: Vec<_> = result.journal_entries.iter().take(10000).collect();
             let json = serde_json::to_string_pretty(&sample_entries)?;
             std::fs::write(&sample_path, json)?;
-            tracing::info!("Sample entries written to: {} ({} entries)", sample_path.display(), sample_entries.len());
+            tracing::info!(
+                "Sample entries written to: {} ({} entries)",
+                sample_path.display(),
+                sample_entries.len()
+            );
 
             Ok(())
         }

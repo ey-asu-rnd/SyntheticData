@@ -147,14 +147,12 @@ mod tests {
             matched_pairs: 8,
             total_receivables: Decimal::new(100000, 2),
             total_payables: Decimal::new(95000, 2),
-            unmatched_items: vec![
-                UnmatchedICItem {
-                    company: "1000".to_string(),
-                    counterparty: "2000".to_string(),
-                    amount: Decimal::new(5000, 2),
-                    is_receivable: true,
-                },
-            ],
+            unmatched_items: vec![UnmatchedICItem {
+                company: "1000".to_string(),
+                counterparty: "2000".to_string(),
+                amount: Decimal::new(5000, 2),
+                is_receivable: true,
+            }],
             gross_volume: None,
             net_settlement: None,
         };

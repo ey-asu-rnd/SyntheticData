@@ -757,13 +757,15 @@ impl EnhancedOrchestrator {
 
         // Connect generated master data to ensure JEs reference real entities
         // Enable persona-based error injection for realistic human behavior
+        // Pass fraud configuration for fraud injection
         let mut generator = generator
             .with_master_data(
                 &self.master_data.vendors,
                 &self.master_data.customers,
                 &self.master_data.materials,
             )
-            .with_persona_errors(true);
+            .with_persona_errors(true)
+            .with_fraud_config(self.config.fraud.clone());
 
         let mut entries = Vec::with_capacity(total as usize);
 
@@ -954,12 +956,16 @@ impl EnhancedOrchestrator {
         }
 
         // Check if any entries were unbalanced
-        let has_unbalanced = errors
+        // Note: When fail_on_validation_error is false, errors are stored in tracker
+        let has_unbalanced = tracker
+            .get_validation_errors()
             .iter()
             .any(|e| e.error_type == synth_generators::ValidationErrorType::UnbalancedEntry);
 
         // Validate balance sheet for each company
+        // Include both returned errors and collected validation errors
         let mut all_errors = errors;
+        all_errors.extend(tracker.get_validation_errors().iter().cloned());
         let company_codes: Vec<String> = self
             .config
             .companies

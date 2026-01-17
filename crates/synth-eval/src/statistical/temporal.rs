@@ -135,7 +135,15 @@ impl TemporalAnalyzer {
         }
         let total_dow: usize = dow_counts.iter().sum();
         let mut day_of_week_distribution = HashMap::new();
-        let weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        let weekdays = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ];
         for (i, name) in weekdays.iter().enumerate() {
             day_of_week_distribution
                 .insert(name.to_string(), dow_counts[i] as f64 / total_dow as f64);
@@ -147,20 +155,17 @@ impl TemporalAnalyzer {
         // Monthly distribution
         let mut monthly_distribution: HashMap<u32, usize> = HashMap::new();
         for entry in entries {
-            *monthly_distribution.entry(entry.posting_date.month()).or_insert(0) += 1;
+            *monthly_distribution
+                .entry(entry.posting_date.month())
+                .or_insert(0) += 1;
         }
 
         // Overall pattern correlation
-        let pattern_correlation = self.calculate_pattern_correlation(
-            &daily_counts,
-            start_date,
-            end_date,
-            avg_daily,
-        );
+        let pattern_correlation =
+            self.calculate_pattern_correlation(&daily_counts, start_date, end_date, avg_daily);
 
         // Pass/fail check
-        let passes = pattern_correlation >= 0.5
-            && (weekend_ratio - WEEKEND_RATIO).abs() < 0.15;
+        let passes = pattern_correlation >= 0.5 && (weekend_ratio - WEEKEND_RATIO).abs() < 0.15;
 
         Ok(TemporalAnalysis {
             sample_size: n,
@@ -311,14 +316,8 @@ impl TemporalAnalyzer {
             .map(|i| (observed_norm[i] - mean_obs) * (expected_norm[i] - mean_exp))
             .sum();
 
-        let var_obs: f64 = observed_norm
-            .iter()
-            .map(|o| (o - mean_obs).powi(2))
-            .sum();
-        let var_exp: f64 = expected_norm
-            .iter()
-            .map(|e| (e - mean_exp).powi(2))
-            .sum();
+        let var_obs: f64 = observed_norm.iter().map(|o| (o - mean_obs).powi(2)).sum();
+        let var_exp: f64 = expected_norm.iter().map(|e| (e - mean_exp).powi(2)).sum();
 
         let denominator = (var_obs * var_exp).sqrt();
 
@@ -412,7 +411,10 @@ mod tests {
     use super::*;
 
     fn create_entries(dates: Vec<NaiveDate>) -> Vec<TemporalEntry> {
-        dates.into_iter().map(|d| TemporalEntry { posting_date: d }).collect()
+        dates
+            .into_iter()
+            .map(|d| TemporalEntry { posting_date: d })
+            .collect()
     }
 
     #[test]
@@ -459,9 +461,7 @@ mod tests {
 
     #[test]
     fn test_insufficient_data() {
-        let entries = create_entries(vec![
-            NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-        ]);
+        let entries = create_entries(vec![NaiveDate::from_ymd_opt(2024, 1, 1).unwrap()]);
         let analyzer = TemporalAnalyzer::new();
         let result = analyzer.analyze(&entries);
         assert!(matches!(result, Err(EvalError::InsufficientData { .. })));

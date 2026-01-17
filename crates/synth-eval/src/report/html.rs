@@ -170,12 +170,17 @@ impl HtmlReportGenerator {
                 color: #64748b;
             }
         </style>
-        "#.to_string()
+        "#
+        .to_string()
     }
 
     /// Generate summary section.
     fn generate_summary(&self, report: &EvaluationReport) -> String {
-        let status_class = if report.passes { "status-pass" } else { "status-fail" };
+        let status_class = if report.passes {
+            "status-pass"
+        } else {
+            "status-fail"
+        };
         let status_text = if report.passes { "PASSED" } else { "FAILED" };
 
         format!(
@@ -217,7 +222,11 @@ impl HtmlReportGenerator {
             self.score_bar_class(report.overall_score),
             report.overall_score * 100.0,
             report.all_issues.len(),
-            if report.critical_issues().is_empty() { "metric-pass" } else { "metric-fail" },
+            if report.critical_issues().is_empty() {
+                "metric-pass"
+            } else {
+                "metric-fail"
+            },
             report.critical_issues().len()
         )
     }
@@ -246,9 +255,17 @@ impl HtmlReportGenerator {
                     <div class="metric-value">{:?}</div>
                 </div>
                 "#,
-                if benford.passes { "metric-pass" } else { "metric-fail" },
+                if benford.passes {
+                    "metric-pass"
+                } else {
+                    "metric-fail"
+                },
                 benford.p_value,
-                if benford.mad <= 0.015 { "metric-pass" } else { "metric-warning" },
+                if benford.mad <= 0.015 {
+                    "metric-pass"
+                } else {
+                    "metric-warning"
+                },
                 benford.mad,
                 benford.conformity
             ));
@@ -266,7 +283,11 @@ impl HtmlReportGenerator {
                     <div class="metric-value">{:.1}%</div>
                 </div>
                 "#,
-                if temporal.pattern_correlation >= 0.8 { "metric-pass" } else { "metric-warning" },
+                if temporal.pattern_correlation >= 0.8 {
+                    "metric-pass"
+                } else {
+                    "metric-warning"
+                },
                 temporal.pattern_correlation,
                 temporal.weekend_ratio * 100.0
             ));
@@ -304,8 +325,16 @@ impl HtmlReportGenerator {
                     <div class="metric-value">{}</div>
                 </div>
                 "#,
-                if balance.equation_balanced { "metric-pass" } else { "metric-fail" },
-                if balance.equation_balanced { "Balanced" } else { "Imbalanced" },
+                if balance.equation_balanced {
+                    "metric-pass"
+                } else {
+                    "metric-fail"
+                },
+                if balance.equation_balanced {
+                    "Balanced"
+                } else {
+                    "Imbalanced"
+                },
                 balance.periods_evaluated
             ));
         }
@@ -318,7 +347,11 @@ impl HtmlReportGenerator {
                     <div class="metric-value {}">{:.1}%</div>
                 </div>
                 "#,
-                if sub.completeness_score >= 0.99 { "metric-pass" } else { "metric-fail" },
+                if sub.completeness_score >= 0.99 {
+                    "metric-pass"
+                } else {
+                    "metric-fail"
+                },
                 sub.completeness_score * 100.0
             ));
         }
@@ -331,7 +364,11 @@ impl HtmlReportGenerator {
                     <div class="metric-value {}">{:.1}%</div>
                 </div>
                 "#,
-                if ic.match_rate >= 0.95 { "metric-pass" } else { "metric-warning" },
+                if ic.match_rate >= 0.95 {
+                    "metric-pass"
+                } else {
+                    "metric-warning"
+                },
                 ic.match_rate * 100.0
             ));
         }
@@ -356,7 +393,8 @@ impl HtmlReportGenerator {
                 <div class="card-title">Issues</div>
                 <p>No issues found.</p>
             </div>
-            "#.to_string();
+            "#
+            .to_string();
         }
 
         let mut issues_html = String::new();

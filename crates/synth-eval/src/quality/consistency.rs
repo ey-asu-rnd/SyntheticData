@@ -60,10 +60,7 @@ pub enum RuleType {
         later_field: String,
     },
     /// Mutual exclusion (e.g., debit XOR credit).
-    MutualExclusion {
-        field1: String,
-        field2: String,
-    },
+    MutualExclusion { field1: String, field2: String },
     /// Fiscal period matches date.
     FiscalPeriodDateAlignment {
         date_field: String,
@@ -96,50 +93,50 @@ pub enum RuleType {
 impl Clone for RuleType {
     fn clone(&self) -> Self {
         match self {
-            RuleType::DateOrdering { earlier_field, later_field } => {
-                RuleType::DateOrdering {
-                    earlier_field: earlier_field.clone(),
-                    later_field: later_field.clone(),
-                }
-            }
-            RuleType::MutualExclusion { field1, field2 } => {
-                RuleType::MutualExclusion {
-                    field1: field1.clone(),
-                    field2: field2.clone(),
-                }
-            }
-            RuleType::FiscalPeriodDateAlignment { date_field, period_field, year_field } => {
-                RuleType::FiscalPeriodDateAlignment {
-                    date_field: date_field.clone(),
-                    period_field: period_field.clone(),
-                    year_field: year_field.clone(),
-                }
-            }
-            RuleType::AmountSign { amount_field, indicator_field, positive_indicator } => {
-                RuleType::AmountSign {
-                    amount_field: amount_field.clone(),
-                    indicator_field: indicator_field.clone(),
-                    positive_indicator: positive_indicator.clone(),
-                }
-            }
-            RuleType::RequiredIfPresent { trigger_field, required_field } => {
-                RuleType::RequiredIfPresent {
-                    trigger_field: trigger_field.clone(),
-                    required_field: required_field.clone(),
-                }
-            }
-            RuleType::ValueRange { field, min, max } => {
-                RuleType::ValueRange {
-                    field: field.clone(),
-                    min: *min,
-                    max: *max,
-                }
-            }
-            RuleType::Custom { checker } => {
-                RuleType::Custom {
-                    checker: Arc::clone(checker),
-                }
-            }
+            RuleType::DateOrdering {
+                earlier_field,
+                later_field,
+            } => RuleType::DateOrdering {
+                earlier_field: earlier_field.clone(),
+                later_field: later_field.clone(),
+            },
+            RuleType::MutualExclusion { field1, field2 } => RuleType::MutualExclusion {
+                field1: field1.clone(),
+                field2: field2.clone(),
+            },
+            RuleType::FiscalPeriodDateAlignment {
+                date_field,
+                period_field,
+                year_field,
+            } => RuleType::FiscalPeriodDateAlignment {
+                date_field: date_field.clone(),
+                period_field: period_field.clone(),
+                year_field: year_field.clone(),
+            },
+            RuleType::AmountSign {
+                amount_field,
+                indicator_field,
+                positive_indicator,
+            } => RuleType::AmountSign {
+                amount_field: amount_field.clone(),
+                indicator_field: indicator_field.clone(),
+                positive_indicator: positive_indicator.clone(),
+            },
+            RuleType::RequiredIfPresent {
+                trigger_field,
+                required_field,
+            } => RuleType::RequiredIfPresent {
+                trigger_field: trigger_field.clone(),
+                required_field: required_field.clone(),
+            },
+            RuleType::ValueRange { field, min, max } => RuleType::ValueRange {
+                field: field.clone(),
+                min: *min,
+                max: *max,
+            },
+            RuleType::Custom { checker } => RuleType::Custom {
+                checker: Arc::clone(checker),
+            },
         }
     }
 }
@@ -147,50 +144,57 @@ impl Clone for RuleType {
 impl std::fmt::Debug for RuleType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RuleType::DateOrdering { earlier_field, later_field } => {
-                f.debug_struct("DateOrdering")
-                    .field("earlier_field", earlier_field)
-                    .field("later_field", later_field)
-                    .finish()
-            }
-            RuleType::MutualExclusion { field1, field2 } => {
-                f.debug_struct("MutualExclusion")
-                    .field("field1", field1)
-                    .field("field2", field2)
-                    .finish()
-            }
-            RuleType::FiscalPeriodDateAlignment { date_field, period_field, year_field } => {
-                f.debug_struct("FiscalPeriodDateAlignment")
-                    .field("date_field", date_field)
-                    .field("period_field", period_field)
-                    .field("year_field", year_field)
-                    .finish()
-            }
-            RuleType::AmountSign { amount_field, indicator_field, positive_indicator } => {
-                f.debug_struct("AmountSign")
-                    .field("amount_field", amount_field)
-                    .field("indicator_field", indicator_field)
-                    .field("positive_indicator", positive_indicator)
-                    .finish()
-            }
-            RuleType::RequiredIfPresent { trigger_field, required_field } => {
-                f.debug_struct("RequiredIfPresent")
-                    .field("trigger_field", trigger_field)
-                    .field("required_field", required_field)
-                    .finish()
-            }
-            RuleType::ValueRange { field, min, max } => {
-                f.debug_struct("ValueRange")
-                    .field("field", field)
-                    .field("min", min)
-                    .field("max", max)
-                    .finish()
-            }
-            RuleType::Custom { .. } => {
-                f.debug_struct("Custom")
-                    .field("checker", &"<custom_fn>")
-                    .finish()
-            }
+            RuleType::DateOrdering {
+                earlier_field,
+                later_field,
+            } => f
+                .debug_struct("DateOrdering")
+                .field("earlier_field", earlier_field)
+                .field("later_field", later_field)
+                .finish(),
+            RuleType::MutualExclusion { field1, field2 } => f
+                .debug_struct("MutualExclusion")
+                .field("field1", field1)
+                .field("field2", field2)
+                .finish(),
+            RuleType::FiscalPeriodDateAlignment {
+                date_field,
+                period_field,
+                year_field,
+            } => f
+                .debug_struct("FiscalPeriodDateAlignment")
+                .field("date_field", date_field)
+                .field("period_field", period_field)
+                .field("year_field", year_field)
+                .finish(),
+            RuleType::AmountSign {
+                amount_field,
+                indicator_field,
+                positive_indicator,
+            } => f
+                .debug_struct("AmountSign")
+                .field("amount_field", amount_field)
+                .field("indicator_field", indicator_field)
+                .field("positive_indicator", positive_indicator)
+                .finish(),
+            RuleType::RequiredIfPresent {
+                trigger_field,
+                required_field,
+            } => f
+                .debug_struct("RequiredIfPresent")
+                .field("trigger_field", trigger_field)
+                .field("required_field", required_field)
+                .finish(),
+            RuleType::ValueRange { field, min, max } => f
+                .debug_struct("ValueRange")
+                .field("field", field)
+                .field("min", min)
+                .field("max", max)
+                .finish(),
+            RuleType::Custom { .. } => f
+                .debug_struct("Custom")
+                .field("checker", &"<custom_fn>")
+                .finish(),
         }
     }
 }
@@ -404,9 +408,7 @@ impl ConsistencyAnalyzer {
                 let year = record.integer_fields.get(year_field);
 
                 match (date, period, year) {
-                    (Some(d), Some(p), Some(y)) => {
-                        d.month() as i64 == *p && d.year() as i64 == *y
-                    }
+                    (Some(d), Some(p), Some(y)) => d.month() as i64 == *p && d.year() as i64 == *y,
                     _ => true,
                 }
             }

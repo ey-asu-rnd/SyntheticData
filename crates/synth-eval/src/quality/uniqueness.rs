@@ -91,7 +91,10 @@ impl UniquenessAnalyzer {
         // Exact duplicate detection via hash
         let mut hash_counts: HashMap<u64, Vec<usize>> = HashMap::new();
         for (idx, record) in records.iter().enumerate() {
-            hash_counts.entry(record.content_hash).or_default().push(idx);
+            hash_counts
+                .entry(record.content_hash)
+                .or_default()
+                .push(idx);
         }
 
         let mut exact_duplicates = 0;

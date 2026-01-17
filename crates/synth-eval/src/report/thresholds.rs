@@ -64,7 +64,10 @@ impl ThresholdChecker {
             explanation: if passed {
                 format!("{} ({:.4}) >= {} (threshold)", name, actual, threshold)
             } else {
-                format!("{} ({:.4}) < {} (threshold) - FAILED", name, actual, threshold)
+                format!(
+                    "{} ({:.4}) < {} (threshold) - FAILED",
+                    name, actual, threshold
+                )
             },
         }
     }
@@ -81,7 +84,10 @@ impl ThresholdChecker {
             explanation: if passed {
                 format!("{} ({:.4}) <= {} (threshold)", name, actual, threshold)
             } else {
-                format!("{} ({:.4}) > {} (threshold) - FAILED", name, actual, threshold)
+                format!(
+                    "{} ({:.4}) > {} (threshold) - FAILED",
+                    name, actual, threshold
+                )
             },
         }
     }
@@ -98,7 +104,10 @@ impl ThresholdChecker {
             explanation: if passed {
                 format!("{} ({:.4}) in range [{}, {}]", name, actual, min, max)
             } else {
-                format!("{} ({:.4}) outside range [{}, {}] - FAILED", name, actual, min, max)
+                format!(
+                    "{} ({:.4}) outside range [{}, {}] - FAILED",
+                    name, actual, min, max
+                )
             },
         }
     }
@@ -113,19 +122,11 @@ impl ThresholdChecker {
         let mut results = Vec::new();
 
         if let Some(p) = benford_p {
-            results.push(self.check_min(
-                "benford_p_value",
-                p,
-                self.thresholds.benford_p_value_min,
-            ));
+            results.push(self.check_min("benford_p_value", p, self.thresholds.benford_p_value_min));
         }
 
         if let Some(mad) = benford_mad {
-            results.push(self.check_max(
-                "benford_mad",
-                mad,
-                self.thresholds.benford_mad_max,
-            ));
+            results.push(self.check_max("benford_mad", mad, self.thresholds.benford_mad_max));
         }
 
         if let Some(corr) = temporal_corr {
@@ -150,7 +151,12 @@ impl ThresholdChecker {
         let mut results = Vec::new();
 
         if let Some(imb) = balance_imbalance {
-            let tolerance = self.thresholds.balance_tolerance.to_string().parse::<f64>().unwrap_or(0.01);
+            let tolerance = self
+                .thresholds
+                .balance_tolerance
+                .to_string()
+                .parse::<f64>()
+                .unwrap_or(0.01);
             results.push(self.check_max("balance_imbalance", imb, tolerance));
         }
 
@@ -171,11 +177,7 @@ impl ThresholdChecker {
         }
 
         if let Some(rate) = ic_match_rate {
-            results.push(self.check_min(
-                "ic_match_rate",
-                rate,
-                self.thresholds.ic_match_rate_min,
-            ));
+            results.push(self.check_min("ic_match_rate", rate, self.thresholds.ic_match_rate_min));
         }
 
         results
@@ -236,11 +238,7 @@ impl ThresholdChecker {
         }
 
         if let Some(cov) = label_coverage {
-            results.push(self.check_min(
-                "label_coverage",
-                cov,
-                self.thresholds.label_coverage_min,
-            ));
+            results.push(self.check_min("label_coverage", cov, self.thresholds.label_coverage_min));
         }
 
         if let Some(conn) = graph_connectivity {
