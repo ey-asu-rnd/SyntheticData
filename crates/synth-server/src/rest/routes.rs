@@ -23,6 +23,7 @@ use super::websocket;
 /// Application state shared across handlers.
 #[derive(Clone)]
 pub struct AppState {
+    #[allow(dead_code)] // Reserved for future use
     pub service: Arc<SynthService>,
     pub server_state: Arc<ServerState>,
 }
@@ -356,6 +357,7 @@ pub struct BulkGenerateResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)] // Fields deserialized from request, reserved for future use
 pub struct StreamRequest {
     pub events_per_second: Option<u32>,
     pub max_events: Option<u64>,

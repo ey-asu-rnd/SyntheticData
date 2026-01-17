@@ -538,7 +538,7 @@ impl InjectionStrategy for BenfordViolationStrategy {
         let original_str = original_amount.to_string();
         let magnitude = original_str.replace('.', "").trim_start_matches('0').len() as i32 - 1;
         // Limit magnitude to prevent overflow (10^18 is max safe for i64)
-        let safe_magnitude = magnitude.max(0).min(18) as u32;
+        let safe_magnitude = magnitude.clamp(0, 18) as u32;
 
         let base = Decimal::new(10_i64.pow(safe_magnitude), 0);
         let new_amount = base * Decimal::new(target_digit as i64, 0)

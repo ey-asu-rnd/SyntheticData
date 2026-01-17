@@ -101,7 +101,7 @@ fn validate_transactions(config: &GeneratorConfig) -> SynthResult<()> {
 
     // Validate Benford tolerance
     let tolerance = config.transactions.benford.tolerance;
-    if tolerance < 0.0 || tolerance > 1.0 {
+    if !(0.0..=1.0).contains(&tolerance) {
         return Err(SynthError::validation(format!(
             "benford.tolerance must be between 0.0 and 1.0, got {}",
             tolerance
@@ -114,7 +114,7 @@ fn validate_transactions(config: &GeneratorConfig) -> SynthResult<()> {
 /// Validate output configuration.
 fn validate_output(config: &GeneratorConfig) -> SynthResult<()> {
     let level = config.output.compression.level;
-    if config.output.compression.enabled && (level < 1 || level > 9) {
+    if config.output.compression.enabled && !(1..=9).contains(&level) {
         return Err(SynthError::validation(format!(
             "compression.level must be between 1 and 9, got {}",
             level
@@ -184,7 +184,7 @@ fn validate_internal_controls(config: &GeneratorConfig) -> SynthResult<()> {
     }
 
     let exception_rate = config.internal_controls.exception_rate;
-    if exception_rate < 0.0 || exception_rate > 1.0 {
+    if !(0.0..=1.0).contains(&exception_rate) {
         return Err(SynthError::validation(format!(
             "exception_rate must be between 0.0 and 1.0, got {}",
             exception_rate
@@ -192,7 +192,7 @@ fn validate_internal_controls(config: &GeneratorConfig) -> SynthResult<()> {
     }
 
     let sod_rate = config.internal_controls.sod_violation_rate;
-    if sod_rate < 0.0 || sod_rate > 1.0 {
+    if !(0.0..=1.0).contains(&sod_rate) {
         return Err(SynthError::validation(format!(
             "sod_violation_rate must be between 0.0 and 1.0, got {}",
             sod_rate
@@ -221,7 +221,7 @@ fn validate_approval(config: &GeneratorConfig) -> SynthResult<()> {
     }
 
     let rejection_rate = config.approval.rejection_rate;
-    if rejection_rate < 0.0 || rejection_rate > 1.0 {
+    if !(0.0..=1.0).contains(&rejection_rate) {
         return Err(SynthError::validation(format!(
             "rejection_rate must be between 0.0 and 1.0, got {}",
             rejection_rate
@@ -229,7 +229,7 @@ fn validate_approval(config: &GeneratorConfig) -> SynthResult<()> {
     }
 
     let revision_rate = config.approval.revision_rate;
-    if revision_rate < 0.0 || revision_rate > 1.0 {
+    if !(0.0..=1.0).contains(&revision_rate) {
         return Err(SynthError::validation(format!(
             "revision_rate must be between 0.0 and 1.0, got {}",
             revision_rate
@@ -262,7 +262,7 @@ fn validate_approval(config: &GeneratorConfig) -> SynthResult<()> {
 fn validate_master_data(config: &GeneratorConfig) -> SynthResult<()> {
     // Vendor config
     let vendor_ic = config.master_data.vendors.intercompany_percent;
-    if vendor_ic < 0.0 || vendor_ic > 1.0 {
+    if !(0.0..=1.0).contains(&vendor_ic) {
         return Err(SynthError::validation(format!(
             "vendors.intercompany_percent must be between 0.0 and 1.0, got {}",
             vendor_ic
@@ -271,7 +271,7 @@ fn validate_master_data(config: &GeneratorConfig) -> SynthResult<()> {
 
     // Customer config
     let customer_ic = config.master_data.customers.intercompany_percent;
-    if customer_ic < 0.0 || customer_ic > 1.0 {
+    if !(0.0..=1.0).contains(&customer_ic) {
         return Err(SynthError::validation(format!(
             "customers.intercompany_percent must be between 0.0 and 1.0, got {}",
             customer_ic
@@ -280,7 +280,7 @@ fn validate_master_data(config: &GeneratorConfig) -> SynthResult<()> {
 
     // Material config
     let bom_percent = config.master_data.materials.bom_percent;
-    if bom_percent < 0.0 || bom_percent > 1.0 {
+    if !(0.0..=1.0).contains(&bom_percent) {
         return Err(SynthError::validation(format!(
             "materials.bom_percent must be between 0.0 and 1.0, got {}",
             bom_percent
@@ -289,7 +289,7 @@ fn validate_master_data(config: &GeneratorConfig) -> SynthResult<()> {
 
     // Fixed asset config
     let fully_dep = config.master_data.fixed_assets.fully_depreciated_percent;
-    if fully_dep < 0.0 || fully_dep > 1.0 {
+    if !(0.0..=1.0).contains(&fully_dep) {
         return Err(SynthError::validation(format!(
             "fixed_assets.fully_depreciated_percent must be between 0.0 and 1.0, got {}",
             fully_dep
@@ -406,7 +406,7 @@ fn validate_balance(config: &GeneratorConfig) -> SynthResult<()> {
 
 /// Helper to validate a rate field is between 0.0 and 1.0.
 fn validate_rate(field_name: &str, value: f64) -> SynthResult<()> {
-    if value < 0.0 || value > 1.0 {
+    if !(0.0..=1.0).contains(&value) {
         return Err(SynthError::validation(format!(
             "{} must be between 0.0 and 1.0, got {}",
             field_name, value

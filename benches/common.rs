@@ -1,4 +1,9 @@
 //! Shared fixtures and utilities for benchmarks.
+//!
+//! These are helper functions available to all benchmarks. Not all benchmarks
+//! use all functions, hence the allow(dead_code) attribute.
+
+#![allow(dead_code)]
 
 use std::sync::Arc;
 

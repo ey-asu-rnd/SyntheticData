@@ -334,6 +334,7 @@ impl EnhancedOrchestrator {
     }
 
     /// Run the complete generation workflow.
+    #[allow(clippy::field_reassign_with_default)]
     pub fn generate(&mut self) -> SynthResult<EnhancedGenerationResult> {
         info!("Starting enhanced generation workflow");
         info!(
@@ -1568,7 +1569,7 @@ mod tests {
             .with_progress(false);
 
         // Should still work without progress
-        assert!(orchestrator.phase_config.show_progress == false);
+        assert!(!orchestrator.phase_config.show_progress);
     }
 
     #[test]

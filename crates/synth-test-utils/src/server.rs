@@ -219,6 +219,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::field_reassign_with_default)]
     fn test_server_config_urls() {
         let mut config = TestServerConfig::default();
         config.port = 3000;

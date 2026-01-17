@@ -113,7 +113,7 @@ pub fn check_benford_distribution(amounts: &[Decimal]) -> (f64, bool) {
                 .map(|c| c.to_digit(10).unwrap() as usize);
 
             if let Some(d) = first_digit {
-                if d >= 1 && d <= 9 {
+                if (1..=9).contains(&d) {
                     counts[d - 1] += 1;
                     total += 1;
                 }
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_assert_all_balanced_macro() {
-        let entries = vec![
+        let entries = [
             balanced_journal_entry(Decimal::new(10000, 2)),
             balanced_journal_entry(Decimal::new(20000, 2)),
             balanced_journal_entry(Decimal::new(30000, 2)),

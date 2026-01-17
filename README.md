@@ -23,7 +23,7 @@ SyntheticData generates coherent enterprise data that is indistinguishable from 
 - **Industry Seasonality**: Sector-specific patterns (Black Friday for retail, year-end for financial services, etc.)
 - **Regional Holiday Calendars**: US, DE, GB, CN, JP, IN with lunar calendar support
 
-### Enterprise Simulation (NEW)
+### Enterprise Simulation
 
 #### Master Data Management
 - **Entity Registry**: Central registry with temporal validity tracking
@@ -70,7 +70,7 @@ SyntheticData generates coherent enterprise data that is indistinguishable from 
 - **Year-End Close**: Income statement closing, retained earnings rollforward
 - **Tax Provision**: Configurable tax provision calculations
 
-### ML & Analytics Features (NEW)
+### ML & Analytics Features
 
 #### Graph/Network Export
 - **Transaction Network**: Accounts/entities as nodes, transactions as edges
@@ -113,9 +113,9 @@ SyntheticData generates coherent enterprise data that is indistinguishable from 
 - **Fraud Scenarios**: Configurable fraud injection including suspense account abuse, fictitious transactions, timing anomalies
 - **Weighted Company Selection**: Transaction volume distribution based on company size
 - **Deterministic Generation**: Seeded RNG ensures reproducible output for testing
-- **Multiple Output Formats**: CSV, Parquet, JSON with optional compression
+- **Multiple Output Formats**: CSV and JSON (Parquet planned for future release)
 
-### Server & API (NEW)
+### Server & API
 
 #### REST API
 - **Configuration Management**: GET/POST `/api/config` for runtime configuration
@@ -136,10 +136,17 @@ SyntheticData generates coherent enterprise data that is indistinguishable from 
 - **Memory Limits**: Enforced memory limits to prevent OOM conditions
 - **Comprehensive Logging**: Detailed logging throughout the generation pipeline
 
-### CLI Features (NEW)
+### CLI Features
 - **Pause/Resume**: Send `SIGUSR1` signal to toggle pause during generation (Unix)
 - **Worker Threads**: Configure number of worker threads for parallel generation
 - **Verbose Mode**: Detailed logging with `-v` flag
+
+### Desktop UI (Tauri + SvelteKit)
+- **Visual Configuration**: Comprehensive UI for all 15+ configuration sections
+- **Real-time Streaming**: Live generation viewer with WebSocket streaming
+- **Preset Management**: Industry presets with one-click application
+- **Validation Feedback**: Real-time configuration validation with error display
+- **Cross-Platform**: Native desktop app for Windows, macOS, and Linux
 
 ## Installation
 
@@ -422,7 +429,7 @@ internal_controls:
   export_control_master_data: true
 ```
 
-### Anomaly Injection (NEW)
+### Anomaly Injection
 
 ```yaml
 anomaly_injection:
@@ -438,7 +445,7 @@ anomaly_injection:
     year_end_spike: 2.0          # 2x anomalies at year-end
 ```
 
-### Data Quality Variations (NEW)
+### Data Quality Variations
 
 ```yaml
 data_quality:
@@ -449,7 +456,7 @@ data_quality:
   format_variation_rate: 0.05    # 5% format variations
 ```
 
-### Graph Export (NEW)
+### Graph Export
 
 ```yaml
 graph_export:
@@ -470,46 +477,46 @@ graph_export:
 ```
 output/
 ├── master_data/
-│   ├── vendors.parquet
-│   ├── customers.parquet
-│   ├── materials.parquet
-│   ├── fixed_assets.parquet
-│   ├── employees.parquet
-│   └── cost_centers.parquet
+│   ├── vendors.csv
+│   ├── customers.csv
+│   ├── materials.csv
+│   ├── fixed_assets.csv
+│   ├── employees.csv
+│   └── cost_centers.csv
 ├── transactions/
-│   ├── journal_entries.parquet
-│   ├── purchase_orders.parquet
-│   ├── goods_receipts.parquet
-│   ├── vendor_invoices.parquet
-│   ├── payments.parquet
-│   ├── sales_orders.parquet
-│   ├── deliveries.parquet
-│   ├── customer_invoices.parquet
-│   ├── customer_receipts.parquet
-│   └── document_references.parquet
+│   ├── journal_entries.csv
+│   ├── purchase_orders.csv
+│   ├── goods_receipts.csv
+│   ├── vendor_invoices.csv
+│   ├── payments.csv
+│   ├── sales_orders.csv
+│   ├── deliveries.csv
+│   ├── customer_invoices.csv
+│   ├── customer_receipts.csv
+│   └── document_references.csv
 ├── subledgers/
-│   ├── ar_open_items.parquet
-│   ├── ar_aging.parquet
-│   ├── ap_open_items.parquet
-│   ├── ap_aging.parquet
-│   ├── fa_register.parquet
-│   ├── fa_depreciation.parquet
-│   ├── inventory_positions.parquet
-│   └── inventory_movements.parquet
+│   ├── ar_open_items.csv
+│   ├── ar_aging.csv
+│   ├── ap_open_items.csv
+│   ├── ap_aging.csv
+│   ├── fa_register.csv
+│   ├── fa_depreciation.csv
+│   ├── inventory_positions.csv
+│   └── inventory_movements.csv
 ├── period_close/
 │   ├── trial_balances/
-│   │   └── *.parquet
-│   ├── accruals.parquet
-│   ├── depreciation.parquet
-│   └── closing_entries.parquet
+│   │   └── *.csv
+│   ├── accruals.csv
+│   ├── depreciation.csv
+│   └── closing_entries.csv
 ├── consolidation/
-│   ├── eliminations.parquet
-│   ├── currency_translation.parquet
-│   └── consolidated_trial_balance.parquet
+│   ├── eliminations.csv
+│   ├── currency_translation.csv
+│   └── consolidated_trial_balance.csv
 ├── fx/
-│   ├── daily_rates.parquet
-│   ├── period_rates.parquet
-│   └── cta_adjustments.parquet
+│   ├── daily_rates.csv
+│   ├── period_rates.csv
+│   └── cta_adjustments.csv
 ├── graphs/
 │   ├── transaction_network/
 │   │   └── pytorch_geometric/
@@ -528,9 +535,9 @@ output/
 │           ├── edges_*.csv
 │           └── import.cypher
 ├── labels/
-│   ├── anomaly_labels.parquet
-│   ├── fraud_labels.parquet
-│   └── quality_issues.parquet
+│   ├── anomaly_labels.csv
+│   ├── fraud_labels.csv
+│   └── quality_issues.csv
 └── controls/
     ├── internal_controls.csv
     ├── control_account_mappings.csv

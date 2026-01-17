@@ -954,7 +954,7 @@ impl JournalEntryGenerator {
                         let chars: Vec<char> = s.chars().collect();
                         let pos = self.rng.gen_range(0..chars.len().saturating_sub(1));
                         if chars[pos].is_ascii_digit()
-                            && chars.get(pos + 1).map_or(false, |c| c.is_ascii_digit())
+                            && chars.get(pos + 1).is_some_and(|c| c.is_ascii_digit())
                         {
                             let mut new_chars = chars;
                             new_chars.swap(pos, pos + 1);
@@ -975,9 +975,9 @@ impl JournalEntryGenerator {
                 // Wrong decimal place (off by factor of 10)
                 if let Some(line) = entry.lines.get_mut(0) {
                     if line.debit_amount > Decimal::ZERO {
-                        line.debit_amount = line.debit_amount * Decimal::new(10, 0);
+                        line.debit_amount *= Decimal::new(10, 0);
                     } else if line.credit_amount > Decimal::ZERO {
-                        line.credit_amount = line.credit_amount * Decimal::new(10, 0);
+                        line.credit_amount *= Decimal::new(10, 0);
                     }
                     entry.header.header_text = Some(
                         entry.header.header_text.clone().unwrap_or_default()
@@ -1096,13 +1096,13 @@ impl JournalEntryGenerator {
         for level in 1..=required_levels {
             // Add delay for approval (1-3 business hours per level)
             let delay_hours = self.rng.gen_range(1..4);
-            current_time = current_time + chrono::Duration::hours(delay_hours);
+            current_time += chrono::Duration::hours(delay_hours);
 
             // Skip weekends
             while current_time.weekday() == chrono::Weekday::Sat
                 || current_time.weekday() == chrono::Weekday::Sun
             {
-                current_time = current_time + chrono::Duration::days(1);
+                current_time += chrono::Duration::days(1);
             }
 
             // Generate approver based on level

@@ -27,6 +27,12 @@ cargo fmt
 
 # Run clippy lints
 cargo clippy
+
+# Run benchmarks
+cargo bench
+
+# Run specific benchmark
+cargo bench --bench generation_throughput
 ```
 
 ## CLI Usage
@@ -80,7 +86,7 @@ synth-config       → Configuration schema, validation, industry presets
     ↓
 synth-core         → Domain models, traits, statistical distributions, templates
     ↓
-synth-output       → Output sinks (CSV, JSON, Parquet, ControlExport)
+synth-output       → Output sinks (CSV, JSON, ControlExport)
 ```
 
 ### Key Domain Models (synth-core/src/models/)
@@ -249,6 +255,52 @@ synth-output       → Output sinks (CSV, JSON, Parquet, ControlExport)
 - Timeout: Request timeout with `TimeoutLayer`
 - Memory Limits: Enforced via `/proc/self/statm` on Linux
 
+### Desktop UI Module (synth-ui/)
+
+**Technology Stack:**
+- Tauri (Rust backend for desktop)
+- SvelteKit (TypeScript/Svelte 5 frontend)
+- TailwindCSS (styling)
+
+**Route Structure:**
+```
+src/routes/
+├── +page.svelte           # Dashboard
+├── generate/
+│   └── stream/            # Real-time streaming viewer
+└── config/
+    ├── +page.svelte       # Config overview (15 sections)
+    ├── global/            # Industry, dates, seed, performance
+    ├── transactions/      # Line items, amounts, sources
+    ├── master-data/       # Vendors, customers, materials
+    ├── document-flows/    # P2P, O2C configuration
+    ├── financial/         # Balance, subledger, FX, period close
+    ├── compliance/        # Fraud, controls, approval
+    ├── analytics/         # Graph export, anomaly, data quality
+    ├── output/            # Formats, compression
+    ├── chart-of-accounts/ # COA complexity and structure
+    ├── business-processes/# Process weight distribution
+    ├── user-personas/     # Persona and culture distribution
+    ├── templates/         # Template usage rates
+    ├── approval/          # Approval thresholds
+    ├── departments/       # Department distribution
+    └── intercompany/      # IC transaction types
+```
+
+**Key Components:**
+- `src/lib/stores/config.ts`: Central config state with dirty tracking
+- `src/lib/components/forms/`: Reusable form components (FormSection, FormGroup, InputNumber, DistributionEditor)
+- `src/lib/components/config/`: Config-specific components (ValidationBanner, PresetSelector)
+
+**Running the UI:**
+```bash
+cd crates/synth-ui
+npm install
+npm run dev       # Development server
+npm run build     # Production build
+npm run tauri dev # Desktop app development
+```
+
 ### Graph Module (synth-graph/src/)
 
 **Models:**
@@ -287,7 +339,7 @@ synth-output       → Output sinks (CSV, JSON, Parquet, ControlExport)
 ### Core Traits (synth-core/src/traits/)
 
 - **Generator**: `generate_batch()` and `generate_stream()` for data generation
-- **Sink**: Output destination interface (CSV, JSON, Parquet implementations)
+- **Sink**: Output destination interface (CSV, JSON implementations)
 
 ## Key Design Decisions
 
@@ -425,52 +477,52 @@ output/graphs/entity_relationship/neo4j/
 
 ### Transaction Data
 
-- `journal_entries.parquet` / `.csv` / `.json`
-- `acdoca.parquet` - SAP HANA Universal Journal format
+- `journal_entries.csv` / `.json`
+- `acdoca.csv` - SAP HANA Universal Journal format
 
 ### Master Data
 
-- `vendors.parquet`, `customers.parquet`
-- `materials.parquet`, `fixed_assets.parquet`
-- `employees.parquet`, `cost_centers.parquet`
+- `vendors.csv`, `customers.csv`
+- `materials.csv`, `fixed_assets.csv`
+- `employees.csv`, `cost_centers.csv`
 
 ### Document Flow
 
-- `purchase_orders.parquet`, `goods_receipts.parquet`
-- `vendor_invoices.parquet`, `payments.parquet`
-- `sales_orders.parquet`, `deliveries.parquet`
-- `customer_invoices.parquet`, `customer_receipts.parquet`
-- `document_references.parquet`
+- `purchase_orders.csv`, `goods_receipts.csv`
+- `vendor_invoices.csv`, `payments.csv`
+- `sales_orders.csv`, `deliveries.csv`
+- `customer_invoices.csv`, `customer_receipts.csv`
+- `document_references.csv`
 
 ### Subledgers
 
-- `ar_open_items.parquet`, `ar_aging.parquet`
-- `ap_open_items.parquet`, `ap_aging.parquet`
-- `fa_register.parquet`, `fa_depreciation.parquet`
-- `inventory_positions.parquet`, `inventory_movements.parquet`
+- `ar_open_items.csv`, `ar_aging.csv`
+- `ap_open_items.csv`, `ap_aging.csv`
+- `fa_register.csv`, `fa_depreciation.csv`
+- `inventory_positions.csv`, `inventory_movements.csv`
 
 ### Period Close
 
-- `trial_balances/*.parquet`
-- `accruals.parquet`, `depreciation.parquet`
-- `closing_entries.parquet`
+- `trial_balances/*.csv`
+- `accruals.csv`, `depreciation.csv`
+- `closing_entries.csv`
 
 ### Consolidation
 
-- `eliminations.parquet`
-- `currency_translation.parquet`
-- `consolidated_trial_balance.parquet`
+- `eliminations.csv`
+- `currency_translation.csv`
+- `consolidated_trial_balance.csv`
 
 ### FX
 
-- `daily_rates.parquet`, `period_rates.parquet`
-- `cta_adjustments.parquet`
+- `daily_rates.csv`, `period_rates.csv`
+- `cta_adjustments.csv`
 
 ### Labels (for ML)
 
-- `anomaly_labels.parquet`
-- `fraud_labels.parquet`
-- `quality_issues.parquet`
+- `anomaly_labels.csv`
+- `fraud_labels.csv`
+- `quality_issues.csv`
 
 ### Control Master Data
 
@@ -557,7 +609,7 @@ The generator validates:
 The codebase has been hardened for production use with the following features:
 
 ### Data Integrity
-- Parquet output properly implemented (no silent data loss)
+- CSV and JSON output formats fully implemented
 - All transfer pricing methods produce correct calculations
 - Custom close tasks return errors instead of silently skipping
 - Comprehensive config validation with bounds checking
@@ -589,3 +641,18 @@ The codebase has been hardened for production use with the following features:
 - All rate/percentage fields: 0.0-1.0
 - Approval thresholds: strictly ascending order
 - Distribution sums: must equal 1.0 (±0.01 tolerance)
+
+### Desktop UI (synth-ui)
+- Tauri + SvelteKit cross-platform desktop application
+- 15+ configuration pages covering all config sections
+- Real-time WebSocket streaming viewer
+- Industry preset management
+- Real-time validation with error feedback
+
+### Benchmarks
+- Criterion-based benchmark suite in `benches/`
+- Generation throughput benchmarks (JE, master data, document flows)
+- Distribution sampling benchmarks
+- Output sink benchmarks (CSV, JSON)
+- Scalability benchmarks (memory, parallel scaling)
+- Correctness benchmarks (Benford's Law, balance coherence)

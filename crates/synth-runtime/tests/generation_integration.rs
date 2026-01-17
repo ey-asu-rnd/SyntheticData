@@ -130,7 +130,7 @@ fn test_period_months_affects_output() {
     // Longer period should generally produce more entries
     // (though this isn't strictly guaranteed due to volume-based generation)
     assert!(
-        result_short.journal_entries.len() > 0 && result_long.journal_entries.len() > 0,
+        !result_short.journal_entries.is_empty() && !result_long.journal_entries.is_empty(),
         "Both configurations should produce entries"
     );
 }

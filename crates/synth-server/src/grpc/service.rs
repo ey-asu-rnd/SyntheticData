@@ -11,7 +11,7 @@ use prost_types::Timestamp;
 use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use synth_config::schema::{
     ChartOfAccountsConfig, CompanyConfig, GeneratorConfig, GlobalConfig, OutputConfig,

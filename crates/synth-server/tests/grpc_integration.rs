@@ -369,7 +369,7 @@ async fn test_control_trigger_pattern() {
 
     // Pattern trigger may not be implemented
     // Just verify it doesn't crash
-    assert!(result.message.len() > 0);
+    assert!(!result.message.is_empty());
 }
 
 #[tokio::test]

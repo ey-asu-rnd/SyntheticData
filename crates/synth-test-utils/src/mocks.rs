@@ -131,6 +131,7 @@ impl MockRng {
     }
 
     /// Get the next value in the sequence.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> u64 {
         let value = self.sequence[self.index % self.sequence.len()];
         self.index += 1;
@@ -225,6 +226,6 @@ mod tests {
         let mut rng = MockRng::new(vec![0, 5, 10, 15, 20]);
 
         let value = rng.next_in_range(1, 10);
-        assert!(value >= 1 && value <= 10);
+        assert!((1..=10).contains(&value));
     }
 }
