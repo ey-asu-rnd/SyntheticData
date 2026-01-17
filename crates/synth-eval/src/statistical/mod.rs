@@ -10,8 +10,8 @@ mod temporal;
 
 pub use benford::{BenfordAnalysis, BenfordAnalyzer, BenfordConformity};
 pub use amount_distribution::{AmountDistributionAnalysis, AmountDistributionAnalyzer};
-pub use line_item::{LineItemAnalysis, LineItemAnalyzer};
-pub use temporal::{TemporalAnalysis, TemporalAnalyzer};
+pub use line_item::{LineItemAnalysis, LineItemAnalyzer, LineItemEntry};
+pub use temporal::{TemporalAnalysis, TemporalAnalyzer, TemporalEntry};
 
 use serde::{Deserialize, Serialize};
 

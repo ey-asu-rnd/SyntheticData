@@ -164,12 +164,12 @@ fn main() -> Result<()> {
             // Create output directory
             std::fs::create_dir_all(&output)?;
 
-            // Write sample output
+            // Write sample output (up to 10000 entries for evaluation purposes)
             let sample_path = output.join("sample_entries.json");
-            let sample_entries: Vec<_> = result.journal_entries.iter().take(10).collect();
+            let sample_entries: Vec<_> = result.journal_entries.iter().take(10000).collect();
             let json = serde_json::to_string_pretty(&sample_entries)?;
             std::fs::write(&sample_path, json)?;
-            tracing::info!("Sample entries written to: {}", sample_path.display());
+            tracing::info!("Sample entries written to: {} ({} entries)", sample_path.display(), sample_entries.len());
 
             Ok(())
         }

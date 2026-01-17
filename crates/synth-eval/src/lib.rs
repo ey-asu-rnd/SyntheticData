@@ -43,8 +43,8 @@ pub use error::{EvalError, EvalResult};
 pub use statistical::{
     BenfordAnalysis, BenfordAnalyzer, BenfordConformity,
     AmountDistributionAnalysis, AmountDistributionAnalyzer,
-    LineItemAnalysis, LineItemAnalyzer,
-    TemporalAnalysis, TemporalAnalyzer,
+    LineItemAnalysis, LineItemAnalyzer, LineItemEntry,
+    TemporalAnalysis, TemporalAnalyzer, TemporalEntry,
     StatisticalEvaluation,
 };
 
