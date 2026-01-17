@@ -404,7 +404,7 @@
             <span class="flag" class:enabled={$config.document_flows.o2c.enabled}>O2C Flow</span>
             <span class="flag" class:enabled={$config.fraud.enabled}>Fraud Simulation</span>
             <span class="flag" class:enabled={$config.internal_controls.enabled}>Internal Controls</span>
-            <span class="flag" class:enabled={$config.balance.generate_opening_balance}>Opening Balance</span>
+            <span class="flag" class:enabled={$config.balance.generate_opening_balances}>Opening Balance</span>
           </div>
 
           {#if $isDirty}

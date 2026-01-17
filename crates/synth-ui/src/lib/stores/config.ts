@@ -168,9 +168,131 @@ export interface DocumentFlowConfig {
 }
 
 export interface BalanceConfig {
-  generate_opening_balance: boolean;
-  coherence_check: boolean;
-  opening_balance_date: string;
+  generate_opening_balances: boolean;
+  generate_trial_balances: boolean;
+  target_gross_margin: number;
+  target_dso_days: number;
+  target_dpo_days: number;
+  target_current_ratio: number;
+  target_debt_to_equity: number;
+  validate_balance_equation: boolean;
+  reconcile_subledgers: boolean;
+}
+
+export interface BusinessProcessConfig {
+  [key: string]: number;
+  o2c_weight: number;
+  p2p_weight: number;
+  r2r_weight: number;
+  h2r_weight: number;
+  a2r_weight: number;
+}
+
+export interface PersonaDistribution {
+  [key: string]: number;
+  junior_accountant: number;
+  senior_accountant: number;
+  controller: number;
+  manager: number;
+  automated_system: number;
+}
+
+export interface UsersPerPersona {
+  junior_accountant: number;
+  senior_accountant: number;
+  controller: number;
+  manager: number;
+  automated_system: number;
+}
+
+export interface UserPersonaConfig {
+  persona_distribution: PersonaDistribution;
+  users_per_persona: UsersPerPersona;
+}
+
+export interface CultureDistribution {
+  [key: string]: number;
+  western_us: number;
+  hispanic: number;
+  german: number;
+  french: number;
+  chinese: number;
+  japanese: number;
+  indian: number;
+}
+
+export interface NameTemplateConfig {
+  culture_distribution: CultureDistribution;
+  email_domain: string;
+  generate_realistic_names: boolean;
+}
+
+export interface DescriptionTemplateConfig {
+  generate_header_text: boolean;
+  generate_line_text: boolean;
+}
+
+export interface ReferenceTemplateConfig {
+  generate_references: boolean;
+  invoice_prefix: string;
+  po_prefix: string;
+  so_prefix: string;
+}
+
+export interface TemplateConfig {
+  names: NameTemplateConfig;
+  descriptions: DescriptionTemplateConfig;
+  references: ReferenceTemplateConfig;
+}
+
+export interface ApprovalThresholdConfig {
+  amount: number;
+  level: number;
+  roles: string[];
+}
+
+export interface ApprovalConfig {
+  enabled: boolean;
+  auto_approve_threshold: number;
+  rejection_rate: number;
+  revision_rate: number;
+  average_approval_delay_hours: number;
+  thresholds: ApprovalThresholdConfig[];
+}
+
+export interface CustomDepartmentConfig {
+  code: string;
+  name: string;
+  cost_center: string | null;
+  primary_processes: string[];
+  parent_code: string | null;
+}
+
+export interface DepartmentConfig {
+  enabled: boolean;
+  headcount_multiplier: number;
+  custom_departments: CustomDepartmentConfig[];
+}
+
+export interface ICTransactionTypeDistribution {
+  [key: string]: number;
+  goods_sale: number;
+  service_provided: number;
+  loan: number;
+  dividend: number;
+  management_fee: number;
+  royalty: number;
+  cost_sharing: number;
+}
+
+export interface IntercompanyConfig {
+  enabled: boolean;
+  ic_transaction_rate: number;
+  transfer_pricing_method: string;
+  markup_percent: number;
+  generate_matched_pairs: boolean;
+  transaction_type_distribution: ICTransactionTypeDistribution;
+  generate_eliminations: boolean;
 }
 
 // Full generator config
@@ -182,8 +304,14 @@ export interface GeneratorConfig {
   output: OutputConfig;
   fraud: FraudConfig;
   internal_controls: InternalControlsConfig;
+  business_processes: BusinessProcessConfig;
+  user_personas: UserPersonaConfig;
+  templates: TemplateConfig;
+  approval: ApprovalConfig;
+  departments: DepartmentConfig;
   master_data: MasterDataConfig;
   document_flows: DocumentFlowConfig;
+  intercompany: IntercompanyConfig;
   balance: BalanceConfig;
 }
 
@@ -253,11 +381,11 @@ export function createDefaultConfig(): GeneratorConfig {
     output: {
       mode: 'flat_file',
       output_directory: './output',
-      formats: ['parquet'],
+      formats: ['csv'],
       compression: {
         enabled: true,
-        algorithm: 'zstd',
-        level: 3,
+        algorithm: 'gzip',
+        level: 6,
       },
       batch_size: 100000,
       include_acdoca: true,
@@ -337,10 +465,99 @@ export function createDefaultConfig(): GeneratorConfig {
       generate_document_references: true,
       export_flow_graph: false,
     },
+    business_processes: {
+      o2c_weight: 0.35,
+      p2p_weight: 0.30,
+      r2r_weight: 0.20,
+      h2r_weight: 0.10,
+      a2r_weight: 0.05,
+    },
+    user_personas: {
+      persona_distribution: {
+        junior_accountant: 0.15,
+        senior_accountant: 0.15,
+        controller: 0.05,
+        manager: 0.05,
+        automated_system: 0.60,
+      },
+      users_per_persona: {
+        junior_accountant: 10,
+        senior_accountant: 5,
+        controller: 2,
+        manager: 3,
+        automated_system: 20,
+      },
+    },
+    templates: {
+      names: {
+        culture_distribution: {
+          western_us: 0.40,
+          hispanic: 0.20,
+          german: 0.10,
+          french: 0.05,
+          chinese: 0.10,
+          japanese: 0.05,
+          indian: 0.10,
+        },
+        email_domain: 'company.com',
+        generate_realistic_names: true,
+      },
+      descriptions: {
+        generate_header_text: true,
+        generate_line_text: true,
+      },
+      references: {
+        generate_references: true,
+        invoice_prefix: 'INV',
+        po_prefix: 'PO',
+        so_prefix: 'SO',
+      },
+    },
+    approval: {
+      enabled: false,
+      auto_approve_threshold: 1000,
+      rejection_rate: 0.02,
+      revision_rate: 0.05,
+      average_approval_delay_hours: 4.0,
+      thresholds: [
+        { amount: 1000, level: 1, roles: ['senior_accountant'] },
+        { amount: 10000, level: 2, roles: ['senior_accountant', 'controller'] },
+        { amount: 100000, level: 3, roles: ['senior_accountant', 'controller', 'manager'] },
+        { amount: 500000, level: 4, roles: ['senior_accountant', 'controller', 'manager', 'executive'] },
+      ],
+    },
+    departments: {
+      enabled: false,
+      headcount_multiplier: 1.0,
+      custom_departments: [],
+    },
+    intercompany: {
+      enabled: false,
+      ic_transaction_rate: 0.15,
+      transfer_pricing_method: 'cost_plus',
+      markup_percent: 0.05,
+      generate_matched_pairs: true,
+      transaction_type_distribution: {
+        goods_sale: 0.35,
+        service_provided: 0.20,
+        loan: 0.10,
+        dividend: 0.05,
+        management_fee: 0.15,
+        royalty: 0.10,
+        cost_sharing: 0.05,
+      },
+      generate_eliminations: false,
+    },
     balance: {
-      generate_opening_balance: true,
-      coherence_check: true,
-      opening_balance_date: '2024-01-01',
+      generate_opening_balances: false,
+      generate_trial_balances: true,
+      target_gross_margin: 0.35,
+      target_dso_days: 45,
+      target_dpo_days: 30,
+      target_current_ratio: 1.5,
+      target_debt_to_equity: 0.5,
+      validate_balance_equation: true,
+      reconcile_subledgers: true,
     },
   };
 }
@@ -591,9 +808,9 @@ export const TRANSACTION_VOLUMES = [
 
 // Output format options
 export const OUTPUT_FORMATS = [
-  { value: 'csv', label: 'CSV' },
-  { value: 'json', label: 'JSON' },
-  { value: 'parquet', label: 'Parquet (disabled)' },
+  { value: 'csv', label: 'CSV', available: true },
+  { value: 'json', label: 'JSON', available: true },
+  { value: 'parquet', label: 'Parquet (not implemented)', available: false },
 ];
 
 // Compression options

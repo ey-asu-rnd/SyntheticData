@@ -3,15 +3,21 @@
    * Visual distribution editor with bars and drag adjustment.
    * Used for editing weighted distributions like line items, sources, etc.
    */
+
+  // Use a generic type that accepts any object with string keys and number values
+  type Distribution = { [key: string]: number };
+
   let {
     label = '',
-    distribution = $bindable<Record<string, number>>({}),
+    distribution = $bindable<Distribution>({}),
     labels = {} as Record<string, string>,
+    descriptions = {} as Record<string, string>,
     helpText = '',
   }: {
     label?: string;
-    distribution: Record<string, number>;
+    distribution: Distribution;
     labels?: Record<string, string>;
+    descriptions?: Record<string, string>;
     helpText?: string;
   } = $props();
 
@@ -47,6 +53,11 @@
   function getLabel(key: string): string {
     return labels[key] || key;
   }
+
+  // Get description for a key
+  function getDescription(key: string): string | undefined {
+    return descriptions[key];
+  }
 </script>
 
 <div class="distribution-editor">
@@ -57,8 +68,14 @@
   <div class="distribution-bars">
     {#each Object.entries(distribution) as [key, value]}
       {@const percent = getPercent(value)}
-      <div class="bar-row">
-        <span class="bar-label">{getLabel(key)}</span>
+      {@const desc = getDescription(key)}
+      <div class="bar-row" class:has-description={!!desc}>
+        <div class="bar-label-container">
+          <span class="bar-label">{getLabel(key)}</span>
+          {#if desc}
+            <span class="bar-description">{desc}</span>
+          {/if}
+        </div>
         <div class="bar-track">
           <div class="bar-fill" style="width: {percent}%"></div>
           <input
@@ -104,14 +121,32 @@
 
   .bar-row {
     display: grid;
-    grid-template-columns: 120px 1fr 60px;
+    grid-template-columns: 160px 1fr 60px;
     align-items: center;
     gap: var(--space-3);
+  }
+
+  .bar-row.has-description {
+    align-items: start;
+  }
+
+  .bar-label-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .bar-label {
     font-size: 0.8125rem;
     color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-description {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { configStore } from '$lib/stores/config';
-  import { FormGroup, FormSection, Toggle } from '$lib/components/forms';
+  import { FormGroup, FormSection, Toggle, InputNumber } from '$lib/components/forms';
 
   const config = configStore.config;
 </script>
@@ -23,37 +23,124 @@
         <div class="section-content">
           <div class="toggle-row">
             <div class="toggle-info">
-              <span class="toggle-label">Generate Opening Balance</span>
+              <span class="toggle-label">Generate Opening Balances</span>
               <span class="toggle-description">
                 Create coherent opening balance sheet at period start
                 (Assets = Liabilities + Equity)
               </span>
             </div>
-            <Toggle bind:checked={$config.balance.generate_opening_balance} />
+            <Toggle bind:checked={$config.balance.generate_opening_balances} />
           </div>
 
           <div class="toggle-row">
             <div class="toggle-info">
-              <span class="toggle-label">Coherence Check</span>
+              <span class="toggle-label">Generate Trial Balances</span>
               <span class="toggle-description">
-                Validate that running balances remain coherent throughout generation.
-                Transactions maintain accounting equation integrity.
+                Generate period-end trial balances for each fiscal period
               </span>
             </div>
-            <Toggle bind:checked={$config.balance.coherence_check} />
+            <Toggle bind:checked={$config.balance.generate_trial_balances} />
           </div>
 
-          <FormGroup
-            label="Opening Balance Date"
-            htmlFor="opening-balance-date"
-            helpText="Date for the opening balance sheet (typically period start)"
-          >
-            <input
-              id="opening-balance-date"
-              type="date"
-              bind:value={$config.balance.opening_balance_date}
-            />
-          </FormGroup>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-label">Validate Balance Equation</span>
+              <span class="toggle-description">
+                Validate that Assets = Liabilities + Equity throughout generation
+              </span>
+            </div>
+            <Toggle bind:checked={$config.balance.validate_balance_equation} />
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-label">Reconcile Subledgers</span>
+              <span class="toggle-description">
+                Ensure subledger balances reconcile to GL control accounts
+              </span>
+            </div>
+            <Toggle bind:checked={$config.balance.reconcile_subledgers} />
+          </div>
+        </div>
+      </FormSection>
+
+      <!-- Financial Ratios -->
+      <FormSection
+        title="Target Financial Ratios"
+        description="Target metrics for coherent balance generation"
+      >
+        <div class="section-content">
+          <div class="form-grid">
+            <FormGroup
+              label="Target Gross Margin"
+              htmlFor="target-gross-margin"
+              helpText="Target gross margin ratio (0.0 to 1.0)"
+            >
+              <InputNumber
+                id="target-gross-margin"
+                bind:value={$config.balance.target_gross_margin}
+                min={0}
+                max={1}
+                step={0.01}
+              />
+            </FormGroup>
+
+            <FormGroup
+              label="Target DSO (Days)"
+              htmlFor="target-dso"
+              helpText="Days Sales Outstanding - average collection period"
+            >
+              <InputNumber
+                id="target-dso"
+                bind:value={$config.balance.target_dso_days}
+                min={1}
+                max={365}
+                step={1}
+              />
+            </FormGroup>
+
+            <FormGroup
+              label="Target DPO (Days)"
+              htmlFor="target-dpo"
+              helpText="Days Payable Outstanding - average payment period"
+            >
+              <InputNumber
+                id="target-dpo"
+                bind:value={$config.balance.target_dpo_days}
+                min={1}
+                max={365}
+                step={1}
+              />
+            </FormGroup>
+
+            <FormGroup
+              label="Target Current Ratio"
+              htmlFor="target-current-ratio"
+              helpText="Current Assets / Current Liabilities"
+            >
+              <InputNumber
+                id="target-current-ratio"
+                bind:value={$config.balance.target_current_ratio}
+                min={0.1}
+                max={10}
+                step={0.1}
+              />
+            </FormGroup>
+
+            <FormGroup
+              label="Target Debt-to-Equity"
+              htmlFor="target-debt-equity"
+              helpText="Total Debt / Total Equity ratio"
+            >
+              <InputNumber
+                id="target-debt-equity"
+                bind:value={$config.balance.target_debt_to_equity}
+                min={0}
+                max={10}
+                step={0.1}
+              />
+            </FormGroup>
+          </div>
         </div>
       </FormSection>
 
@@ -421,6 +508,12 @@
     color: var(--color-text-primary);
   }
 
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-4);
+  }
+
   .feature-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -477,21 +570,4 @@
     color: var(--color-text-muted);
   }
 
-  input[type="date"] {
-    width: 100%;
-    max-width: 200px;
-    padding: var(--space-2) var(--space-3);
-    font-size: 0.875rem;
-    font-family: var(--font-mono);
-    color: var(--color-text-primary);
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    transition: border-color var(--transition-fast);
-  }
-
-  input[type="date"]:focus {
-    outline: none;
-    border-color: var(--color-accent);
-  }
 </style>

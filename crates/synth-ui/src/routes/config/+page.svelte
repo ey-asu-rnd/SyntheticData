@@ -21,6 +21,12 @@
       icon: 'M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M6 22h12M10 6h.01M14 6h.01',
     },
     {
+      title: 'Chart of Accounts',
+      description: 'Account hierarchy and structure',
+      href: '/config/chart-of-accounts',
+      icon: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2',
+    },
+    {
       title: 'Transactions',
       description: 'Line items, amounts, and seasonality',
       href: '/config/transactions',
@@ -37,6 +43,48 @@
       description: 'P2P, O2C process chains',
       href: '/config/document-flows',
       icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+    },
+    {
+      title: 'Intercompany',
+      description: 'IC transactions and transfer pricing',
+      href: '/config/intercompany',
+      icon: 'M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5',
+    },
+    {
+      title: 'Business Processes',
+      description: 'O2C, P2P, R2R process weights',
+      href: '/config/business-processes',
+      icon: 'M22 12h-4l-3 9L9 3l-3 9H2',
+    },
+    {
+      title: 'User Personas',
+      description: 'User types and distributions',
+      href: '/config/user-personas',
+      icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+    },
+    {
+      title: 'Approval Workflow',
+      description: 'Thresholds and approval chains',
+      href: '/config/approval',
+      icon: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+    },
+    {
+      title: 'Departments',
+      description: 'Organizational structure',
+      href: '/config/departments',
+      icon: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z',
+    },
+    {
+      title: 'Templates',
+      description: 'Names, descriptions, references',
+      href: '/config/templates',
+      icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8',
+    },
+    {
+      title: 'Financial',
+      description: 'Balance, subledgers, and FX',
+      href: '/config/financial',
+      icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
     },
     {
       title: 'Fraud & Controls',
