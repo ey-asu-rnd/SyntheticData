@@ -13,6 +13,28 @@ members = [
     "crates/synth-test-utils",
 ]
 
+# Root package for workspace-level benchmarks
+[package]
+name = "synth-workspace"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dev-dependencies]
+synth-core = { path = "crates/synth-core" }
+synth-config = { path = "crates/synth-config" }
+synth-generators = { path = "crates/synth-generators" }
+synth-output = { path = "crates/synth-output" }
+synth-runtime = { path = "crates/synth-runtime" }
+criterion = { workspace = true }
+chrono = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+rust_decimal = { workspace = true }
+rust_decimal_macros = { workspace = true }
+tempfile = { workspace = true }
+serde_json = { workspace = true }
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
@@ -101,6 +123,9 @@ tempfile = "3.10"
 assert_cmd = "2.0"
 predicates = "3.0"
 
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
 [profile.release]
 lto = true
 codegen-units = 1
@@ -109,3 +134,24 @@ opt-level = 3
 [profile.bench]
 lto = true
 codegen-units = 1
+
+# Workspace-level benchmarks
+[[bench]]
+name = "generation_throughput"
+harness = false
+
+[[bench]]
+name = "distribution_sampling"
+harness = false
+
+[[bench]]
+name = "output_sinks"
+harness = false
+
+[[bench]]
+name = "scalability"
+harness = false
+
+[[bench]]
+name = "correctness"
+harness = false

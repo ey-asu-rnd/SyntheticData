@@ -1,5 +1,13 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type UserConfig } from 'vite';
+
+interface VitestConfig extends UserConfig {
+  test?: {
+    include?: string[];
+    environment?: string;
+    globals?: boolean;
+  };
+}
 
 export default defineConfig({
   plugins: [sveltekit()],
@@ -16,4 +24,4 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
   },
-});
+} as VitestConfig);

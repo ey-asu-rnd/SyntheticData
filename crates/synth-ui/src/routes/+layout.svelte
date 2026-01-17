@@ -1,140 +1,95 @@
 <script lang="ts">
   import '../app.css';
   import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import ConfigSidebar from '$lib/components/config/ConfigSidebar.svelte';
+  import { configStore } from '$lib/stores/config';
 
   let { children } = $props();
 
-  // Navigation links configuration
-  const navLinks = [
-    { href: '/', label: 'Dashboard' },
-    { href: '/config', label: 'Configuration' },
-    { href: '/stream', label: 'Stream' },
-  ];
+  // Determine if we should show sidebar based on route
+  let showSidebar = $derived(
+    $page.url.pathname.startsWith('/config') ||
+    $page.url.pathname === '/' ||
+    $page.url.pathname === '/stream'
+  );
 
-  // Check if a nav link is active based on current path
-  function isActive(href: string, currentPath: string): boolean {
-    if (href === '/') {
-      return currentPath === '/';
+  // Load config on mount
+  onMount(() => {
+    configStore.load();
+  });
+
+  // Quick save keyboard shortcut
+  function handleKeydown(event: KeyboardEvent) {
+    if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+      event.preventDefault();
+      configStore.save();
     }
-    return currentPath.startsWith(href);
   }
 </script>
 
-<div class="app-container">
-  <header class="app-header">
-    <div class="header-content">
-      <div class="logo">
-        <span class="logo-text">SYNTH</span>
-        <span class="logo-subtext">Data Generator</span>
-      </div>
-      <nav class="nav">
-        {#each navLinks as link}
-          <a
-            href={link.href}
-            class="nav-link"
-            class:active={isActive(link.href, $page.url.pathname)}
-          >
-            {link.label}
-          </a>
-        {/each}
-      </nav>
-    </div>
-  </header>
+<svelte:window onkeydown={handleKeydown} />
 
-  <main class="app-main">
-    {@render children()}
-  </main>
+<div class="app-layout" class:with-sidebar={showSidebar}>
+  {#if showSidebar}
+    <ConfigSidebar />
+  {/if}
 
-  <footer class="app-footer">
-    <span class="footer-text">Synthetic Data Generator v0.1.0</span>
-  </footer>
+  <div class="main-area">
+    <main class="main-content">
+      {@render children()}
+    </main>
+
+    <footer class="app-footer">
+      <span class="footer-text">Synthetic Data Generator v0.1.0</span>
+      <span class="footer-sep">|</span>
+      <span class="footer-shortcut">Ctrl+S to save</span>
+    </footer>
+  </div>
 </div>
 
 <style>
-  .app-container {
+  .app-layout {
     display: flex;
-    flex-direction: column;
     min-height: 100vh;
   }
 
-  .app-header {
-    border-bottom: 1px solid var(--color-border);
-    background-color: var(--color-background);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .header-content {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: var(--space-4) var(--space-6);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .logo {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
-  }
-
-  .logo-text {
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: var(--color-text-primary);
-  }
-
-  .logo-subtext {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .nav {
-    display: flex;
-    gap: var(--space-5);
-  }
-
-  .nav-link {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    text-decoration: none;
-    padding: var(--space-2) 0;
-    border-bottom: 2px solid transparent;
-    transition: all var(--transition-fast);
-  }
-
-  .nav-link:hover {
-    color: var(--color-text-primary);
-  }
-
-  .nav-link.active {
-    color: var(--color-text-primary);
-    border-bottom-color: var(--color-accent);
-  }
-
-  .app-main {
+  .main-area {
     flex: 1;
-    max-width: 1400px;
-    width: 100%;
-    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .main-content {
+    flex: 1;
     padding: var(--space-6);
+    overflow-y: auto;
   }
 
   .app-footer {
     border-top: 1px solid var(--color-border);
-    padding: var(--space-4) var(--space-6);
-    text-align: center;
+    padding: var(--space-3) var(--space-6);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
   }
 
   .footer-text {
     font-size: 0.75rem;
     color: var(--color-text-muted);
+  }
+
+  .footer-sep {
+    color: var(--color-border);
+  }
+
+  .footer-shortcut {
+    font-size: 0.6875rem;
+    font-family: var(--font-mono);
+    color: var(--color-text-muted);
+    background-color: var(--color-surface);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
   }
 </style>
