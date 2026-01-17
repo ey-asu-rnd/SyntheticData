@@ -162,7 +162,12 @@ pub async fn rate_limit_middleware(
 ) -> Response {
     // Check if path is exempt
     let path = request.uri().path();
-    if limiter.config.exempt_paths.iter().any(|p| path.starts_with(p)) {
+    if limiter
+        .config
+        .exempt_paths
+        .iter()
+        .any(|p| path.starts_with(p))
+    {
         return next.run(request).await;
     }
 
@@ -230,13 +235,7 @@ fn extract_client_key(request: &Request<Body>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{
-        body::Body,
-        http::Request,
-        middleware,
-        routing::get,
-        Router,
-    };
+    use axum::{body::Body, http::Request, middleware, routing::get, Router};
     use tower::ServiceExt;
 
     async fn test_handler() -> &'static str {

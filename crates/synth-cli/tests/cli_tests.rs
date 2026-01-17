@@ -22,7 +22,9 @@ fn test_help_flag() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Synthetic Enterprise Accounting Data Generator"));
+        .stdout(predicate::str::contains(
+            "Synthetic Enterprise Accounting Data Generator",
+        ));
 }
 
 #[test]
@@ -259,7 +261,10 @@ fn test_generate_demo_creates_output() {
 
     // Check for sample_entries.json
     let sample_path = output_dir.join("sample_entries.json");
-    assert!(sample_path.exists(), "Sample entries file should be created");
+    assert!(
+        sample_path.exists(),
+        "Sample entries file should be created"
+    );
 
     // Verify it's valid JSON
     let content = fs::read_to_string(&sample_path).unwrap();
@@ -333,18 +338,10 @@ fn test_generate_defaults_to_demo_preset() {
 
 #[test]
 fn test_verbose_flag_accepted() {
-    synth_data()
-        .arg("-v")
-        .arg("info")
-        .assert()
-        .success();
+    synth_data().arg("-v").arg("info").assert().success();
 }
 
 #[test]
 fn test_verbose_long_flag_accepted() {
-    synth_data()
-        .arg("--verbose")
-        .arg("info")
-        .assert()
-        .success();
+    synth_data().arg("--verbose").arg("info").assert().success();
 }

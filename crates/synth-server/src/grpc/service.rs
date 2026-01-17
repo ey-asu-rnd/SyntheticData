@@ -14,8 +14,8 @@ use tonic::{Request, Response, Status};
 use tracing::{error, info, warn};
 
 use synth_config::schema::{
-    ChartOfAccountsConfig, CompanyConfig, GeneratorConfig, GlobalConfig,
-    OutputConfig, TransactionVolume,
+    ChartOfAccountsConfig, CompanyConfig, GeneratorConfig, GlobalConfig, OutputConfig,
+    TransactionVolume,
 };
 use synth_core::models::{CoAComplexity, IndustrySector, JournalEntry};
 use synth_runtime::{EnhancedOrchestrator, PhaseConfig};
@@ -365,8 +365,7 @@ impl synthetic_data_service_server::SyntheticDataService for SynthService {
         }))
     }
 
-    type StreamDataStream =
-        Pin<Box<dyn Stream<Item = Result<DataEvent, Status>> + Send + 'static>>;
+    type StreamDataStream = Pin<Box<dyn Stream<Item = Result<DataEvent, Status>> + Send + 'static>>;
 
     /// Streaming generation - continuously generates data events.
     async fn stream_data(
@@ -461,13 +460,14 @@ impl synthetic_data_service_server::SyntheticDataService for SynthService {
                 }
 
                 // Generate a batch
-                let mut orchestrator = match EnhancedOrchestrator::new(config.clone(), phase_config.clone()) {
-                    Ok(o) => o,
-                    Err(e) => {
-                        error!("Failed to create orchestrator: {}", e);
-                        break;
-                    }
-                };
+                let mut orchestrator =
+                    match EnhancedOrchestrator::new(config.clone(), phase_config.clone()) {
+                        Ok(o) => o,
+                        Err(e) => {
+                            error!("Failed to create orchestrator: {}", e);
+                            break;
+                        }
+                    };
 
                 let result = match orchestrator.generate() {
                     Ok(r) => r,
@@ -560,7 +560,8 @@ impl synthetic_data_service_server::SyntheticDataService for SynthService {
                         "error_cluster",
                         "uniform",
                     ];
-                    let is_valid = valid_patterns.contains(&pattern.as_str()) || pattern.starts_with("custom:");
+                    let is_valid = valid_patterns.contains(&pattern.as_str())
+                        || pattern.starts_with("custom:");
 
                     if is_valid {
                         // Store the pattern for the stream generator to pick up
@@ -600,10 +601,7 @@ impl synthetic_data_service_server::SyntheticDataService for SynthService {
     }
 
     /// Get current configuration.
-    async fn get_config(
-        &self,
-        _request: Request<()>,
-    ) -> Result<Response<ConfigResponse>, Status> {
+    async fn get_config(&self, _request: Request<()>) -> Result<Response<ConfigResponse>, Status> {
         let config = self.state.config.read().await;
         let proto_config = Self::config_to_proto(&config);
 
@@ -747,10 +745,7 @@ mod tests {
 
         // Should share the same state
         state.total_entries.store(100, Ordering::Relaxed);
-        assert_eq!(
-            service.state.total_entries.load(Ordering::Relaxed),
-            100
-        );
+        assert_eq!(service.state.total_entries.load(Ordering::Relaxed), 100);
     }
 
     // ==========================================================================

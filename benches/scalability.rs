@@ -25,22 +25,18 @@ fn bench_scale_generation(c: &mut Criterion) {
     for count in [1_000, 10_000, 100_000].iter() {
         group.throughput(Throughput::Elements(*count as u64));
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(count),
-            count,
-            |b, &size| {
-                b.iter_with_setup(
-                    || create_je_generator(Arc::clone(&coa)),
-                    |mut gen| {
-                        let mut entries = Vec::with_capacity(size);
-                        for _ in 0..size {
-                            entries.push(gen.generate());
-                        }
-                        black_box(entries)
-                    },
-                );
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &size| {
+            b.iter_with_setup(
+                || create_je_generator(Arc::clone(&coa)),
+                |mut gen| {
+                    let mut entries = Vec::with_capacity(size);
+                    for _ in 0..size {
+                        entries.push(gen.generate());
+                    }
+                    black_box(entries)
+                },
+            );
+        });
     }
 
     group.finish();
@@ -56,24 +52,20 @@ fn bench_streaming_generation(c: &mut Criterion) {
     for count in [10_000, 100_000].iter() {
         group.throughput(Throughput::Elements(*count as u64));
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(count),
-            count,
-            |b, &size| {
-                b.iter_with_setup(
-                    || create_je_generator(Arc::clone(&coa)),
-                    |mut gen| {
-                        let mut total_lines = 0u64;
-                        for _ in 0..size {
-                            let entry = gen.generate();
-                            total_lines += entry.line_count() as u64;
-                            // Don't store - just count
-                        }
-                        black_box(total_lines)
-                    },
-                );
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &size| {
+            b.iter_with_setup(
+                || create_je_generator(Arc::clone(&coa)),
+                |mut gen| {
+                    let mut total_lines = 0u64;
+                    for _ in 0..size {
+                        let entry = gen.generate();
+                        total_lines += entry.line_count() as u64;
+                        // Don't store - just count
+                    }
+                    black_box(total_lines)
+                },
+            );
+        });
     }
 
     group.finish();

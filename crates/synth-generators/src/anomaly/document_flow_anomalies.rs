@@ -138,16 +138,16 @@ pub struct DocumentFlowAnomalyConfig {
 impl Default for DocumentFlowAnomalyConfig {
     fn default() -> Self {
         Self {
-            quantity_mismatch_rate: 0.02,    // 2% of receipts
-            price_mismatch_rate: 0.015,      // 1.5% of invoices
-            maverick_buying_rate: 0.01,      // 1% maverick buying
-            unbilled_receipt_rate: 0.005,    // 0.5% unbilled
+            quantity_mismatch_rate: 0.02,     // 2% of receipts
+            price_mismatch_rate: 0.015,       // 1.5% of invoices
+            maverick_buying_rate: 0.01,       // 1% maverick buying
+            unbilled_receipt_rate: 0.005,     // 0.5% unbilled
             unauthorized_payment_rate: 0.002, // 0.2% unauthorized
-            duplicate_invoice_rate: 0.008,   // 0.8% duplicates
-            early_invoice_rate: 0.01,        // 1% early invoices
-            early_payment_rate: 0.005,       // 0.5% early payments
-            max_quantity_variance: 0.25,     // Up to 25% variance
-            max_price_variance: 0.15,        // Up to 15% variance
+            duplicate_invoice_rate: 0.008,    // 0.8% duplicates
+            early_invoice_rate: 0.01,         // 1% early invoices
+            early_payment_rate: 0.005,        // 0.5% early payments
+            max_quantity_variance: 0.25,      // Up to 25% variance
+            max_price_variance: 0.15,         // Up to 15% variance
         }
     }
 }
@@ -203,12 +203,16 @@ impl DocumentFlowAnomalyInjector {
             // Generate variance (either over or under)
             let variance = if self.rng.gen::<bool>() {
                 // Over-receipt (more common in fraud)
-                Decimal::from_f64_retain(1.0 + self.rng.gen::<f64>() * self.config.max_quantity_variance)
-                    .unwrap_or(Decimal::ONE)
+                Decimal::from_f64_retain(
+                    1.0 + self.rng.gen::<f64>() * self.config.max_quantity_variance,
+                )
+                .unwrap_or(Decimal::ONE)
             } else {
                 // Under-receipt
-                Decimal::from_f64_retain(1.0 - self.rng.gen::<f64>() * self.config.max_quantity_variance)
-                    .unwrap_or(Decimal::ONE)
+                Decimal::from_f64_retain(
+                    1.0 - self.rng.gen::<f64>() * self.config.max_quantity_variance,
+                )
+                .unwrap_or(Decimal::ONE)
             };
 
             gr_item.base.quantity = (original_qty * variance).round_dp(2);
@@ -221,11 +225,12 @@ impl DocumentFlowAnomalyInjector {
                 ),
                 original_value: Some(original_qty.to_string()),
                 modified_value: Some(gr_item.base.quantity.to_string()),
-                document_ids: vec![
-                    gr.header.document_id.clone(),
-                    po.header.document_id.clone(),
-                ],
-                severity: if variance > Decimal::from_f64_retain(1.1).unwrap() { 4 } else { 3 },
+                document_ids: vec![gr.header.document_id.clone(), po.header.document_id.clone()],
+                severity: if variance > Decimal::from_f64_retain(1.1).unwrap() {
+                    4
+                } else {
+                    3
+                },
             };
 
             self.results.push(result);
@@ -254,12 +259,16 @@ impl DocumentFlowAnomalyInjector {
             // Usually invoices are higher than PO (vendor overcharging)
             let variance = if self.rng.gen::<f64>() < 0.8 {
                 // 80% chance of overcharge
-                Decimal::from_f64_retain(1.0 + self.rng.gen::<f64>() * self.config.max_price_variance)
-                    .unwrap_or(Decimal::ONE)
+                Decimal::from_f64_retain(
+                    1.0 + self.rng.gen::<f64>() * self.config.max_price_variance,
+                )
+                .unwrap_or(Decimal::ONE)
             } else {
                 // 20% chance of undercharge (rare, could be error)
-                Decimal::from_f64_retain(1.0 - self.rng.gen::<f64>() * self.config.max_price_variance * 0.5)
-                    .unwrap_or(Decimal::ONE)
+                Decimal::from_f64_retain(
+                    1.0 - self.rng.gen::<f64>() * self.config.max_price_variance * 0.5,
+                )
+                .unwrap_or(Decimal::ONE)
             };
 
             inv_item.base.unit_price = (original_price * variance).round_dp(2);
@@ -276,7 +285,11 @@ impl DocumentFlowAnomalyInjector {
                     invoice.header.document_id.clone(),
                     po.header.document_id.clone(),
                 ],
-                severity: if variance > Decimal::from_f64_retain(1.1).unwrap() { 4 } else { 3 },
+                severity: if variance > Decimal::from_f64_retain(1.1).unwrap() {
+                    4
+                } else {
+                    3
+                },
             };
 
             self.results.push(result);

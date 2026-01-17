@@ -152,8 +152,8 @@ fn main() -> Result<()> {
                 }
             }
 
-            let mut orchestrator = GenerationOrchestrator::new(generator_config)?
-                .with_pause_flag(pause_flag);
+            let mut orchestrator =
+                GenerationOrchestrator::new(generator_config)?.with_pause_flag(pause_flag);
             let result = orchestrator.generate()?;
 
             tracing::info!("Generation complete!");

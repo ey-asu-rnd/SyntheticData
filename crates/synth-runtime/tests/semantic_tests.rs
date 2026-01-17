@@ -5,9 +5,7 @@
 
 use rust_decimal::Decimal;
 use synth_runtime::{EnhancedOrchestrator, PhaseConfig};
-use synth_test_utils::{
-    assert_all_balanced, check_benford_distribution, fixtures::minimal_config,
-};
+use synth_test_utils::{assert_all_balanced, check_benford_distribution, fixtures::minimal_config};
 
 /// Test that all generated journal entries are balanced (debits = credits).
 ///
@@ -45,7 +43,9 @@ fn test_all_journal_entries_balanced() {
         .journal_entries
         .iter()
         .filter(|e| {
-            e.header.header_text.as_ref()
+            e.header
+                .header_text
+                .as_ref()
                 .map(|text| !text.contains("[HUMAN_ERROR:"))
                 .unwrap_or(true)
         })
@@ -92,7 +92,12 @@ fn test_benford_distribution_analysis() {
     let amounts: Vec<Decimal> = result
         .journal_entries
         .iter()
-        .flat_map(|entry| entry.lines.iter().map(|line| line.debit_amount + line.credit_amount))
+        .flat_map(|entry| {
+            entry
+                .lines
+                .iter()
+                .map(|line| line.debit_amount + line.credit_amount)
+        })
         .filter(|&amount| amount > Decimal::ZERO)
         .collect();
 
@@ -112,7 +117,10 @@ fn test_benford_distribution_analysis() {
     );
 
     // For now, just verify we can compute the distribution
-    assert!(chi_squared.is_finite(), "Chi-squared should be a valid number");
+    assert!(
+        chi_squared.is_finite(),
+        "Chi-squared should be a valid number"
+    );
 }
 
 /// Test deterministic output with same seed.
@@ -139,8 +147,8 @@ fn test_deterministic_generation() {
         ..Default::default()
     };
 
-    let mut orchestrator1 =
-        EnhancedOrchestrator::new(config1, phase_config.clone()).expect("Failed to create orchestrator");
+    let mut orchestrator1 = EnhancedOrchestrator::new(config1, phase_config.clone())
+        .expect("Failed to create orchestrator");
     let result1 = orchestrator1.generate().expect("Generation 1 failed");
 
     let mut orchestrator2 =
@@ -154,7 +162,11 @@ fn test_deterministic_generation() {
     );
 
     // Check that document IDs match (they should be deterministic)
-    for (e1, e2) in result1.journal_entries.iter().zip(result2.journal_entries.iter()) {
+    for (e1, e2) in result1
+        .journal_entries
+        .iter()
+        .zip(result2.journal_entries.iter())
+    {
         assert_eq!(
             e1.header.document_id, e2.header.document_id,
             "Document IDs should match for same seed"
@@ -190,8 +202,8 @@ fn test_different_seeds_different_output() {
         ..Default::default()
     };
 
-    let mut orchestrator1 =
-        EnhancedOrchestrator::new(config1, phase_config.clone()).expect("Failed to create orchestrator");
+    let mut orchestrator1 = EnhancedOrchestrator::new(config1, phase_config.clone())
+        .expect("Failed to create orchestrator");
     let result1 = orchestrator1.generate().expect("Generation 1 failed");
 
     let mut orchestrator2 =
@@ -218,8 +230,7 @@ fn test_line_item_distribution() {
     let mut config = minimal_config();
     config.global.seed = Some(77777);
     config.global.period_months = 3;
-    config.companies[0].annual_transaction_volume =
-        synth_config::schema::TransactionVolume::TenK;
+    config.companies[0].annual_transaction_volume = synth_config::schema::TransactionVolume::TenK;
 
     let phase_config = PhaseConfig {
         generate_master_data: false,

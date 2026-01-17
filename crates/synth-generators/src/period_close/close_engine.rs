@@ -434,8 +434,10 @@ pub struct CloseContext {
     pub inventory_reval_handler:
         Option<Box<dyn Fn(&str, &FiscalPeriod) -> (Vec<JournalEntry>, Decimal)>>,
     /// Handlers for custom close tasks, keyed by task name.
-    pub custom_handlers:
-        std::collections::HashMap<String, Box<dyn Fn(&str, &FiscalPeriod) -> (Vec<JournalEntry>, Decimal)>>,
+    pub custom_handlers: std::collections::HashMap<
+        String,
+        Box<dyn Fn(&str, &FiscalPeriod) -> (Vec<JournalEntry>, Decimal)>,
+    >,
 }
 
 /// Result of close readiness validation.

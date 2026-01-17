@@ -741,8 +741,8 @@ impl JournalEntryGenerator {
 
         // Generate similar amount (within ±15% of base)
         let variation = self.rng.gen_range(-0.15..0.15);
-        let varied_amount = batch.base_amount
-            * (Decimal::ONE + Decimal::try_from(variation).unwrap_or_default());
+        let varied_amount =
+            batch.base_amount * (Decimal::ONE + Decimal::try_from(variation).unwrap_or_default());
         let total_amount = varied_amount.round_dp(2).max(Decimal::from(1));
 
         // Create the entry
@@ -759,12 +759,8 @@ impl JournalEntryGenerator {
 
         // Select a credit account
         let credit_account = self.select_credit_account().account_number.clone();
-        let credit_line = JournalEntryLine::credit(
-            entry.header.document_id,
-            2,
-            credit_account,
-            total_amount,
-        );
+        let credit_line =
+            JournalEntryLine::credit(entry.header.document_id, 2, credit_account, total_amount);
         entry.add_line(credit_line);
 
         // Apply persona-based errors if enabled
@@ -957,14 +953,18 @@ impl JournalEntryGenerator {
                     if s.len() >= 2 {
                         let chars: Vec<char> = s.chars().collect();
                         let pos = self.rng.gen_range(0..chars.len().saturating_sub(1));
-                        if chars[pos].is_ascii_digit() && chars.get(pos + 1).map_or(false, |c| c.is_ascii_digit()) {
+                        if chars[pos].is_ascii_digit()
+                            && chars.get(pos + 1).map_or(false, |c| c.is_ascii_digit())
+                        {
                             let mut new_chars = chars;
                             new_chars.swap(pos, pos + 1);
-                            if let Ok(new_amount) = new_chars.into_iter().collect::<String>().parse::<Decimal>() {
+                            if let Ok(new_amount) =
+                                new_chars.into_iter().collect::<String>().parse::<Decimal>()
+                            {
                                 *amount = new_amount;
                                 entry.header.header_text = Some(
                                     entry.header.header_text.clone().unwrap_or_default()
-                                        + " [HUMAN_ERROR:TRANSPOSITION]"
+                                        + " [HUMAN_ERROR:TRANSPOSITION]",
                                 );
                             }
                         }
@@ -981,7 +981,7 @@ impl JournalEntryGenerator {
                     }
                     entry.header.header_text = Some(
                         entry.header.header_text.clone().unwrap_or_default()
-                            + " [HUMAN_ERROR:DECIMAL_SHIFT]"
+                            + " [HUMAN_ERROR:DECIMAL_SHIFT]",
                     );
                 }
             }
@@ -1009,7 +1009,7 @@ impl JournalEntryGenerator {
                     }
                     entry.header.header_text = Some(
                         entry.header.header_text.clone().unwrap_or_default()
-                            + " [HUMAN_ERROR:ROUNDED]"
+                            + " [HUMAN_ERROR:ROUNDED]",
                     );
                 }
             }
@@ -1022,7 +1022,7 @@ impl JournalEntryGenerator {
                         entry.header.posting_date - chrono::Duration::days(days_late);
                     entry.header.header_text = Some(
                         entry.header.header_text.clone().unwrap_or_default()
-                            + " [HUMAN_ERROR:LATE_POSTING]"
+                            + " [HUMAN_ERROR:LATE_POSTING]",
                     );
                 }
             }
@@ -1034,7 +1034,11 @@ impl JournalEntryGenerator {
     ///
     /// If the entry amount exceeds the approval threshold, simulate an
     /// approval workflow with appropriate approvers based on amount.
-    fn maybe_apply_approval_workflow(&mut self, entry: &mut JournalEntry, _posting_date: NaiveDate) {
+    fn maybe_apply_approval_workflow(
+        &mut self,
+        entry: &mut JournalEntry,
+        _posting_date: NaiveDate,
+    ) {
         use rust_decimal::Decimal;
 
         let amount = entry.total_debit();
@@ -1521,13 +1525,19 @@ mod tests {
         // Create test customers
         let customers = vec![
             Customer::new("C-TEST-001", "Test Customer One", CustomerType::Corporate),
-            Customer::new("C-TEST-002", "Test Customer Two", CustomerType::SmallBusiness),
+            Customer::new(
+                "C-TEST-002",
+                "Test Customer Two",
+                CustomerType::SmallBusiness,
+            ),
         ];
 
         // Create test materials
-        let materials = vec![
-            Material::new("MAT-TEST-001", "Test Material A", MaterialType::RawMaterial),
-        ];
+        let materials = vec![Material::new(
+            "MAT-TEST-001",
+            "Test Material A",
+            MaterialType::RawMaterial,
+        )];
 
         // Create generator with master data
         let generator = JournalEntryGenerator::new_with_params(
@@ -1558,15 +1568,17 @@ mod tests {
             ChartOfAccountsGenerator::new(CoAComplexity::Small, IndustrySector::Manufacturing, 42);
         let coa = Arc::new(coa_gen.generate());
 
-        let vendors = vec![
-            Vendor::new("V-001", "Vendor One", VendorType::Supplier),
-        ];
-        let customers = vec![
-            Customer::new("C-001", "Customer One", CustomerType::Corporate),
-        ];
-        let materials = vec![
-            Material::new("MAT-001", "Material One", MaterialType::RawMaterial),
-        ];
+        let vendors = vec![Vendor::new("V-001", "Vendor One", VendorType::Supplier)];
+        let customers = vec![Customer::new(
+            "C-001",
+            "Customer One",
+            CustomerType::Corporate,
+        )];
+        let materials = vec![Material::new(
+            "MAT-001",
+            "Material One",
+            MaterialType::RawMaterial,
+        )];
 
         let generator = JournalEntryGenerator::new_with_params(
             TransactionConfig::default(),

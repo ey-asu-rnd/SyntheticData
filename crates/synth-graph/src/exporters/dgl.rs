@@ -936,9 +936,14 @@ mod tests {
                 .with_feature(0.8),
         );
         let n3 = graph.add_node(
-            GraphNode::new(0, NodeType::Company, "ACME".to_string(), "ACME Corp".to_string())
-                .with_feature(0.3)
-                .as_anomaly("fraud"),
+            GraphNode::new(
+                0,
+                NodeType::Company,
+                "ACME".to_string(),
+                "ACME Corp".to_string(),
+            )
+            .with_feature(0.3)
+            .as_anomaly("fraud"),
         );
 
         graph.add_edge(

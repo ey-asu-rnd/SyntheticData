@@ -47,6 +47,12 @@
         { href: '/config/analytics', label: 'Analytics', icon: 'analytics' },
       ],
     },
+    {
+      section: 'Presets',
+      items: [
+        { href: '/presets', label: 'Manage Presets', icon: 'preset' },
+      ],
+    },
   ];
 
   let { collapsed = false } = $props();
@@ -82,6 +88,7 @@
       dollar: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
       shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4',
       analytics: 'M21 21H4.6c-.6 0-1-.4-1-1V3M7 14l4-4 4 4 6-6',
+      preset: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8',
     };
     return icons[name] || 'M12 12m-10 0a10 10 0 1 0 20 0 10 10 0 1 0-20 0';
   }

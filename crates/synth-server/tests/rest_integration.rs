@@ -11,7 +11,7 @@ use serde_json::Value;
 use tower::ServiceExt;
 
 use synth_server::grpc::service::{default_generator_config, SynthService};
-use synth_server::rest::{create_router, CorsConfig, create_router_with_cors};
+use synth_server::rest::{create_router, create_router_with_cors, CorsConfig};
 
 /// Helper to create test router.
 fn test_router() -> axum::Router {
@@ -43,10 +43,7 @@ async fn json_response(router: axum::Router, request: Request<Body>) -> (StatusC
 #[tokio::test]
 async fn test_liveness_probe() {
     let router = test_router();
-    let request = Request::builder()
-        .uri("/live")
-        .body(Body::empty())
-        .unwrap();
+    let request = Request::builder().uri("/live").body(Body::empty()).unwrap();
 
     let (status, json) = json_response(router, request).await;
 
@@ -135,7 +132,12 @@ async fn test_prometheus_metrics_content_type() {
 
     let response = router.oneshot(request).await.unwrap();
 
-    let content_type = response.headers().get("content-type").unwrap().to_str().unwrap();
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap();
     assert!(content_type.contains("text/plain"));
 }
 
@@ -259,7 +261,10 @@ async fn test_set_config_invalid_industry() {
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(json["success"], false);
-    assert!(json["message"].as_str().unwrap().contains("Unknown industry"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("Unknown industry"));
 }
 
 #[tokio::test]
@@ -287,7 +292,10 @@ async fn test_set_config_invalid_complexity() {
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(json["success"], false);
-    assert!(json["message"].as_str().unwrap().contains("Unknown CoA complexity"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("Unknown CoA complexity"));
 }
 
 // ==========================================================================
@@ -517,7 +525,10 @@ async fn test_trigger_pattern_endpoint() {
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(json["success"], true);
-    assert!(json["message"].as_str().unwrap().contains("will be applied"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("will be applied"));
 }
 
 #[tokio::test]
@@ -533,7 +544,10 @@ async fn test_trigger_pattern_invalid() {
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(json["success"], false);
-    assert!(json["message"].as_str().unwrap().contains("Unknown pattern"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("Unknown pattern"));
 }
 
 #[tokio::test]

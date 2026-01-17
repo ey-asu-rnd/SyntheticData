@@ -7,8 +7,8 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use synth_core::distributions::{
-    AmountDistributionConfig, AmountSampler, LineItemSampler, SeasonalityConfig,
-    TemporalSampler, WorkingHoursConfig,
+    AmountDistributionConfig, AmountSampler, LineItemSampler, SeasonalityConfig, TemporalSampler,
+    WorkingHoursConfig,
 };
 
 mod common;
@@ -43,7 +43,12 @@ fn bench_amount_sampling(c: &mut Criterion) {
             sample_size,
             |b, &size| {
                 b.iter_with_setup(
-                    || AmountSampler::with_benford(BENCHMARK_SEED, AmountDistributionConfig::default()),
+                    || {
+                        AmountSampler::with_benford(
+                            BENCHMARK_SEED,
+                            AmountDistributionConfig::default(),
+                        )
+                    },
                     |mut sampler| {
                         for _ in 0..size {
                             black_box(sampler.sample());
@@ -93,7 +98,12 @@ fn bench_amount_configs(c: &mut Criterion) {
     // Small transactions (retail)
     group.bench_function("small_transactions", |b| {
         b.iter_with_setup(
-            || AmountSampler::with_config(BENCHMARK_SEED, AmountDistributionConfig::small_transactions()),
+            || {
+                AmountSampler::with_config(
+                    BENCHMARK_SEED,
+                    AmountDistributionConfig::small_transactions(),
+                )
+            },
             |mut sampler| {
                 for _ in 0..sample_size {
                     black_box(sampler.sample());
@@ -105,7 +115,12 @@ fn bench_amount_configs(c: &mut Criterion) {
     // Medium transactions (B2B)
     group.bench_function("medium_transactions", |b| {
         b.iter_with_setup(
-            || AmountSampler::with_config(BENCHMARK_SEED, AmountDistributionConfig::medium_transactions()),
+            || {
+                AmountSampler::with_config(
+                    BENCHMARK_SEED,
+                    AmountDistributionConfig::medium_transactions(),
+                )
+            },
             |mut sampler| {
                 for _ in 0..sample_size {
                     black_box(sampler.sample());
@@ -117,7 +132,12 @@ fn bench_amount_configs(c: &mut Criterion) {
     // Large transactions (enterprise)
     group.bench_function("large_transactions", |b| {
         b.iter_with_setup(
-            || AmountSampler::with_config(BENCHMARK_SEED, AmountDistributionConfig::large_transactions()),
+            || {
+                AmountSampler::with_config(
+                    BENCHMARK_SEED,
+                    AmountDistributionConfig::large_transactions(),
+                )
+            },
             |mut sampler| {
                 for _ in 0..sample_size {
                     black_box(sampler.sample());

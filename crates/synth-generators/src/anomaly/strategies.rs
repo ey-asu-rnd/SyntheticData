@@ -183,8 +183,13 @@ impl InjectionStrategy for AmountModificationStrategy {
             AnomalyType::Fraud(FraudType::RoundDollarManipulation) => {
                 InjectionResult::success(&format!(
                     "Modified amount from {} to {} (round dollar){}",
-                    original_amount, new_amount,
-                    if self.rebalance_entry { " [rebalanced]" } else { " [UNBALANCED]" }
+                    original_amount,
+                    new_amount,
+                    if self.rebalance_entry {
+                        " [rebalanced]"
+                    } else {
+                        " [UNBALANCED]"
+                    }
                 ))
                 .with_impact(impact)
                 .with_entity(&account_code)
@@ -192,8 +197,13 @@ impl InjectionStrategy for AmountModificationStrategy {
             AnomalyType::Statistical(StatisticalAnomalyType::UnusuallyHighAmount) => {
                 InjectionResult::success(&format!(
                     "Inflated amount by {:.1}x to {}{}",
-                    multiplier, new_amount,
-                    if self.rebalance_entry { " [rebalanced]" } else { " [UNBALANCED]" }
+                    multiplier,
+                    new_amount,
+                    if self.rebalance_entry {
+                        " [rebalanced]"
+                    } else {
+                        " [UNBALANCED]"
+                    }
                 ))
                 .with_impact(impact)
                 .with_metadata("multiplier", &format!("{:.2}", multiplier))
@@ -201,7 +211,11 @@ impl InjectionStrategy for AmountModificationStrategy {
             _ => InjectionResult::success(&format!(
                 "Modified amount to {}{}",
                 new_amount,
-                if self.rebalance_entry { " [rebalanced]" } else { " [UNBALANCED]" }
+                if self.rebalance_entry {
+                    " [rebalanced]"
+                } else {
+                    " [UNBALANCED]"
+                }
             ))
             .with_impact(impact),
         }
@@ -485,7 +499,7 @@ impl Default for BenfordViolationStrategy {
     fn default() -> Self {
         Self {
             target_digits: vec![5, 6, 7, 8, 9], // Less common first digits
-            rebalance_entry: true, // Default to maintaining balance
+            rebalance_entry: true,              // Default to maintaining balance
         }
     }
 }
@@ -567,7 +581,11 @@ impl InjectionStrategy for BenfordViolationStrategy {
             "Created Benford violation: first digit {} (expected probability {:.1}%){}",
             first_digit,
             benford_prob * 100.0,
-            if self.rebalance_entry { " [rebalanced]" } else { " [UNBALANCED]" }
+            if self.rebalance_entry {
+                " [rebalanced]"
+            } else {
+                " [UNBALANCED]"
+            }
         ))
         .with_impact(impact)
         .with_metadata("first_digit", &first_digit.to_string())
@@ -619,8 +637,8 @@ impl InjectionStrategy for SplitTransactionStrategy {
         }
 
         let num_splits = rng.gen_range(self.min_splits..=self.max_splits);
-        let target_per_split = self.split_threshold - self.threshold_buffer
-            - Decimal::new(rng.gen_range(1..100), 0);
+        let target_per_split =
+            self.split_threshold - self.threshold_buffer - Decimal::new(rng.gen_range(1..100), 0);
 
         // Scale down all lines to fit first split
         let scale = target_per_split / total;
@@ -729,7 +747,11 @@ impl InjectionStrategy for WeekendPostingStrategy {
         };
 
         // Move to Saturday or Sunday
-        let weekend_day = if rng.gen_bool(0.6) { days_to_weekend } else { days_to_weekend + 1 };
+        let weekend_day = if rng.gen_bool(0.6) {
+            days_to_weekend
+        } else {
+            days_to_weekend + 1
+        };
         let new_date = original_date + chrono::Duration::days(weekend_day as i64);
 
         entry.header.posting_date = new_date;
@@ -942,8 +964,7 @@ impl InjectionStrategy for DormantAccountStrategy {
         let line = &mut entry.lines[line_idx];
 
         let original_account = line.gl_account.clone();
-        let dormant_account =
-            &self.dormant_accounts[rng.gen_range(0..self.dormant_accounts.len())];
+        let dormant_account = &self.dormant_accounts[rng.gen_range(0..self.dormant_accounts.len())];
 
         line.gl_account = dormant_account.clone();
         line.account_code = dormant_account.clone();
@@ -1025,9 +1046,7 @@ impl StrategyCollection {
                 self.weekend_posting.can_apply(entry)
             }
             // Reversed amount
-            AnomalyType::Error(ErrorType::ReversedAmount) => {
-                self.reversed_amount.can_apply(entry)
-            }
+            AnomalyType::Error(ErrorType::ReversedAmount) => self.reversed_amount.can_apply(entry),
             // Transposed digits
             AnomalyType::Error(ErrorType::TransposedDigits) => {
                 self.transposed_digits.can_apply(entry)
@@ -1176,7 +1195,10 @@ mod tests {
 
         assert!(result.success);
         // Entry should remain balanced after rebalancing
-        assert!(entry.is_balanced(), "Entry should remain balanced after amount modification with rebalancing");
+        assert!(
+            entry.is_balanced(),
+            "Entry should remain balanced after amount modification with rebalancing"
+        );
     }
 
     #[test]
@@ -1199,7 +1221,10 @@ mod tests {
 
         assert!(result.success);
         // Entry should be unbalanced when rebalance is disabled
-        assert!(!entry.is_balanced(), "Entry should be unbalanced when rebalance_entry is false");
+        assert!(
+            !entry.is_balanced(),
+            "Entry should be unbalanced when rebalance_entry is false"
+        );
     }
 
     #[test]
@@ -1222,7 +1247,10 @@ mod tests {
 
         assert!(result.success);
         // Entry should remain balanced after rebalancing
-        assert!(entry.is_balanced(), "Entry should remain balanced after Benford violation with rebalancing");
+        assert!(
+            entry.is_balanced(),
+            "Entry should remain balanced after Benford violation with rebalancing"
+        );
     }
 
     #[test]

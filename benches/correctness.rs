@@ -7,8 +7,7 @@ use std::sync::Arc;
 
 use rust_decimal::Decimal;
 use synth_core::distributions::{
-    get_first_digit, AmountDistributionConfig, AmountSampler, BenfordSampler,
-    BENFORD_PROBABILITIES,
+    get_first_digit, AmountDistributionConfig, AmountSampler, BenfordSampler, BENFORD_PROBABILITIES,
 };
 use synth_core::models::{AccountType, JournalEntry};
 
@@ -39,8 +38,10 @@ fn bench_benford_compliance(c: &mut Criterion) {
             sample_size,
             |b, &size| {
                 b.iter(|| {
-                    let mut sampler =
-                        AmountSampler::with_benford(BENCHMARK_SEED, AmountDistributionConfig::default());
+                    let mut sampler = AmountSampler::with_benford(
+                        BENCHMARK_SEED,
+                        AmountDistributionConfig::default(),
+                    );
                     let mut digit_counts = [0u32; 9];
 
                     for _ in 0..size {
@@ -63,10 +64,8 @@ fn bench_benford_compliance(c: &mut Criterion) {
             sample_size,
             |b, &size| {
                 b.iter(|| {
-                    let mut sampler = BenfordSampler::new(
-                        BENCHMARK_SEED,
-                        AmountDistributionConfig::default(),
-                    );
+                    let mut sampler =
+                        BenfordSampler::new(BENCHMARK_SEED, AmountDistributionConfig::default());
                     for _ in 0..size {
                         black_box(sampler.sample());
                     }
@@ -210,9 +209,10 @@ fn bench_entry_validation(c: &mut Criterion) {
                     continue;
                 }
                 // Check amounts are positive
-                let amounts_ok = entry.lines.iter().all(|l| {
-                    l.debit_amount >= Decimal::ZERO && l.credit_amount >= Decimal::ZERO
-                });
+                let amounts_ok = entry
+                    .lines
+                    .iter()
+                    .all(|l| l.debit_amount >= Decimal::ZERO && l.credit_amount >= Decimal::ZERO);
                 if !amounts_ok {
                     continue;
                 }

@@ -366,8 +366,10 @@ impl ClusterManager {
             {
                 // If preserving relationships, prefer matching accounts/entities
                 let relationship_match = if self.config.preserve_account_relationships {
-                    let account_match = account.map_or(true, |a| active.accounts.contains(&a.to_string()));
-                    let entity_match = entity.map_or(true, |e| active.entities.contains(&e.to_string()));
+                    let account_match =
+                        account.map_or(true, |a| active.accounts.contains(&a.to_string()));
+                    let entity_match =
+                        entity.map_or(true, |e| active.entities.contains(&e.to_string()));
                     account_match || entity_match
                 } else {
                     true
@@ -1003,8 +1005,7 @@ impl FraudActorManager {
         let total_actors = self.actors.len();
         let active_actors = self.actors.iter().filter(|a| a.is_active).count();
         let total_incidents: usize = self.actors.iter().map(|a| a.fraud_history.len()).sum();
-        let total_amount: rust_decimal::Decimal =
-            self.actors.iter().map(|a| a.total_amount).sum();
+        let total_amount: rust_decimal::Decimal = self.actors.iter().map(|a| a.total_amount).sum();
 
         FraudActorStatistics {
             total_actors,
@@ -1109,7 +1110,7 @@ mod tests {
     #[test]
     fn test_cluster_with_context() {
         let mut manager = ClusterManager::new(ClusteringConfig {
-            cluster_start_probability: 1.0, // Always start
+            cluster_start_probability: 1.0,        // Always start
             cluster_continuation_probability: 1.0, // Always continue
             ..Default::default()
         });
@@ -1117,8 +1118,13 @@ mod tests {
         let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
 
         // First anomaly starts a cluster
-        let cluster1 = manager
-            .assign_cluster_with_context(date, "VendorPayment", Some("200000"), Some("V001"), &mut rng);
+        let cluster1 = manager.assign_cluster_with_context(
+            date,
+            "VendorPayment",
+            Some("200000"),
+            Some("V001"),
+            &mut rng,
+        );
         assert!(cluster1.is_some());
 
         // Second anomaly with same account should join same cluster
@@ -1203,9 +1209,7 @@ mod tests {
 
         // Aggressive should increase faster
         let aggressive = EscalationPattern::Aggressive;
-        assert!(
-            aggressive.escalation_multiplier(5) > gradual.escalation_multiplier(5)
-        );
+        assert!(aggressive.escalation_multiplier(5) > gradual.escalation_multiplier(5));
 
         // TestThenStrike has specific pattern
         let tts = EscalationPattern::TestThenStrike;

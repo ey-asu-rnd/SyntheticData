@@ -65,11 +65,11 @@ impl Default for CorsConfig {
     fn default() -> Self {
         Self {
             allowed_origins: vec![
-                "http://localhost:5173".to_string(),  // Vite dev server
-                "http://localhost:3000".to_string(),  // Common dev server
+                "http://localhost:5173".to_string(), // Vite dev server
+                "http://localhost:3000".to_string(), // Common dev server
                 "http://127.0.0.1:5173".to_string(),
                 "http://127.0.0.1:3000".to_string(),
-                "tauri://localhost".to_string(),      // Tauri app
+                "tauri://localhost".to_string(), // Tauri app
             ],
             allow_any_origin: false,
         }
@@ -116,11 +116,7 @@ pub fn create_router_full(
                 Method::DELETE,
                 Method::OPTIONS,
             ])
-            .allow_headers([
-                header::CONTENT_TYPE,
-                header::AUTHORIZATION,
-                header::ACCEPT,
-            ])
+            .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT])
     };
 
     let rate_limiter = RateLimiter::new(rate_limit_config);
@@ -151,7 +147,9 @@ pub fn create_router_full(
         .layer(axum::middleware::from_fn(rate_limit_middleware))
         .layer(axum::Extension(rate_limiter))
         .layer(cors)
-        .layer(TimeoutLayer::new(Duration::from_secs(timeout_config.request_timeout_secs)))
+        .layer(TimeoutLayer::new(Duration::from_secs(
+            timeout_config.request_timeout_secs,
+        )))
         .with_state(state)
 }
 
@@ -185,11 +183,7 @@ pub fn create_router_with_auth(
                 Method::DELETE,
                 Method::OPTIONS,
             ])
-            .allow_headers([
-                header::CONTENT_TYPE,
-                header::AUTHORIZATION,
-                header::ACCEPT,
-            ])
+            .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT])
     };
 
     Router::new()
@@ -246,11 +240,7 @@ pub fn create_router_with_cors(service: SynthService, cors_config: CorsConfig) -
                 Method::DELETE,
                 Method::OPTIONS,
             ])
-            .allow_headers([
-                header::CONTENT_TYPE,
-                header::AUTHORIZATION,
-                header::ACCEPT,
-            ])
+            .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT])
     };
 
     Router::new()
@@ -393,7 +383,9 @@ async fn health_check(State(state): State<AppState>) -> Json<HealthResponse> {
 
 /// Readiness probe - indicates the service is ready to accept traffic.
 /// Use for Kubernetes readiness probes.
-async fn readiness_check(State(state): State<AppState>) -> Result<Json<ReadinessResponse>, StatusCode> {
+async fn readiness_check(
+    State(state): State<AppState>,
+) -> Result<Json<ReadinessResponse>, StatusCode> {
     // Check if configuration is loaded and valid
     let config = state.server_state.config.read().await;
     let config_valid = !config.companies.is_empty();
@@ -402,9 +394,10 @@ async fn readiness_check(State(state): State<AppState>) -> Result<Json<Readiness
         Ok(Json(ReadinessResponse {
             ready: true,
             message: "Service is ready".to_string(),
-            checks: vec![
-                HealthCheck { name: "config".to_string(), status: "ok".to_string() },
-            ],
+            checks: vec![HealthCheck {
+                name: "config".to_string(),
+                status: "ok".to_string(),
+            }],
         }))
     } else {
         Err(StatusCode::SERVICE_UNAVAILABLE)
@@ -429,7 +422,10 @@ async fn prometheus_metrics(State(state): State<AppState>) -> impl IntoResponse 
     let total_entries = state.server_state.total_entries.load(Ordering::Relaxed);
     let total_anomalies = state.server_state.total_anomalies.load(Ordering::Relaxed);
     let active_streams = state.server_state.active_streams.load(Ordering::Relaxed);
-    let total_stream_events = state.server_state.total_stream_events.load(Ordering::Relaxed);
+    let total_stream_events = state
+        .server_state
+        .total_stream_events
+        .load(Ordering::Relaxed);
 
     let entries_per_second = if uptime > 0 {
         total_entries as f64 / uptime as f64
@@ -477,15 +473,21 @@ synth_info{{version="{}"}} 1
 
     (
         StatusCode::OK,
-        [(header::CONTENT_TYPE, "text/plain; version=0.0.4; charset=utf-8")],
-        metrics
+        [(
+            header::CONTENT_TYPE,
+            "text/plain; version=0.0.4; charset=utf-8",
+        )],
+        metrics,
     )
 }
 
 /// Get server metrics.
 async fn get_metrics(State(state): State<AppState>) -> Json<MetricsResponse> {
     let uptime = state.server_state.uptime_seconds();
-    let total_entries = state.server_state.total_entries.load(std::sync::atomic::Ordering::Relaxed);
+    let total_entries = state
+        .server_state
+        .total_entries
+        .load(std::sync::atomic::Ordering::Relaxed);
 
     let entries_per_second = if uptime > 0 {
         total_entries as f64 / uptime as f64
@@ -495,12 +497,21 @@ async fn get_metrics(State(state): State<AppState>) -> Json<MetricsResponse> {
 
     Json(MetricsResponse {
         total_entries_generated: total_entries,
-        total_anomalies_injected: state.server_state.total_anomalies.load(std::sync::atomic::Ordering::Relaxed),
+        total_anomalies_injected: state
+            .server_state
+            .total_anomalies
+            .load(std::sync::atomic::Ordering::Relaxed),
         uptime_seconds: uptime,
         session_entries: total_entries,
         session_entries_per_second: entries_per_second,
-        active_streams: state.server_state.active_streams.load(std::sync::atomic::Ordering::Relaxed) as u32,
-        total_stream_events: state.server_state.total_stream_events.load(std::sync::atomic::Ordering::Relaxed),
+        active_streams: state
+            .server_state
+            .active_streams
+            .load(std::sync::atomic::Ordering::Relaxed) as u32,
+        total_stream_events: state
+            .server_state
+            .total_stream_events
+            .load(std::sync::atomic::Ordering::Relaxed),
     })
 }
 
@@ -543,8 +554,10 @@ async fn set_config(
     use synth_config::schema::{CompanyConfig, TransactionVolume};
     use synth_core::models::{CoAComplexity, IndustrySector};
 
-    info!("Configuration update requested: industry={}, period_months={}",
-          new_config.industry, new_config.period_months);
+    info!(
+        "Configuration update requested: industry={}, period_months={}",
+        new_config.industry, new_config.period_months
+    );
 
     // Parse industry from string
     let industry = match new_config.industry.to_lowercase().as_str() {
@@ -580,7 +593,10 @@ async fn set_config(
                 StatusCode::BAD_REQUEST,
                 Json(ConfigResponse {
                     success: false,
-                    message: format!("Unknown CoA complexity: '{}'. Valid values: small, medium, large", new_config.coa_complexity),
+                    message: format!(
+                        "Unknown CoA complexity: '{}'. Valid values: small, medium, large",
+                        new_config.coa_complexity
+                    ),
                     config: None,
                 }),
             ));
@@ -588,8 +604,10 @@ async fn set_config(
     };
 
     // Convert CompanyConfigDto to CompanyConfig
-    let companies: Vec<CompanyConfig> = new_config.companies.iter().map(|c| {
-        CompanyConfig {
+    let companies: Vec<CompanyConfig> = new_config
+        .companies
+        .iter()
+        .map(|c| CompanyConfig {
             code: c.code.clone(),
             name: c.name.clone(),
             currency: c.currency.clone(),
@@ -597,8 +615,8 @@ async fn set_config(
             fiscal_year_variant: "K4".to_string(),
             annual_transaction_volume: TransactionVolume::Custom(c.annual_transaction_volume),
             volume_weight: c.volume_weight as f64,
-        }
-    }).collect();
+        })
+        .collect();
 
     // Update the configuration
     let mut config = state.server_state.config.write().await;
@@ -655,20 +673,33 @@ async fn bulk_generate(
         ..Default::default()
     };
 
-    let mut orchestrator = EnhancedOrchestrator::new(config, phase_config)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create orchestrator: {}", e)))?;
+    let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to create orchestrator: {}", e),
+        )
+    })?;
 
-    let result = orchestrator
-        .generate()
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Generation failed: {}", e)))?;
+    let result = orchestrator.generate().map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Generation failed: {}", e),
+        )
+    })?;
 
     let duration_ms = start_time.elapsed().as_millis() as u64;
     let entries_count = result.journal_entries.len() as u64;
     let anomaly_count = result.anomaly_labels.labels.len() as u64;
 
     // Update metrics
-    state.server_state.total_entries.fetch_add(entries_count, std::sync::atomic::Ordering::Relaxed);
-    state.server_state.total_anomalies.fetch_add(anomaly_count, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .total_entries
+        .fetch_add(entries_count, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .total_anomalies
+        .fetch_add(anomaly_count, std::sync::atomic::Ordering::Relaxed);
 
     Ok(Json(BulkGenerateResponse {
         success: true,
@@ -683,8 +714,14 @@ async fn start_stream(
     State(state): State<AppState>,
     Json(_req): Json<StreamRequest>,
 ) -> Json<StreamResponse> {
-    state.server_state.stream_stopped.store(false, std::sync::atomic::Ordering::Relaxed);
-    state.server_state.stream_paused.store(false, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .stream_stopped
+        .store(false, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .stream_paused
+        .store(false, std::sync::atomic::Ordering::Relaxed);
 
     Json(StreamResponse {
         success: true,
@@ -694,7 +731,10 @@ async fn start_stream(
 
 /// Stop streaming.
 async fn stop_stream(State(state): State<AppState>) -> Json<StreamResponse> {
-    state.server_state.stream_stopped.store(true, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .stream_stopped
+        .store(true, std::sync::atomic::Ordering::Relaxed);
 
     Json(StreamResponse {
         success: true,
@@ -704,7 +744,10 @@ async fn stop_stream(State(state): State<AppState>) -> Json<StreamResponse> {
 
 /// Pause streaming.
 async fn pause_stream(State(state): State<AppState>) -> Json<StreamResponse> {
-    state.server_state.stream_paused.store(true, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .stream_paused
+        .store(true, std::sync::atomic::Ordering::Relaxed);
 
     Json(StreamResponse {
         success: true,
@@ -714,7 +757,10 @@ async fn pause_stream(State(state): State<AppState>) -> Json<StreamResponse> {
 
 /// Resume streaming.
 async fn resume_stream(State(state): State<AppState>) -> Json<StreamResponse> {
-    state.server_state.stream_paused.store(false, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .stream_paused
+        .store(false, std::sync::atomic::Ordering::Relaxed);
 
     Json(StreamResponse {
         success: true,
@@ -991,8 +1037,12 @@ mod tests {
         let config = CorsConfig::default();
         assert!(!config.allow_any_origin);
         assert!(!config.allowed_origins.is_empty());
-        assert!(config.allowed_origins.contains(&"http://localhost:5173".to_string()));
-        assert!(config.allowed_origins.contains(&"tauri://localhost".to_string()));
+        assert!(config
+            .allowed_origins
+            .contains(&"http://localhost:5173".to_string()));
+        assert!(config
+            .allowed_origins
+            .contains(&"tauri://localhost".to_string()));
     }
 
     #[test]
@@ -1005,7 +1055,9 @@ mod tests {
             allow_any_origin: false,
         };
         assert_eq!(config.allowed_origins.len(), 2);
-        assert!(config.allowed_origins.contains(&"https://example.com".to_string()));
+        assert!(config
+            .allowed_origins
+            .contains(&"https://example.com".to_string()));
     }
 
     #[test]

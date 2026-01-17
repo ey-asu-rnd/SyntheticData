@@ -110,7 +110,10 @@ pub async fn handle_events_socket(socket: WebSocket, state: AppState) {
     info!("Events WebSocket connected");
 
     // Increment active streams
-    state.server_state.active_streams.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .active_streams
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
     let config = state.server_state.config.read().await.clone();
 
@@ -128,15 +131,27 @@ pub async fn handle_events_socket(socket: WebSocket, state: AppState) {
 
     loop {
         // Check if we should stop
-        if state.server_state.stream_stopped.load(std::sync::atomic::Ordering::Relaxed) {
+        if state
+            .server_state
+            .stream_stopped
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
             info!("Events stream stopped by control command");
             break;
         }
 
         // Check if we should pause
-        while state.server_state.stream_paused.load(std::sync::atomic::Ordering::Relaxed) {
+        while state
+            .server_state
+            .stream_paused
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
             tokio::time::sleep(Duration::from_millis(100)).await;
-            if state.server_state.stream_stopped.load(std::sync::atomic::Ordering::Relaxed) {
+            if state
+                .server_state
+                .stream_stopped
+                .load(std::sync::atomic::Ordering::Relaxed)
+            {
                 break;
             }
         }
@@ -216,7 +231,10 @@ pub async fn handle_events_socket(socket: WebSocket, state: AppState) {
     }
 
     // Decrement active streams
-    state.server_state.active_streams.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    state
+        .server_state
+        .active_streams
+        .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[cfg(test)]

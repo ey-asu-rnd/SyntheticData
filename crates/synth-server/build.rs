@@ -5,10 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=proto/synth.proto");
 
     // Check if protoc is available
-    let protoc_available = Command::new("protoc")
-        .arg("--version")
-        .output()
-        .is_ok();
+    let protoc_available = Command::new("protoc").arg("--version").output().is_ok();
 
     // Check if generated file already exists
     let generated_file = Path::new("src/grpc/synth.synth.rs");
@@ -39,8 +36,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Or download from: https://github.com/protocolbuffers/protobuf/releases");
         eprintln!("===========================================");
         eprintln!();
-        return Err("protoc not found and no pre-generated gRPC code available. \
-                    Install protoc or use pre-generated code from the repository.".into());
+        return Err(
+            "protoc not found and no pre-generated gRPC code available. \
+                    Install protoc or use pre-generated code from the repository."
+                .into(),
+        );
     }
 
     tonic_build::configure()

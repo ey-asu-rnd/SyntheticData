@@ -319,15 +319,24 @@ fn validate_document_flows(config: &GeneratorConfig) -> SynthResult<()> {
     // O2C config
     let o2c = &config.document_flows.o2c;
     if o2c.enabled {
-        validate_rate("o2c.credit_check_failure_rate", o2c.credit_check_failure_rate)?;
+        validate_rate(
+            "o2c.credit_check_failure_rate",
+            o2c.credit_check_failure_rate,
+        )?;
         validate_rate("o2c.partial_shipment_rate", o2c.partial_shipment_rate)?;
         validate_rate("o2c.return_rate", o2c.return_rate)?;
         validate_rate("o2c.bad_debt_rate", o2c.bad_debt_rate)?;
 
         // Cash discount config
-        validate_rate("o2c.cash_discount.eligible_rate", o2c.cash_discount.eligible_rate)?;
+        validate_rate(
+            "o2c.cash_discount.eligible_rate",
+            o2c.cash_discount.eligible_rate,
+        )?;
         validate_rate("o2c.cash_discount.taken_rate", o2c.cash_discount.taken_rate)?;
-        validate_rate("o2c.cash_discount.discount_percent", o2c.cash_discount.discount_percent)?;
+        validate_rate(
+            "o2c.cash_discount.discount_percent",
+            o2c.cash_discount.discount_percent,
+        )?;
     }
 
     Ok(())
@@ -586,7 +595,10 @@ mod tests {
         };
         let result = validate_config(&config);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Source distribution"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Source distribution"));
     }
 
     #[test]
@@ -950,7 +962,10 @@ mod tests {
         config.output.compression.level = 0;
         let result = validate_config(&config);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("compression.level"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("compression.level"));
     }
 
     #[test]
@@ -960,7 +975,10 @@ mod tests {
         config.output.compression.level = 10;
         let result = validate_config(&config);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("compression.level"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("compression.level"));
     }
 
     #[test]
@@ -1116,7 +1134,10 @@ mod tests {
         config.transactions.benford.tolerance = 1.5; // > 1.0
         let result = validate_config(&config);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("benford.tolerance"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("benford.tolerance"));
     }
 
     #[test]

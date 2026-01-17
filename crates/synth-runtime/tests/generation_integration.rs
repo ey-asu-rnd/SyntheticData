@@ -119,12 +119,12 @@ fn test_period_months_affects_output() {
         ..Default::default()
     };
 
-    let mut orchestrator_short =
-        EnhancedOrchestrator::new(config_short, phase_config.clone()).expect("Failed to create orchestrator");
+    let mut orchestrator_short = EnhancedOrchestrator::new(config_short, phase_config.clone())
+        .expect("Failed to create orchestrator");
     let result_short = orchestrator_short.generate().expect("Generation failed");
 
-    let mut orchestrator_long =
-        EnhancedOrchestrator::new(config_long, phase_config).expect("Failed to create orchestrator");
+    let mut orchestrator_long = EnhancedOrchestrator::new(config_long, phase_config)
+        .expect("Failed to create orchestrator");
     let result_long = orchestrator_long.generate().expect("Generation failed");
 
     // Longer period should generally produce more entries

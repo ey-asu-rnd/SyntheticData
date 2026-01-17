@@ -7,7 +7,7 @@ use tonic::Request;
 use synth_server::grpc::service::default_generator_config;
 use synth_server::grpc::{
     BulkGenerateRequest, ConfigRequest, ControlAction, ControlCommand, GenerationConfig,
-    SyntheticDataService, SynthService,
+    SynthService, SyntheticDataService,
 };
 
 /// Helper to create test service.

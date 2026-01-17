@@ -207,19 +207,15 @@ fn bench_vendor_generation(c: &mut Criterion) {
     for count in [100, 500, 1000].iter() {
         group.throughput(Throughput::Elements(*count as u64));
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(count),
-            count,
-            |b, &size| {
-                b.iter(|| {
-                    let mut gen = VendorGenerator::new(BENCHMARK_SEED);
-                    let vendors: Vec<_> = (0..size)
-                        .map(|_| gen.generate_vendor("1000", effective_date))
-                        .collect();
-                    black_box(vendors)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &size| {
+            b.iter(|| {
+                let mut gen = VendorGenerator::new(BENCHMARK_SEED);
+                let vendors: Vec<_> = (0..size)
+                    .map(|_| gen.generate_vendor("1000", effective_date))
+                    .collect();
+                black_box(vendors)
+            });
+        });
     }
 
     group.finish();
@@ -233,19 +229,15 @@ fn bench_customer_generation(c: &mut Criterion) {
     for count in [100, 500, 1000].iter() {
         group.throughput(Throughput::Elements(*count as u64));
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(count),
-            count,
-            |b, &size| {
-                b.iter(|| {
-                    let mut gen = CustomerGenerator::new(BENCHMARK_SEED);
-                    let customers: Vec<_> = (0..size)
-                        .map(|_| gen.generate_customer("1000", effective_date))
-                        .collect();
-                    black_box(customers)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &size| {
+            b.iter(|| {
+                let mut gen = CustomerGenerator::new(BENCHMARK_SEED);
+                let customers: Vec<_> = (0..size)
+                    .map(|_| gen.generate_customer("1000", effective_date))
+                    .collect();
+                black_box(customers)
+            });
+        });
     }
 
     group.finish();
@@ -259,19 +251,15 @@ fn bench_material_generation(c: &mut Criterion) {
     for count in [100, 500, 1000].iter() {
         group.throughput(Throughput::Elements(*count as u64));
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(count),
-            count,
-            |b, &size| {
-                b.iter(|| {
-                    let mut gen = MaterialGenerator::new(BENCHMARK_SEED);
-                    let materials: Vec<_> = (0..size)
-                        .map(|_| gen.generate_material("1000", effective_date))
-                        .collect();
-                    black_box(materials)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &size| {
+            b.iter(|| {
+                let mut gen = MaterialGenerator::new(BENCHMARK_SEED);
+                let materials: Vec<_> = (0..size)
+                    .map(|_| gen.generate_material("1000", effective_date))
+                    .collect();
+                black_box(materials)
+            });
+        });
     }
 
     group.finish();
@@ -285,19 +273,15 @@ fn bench_asset_generation(c: &mut Criterion) {
     for count in [50, 100, 500].iter() {
         group.throughput(Throughput::Elements(*count as u64));
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(count),
-            count,
-            |b, &size| {
-                b.iter(|| {
-                    let mut gen = AssetGenerator::new(BENCHMARK_SEED);
-                    let assets: Vec<_> = (0..size)
-                        .map(|_| gen.generate_asset("1000", acquisition_date))
-                        .collect();
-                    black_box(assets)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &size| {
+            b.iter(|| {
+                let mut gen = AssetGenerator::new(BENCHMARK_SEED);
+                let assets: Vec<_> = (0..size)
+                    .map(|_| gen.generate_asset("1000", acquisition_date))
+                    .collect();
+                black_box(assets)
+            });
+        });
     }
 
     group.finish();

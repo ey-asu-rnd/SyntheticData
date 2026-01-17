@@ -5,8 +5,8 @@ use rust_decimal::Decimal;
 use uuid::Uuid;
 
 use synth_config::schema::{
-    ChartOfAccountsConfig, CompanyConfig, FraudConfig, GeneratorConfig, GlobalConfig,
-    OutputConfig, TransactionVolume,
+    ChartOfAccountsConfig, CompanyConfig, FraudConfig, GeneratorConfig, GlobalConfig, OutputConfig,
+    TransactionVolume,
 };
 use synth_core::models::{
     AccountSubType, AccountType, BusinessProcess, CoAComplexity, GLAccount, IndustrySector,
@@ -258,7 +258,9 @@ mod tests {
     #[test]
     fn test_standard_accounts_cover_all_types() {
         let accounts = standard_test_accounts();
-        assert!(accounts.iter().any(|a| a.account_type == AccountType::Asset));
+        assert!(accounts
+            .iter()
+            .any(|a| a.account_type == AccountType::Asset));
         assert!(accounts
             .iter()
             .any(|a| a.account_type == AccountType::Liability));

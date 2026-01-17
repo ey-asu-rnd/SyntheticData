@@ -166,10 +166,7 @@ impl DocumentFlowJeGenerator {
         );
         header.source = TransactionSource::Automated;
         header.business_process = Some(BusinessProcess::P2P);
-        header.reference = Some(format!(
-            "GR:{}",
-            gr.header.document_id
-        ));
+        header.reference = Some(format!("GR:{}", gr.header.document_id));
         header.header_text = Some(format!(
             "Goods Receipt {} - {}",
             gr.header.document_id,
@@ -201,7 +198,10 @@ impl DocumentFlowJeGenerator {
 
     /// Generate JE from Vendor Invoice.
     /// DR GR/IR Clearing, CR AP
-    pub fn generate_from_vendor_invoice(&mut self, invoice: &VendorInvoice) -> Option<JournalEntry> {
+    pub fn generate_from_vendor_invoice(
+        &mut self,
+        invoice: &VendorInvoice,
+    ) -> Option<JournalEntry> {
         if invoice.payable_amount == Decimal::ZERO {
             return None;
         }
@@ -210,7 +210,10 @@ impl DocumentFlowJeGenerator {
         let document_id = self.generate_uuid();
 
         // Use posting_date or fall back to document_date
-        let posting_date = invoice.header.posting_date.unwrap_or(invoice.header.document_date);
+        let posting_date = invoice
+            .header
+            .posting_date
+            .unwrap_or(invoice.header.document_date);
 
         let mut header = JournalEntryHeader::with_deterministic_id(
             invoice.header.company_code.clone(),
@@ -219,14 +222,10 @@ impl DocumentFlowJeGenerator {
         );
         header.source = TransactionSource::Automated;
         header.business_process = Some(BusinessProcess::P2P);
-        header.reference = Some(format!(
-            "VI:{}",
-            invoice.header.document_id
-        ));
+        header.reference = Some(format!("VI:{}", invoice.header.document_id));
         header.header_text = Some(format!(
             "Vendor Invoice {} - {}",
-            invoice.vendor_invoice_number,
-            invoice.vendor_id
+            invoice.vendor_invoice_number, invoice.vendor_id
         ));
 
         let mut entry = JournalEntry::new(header);
@@ -263,7 +262,10 @@ impl DocumentFlowJeGenerator {
         let document_id = self.generate_uuid();
 
         // Use posting_date or fall back to document_date
-        let posting_date = payment.header.posting_date.unwrap_or(payment.header.document_date);
+        let posting_date = payment
+            .header
+            .posting_date
+            .unwrap_or(payment.header.document_date);
 
         let mut header = JournalEntryHeader::with_deterministic_id(
             payment.header.company_code.clone(),
@@ -272,14 +274,10 @@ impl DocumentFlowJeGenerator {
         );
         header.source = TransactionSource::Automated;
         header.business_process = Some(BusinessProcess::P2P);
-        header.reference = Some(format!(
-            "PAY:{}",
-            payment.header.document_id
-        ));
+        header.reference = Some(format!("PAY:{}", payment.header.document_id));
         header.header_text = Some(format!(
             "Payment {} - {}",
-            payment.header.document_id,
-            payment.business_partner_id
+            payment.header.document_id, payment.business_partner_id
         ));
 
         let mut entry = JournalEntry::new(header);
@@ -327,7 +325,10 @@ impl DocumentFlowJeGenerator {
         }
 
         // Use posting_date or fall back to document_date
-        let posting_date = delivery.header.posting_date.unwrap_or(delivery.header.document_date);
+        let posting_date = delivery
+            .header
+            .posting_date
+            .unwrap_or(delivery.header.document_date);
 
         let mut header = JournalEntryHeader::with_deterministic_id(
             delivery.header.company_code.clone(),
@@ -336,14 +337,10 @@ impl DocumentFlowJeGenerator {
         );
         header.source = TransactionSource::Automated;
         header.business_process = Some(BusinessProcess::O2C);
-        header.reference = Some(format!(
-            "DEL:{}",
-            delivery.header.document_id
-        ));
+        header.reference = Some(format!("DEL:{}", delivery.header.document_id));
         header.header_text = Some(format!(
             "Delivery {} - {}",
-            delivery.header.document_id,
-            delivery.customer_id
+            delivery.header.document_id, delivery.customer_id
         ));
 
         let mut entry = JournalEntry::new(header);
@@ -383,7 +380,10 @@ impl DocumentFlowJeGenerator {
         let document_id = self.generate_uuid();
 
         // Use posting_date or fall back to document_date
-        let posting_date = invoice.header.posting_date.unwrap_or(invoice.header.document_date);
+        let posting_date = invoice
+            .header
+            .posting_date
+            .unwrap_or(invoice.header.document_date);
 
         let mut header = JournalEntryHeader::with_deterministic_id(
             invoice.header.company_code.clone(),
@@ -392,14 +392,10 @@ impl DocumentFlowJeGenerator {
         );
         header.source = TransactionSource::Automated;
         header.business_process = Some(BusinessProcess::O2C);
-        header.reference = Some(format!(
-            "CI:{}",
-            invoice.header.document_id
-        ));
+        header.reference = Some(format!("CI:{}", invoice.header.document_id));
         header.header_text = Some(format!(
             "Customer Invoice {} - {}",
-            invoice.header.document_id,
-            invoice.customer_id
+            invoice.header.document_id, invoice.customer_id
         ));
 
         let mut entry = JournalEntry::new(header);
@@ -436,7 +432,10 @@ impl DocumentFlowJeGenerator {
         let document_id = self.generate_uuid();
 
         // Use posting_date or fall back to document_date
-        let posting_date = payment.header.posting_date.unwrap_or(payment.header.document_date);
+        let posting_date = payment
+            .header
+            .posting_date
+            .unwrap_or(payment.header.document_date);
 
         let mut header = JournalEntryHeader::with_deterministic_id(
             payment.header.company_code.clone(),
@@ -445,14 +444,10 @@ impl DocumentFlowJeGenerator {
         );
         header.source = TransactionSource::Automated;
         header.business_process = Some(BusinessProcess::O2C);
-        header.reference = Some(format!(
-            "RCP:{}",
-            payment.header.document_id
-        ));
+        header.reference = Some(format!("RCP:{}", payment.header.document_id));
         header.header_text = Some(format!(
             "Customer Receipt {} - {}",
-            payment.header.document_id,
-            payment.business_partner_id
+            payment.header.document_id, payment.business_partner_id
         ));
 
         let mut entry = JournalEntry::new(header);

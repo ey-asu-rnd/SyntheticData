@@ -98,9 +98,5 @@ pub fn stress_config() -> GeneratorConfig {
 
 /// Companies for multi-company benchmarks.
 pub fn multi_company_codes() -> Vec<String> {
-    vec![
-        "1000".to_string(),
-        "2000".to_string(),
-        "3000".to_string(),
-    ]
+    vec!["1000".to_string(), "2000".to_string(), "3000".to_string()]
 }

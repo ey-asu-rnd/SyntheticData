@@ -8,8 +8,7 @@ use synth_core::models::JournalEntry;
 macro_rules! assert_balanced {
     ($entry:expr) => {{
         let entry = &$entry;
-        let total_debits: rust_decimal::Decimal =
-            entry.lines.iter().map(|l| l.debit_amount).sum();
+        let total_debits: rust_decimal::Decimal = entry.lines.iter().map(|l| l.debit_amount).sum();
         let total_credits: rust_decimal::Decimal =
             entry.lines.iter().map(|l| l.credit_amount).sum();
         assert_eq!(
@@ -99,7 +98,9 @@ pub fn calculate_imbalance(entry: &JournalEntry) -> Decimal {
 /// Check if amounts follow Benford's Law distribution.
 /// Returns the chi-squared statistic and whether it passes the test at p < 0.05.
 pub fn check_benford_distribution(amounts: &[Decimal]) -> (f64, bool) {
-    let expected = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046];
+    let expected = [
+        0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046,
+    ];
     let mut counts = [0u64; 9];
     let mut total = 0u64;
 

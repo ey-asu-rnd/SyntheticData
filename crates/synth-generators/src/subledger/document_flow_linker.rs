@@ -77,7 +77,10 @@ impl DocumentFlowLinker {
                 item.base.quantity,
                 item.base.uom.clone(),
                 item.base.unit_price,
-                item.base.gl_account.clone().unwrap_or_else(|| "5000".to_string()),
+                item.base
+                    .gl_account
+                    .clone()
+                    .unwrap_or_else(|| "5000".to_string()),
             )
             .with_tax(
                 item.tax_code.clone().unwrap_or_else(|| "VAT".to_string()),
@@ -122,7 +125,9 @@ impl DocumentFlowLinker {
                 item.base.quantity,
                 item.base.uom.clone(),
                 item.base.unit_price,
-                item.revenue_account.clone().unwrap_or_else(|| "4000".to_string()),
+                item.revenue_account
+                    .clone()
+                    .unwrap_or_else(|| "4000".to_string()),
             )
             .with_tax("VAT".to_string(), item.base.tax_amount);
 
@@ -209,12 +214,7 @@ mod tests {
             "SYSTEM",
         );
 
-        vendor_invoice.add_item(VendorInvoiceItem::new(
-            1,
-            "Test Item",
-            dec!(10),
-            dec!(100),
-        ));
+        vendor_invoice.add_item(VendorInvoiceItem::new(1, "Test Item", dec!(10), dec!(100)));
 
         let mut linker = DocumentFlowLinker::new();
         let ap_invoice = linker.create_ap_invoice_from_vendor_invoice(&vendor_invoice);
@@ -240,12 +240,7 @@ mod tests {
             "SYSTEM",
         );
 
-        customer_invoice.add_item(CustomerInvoiceItem::new(
-            1,
-            "Product A",
-            dec!(5),
-            dec!(200),
-        ));
+        customer_invoice.add_item(CustomerInvoiceItem::new(1, "Product A", dec!(5), dec!(200)));
 
         let mut linker = DocumentFlowLinker::new();
         let ar_invoice = linker.create_ar_invoice_from_customer_invoice(&customer_invoice);
@@ -269,7 +264,8 @@ mod tests {
         );
 
         let mut linker = DocumentFlowLinker::new();
-        let ap_invoices = linker.batch_create_ap_invoices(&[vendor_invoice.clone(), vendor_invoice]);
+        let ap_invoices =
+            linker.batch_create_ap_invoices(&[vendor_invoice.clone(), vendor_invoice]);
 
         assert_eq!(ap_invoices.len(), 2);
         assert_eq!(ap_invoices[0].invoice_number, "APINV00000001");

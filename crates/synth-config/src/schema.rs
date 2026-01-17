@@ -1925,7 +1925,10 @@ mod tests {
         let deserialized: GeneratorConfig =
             serde_yaml::from_str(&yaml).expect("Failed to deserialize from YAML");
 
-        assert_eq!(config.global.period_months, deserialized.global.period_months);
+        assert_eq!(
+            config.global.period_months,
+            deserialized.global.period_months
+        );
         assert_eq!(config.global.industry, deserialized.global.industry);
         assert_eq!(config.companies.len(), deserialized.companies.len());
         assert_eq!(config.companies[0].code, deserialized.companies[0].code);
@@ -1942,7 +1945,10 @@ mod tests {
         let deserialized: GeneratorConfig =
             serde_json::from_str(&json).expect("Failed to deserialize from JSON");
 
-        assert_eq!(config.global.period_months, deserialized.global.period_months);
+        assert_eq!(
+            config.global.period_months,
+            deserialized.global.period_months
+        );
         assert_eq!(config.global.industry, deserialized.global.industry);
         assert_eq!(config.companies.len(), deserialized.companies.len());
     }
@@ -2105,7 +2111,10 @@ mod tests {
         assert!(matches!(config.mode, OutputMode::FlatFile));
         assert_eq!(config.formats, vec![FileFormat::Parquet]);
         assert!(config.compression.enabled);
-        assert!(matches!(config.compression.algorithm, CompressionAlgorithm::Zstd));
+        assert!(matches!(
+            config.compression.algorithm,
+            CompressionAlgorithm::Zstd
+        ));
         assert!(config.include_acdoca);
         assert!(!config.include_bseg);
         assert!(config.partition_by_period);
