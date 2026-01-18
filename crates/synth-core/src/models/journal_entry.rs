@@ -241,6 +241,19 @@ pub struct JournalEntryHeader {
     /// Approval workflow for high-value transactions
     #[serde(default)]
     pub approval_workflow: Option<ApprovalWorkflow>,
+
+    // --- OCPM (Object-Centric Process Mining) Traceability ---
+    /// OCPM event IDs that triggered this journal entry
+    #[serde(default)]
+    pub ocpm_event_ids: Vec<Uuid>,
+
+    /// OCPM object IDs involved in this journal entry
+    #[serde(default)]
+    pub ocpm_object_ids: Vec<Uuid>,
+
+    /// OCPM case ID for process instance tracking
+    #[serde(default)]
+    pub ocpm_case_id: Option<Uuid>,
 }
 
 impl JournalEntryHeader {
@@ -275,6 +288,10 @@ impl JournalEntryHeader {
             sod_conflict_type: None,
             // Approval workflow
             approval_workflow: None,
+            // OCPM traceability
+            ocpm_event_ids: Vec::new(),
+            ocpm_object_ids: Vec::new(),
+            ocpm_case_id: None,
         }
     }
 
@@ -316,6 +333,10 @@ impl JournalEntryHeader {
             sod_conflict_type: None,
             // Approval workflow
             approval_workflow: None,
+            // OCPM traceability
+            ocpm_event_ids: Vec::new(),
+            ocpm_object_ids: Vec::new(),
+            ocpm_case_id: None,
         }
     }
 }

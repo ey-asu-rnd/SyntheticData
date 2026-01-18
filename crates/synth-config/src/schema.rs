@@ -55,6 +55,12 @@ pub struct GeneratorConfig {
     /// Balance and trial balance settings
     #[serde(default)]
     pub balance: BalanceConfig,
+    /// OCPM (Object-Centric Process Mining) settings
+    #[serde(default)]
+    pub ocpm: OcpmConfig,
+    /// Audit engagement and workpaper generation settings
+    #[serde(default)]
+    pub audit: AuditGenerationConfig,
 }
 
 /// Global configuration settings.
@@ -1905,6 +1911,378 @@ impl Default for BalanceConfig {
             target_debt_to_equity: default_debt_equity(),
             validate_balance_equation: true,
             reconcile_subledgers: true,
+        }
+    }
+}
+
+// ==========================================================================
+// OCPM (Object-Centric Process Mining) Configuration
+// ==========================================================================
+
+/// OCPM (Object-Centric Process Mining) configuration.
+///
+/// Controls generation of OCEL 2.0 compatible event logs with
+/// many-to-many event-to-object relationships.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OcpmConfig {
+    /// Enable OCPM event log generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Generate lifecycle events (Start/Complete pairs vs atomic events)
+    #[serde(default = "default_true")]
+    pub generate_lifecycle_events: bool,
+
+    /// Include object-to-object relationships in output
+    #[serde(default = "default_true")]
+    pub include_object_relationships: bool,
+
+    /// Compute and export process variants
+    #[serde(default = "default_true")]
+    pub compute_variants: bool,
+
+    /// Maximum variants to track (0 = unlimited)
+    #[serde(default)]
+    pub max_variants: usize,
+
+    /// P2P process configuration
+    #[serde(default)]
+    pub p2p_process: OcpmProcessConfig,
+
+    /// O2C process configuration
+    #[serde(default)]
+    pub o2c_process: OcpmProcessConfig,
+
+    /// Output format configuration
+    #[serde(default)]
+    pub output: OcpmOutputConfig,
+}
+
+impl Default for OcpmConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            generate_lifecycle_events: true,
+            include_object_relationships: true,
+            compute_variants: true,
+            max_variants: 0,
+            p2p_process: OcpmProcessConfig::default(),
+            o2c_process: OcpmProcessConfig::default(),
+            output: OcpmOutputConfig::default(),
+        }
+    }
+}
+
+/// Process-specific OCPM configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OcpmProcessConfig {
+    /// Rework probability (0.0-1.0)
+    #[serde(default = "default_rework_probability")]
+    pub rework_probability: f64,
+
+    /// Skip step probability (0.0-1.0)
+    #[serde(default = "default_skip_probability")]
+    pub skip_step_probability: f64,
+
+    /// Out-of-order step probability (0.0-1.0)
+    #[serde(default = "default_out_of_order_probability")]
+    pub out_of_order_probability: f64,
+}
+
+fn default_rework_probability() -> f64 {
+    0.05
+}
+
+fn default_skip_probability() -> f64 {
+    0.02
+}
+
+fn default_out_of_order_probability() -> f64 {
+    0.03
+}
+
+impl Default for OcpmProcessConfig {
+    fn default() -> Self {
+        Self {
+            rework_probability: default_rework_probability(),
+            skip_step_probability: default_skip_probability(),
+            out_of_order_probability: default_out_of_order_probability(),
+        }
+    }
+}
+
+/// OCPM output format configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OcpmOutputConfig {
+    /// Export OCEL 2.0 JSON format
+    #[serde(default = "default_true")]
+    pub ocel_json: bool,
+
+    /// Export OCEL 2.0 XML format
+    #[serde(default)]
+    pub ocel_xml: bool,
+
+    /// Export flattened CSV for each object type
+    #[serde(default = "default_true")]
+    pub flattened_csv: bool,
+
+    /// Export event-object relationship table
+    #[serde(default = "default_true")]
+    pub event_object_csv: bool,
+
+    /// Export object-object relationship table
+    #[serde(default = "default_true")]
+    pub object_relationship_csv: bool,
+
+    /// Export process variants summary
+    #[serde(default = "default_true")]
+    pub variants_csv: bool,
+}
+
+impl Default for OcpmOutputConfig {
+    fn default() -> Self {
+        Self {
+            ocel_json: true,
+            ocel_xml: false,
+            flattened_csv: true,
+            event_object_csv: true,
+            object_relationship_csv: true,
+            variants_csv: true,
+        }
+    }
+}
+
+/// Audit engagement and workpaper generation configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditGenerationConfig {
+    /// Enable audit engagement generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Generate engagement documents and workpapers
+    #[serde(default = "default_true")]
+    pub generate_workpapers: bool,
+
+    /// Default engagement type distribution
+    #[serde(default)]
+    pub engagement_types: AuditEngagementTypesConfig,
+
+    /// Workpaper configuration
+    #[serde(default)]
+    pub workpapers: WorkpaperConfig,
+
+    /// Team configuration
+    #[serde(default)]
+    pub team: AuditTeamConfig,
+
+    /// Review workflow configuration
+    #[serde(default)]
+    pub review: ReviewWorkflowConfig,
+}
+
+impl Default for AuditGenerationConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            generate_workpapers: true,
+            engagement_types: AuditEngagementTypesConfig::default(),
+            workpapers: WorkpaperConfig::default(),
+            team: AuditTeamConfig::default(),
+            review: ReviewWorkflowConfig::default(),
+        }
+    }
+}
+
+/// Engagement type distribution configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditEngagementTypesConfig {
+    /// Financial statement audit probability
+    #[serde(default = "default_financial_audit_prob")]
+    pub financial_statement: f64,
+    /// SOX/ICFR audit probability
+    #[serde(default = "default_sox_audit_prob")]
+    pub sox_icfr: f64,
+    /// Integrated audit probability
+    #[serde(default = "default_integrated_audit_prob")]
+    pub integrated: f64,
+    /// Review engagement probability
+    #[serde(default = "default_review_prob")]
+    pub review: f64,
+    /// Agreed-upon procedures probability
+    #[serde(default = "default_aup_prob")]
+    pub agreed_upon_procedures: f64,
+}
+
+fn default_financial_audit_prob() -> f64 {
+    0.40
+}
+fn default_sox_audit_prob() -> f64 {
+    0.20
+}
+fn default_integrated_audit_prob() -> f64 {
+    0.25
+}
+fn default_review_prob() -> f64 {
+    0.10
+}
+fn default_aup_prob() -> f64 {
+    0.05
+}
+
+impl Default for AuditEngagementTypesConfig {
+    fn default() -> Self {
+        Self {
+            financial_statement: default_financial_audit_prob(),
+            sox_icfr: default_sox_audit_prob(),
+            integrated: default_integrated_audit_prob(),
+            review: default_review_prob(),
+            agreed_upon_procedures: default_aup_prob(),
+        }
+    }
+}
+
+/// Workpaper generation configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkpaperConfig {
+    /// Average workpapers per engagement phase
+    #[serde(default = "default_workpapers_per_phase")]
+    pub average_per_phase: usize,
+
+    /// Include ISA compliance references
+    #[serde(default = "default_true")]
+    pub include_isa_references: bool,
+
+    /// Generate sample details
+    #[serde(default = "default_true")]
+    pub include_sample_details: bool,
+
+    /// Include cross-references between workpapers
+    #[serde(default = "default_true")]
+    pub include_cross_references: bool,
+
+    /// Sampling configuration
+    #[serde(default)]
+    pub sampling: SamplingConfig,
+}
+
+fn default_workpapers_per_phase() -> usize {
+    5
+}
+
+impl Default for WorkpaperConfig {
+    fn default() -> Self {
+        Self {
+            average_per_phase: default_workpapers_per_phase(),
+            include_isa_references: true,
+            include_sample_details: true,
+            include_cross_references: true,
+            sampling: SamplingConfig::default(),
+        }
+    }
+}
+
+/// Sampling method configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SamplingConfig {
+    /// Statistical sampling rate (0.0-1.0)
+    #[serde(default = "default_statistical_rate")]
+    pub statistical_rate: f64,
+    /// Judgmental sampling rate (0.0-1.0)
+    #[serde(default = "default_judgmental_rate")]
+    pub judgmental_rate: f64,
+    /// Haphazard sampling rate (0.0-1.0)
+    #[serde(default = "default_haphazard_rate")]
+    pub haphazard_rate: f64,
+    /// 100% examination rate (0.0-1.0)
+    #[serde(default = "default_complete_examination_rate")]
+    pub complete_examination_rate: f64,
+}
+
+fn default_statistical_rate() -> f64 {
+    0.40
+}
+fn default_judgmental_rate() -> f64 {
+    0.30
+}
+fn default_haphazard_rate() -> f64 {
+    0.20
+}
+fn default_complete_examination_rate() -> f64 {
+    0.10
+}
+
+impl Default for SamplingConfig {
+    fn default() -> Self {
+        Self {
+            statistical_rate: default_statistical_rate(),
+            judgmental_rate: default_judgmental_rate(),
+            haphazard_rate: default_haphazard_rate(),
+            complete_examination_rate: default_complete_examination_rate(),
+        }
+    }
+}
+
+/// Audit team configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditTeamConfig {
+    /// Minimum team size
+    #[serde(default = "default_min_team_size")]
+    pub min_team_size: usize,
+    /// Maximum team size
+    #[serde(default = "default_max_team_size")]
+    pub max_team_size: usize,
+    /// Probability of having a specialist on the team
+    #[serde(default = "default_specialist_probability")]
+    pub specialist_probability: f64,
+}
+
+fn default_min_team_size() -> usize {
+    3
+}
+fn default_max_team_size() -> usize {
+    8
+}
+fn default_specialist_probability() -> f64 {
+    0.30
+}
+
+impl Default for AuditTeamConfig {
+    fn default() -> Self {
+        Self {
+            min_team_size: default_min_team_size(),
+            max_team_size: default_max_team_size(),
+            specialist_probability: default_specialist_probability(),
+        }
+    }
+}
+
+/// Review workflow configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReviewWorkflowConfig {
+    /// Average days between preparer completion and first review
+    #[serde(default = "default_review_delay_days")]
+    pub average_review_delay_days: u32,
+    /// Probability of review notes requiring rework
+    #[serde(default = "default_rework_probability_review")]
+    pub rework_probability: f64,
+    /// Require partner sign-off for all workpapers
+    #[serde(default = "default_true")]
+    pub require_partner_signoff: bool,
+}
+
+fn default_review_delay_days() -> u32 {
+    2
+}
+fn default_rework_probability_review() -> f64 {
+    0.15
+}
+
+impl Default for ReviewWorkflowConfig {
+    fn default() -> Self {
+        Self {
+            average_review_delay_days: default_review_delay_days(),
+            rework_probability: default_rework_probability_review(),
+            require_partner_signoff: true,
         }
     }
 }

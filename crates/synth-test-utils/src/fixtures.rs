@@ -5,8 +5,8 @@ use rust_decimal::Decimal;
 use uuid::Uuid;
 
 use synth_config::schema::{
-    ChartOfAccountsConfig, CompanyConfig, FraudConfig, GeneratorConfig, GlobalConfig, OutputConfig,
-    TransactionVolume,
+    AuditGenerationConfig, ChartOfAccountsConfig, CompanyConfig, FraudConfig, GeneratorConfig,
+    GlobalConfig, OcpmConfig, OutputConfig, TransactionVolume,
 };
 use synth_core::models::{
     AccountSubType, AccountType, BusinessProcess, CoAComplexity, GLAccount, IndustrySector,
@@ -58,6 +58,8 @@ pub fn minimal_config() -> GeneratorConfig {
         document_flows: Default::default(),
         intercompany: Default::default(),
         balance: Default::default(),
+        ocpm: OcpmConfig::default(),
+        audit: AuditGenerationConfig::default(),
     }
 }
 
@@ -138,6 +140,9 @@ pub fn balanced_journal_entry(amount: Decimal) -> JournalEntry {
             sod_violation: false,
             sod_conflict_type: None,
             approval_workflow: None,
+            ocpm_event_ids: vec![],
+            ocpm_object_ids: vec![],
+            ocpm_case_id: None,
         },
         lines: vec![
             JournalEntryLine::debit(doc_id, 1, "100000".to_string(), amount),

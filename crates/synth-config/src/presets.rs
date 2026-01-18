@@ -45,6 +45,8 @@ pub fn create_preset(
         document_flows: DocumentFlowConfig::default(),
         intercompany: IntercompanyConfig::default(),
         balance: BalanceConfig::default(),
+        ocpm: OcpmConfig::default(),
+        audit: AuditGenerationConfig::default(),
     }
 }
 

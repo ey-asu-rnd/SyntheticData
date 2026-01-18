@@ -3,9 +3,12 @@
 //! This orchestrator coordinates all generation phases:
 //! 1. Chart of Accounts generation
 //! 2. Master data generation (vendors, customers, materials, assets, employees)
-//! 3. Document flow generation (P2P, O2C)
+//! 3. Document flow generation (P2P, O2C) + subledger linking + OCPM events
 //! 4. Journal entry generation
 //! 5. Anomaly injection
+//! 6. Balance validation
+//! 7. Data quality injection
+//! 8. Audit data generation (engagements, workpapers, evidence, risks, findings, judgments)
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -45,7 +48,14 @@ use synth_config::schema::GeneratorConfig;
 use synth_core::error::{SynthError, SynthResult};
 use synth_core::models::subledger::ap::APInvoice;
 use synth_core::models::subledger::ar::ARInvoice;
+use synth_core::models::audit::{
+    AuditEngagement, Workpaper, AuditEvidence, RiskAssessment, AuditFinding, ProfessionalJudgment,
+};
 use synth_core::models::*;
+use synth_ocpm::{
+    EventLogMetadata, O2cDocuments, OcpmEventGenerator, OcpmEventLog, OcpmGeneratorConfig,
+    P2pDocuments,
+};
 use synth_generators::{
     // Anomaly injection
     AnomalyInjector,
@@ -76,6 +86,13 @@ use synth_generators::{
     ValidationError,
     // Master data generators
     VendorGenerator,
+    // Audit generators
+    AuditEngagementGenerator,
+    WorkpaperGenerator,
+    EvidenceGenerator,
+    RiskAssessmentGenerator,
+    FindingGenerator,
+    JudgmentGenerator,
 };
 
 /// Configuration for which generation phases to run.
@@ -85,6 +102,8 @@ pub struct PhaseConfig {
     pub generate_master_data: bool,
     /// Generate document flows (P2P, O2C).
     pub generate_document_flows: bool,
+    /// Generate OCPM events from document flows.
+    pub generate_ocpm_events: bool,
     /// Generate journal entries.
     pub generate_journal_entries: bool,
     /// Inject anomalies.
@@ -109,6 +128,20 @@ pub struct PhaseConfig {
     pub p2p_chains: usize,
     /// Number of O2C chains to generate.
     pub o2c_chains: usize,
+    /// Generate audit data (engagements, workpapers, evidence, risks, findings, judgments).
+    pub generate_audit: bool,
+    /// Number of audit engagements to generate.
+    pub audit_engagements: usize,
+    /// Number of workpapers per engagement.
+    pub workpapers_per_engagement: usize,
+    /// Number of evidence items per workpaper.
+    pub evidence_per_workpaper: usize,
+    /// Number of risk assessments per engagement.
+    pub risks_per_engagement: usize,
+    /// Number of findings per engagement.
+    pub findings_per_engagement: usize,
+    /// Number of professional judgments per engagement.
+    pub judgments_per_engagement: usize,
 }
 
 impl Default for PhaseConfig {
@@ -116,6 +149,7 @@ impl Default for PhaseConfig {
         Self {
             generate_master_data: true,
             generate_document_flows: true,
+            generate_ocpm_events: false, // Off by default
             generate_journal_entries: true,
             inject_anomalies: false,
             inject_data_quality: false, // Off by default (to preserve clean test data)
@@ -128,6 +162,13 @@ impl Default for PhaseConfig {
             employees_per_company: 100,
             p2p_chains: 100,
             o2c_chains: 100,
+            generate_audit: false, // Off by default
+            audit_engagements: 5,
+            workpapers_per_engagement: 20,
+            evidence_per_workpaper: 5,
+            risks_per_engagement: 15,
+            findings_per_engagement: 8,
+            judgments_per_engagement: 10,
         }
     }
 }
@@ -179,6 +220,36 @@ pub struct SubledgerSnapshot {
     pub ar_invoices: Vec<ARInvoice>,
 }
 
+/// OCPM snapshot containing generated OCPM event log data.
+#[derive(Debug, Clone, Default)]
+pub struct OcpmSnapshot {
+    /// OCPM event log (if generated)
+    pub event_log: Option<OcpmEventLog>,
+    /// Number of events generated
+    pub event_count: usize,
+    /// Number of objects generated
+    pub object_count: usize,
+    /// Number of cases generated
+    pub case_count: usize,
+}
+
+/// Audit data snapshot containing all generated audit-related entities.
+#[derive(Debug, Clone, Default)]
+pub struct AuditSnapshot {
+    /// Audit engagements per ISA 210/220.
+    pub engagements: Vec<AuditEngagement>,
+    /// Workpapers per ISA 230.
+    pub workpapers: Vec<Workpaper>,
+    /// Audit evidence per ISA 500.
+    pub evidence: Vec<AuditEvidence>,
+    /// Risk assessments per ISA 315/330.
+    pub risk_assessments: Vec<RiskAssessment>,
+    /// Audit findings per ISA 265.
+    pub findings: Vec<AuditFinding>,
+    /// Professional judgments per ISA 200.
+    pub judgments: Vec<ProfessionalJudgment>,
+}
+
 /// Anomaly labels generated during injection.
 #[derive(Debug, Clone, Default)]
 pub struct AnomalyLabels {
@@ -224,6 +295,10 @@ pub struct EnhancedGenerationResult {
     pub document_flows: DocumentFlowSnapshot,
     /// Subledger snapshot (linked from document flows).
     pub subledger: SubledgerSnapshot,
+    /// OCPM event log snapshot (if OCPM generation enabled).
+    pub ocpm: OcpmSnapshot,
+    /// Audit data snapshot (if audit generation enabled).
+    pub audit: AuditSnapshot,
     /// Generated journal entries.
     pub journal_entries: Vec<JournalEntry>,
     /// Anomaly labels (if injection enabled).
@@ -261,6 +336,17 @@ pub struct EnhancedGenerationStatistics {
     /// Subledger counts.
     pub ap_invoice_count: usize,
     pub ar_invoice_count: usize,
+    /// OCPM counts.
+    pub ocpm_event_count: usize,
+    pub ocpm_object_count: usize,
+    pub ocpm_case_count: usize,
+    /// Audit counts.
+    pub audit_engagement_count: usize,
+    pub audit_workpaper_count: usize,
+    pub audit_evidence_count: usize,
+    pub audit_risk_count: usize,
+    pub audit_finding_count: usize,
+    pub audit_judgment_count: usize,
     /// Anomaly counts.
     pub anomalies_injected: usize,
     /// Data quality issue counts.
@@ -413,6 +499,22 @@ impl EnhancedOrchestrator {
             debug!("Phase 3: Skipped (document flow generation disabled or no master data)");
         }
 
+        // Phase 3c: Generate OCPM events from document flows
+        let mut ocpm_snapshot = OcpmSnapshot::default();
+        if self.phase_config.generate_ocpm_events && !document_flows.p2p_chains.is_empty() {
+            info!("Phase 3c: Generating OCPM Events");
+            ocpm_snapshot = self.generate_ocpm_events(&document_flows)?;
+            stats.ocpm_event_count = ocpm_snapshot.event_count;
+            stats.ocpm_object_count = ocpm_snapshot.object_count;
+            stats.ocpm_case_count = ocpm_snapshot.case_count;
+            info!(
+                "OCPM events generated: {} events, {} objects, {} cases",
+                stats.ocpm_event_count, stats.ocpm_object_count, stats.ocpm_case_count
+            );
+        } else {
+            debug!("Phase 3c: Skipped (OCPM generation disabled or no document flows)");
+        }
+
         // Phase 4: Generate Journal Entries
         let mut entries = Vec::new();
 
@@ -481,6 +583,27 @@ impl EnhancedOrchestrator {
             debug!("Phase 7: Skipped (data quality injection disabled or no entries)");
         }
 
+        // Phase 8: Generate Audit Data
+        let mut audit_snapshot = AuditSnapshot::default();
+        if self.phase_config.generate_audit {
+            info!("Phase 8: Generating Audit Data");
+            audit_snapshot = self.generate_audit_data(&entries)?;
+            stats.audit_engagement_count = audit_snapshot.engagements.len();
+            stats.audit_workpaper_count = audit_snapshot.workpapers.len();
+            stats.audit_evidence_count = audit_snapshot.evidence.len();
+            stats.audit_risk_count = audit_snapshot.risk_assessments.len();
+            stats.audit_finding_count = audit_snapshot.findings.len();
+            stats.audit_judgment_count = audit_snapshot.judgments.len();
+            info!(
+                "Audit data generated: {} engagements, {} workpapers, {} evidence, {} risks, {} findings, {} judgments",
+                stats.audit_engagement_count, stats.audit_workpaper_count,
+                stats.audit_evidence_count, stats.audit_risk_count,
+                stats.audit_finding_count, stats.audit_judgment_count
+            );
+        } else {
+            debug!("Phase 8: Skipped (audit generation disabled)");
+        }
+
         info!("Generation workflow complete");
 
         Ok(EnhancedGenerationResult {
@@ -488,6 +611,8 @@ impl EnhancedOrchestrator {
             master_data: self.master_data.clone(),
             document_flows,
             subledger,
+            ocpm: ocpm_snapshot,
+            audit: audit_snapshot,
             journal_entries: entries,
             anomaly_labels,
             balance_validation,
@@ -876,6 +1001,172 @@ impl EnhancedOrchestrator {
         })
     }
 
+    /// Generate OCPM events from document flows.
+    ///
+    /// Creates OCEL 2.0 compliant event logs from P2P and O2C document flows,
+    /// capturing the object-centric process perspective.
+    fn generate_ocpm_events(
+        &mut self,
+        flows: &DocumentFlowSnapshot,
+    ) -> SynthResult<OcpmSnapshot> {
+        let total_chains = flows.p2p_chains.len() + flows.o2c_chains.len();
+        let pb = self.create_progress_bar(total_chains as u64, "Generating OCPM Events");
+
+        // Create OCPM event log with standard types
+        let metadata = EventLogMetadata::new("SyntheticData OCPM Log");
+        let mut event_log = OcpmEventLog::with_metadata(metadata).with_standard_types();
+
+        // Configure the OCPM generator
+        let ocpm_config = OcpmGeneratorConfig {
+            generate_p2p: true,
+            generate_o2c: true,
+            happy_path_rate: 0.75,
+            exception_path_rate: 0.20,
+            error_path_rate: 0.05,
+            add_duration_variability: true,
+            duration_std_dev_factor: 0.3,
+        };
+        let mut ocpm_gen = OcpmEventGenerator::with_config(self.seed + 3000, ocpm_config);
+
+        // Get available users for resource assignment
+        let available_users: Vec<String> = self
+            .master_data
+            .employees
+            .iter()
+            .take(20)
+            .map(|e| e.user_id.clone())
+            .collect();
+
+        // Generate events from P2P chains
+        for chain in &flows.p2p_chains {
+            let po = &chain.purchase_order;
+            let documents = P2pDocuments::new(
+                &po.header.document_id,
+                &po.vendor_id,
+                &po.header.company_code,
+                po.total_net_amount,
+                &po.header.currency,
+            )
+            .with_goods_receipt(
+                chain
+                    .goods_receipts
+                    .first()
+                    .map(|gr| gr.header.document_id.as_str())
+                    .unwrap_or(""),
+            )
+            .with_invoice(
+                chain
+                    .vendor_invoice
+                    .as_ref()
+                    .map(|vi| vi.header.document_id.as_str())
+                    .unwrap_or(""),
+            )
+            .with_payment(
+                chain
+                    .payment
+                    .as_ref()
+                    .map(|p| p.header.document_id.as_str())
+                    .unwrap_or(""),
+            );
+
+            let start_time = chrono::DateTime::from_naive_utc_and_offset(
+                po.header.entry_timestamp,
+                chrono::Utc,
+            );
+            let result = ocpm_gen.generate_p2p_case(&documents, start_time, &available_users);
+
+            // Add events and objects to the event log
+            for event in result.events {
+                event_log.add_event(event);
+            }
+            for object in result.objects {
+                event_log.add_object(object);
+            }
+            for relationship in result.relationships {
+                event_log.add_relationship(relationship);
+            }
+            event_log.add_case(result.case_trace);
+
+            if let Some(pb) = &pb {
+                pb.inc(1);
+            }
+        }
+
+        // Generate events from O2C chains
+        for chain in &flows.o2c_chains {
+            let so = &chain.sales_order;
+            let documents = O2cDocuments::new(
+                &so.header.document_id,
+                &so.customer_id,
+                &so.header.company_code,
+                so.total_net_amount,
+                &so.header.currency,
+            )
+            .with_delivery(
+                chain
+                    .deliveries
+                    .first()
+                    .map(|d| d.header.document_id.as_str())
+                    .unwrap_or(""),
+            )
+            .with_invoice(
+                chain
+                    .customer_invoice
+                    .as_ref()
+                    .map(|ci| ci.header.document_id.as_str())
+                    .unwrap_or(""),
+            )
+            .with_receipt(
+                chain
+                    .customer_receipt
+                    .as_ref()
+                    .map(|r| r.header.document_id.as_str())
+                    .unwrap_or(""),
+            );
+
+            let start_time = chrono::DateTime::from_naive_utc_and_offset(
+                so.header.entry_timestamp,
+                chrono::Utc,
+            );
+            let result = ocpm_gen.generate_o2c_case(&documents, start_time, &available_users);
+
+            // Add events and objects to the event log
+            for event in result.events {
+                event_log.add_event(event);
+            }
+            for object in result.objects {
+                event_log.add_object(object);
+            }
+            for relationship in result.relationships {
+                event_log.add_relationship(relationship);
+            }
+            event_log.add_case(result.case_trace);
+
+            if let Some(pb) = &pb {
+                pb.inc(1);
+            }
+        }
+
+        // Compute process variants
+        event_log.compute_variants();
+
+        let summary = event_log.summary();
+
+        if let Some(pb) = pb {
+            pb.finish_with_message(format!(
+                "Generated {} OCPM events, {} objects",
+                summary.event_count, summary.object_count
+            ));
+        }
+
+        Ok(OcpmSnapshot {
+            event_count: summary.event_count,
+            object_count: summary.object_count,
+            case_count: summary.case_count,
+            event_log: Some(event_log),
+        })
+    }
+
     /// Inject anomalies into journal entries.
     fn inject_anomalies(&mut self, entries: &mut [JournalEntry]) -> SynthResult<AnomalyLabels> {
         let pb = self.create_progress_bar(entries.len() as u64, "Injecting Anomalies");
@@ -1133,6 +1424,172 @@ impl EnhancedOrchestrator {
         Ok(injector.stats().clone())
     }
 
+    /// Generate audit data (engagements, workpapers, evidence, risks, findings, judgments).
+    ///
+    /// Creates complete audit documentation for each company in the configuration,
+    /// following ISA standards:
+    /// - ISA 210/220: Engagement acceptance and terms
+    /// - ISA 230: Audit documentation (workpapers)
+    /// - ISA 265: Control deficiencies (findings)
+    /// - ISA 315/330: Risk assessment and response
+    /// - ISA 500: Audit evidence
+    /// - ISA 200: Professional judgment
+    fn generate_audit_data(&mut self, entries: &[JournalEntry]) -> SynthResult<AuditSnapshot> {
+        let start_date = NaiveDate::parse_from_str(&self.config.global.start_date, "%Y-%m-%d")
+            .map_err(|e| SynthError::config(format!("Invalid start_date: {}", e)))?;
+        let fiscal_year = start_date.year() as u16;
+        let period_end = start_date + chrono::Months::new(self.config.global.period_months);
+
+        // Calculate rough total revenue from entries for materiality
+        let total_revenue: rust_decimal::Decimal = entries
+            .iter()
+            .flat_map(|e| e.lines.iter())
+            .filter(|l| l.credit_amount > rust_decimal::Decimal::ZERO)
+            .map(|l| l.credit_amount)
+            .sum();
+
+        let total_items = (self.phase_config.audit_engagements * 50) as u64; // Approximate items
+        let pb = self.create_progress_bar(total_items, "Generating Audit Data");
+
+        let mut snapshot = AuditSnapshot::default();
+
+        // Initialize generators
+        let mut engagement_gen = AuditEngagementGenerator::new(self.seed + 7000);
+        let mut workpaper_gen = WorkpaperGenerator::new(self.seed + 7100);
+        let mut evidence_gen = EvidenceGenerator::new(self.seed + 7200);
+        let mut risk_gen = RiskAssessmentGenerator::new(self.seed + 7300);
+        let mut finding_gen = FindingGenerator::new(self.seed + 7400);
+        let mut judgment_gen = JudgmentGenerator::new(self.seed + 7500);
+
+        // Get list of accounts from CoA for risk assessment
+        let accounts: Vec<String> = self
+            .coa
+            .as_ref()
+            .map(|coa| {
+                coa.get_postable_accounts()
+                    .iter()
+                    .map(|acc| acc.account_code().to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Generate engagements for each company
+        for (i, company) in self.config.companies.iter().enumerate() {
+            // Calculate company-specific revenue (proportional to volume weight)
+            let company_revenue = total_revenue
+                * rust_decimal::Decimal::try_from(company.volume_weight).unwrap_or_default();
+
+            // Generate engagements for this company
+            let engagements_for_company =
+                self.phase_config.audit_engagements / self.config.companies.len().max(1);
+            let extra = if i < self.phase_config.audit_engagements % self.config.companies.len() {
+                1
+            } else {
+                0
+            };
+
+            for _eng_idx in 0..(engagements_for_company + extra) {
+                // Generate the engagement
+                let engagement = engagement_gen.generate_engagement(
+                    &company.code,
+                    &company.name,
+                    fiscal_year,
+                    period_end,
+                    company_revenue,
+                    None, // Use default engagement type
+                );
+
+                if let Some(pb) = &pb {
+                    pb.inc(1);
+                }
+
+                // Get team members from the engagement
+                let team_members: Vec<String> = engagement.team_member_ids.clone();
+
+                // Generate workpapers for the engagement
+                let workpapers =
+                    workpaper_gen.generate_complete_workpaper_set(&engagement, &team_members);
+
+                for wp in &workpapers {
+                    if let Some(pb) = &pb {
+                        pb.inc(1);
+                    }
+
+                    // Generate evidence for each workpaper
+                    let evidence = evidence_gen.generate_evidence_for_workpaper(
+                        wp,
+                        &team_members,
+                        wp.preparer_date,
+                    );
+
+                    for _ in &evidence {
+                        if let Some(pb) = &pb {
+                            pb.inc(1);
+                        }
+                    }
+
+                    snapshot.evidence.extend(evidence);
+                }
+
+                // Generate risk assessments for the engagement
+                let risks = risk_gen.generate_risks_for_engagement(
+                    &engagement,
+                    &team_members,
+                    &accounts,
+                );
+
+                for _ in &risks {
+                    if let Some(pb) = &pb {
+                        pb.inc(1);
+                    }
+                }
+                snapshot.risk_assessments.extend(risks);
+
+                // Generate findings for the engagement
+                let findings = finding_gen.generate_findings_for_engagement(
+                    &engagement,
+                    &workpapers,
+                    &team_members,
+                );
+
+                for _ in &findings {
+                    if let Some(pb) = &pb {
+                        pb.inc(1);
+                    }
+                }
+                snapshot.findings.extend(findings);
+
+                // Generate professional judgments for the engagement
+                let judgments = judgment_gen.generate_judgments_for_engagement(
+                    &engagement,
+                    &team_members,
+                );
+
+                for _ in &judgments {
+                    if let Some(pb) = &pb {
+                        pb.inc(1);
+                    }
+                }
+                snapshot.judgments.extend(judgments);
+
+                // Add workpapers after findings since findings need them
+                snapshot.workpapers.extend(workpapers);
+                snapshot.engagements.push(engagement);
+            }
+        }
+
+        if let Some(pb) = pb {
+            pb.finish_with_message(format!(
+                "Audit data: {} engagements, {} workpapers, {} evidence",
+                snapshot.engagements.len(),
+                snapshot.workpapers.len(),
+                snapshot.evidence.len()
+            ));
+        }
+
+        Ok(snapshot)
+    }
+
     /// Calculate total transactions to generate.
     fn calculate_total_transactions(&self) -> u64 {
         let months = self.config.global.period_months as f64;
@@ -1229,6 +1686,8 @@ mod tests {
             document_flows: DocumentFlowConfig::default(),
             intercompany: IntercompanyConfig::default(),
             balance: BalanceConfig::default(),
+            ocpm: OcpmConfig::default(),
+            audit: AuditGenerationConfig::default(),
         }
     }
 
@@ -1294,6 +1753,7 @@ mod tests {
             inject_anomalies: false,
             inject_data_quality: false,
             validate_balances: false,
+            generate_ocpm_events: false,
             show_progress: false,
             vendors_per_company: 5,
             customers_per_company: 5,
@@ -1302,6 +1762,7 @@ mod tests {
             employees_per_company: 10,
             p2p_chains: 5,
             o2c_chains: 5,
+            ..Default::default()
         };
 
         let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
@@ -1349,6 +1810,7 @@ mod tests {
             inject_anomalies: false,
             inject_data_quality: false,
             validate_balances: true,
+            generate_ocpm_events: false,
             show_progress: false,
             vendors_per_company: 3,
             customers_per_company: 3,
@@ -1357,6 +1819,7 @@ mod tests {
             employees_per_company: 5,
             p2p_chains: 3,
             o2c_chains: 3,
+            ..Default::default()
         };
 
         let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
@@ -1389,6 +1852,7 @@ mod tests {
             inject_anomalies: false,
             inject_data_quality: false,
             validate_balances: false,
+            generate_ocpm_events: false,
             show_progress: false,
             vendors_per_company: 5,
             customers_per_company: 5,
@@ -1397,6 +1861,7 @@ mod tests {
             employees_per_company: 5,
             p2p_chains: 5,
             o2c_chains: 5,
+            ..Default::default()
         };
 
         let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
@@ -1656,5 +2121,62 @@ mod tests {
             .map(|e| e.line_count() as u64)
             .sum();
         assert_eq!(result.statistics.total_line_items, calculated_line_items);
+    }
+
+    #[test]
+    fn test_audit_generation() {
+        let config = create_test_config();
+        let phase_config = PhaseConfig {
+            generate_master_data: false,
+            generate_document_flows: false,
+            generate_journal_entries: true,
+            inject_anomalies: false,
+            show_progress: false,
+            generate_audit: true,
+            audit_engagements: 2,
+            workpapers_per_engagement: 5,
+            evidence_per_workpaper: 2,
+            risks_per_engagement: 3,
+            findings_per_engagement: 2,
+            judgments_per_engagement: 2,
+            ..Default::default()
+        };
+
+        let mut orchestrator = EnhancedOrchestrator::new(config, phase_config).unwrap();
+        let result = orchestrator.generate().unwrap();
+
+        // Should have generated audit data
+        assert_eq!(result.audit.engagements.len(), 2);
+        assert!(!result.audit.workpapers.is_empty());
+        assert!(!result.audit.evidence.is_empty());
+        assert!(!result.audit.risk_assessments.is_empty());
+        assert!(!result.audit.findings.is_empty());
+        assert!(!result.audit.judgments.is_empty());
+
+        // Statistics should match
+        assert_eq!(
+            result.statistics.audit_engagement_count,
+            result.audit.engagements.len()
+        );
+        assert_eq!(
+            result.statistics.audit_workpaper_count,
+            result.audit.workpapers.len()
+        );
+        assert_eq!(
+            result.statistics.audit_evidence_count,
+            result.audit.evidence.len()
+        );
+        assert_eq!(
+            result.statistics.audit_risk_count,
+            result.audit.risk_assessments.len()
+        );
+        assert_eq!(
+            result.statistics.audit_finding_count,
+            result.audit.findings.len()
+        );
+        assert_eq!(
+            result.statistics.audit_judgment_count,
+            result.audit.judgments.len()
+        );
     }
 }

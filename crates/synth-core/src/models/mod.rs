@@ -9,6 +9,8 @@
 //! - Control data (internal controls, SoD, approvals)
 //! - Document data (purchase orders, invoices, payments, deliveries)
 //! - Intercompany data (relationships, transfer pricing, eliminations)
+//! - Temporal data (bi-temporal support for audit trails)
+//! - Audit data (engagements, workpapers, evidence, findings)
 
 mod acdoca;
 mod anomaly;
@@ -27,6 +29,7 @@ mod material;
 mod period_close;
 mod project;
 mod sod;
+mod temporal;
 mod user;
 
 // Document models (Phase 2)
@@ -40,6 +43,9 @@ pub mod balance;
 
 // Subledger models (Phase 5)
 pub mod subledger;
+
+// Audit models (Phase 13-14: RustAssureTwin integration)
+pub mod audit;
 
 pub use acdoca::*;
 pub use anomaly::*;
@@ -58,4 +64,5 @@ pub use material::*;
 pub use period_close::*;
 pub use project::*;
 pub use sod::*;
+pub use temporal::*;
 pub use user::*;

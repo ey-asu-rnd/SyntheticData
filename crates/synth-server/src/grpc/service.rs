@@ -717,6 +717,8 @@ pub fn default_generator_config() -> GeneratorConfig {
         document_flows: Default::default(),
         intercompany: Default::default(),
         balance: Default::default(),
+        ocpm: Default::default(),
+        audit: Default::default(),
     }
 }
 

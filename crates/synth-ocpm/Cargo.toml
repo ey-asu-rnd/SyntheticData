@@ -1,0 +1,21 @@
+[package]
+name = "synth-ocpm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Object-Centric Process Mining (OCPM) models and generators for synthetic data"
+
+[dependencies]
+synth-core = { path = "../synth-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rust_decimal = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

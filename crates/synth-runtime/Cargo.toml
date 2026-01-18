@@ -10,6 +10,7 @@ description = "Runtime orchestration, parallel execution, and memory management"
 synth-core = { workspace = true }
 synth-config = { workspace = true }
 synth-generators = { workspace = true }
+synth-ocpm = { workspace = true }
 synth-output = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

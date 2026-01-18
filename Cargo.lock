@@ -5448,6 +5448,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "synth-ocpm"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "synth-core",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
 name = "synth-output"
 version = "0.1.0"
 dependencies = [
@@ -5480,6 +5496,7 @@ dependencies = [
  "synth-config",
  "synth-core",
  "synth-generators",
+ "synth-ocpm",
  "synth-output",
  "synth-test-utils",
  "thiserror 2.0.17",

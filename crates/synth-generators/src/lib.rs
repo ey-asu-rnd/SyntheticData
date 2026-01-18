@@ -15,6 +15,7 @@
 #![allow(clippy::result_large_err)]
 
 pub mod anomaly;
+pub mod audit;
 pub mod balance;
 pub mod coa_generator;
 pub mod company_selector;
@@ -30,6 +31,7 @@ pub mod subledger;
 pub mod user_generator;
 
 pub use anomaly::*;
+pub use audit::*;
 pub use balance::*;
 pub use coa_generator::*;
 pub use company_selector::*;

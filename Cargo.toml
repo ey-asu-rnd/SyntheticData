@@ -12,6 +12,7 @@ members = [
     "crates/synth-ui/src-tauri",
     "crates/synth-test-utils",
     "crates/synth-eval",
+    "crates/synth-ocpm",
 ]
 
 # Root package for workspace-level benchmarks
@@ -56,6 +57,7 @@ synth-graph = { path = "crates/synth-graph" }
 synth-server = { path = "crates/synth-server" }
 synth-test-utils = { path = "crates/synth-test-utils" }
 synth-eval = { path = "crates/synth-eval" }
+synth-ocpm = { path = "crates/synth-ocpm" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
