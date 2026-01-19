@@ -11,8 +11,10 @@ mod document_chain_manager;
 mod document_flow_je_generator;
 mod o2c_generator;
 mod p2p_generator;
+mod three_way_match;
 
 pub use document_chain_manager::*;
 pub use document_flow_je_generator::*;
 pub use o2c_generator::*;
 pub use p2p_generator::*;
+pub use three_way_match::*;

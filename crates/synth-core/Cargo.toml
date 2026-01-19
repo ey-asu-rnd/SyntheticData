@@ -9,6 +9,7 @@ description = "Core domain models, traits, and distributions for synthetic accou
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 rust_decimal = { workspace = true }
 rust_decimal_macros = { workspace = true }
 chrono = { workspace = true }

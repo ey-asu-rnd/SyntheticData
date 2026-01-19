@@ -150,7 +150,7 @@ impl TrialBalanceGenerator {
 
         let out_of_balance = total_debits - total_credits;
 
-        TrialBalance {
+        let mut tb = TrialBalance {
             trial_balance_id: format!(
                 "TB-{}-{}-{:02}",
                 snapshot.company_code, fiscal_year, fiscal_period
@@ -167,13 +167,22 @@ impl TrialBalanceGenerator {
             total_credits,
             is_balanced: out_of_balance.abs() < dec!(0.01),
             out_of_balance,
+            is_equation_valid: false, // Will be calculated below
+            equation_difference: Decimal::ZERO, // Will be calculated below
             category_summary,
             created_at: chrono::Utc::now().naive_utc(),
             created_by: "TrialBalanceGenerator".to_string(),
             approved_by: None,
             approved_at: None,
             status: TrialBalanceStatus::Draft,
-        }
+        };
+
+        // Calculate and set accounting equation validity
+        let (is_valid, _assets, _liabilities, _equity, diff) = tb.validate_accounting_equation();
+        tb.is_equation_valid = is_valid;
+        tb.equation_difference = diff;
+
+        tb
     }
 
     /// Generates a trial balance from the balance tracker.
@@ -359,7 +368,7 @@ impl TrialBalanceGenerator {
 
         let out_of_balance = total_debits - total_credits;
 
-        TrialBalance {
+        let mut tb = TrialBalance {
             trial_balance_id: format!(
                 "TB-CONS-{}-{}-{:02}",
                 consolidated_company_code, fiscal_year, fiscal_period
@@ -376,6 +385,8 @@ impl TrialBalanceGenerator {
             total_credits,
             is_balanced: out_of_balance.abs() < dec!(0.01),
             out_of_balance,
+            is_equation_valid: false, // Will be calculated below
+            equation_difference: Decimal::ZERO, // Will be calculated below
             category_summary,
             created_at: chrono::Utc::now().naive_utc(),
             created_by: format!(
@@ -385,7 +396,14 @@ impl TrialBalanceGenerator {
             approved_by: None,
             approved_at: None,
             status: TrialBalanceStatus::Draft,
-        }
+        };
+
+        // Calculate and set accounting equation validity
+        let (is_valid, _assets, _liabilities, _equity, diff) = tb.validate_accounting_equation();
+        tb.is_equation_valid = is_valid;
+        tb.equation_difference = diff;
+
+        tb
     }
 
     /// Splits a balance into debit and credit components.

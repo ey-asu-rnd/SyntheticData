@@ -5,6 +5,7 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
+use synth_core::accounts::control_accounts;
 use synth_core::models::subledger::ap::APInvoice;
 use synth_core::models::subledger::ar::ARInvoice;
 use synth_core::models::subledger::fa::FixedAssetRecord;
@@ -94,10 +95,10 @@ impl Default for ReconciliationConfig {
     fn default() -> Self {
         Self {
             tolerance_amount: dec!(0.01),
-            ar_control_account: "1200".to_string(),
-            ap_control_account: "2000".to_string(),
-            fa_control_account: "1500".to_string(),
-            inventory_control_account: "1300".to_string(),
+            ar_control_account: control_accounts::AR_CONTROL.to_string(),
+            ap_control_account: control_accounts::AP_CONTROL.to_string(),
+            fa_control_account: control_accounts::FIXED_ASSETS.to_string(),
+            inventory_control_account: control_accounts::INVENTORY.to_string(),
         }
     }
 }

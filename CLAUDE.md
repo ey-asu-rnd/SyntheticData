@@ -84,7 +84,7 @@ synth-graph        → Graph/network export (PyTorch Geometric, Neo4j, DGL)
     ↓
 synth-config       → Configuration schema, validation, industry presets
     ↓
-synth-core         → Domain models, traits, statistical distributions, templates
+synth-core         → Domain models, traits, distributions, templates, UUID factory, memory guard
     ↓
 synth-output       → Output sinks (CSV, JSON, ControlExport)
 ```
@@ -153,6 +153,35 @@ synth-output       → Output sinks (CSV, JSON, ControlExport)
 - **ControlMapping**: Control-to-entity mappings (accounts, processes, thresholds)
 - **SoD**: Segregation of Duties conflict types and violation records
 
+### Core Infrastructure (synth-core/src/)
+
+**UUID Factory (`uuid_factory.rs`):**
+
+- **DeterministicUuidFactory**: FNV-1a hash-based UUID generation with generator-type discriminators
+- **GeneratorType**: Enum discriminators (JournalEntry=0x01, DocumentFlow=0x02, Vendor=0x03, etc.)
+- Thread-safe with `AtomicU64` counter for concurrent generation
+- Prevents document ID collisions across different generator types
+
+**Memory Guard (`memory_guard.rs`):**
+
+- **MemoryGuard**: Cross-platform memory tracking and enforcement
+- **MemoryGuardConfig**: Soft/hard limits, check intervals, growth rate monitoring
+- Platform support: Linux (via /proc/self/statm), macOS (via ps), Windows (stubbed)
+- Memory estimation functions for planning generation volumes
+
+**GL Account Constants (`accounts.rs`):**
+
+- Centralized control account numbers (AR_CONTROL="1100", AP_CONTROL="2000", etc.)
+- **AccountCategory** enum with debit/credit normal classification
+- Used by all generators for consistent account references
+
+**Template System (`templates/`):**
+
+- **TemplateLoader** (`loader.rs`): Load YAML/JSON template files
+- **TemplateProvider** trait (`provider.rs`): Interface for generators to access templates
+- **MergeStrategy**: Replace, Extend, MergePreferFile for combining templates
+- Categories: person_names, vendor_names, customer_names, material_descriptions, line_item_descriptions
+
 ### Generator Modules (synth-generators/src/)
 
 **Core Generators:**
@@ -177,7 +206,8 @@ synth-output       → Output sinks (CSV, JSON, ControlExport)
 - `p2p_generator.rs`: Procure-to-Pay flow (PO → GR → Invoice → Payment)
 - `o2c_generator.rs`: Order-to-Cash flow (SO → Delivery → Invoice → Receipt)
 - `document_chain_manager.rs`: Document reference chain management
-- `three_way_match.rs`: PO/GR/Invoice matching engine
+- `document_flow_je_generator.rs`: Generate JEs from document flows
+- `three_way_match.rs`: PO/GR/Invoice matching with quantity/price validation and configurable tolerances
 
 **Intercompany (intercompany/):**
 
@@ -344,15 +374,18 @@ npm run tauri dev # Desktop app development
 ## Key Design Decisions
 
 1. **Deterministic RNG**: Uses ChaCha8 with configurable seed for reproducible output
-2. **Precise Decimals**: `rust_decimal` for financial calculations (no floating point)
+2. **Precise Decimals**: `rust_decimal` for financial calculations (no floating point); serialized as strings to prevent IEEE 754 artifacts
 3. **Balanced Entries**: JournalEntry enforces debits = credits at construction time
 4. **Empirical Distributions**: Based on academic research on real GL data patterns
 5. **Benford's Law**: Amount distribution follows first-digit law with fraud pattern exceptions
 6. **Weighted Company Selection**: Companies selected based on volume_weight
-7. **Document Chain Integrity**: All documents maintain proper reference chains
+7. **Document Chain Integrity**: All documents maintain proper reference chains with payment→invoice links
 8. **Balance Coherence**: Running balance tracker validates Assets = Liabilities + Equity
 9. **Subledger Reconciliation**: Automatic GL-to-subledger control account reconciliation
 10. **ML-Ready Output**: Graph exports with train/val/test splits and computed features
+11. **Collision-Free UUIDs**: FNV-1a hash-based UUID generation with generator-type discriminators prevents document ID collisions
+12. **Memory Safety**: MemoryGuard with configurable soft/hard limits prevents OOM conditions during large generations
+13. **Three-Way Match Validation**: Actual PO/GR/Invoice matching with configurable quantity and price tolerances
 
 ## Configuration Schema
 
@@ -369,6 +402,11 @@ Config files use YAML with sections:
 **ML/Analytics:** `graph_export`, `anomaly_injection`, `data_quality`
 
 **Supporting:** `business_processes`, `templates`, `approval`, `departments`
+
+**Templates:** File-based template loading for regional/sector customization:
+- `template_path`: Path to external YAML/JSON template file
+- `merge_strategy`: Replace, Extend, or MergePreferFile
+- Categories: person_names, vendor_names, customer_names, material_descriptions, line_item_descriptions
 
 Industry presets: manufacturing, retail, financial_services, healthcare, technology
 Complexity levels: small (~100 accounts), medium (~400), large (~2500)
@@ -591,12 +629,14 @@ The enterprise simulation was implemented in 10 phases:
 The generator validates:
 
 - All transactions reference existing master data entities
-- Document references form valid chains (PO→GR→Invoice→Payment)
+- Document references form valid chains (PO→GR→Invoice→Payment) with proper payment→invoice links
+- Document IDs are unique across all generators (no collisions)
 - Trial balance always balanced (debits = credits)
 - Subledgers reconcile to GL control accounts
 - IC balances match between entities
 - FX rates consistent across transactions
 - Amounts follow Benford's Law (where applicable)
+- Three-way match validates actual PO/GR/Invoice quantities and prices
 
 ## Performance
 
@@ -613,6 +653,9 @@ The codebase has been hardened for production use with the following features:
 - All transfer pricing methods produce correct calculations
 - Custom close tasks return errors instead of silently skipping
 - Comprehensive config validation with bounds checking
+- Zero document ID collisions (FNV-1a hash-based UUID factory with generator-type discriminators)
+- Decimal values serialized as strings (no IEEE 754 floating point artifacts)
+- Complete payment→invoice document reference chains
 
 ### API Robustness
 - REST/gRPC pattern triggers fully implemented
@@ -620,7 +663,9 @@ The codebase has been hardened for production use with the following features:
 - Proper error responses for invalid requests
 
 ### Resource Management
-- Memory limit enforcement (Linux: via /proc/self/statm)
+- Memory limit enforcement with MemoryGuard (Linux: /proc/self/statm, macOS: ps command)
+- Configurable soft/hard memory limits with growth rate monitoring
+- Memory estimation functions for planning generation volumes
 - Configurable request timeouts
 - Worker thread configuration support
 - CLI pause/resume via SIGUSR1 signal

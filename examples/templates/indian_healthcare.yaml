@@ -1,0 +1,251 @@
+# Indian Healthcare Templates
+# Templates for Indian hospitals, pharmaceutical companies, and healthcare providers
+
+metadata:
+  name: "Indian Healthcare Templates"
+  version: "1.0"
+  region: "in"
+  sector: "healthcare"
+  author: "SyntheticData Team"
+  description: "Templates for Indian healthcare sector with authentic naming conventions"
+
+person_names:
+  cultures:
+    indian:
+      male_first_names:
+        - "Rajesh"
+        - "Suresh"
+        - "Vikram"
+        - "Anil"
+        - "Sanjay"
+        - "Amit"
+        - "Rahul"
+        - "Deepak"
+        - "Ashok"
+        - "Ravi"
+        - "Vijay"
+        - "Arun"
+        - "Manoj"
+        - "Sunil"
+        - "Ramesh"
+        - "Prakash"
+        - "Ganesh"
+        - "Krishna"
+        - "Arvind"
+        - "Sandeep"
+      female_first_names:
+        - "Priya"
+        - "Sunita"
+        - "Anita"
+        - "Kavita"
+        - "Neha"
+        - "Pooja"
+        - "Shreya"
+        - "Anjali"
+        - "Deepa"
+        - "Lakshmi"
+        - "Meera"
+        - "Padma"
+        - "Rani"
+        - "Shalini"
+        - "Geeta"
+        - "Radha"
+        - "Rekha"
+        - "Swati"
+        - "Nisha"
+        - "Archana"
+      last_names:
+        - "Sharma"
+        - "Verma"
+        - "Gupta"
+        - "Singh"
+        - "Kumar"
+        - "Jain"
+        - "Patel"
+        - "Reddy"
+        - "Rao"
+        - "Agarwal"
+        - "Mehta"
+        - "Shah"
+        - "Nair"
+        - "Menon"
+        - "Iyer"
+        - "Pillai"
+        - "Das"
+        - "Mukherjee"
+        - "Banerjee"
+        - "Chatterjee"
+        - "Desai"
+        - "Chopra"
+        - "Malhotra"
+        - "Kapoor"
+        - "Saxena"
+
+vendor_names:
+  categories:
+    pharmaceuticals:
+      - "Bharat Pharma Industries Ltd"
+      - "Apollo Drug Manufacturing"
+      - "Hindustan Medicines Pvt Ltd"
+      - "Cipla Generic Suppliers"
+      - "Sun Pharmaceutical Distributors"
+      - "Ranbaxy Medical Supplies"
+      - "Dr. Reddy's Healthcare"
+      - "Lupin Biotech Solutions"
+      - "Aurobindo Pharma Suppliers"
+      - "Cadila Healthcare Ltd"
+    medical_equipment:
+      - "MedTech India Solutions"
+      - "Surgical Instruments Pvt Ltd"
+      - "Diagnostic Equipment India"
+      - "Hospital Supplies Bangalore"
+      - "Medical Devices Chennai"
+      - "Imaging Systems Mumbai"
+      - "Lab Equipment Delhi"
+      - "Ortho Implants Hyderabad"
+    services:
+      - "Healthcare IT Solutions"
+      - "Medical Billing Services"
+      - "Hospital Management Consultants"
+      - "Clinical Research Organization"
+      - "Medical Transcription Services"
+      - "Pathology Lab Services"
+      - "Radiology Reporting Services"
+      - "Telemedicine Platform India"
+
+customer_names:
+  industries:
+    hospitals:
+      - "Apollo Hospitals Enterprise"
+      - "Fortis Healthcare Ltd"
+      - "Max Healthcare Institute"
+      - "Manipal Health Enterprises"
+      - "Narayana Hrudayalaya"
+      - "AIIMS New Delhi"
+      - "Tata Memorial Hospital"
+      - "Christian Medical College"
+      - "Medanta The Medicity"
+      - "Kokilaben Hospital Mumbai"
+    pharmacy_chains:
+      - "Apollo Pharmacy Chain"
+      - "MedPlus Health Services"
+      - "Netmeds Marketplace"
+      - "PharmEasy Healthcare"
+      - "1mg Technologies"
+      - "Wellness Forever Medicare"
+    clinics:
+      - "Practo Clinic Network"
+      - "Dr. Lal PathLabs"
+      - "Thyrocare Technologies"
+      - "Metropolis Healthcare"
+      - "SRL Diagnostics"
+
+material_descriptions:
+  by_type:
+    pharmaceuticals:
+      - "Paracetamol Tablets 500mg"
+      - "Amoxicillin Capsules 250mg"
+      - "Insulin Injection 40IU/ml"
+      - "Atorvastatin Tablets 10mg"
+      - "Metformin Extended Release"
+      - "Omeprazole Capsules 20mg"
+      - "Ciprofloxacin Tablets 500mg"
+      - "Azithromycin Suspension"
+    medical_supplies:
+      - "Surgical Gloves Sterile"
+      - "Disposable Syringes 5ml"
+      - "IV Cannula 20G"
+      - "Suture Material Silk 3-0"
+      - "Bandage Roll Cotton"
+      - "Face Mask N95 Respirator"
+      - "PPE Kit Complete Set"
+      - "Catheter Foley 16Fr"
+    equipment:
+      - "Patient Monitor Multi-Para"
+      - "Ventilator ICU Grade"
+      - "Defibrillator AED"
+      - "ECG Machine 12-Lead"
+      - "Ultrasound Portable"
+      - "X-Ray Machine Digital"
+      - "CT Scanner 64-Slice"
+
+asset_descriptions:
+  by_category:
+    medical_equipment:
+      - "MRI Scanner 3 Tesla"
+      - "CT Scanner 128-Slice"
+      - "Linear Accelerator Oncology"
+      - "Catheterization Lab Equipment"
+      - "Operating Theatre Setup"
+      - "ICU Bed with Monitor"
+      - "Dialysis Machine"
+      - "Endoscopy System"
+    hospital_infrastructure:
+      - "Central Air Conditioning"
+      - "Medical Gas Pipeline System"
+      - "Hospital Information System"
+      - "Fire Safety Equipment"
+      - "Generator Backup 500KVA"
+      - "Water Treatment Plant"
+    vehicles:
+      - "Ambulance Cardiac Equipped"
+      - "Mobile Health Unit Van"
+      - "Medicine Delivery Vehicle"
+
+line_item_descriptions:
+  p2p:
+    expense:
+      - "Medicine procurement"
+      - "Surgical supplies purchase"
+      - "Equipment maintenance contract"
+      - "Lab reagents and consumables"
+      - "Linen and housekeeping supplies"
+      - "Food and dietary supplies"
+      - "Medical gases oxygen/nitrogen"
+      - "Biomedical waste disposal"
+    inventory:
+      - "Pharmacy stock receipt"
+      - "Central stores intake"
+      - "Ward requisition issue"
+      - "Operation theatre supplies"
+  o2c:
+    revenue:
+      - "Inpatient treatment charges"
+      - "Outpatient consultation fee"
+      - "Diagnostic services revenue"
+      - "Pharmacy sales"
+      - "Surgical procedure charges"
+      - "ICU per day charges"
+      - "Health checkup package"
+      - "Insurance claim settlement"
+    receivable:
+      - "Patient bill payment"
+      - "TPA insurance settlement"
+      - "Corporate tie-up billing"
+      - "Government scheme reimbursement"
+  h2r:
+    expense:
+      - "Doctor salary and allowances"
+      - "Nursing staff wages"
+      - "Resident stipend payment"
+      - "Consultant fee payout"
+      - "Staff medical insurance"
+      - "Training and development"
+
+header_text_templates:
+  by_process:
+    p2p:
+      - "Purchase Order - {VendorName}"
+      - "Medicine Indent #{PONumber}"
+      - "Equipment Invoice - {VendorName}"
+      - "Service Contract - {Date}"
+    o2c:
+      - "Patient Bill - UHID {PatientID}"
+      - "Insurance Claim - {CustomerName}"
+      - "Pharmacy Invoice - {Date}"
+      - "Diagnostic Report Billing"
+      - "Discharge Summary Bill"
+    h2r:
+      - "Salary Processing - {Month}"
+      - "Consultant Payout - {Date}"
+      - "Staff Reimbursement - {EmployeeID}"

@@ -70,6 +70,7 @@ use synth_generators::{
     DataQualityInjector,
     DataQualityStats,
     // Document flow JE generator
+    DocumentFlowJeConfig,
     DocumentFlowJeGenerator,
     // Subledger linker
     DocumentFlowLinker,
@@ -931,7 +932,10 @@ impl EnhancedOrchestrator {
         let total_chains = flows.p2p_chains.len() + flows.o2c_chains.len();
         let pb = self.create_progress_bar(total_chains as u64, "Generating Document Flow JEs");
 
-        let mut generator = DocumentFlowJeGenerator::new();
+        let mut generator = DocumentFlowJeGenerator::with_config_and_seed(
+            DocumentFlowJeConfig::default(),
+            self.seed,
+        );
         let mut entries = Vec::new();
 
         // Generate JEs from P2P chains

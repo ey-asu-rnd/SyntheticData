@@ -367,15 +367,19 @@ pub struct JournalEntryLine {
     pub account_description: Option<String>,
 
     /// Debit amount in transaction currency (positive or zero)
+    #[serde(with = "rust_decimal::serde::str")]
     pub debit_amount: Decimal,
 
     /// Credit amount in transaction currency (positive or zero)
+    #[serde(with = "rust_decimal::serde::str")]
     pub credit_amount: Decimal,
 
     /// Amount in local/company currency
+    #[serde(with = "rust_decimal::serde::str")]
     pub local_amount: Decimal,
 
     /// Amount in group currency (for consolidation)
+    #[serde(default, with = "rust_decimal::serde::str_option")]
     pub group_amount: Option<Decimal>,
 
     /// Cost center assignment
@@ -409,6 +413,7 @@ pub struct JournalEntryLine {
     pub tax_code: Option<String>,
 
     /// Tax amount
+    #[serde(default, with = "rust_decimal::serde::str_option")]
     pub tax_amount: Option<Decimal>,
 
     /// Assignment field (for account assignment)
@@ -424,6 +429,7 @@ pub struct JournalEntryLine {
     pub trading_partner: Option<String>,
 
     /// Quantity (for quantity-based postings)
+    #[serde(default, with = "rust_decimal::serde::str_option")]
     pub quantity: Option<Decimal>,
 
     /// Unit of measure

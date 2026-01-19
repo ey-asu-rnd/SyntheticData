@@ -37,6 +37,10 @@ pub struct TrialBalance {
     pub is_balanced: bool,
     /// Out of balance amount.
     pub out_of_balance: Decimal,
+    /// Is the accounting equation valid (Assets = Liabilities + Equity)?
+    pub is_equation_valid: bool,
+    /// Difference in accounting equation (Assets - (Liabilities + Equity)).
+    pub equation_difference: Decimal,
     /// Summary by account category.
     pub category_summary: HashMap<AccountCategory, CategorySummary>,
     /// Created timestamp.
@@ -76,6 +80,8 @@ impl TrialBalance {
             total_credits: Decimal::ZERO,
             is_balanced: true,
             out_of_balance: Decimal::ZERO,
+            is_equation_valid: true,
+            equation_difference: Decimal::ZERO,
             category_summary: HashMap::new(),
             created_at: chrono::Utc::now().naive_utc(),
             created_by: "SYSTEM".to_string(),
@@ -137,8 +143,32 @@ impl TrialBalance {
 
     /// Recalculate totals and balance status.
     fn recalculate(&mut self) {
+        // Check DR = CR
         self.out_of_balance = self.total_debits - self.total_credits;
         self.is_balanced = self.out_of_balance.abs() < dec!(0.01);
+
+        // Check accounting equation: Assets = Liabilities + Equity
+        // For balance sheet accounts only
+        let assets = self.total_assets();
+        let liabilities = self.total_liabilities();
+        let equity = self.total_equity();
+
+        self.equation_difference = assets - (liabilities + equity);
+        self.is_equation_valid = self.equation_difference.abs() < dec!(0.01);
+    }
+
+    /// Validate the accounting equation (Assets = Liabilities + Equity).
+    ///
+    /// Returns true if the equation holds within tolerance, along with
+    /// the calculated totals for each component.
+    pub fn validate_accounting_equation(&self) -> (bool, Decimal, Decimal, Decimal, Decimal) {
+        let assets = self.total_assets();
+        let liabilities = self.total_liabilities();
+        let equity = self.total_equity();
+        let difference = assets - (liabilities + equity);
+        let valid = difference.abs() < dec!(0.01);
+
+        (valid, assets, liabilities, equity, difference)
     }
 
     /// Get lines for a specific category.

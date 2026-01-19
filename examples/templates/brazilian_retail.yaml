@@ -1,0 +1,228 @@
+# Brazilian Retail Templates
+# Templates for Brazilian retail and e-commerce companies
+
+metadata:
+  name: "Brazilian Retail Templates"
+  version: "1.0"
+  region: "br"
+  sector: "retail"
+  author: "SyntheticData Team"
+  description: "Templates for Brazilian retail chains and e-commerce with Portuguese naming"
+
+person_names:
+  cultures:
+    brazilian:
+      male_first_names:
+        - "João"
+        - "Pedro"
+        - "Lucas"
+        - "Gabriel"
+        - "Matheus"
+        - "Rafael"
+        - "Gustavo"
+        - "Felipe"
+        - "Bruno"
+        - "Leonardo"
+        - "Carlos"
+        - "André"
+        - "Thiago"
+        - "Rodrigo"
+        - "Fernando"
+        - "Ricardo"
+        - "Eduardo"
+        - "Marcelo"
+        - "Paulo"
+        - "Roberto"
+      female_first_names:
+        - "Maria"
+        - "Ana"
+        - "Julia"
+        - "Beatriz"
+        - "Larissa"
+        - "Amanda"
+        - "Camila"
+        - "Fernanda"
+        - "Gabriela"
+        - "Letícia"
+        - "Mariana"
+        - "Carolina"
+        - "Isabela"
+        - "Juliana"
+        - "Patrícia"
+        - "Renata"
+        - "Daniela"
+        - "Tatiana"
+        - "Adriana"
+        - "Luciana"
+      last_names:
+        - "Silva"
+        - "Santos"
+        - "Oliveira"
+        - "Souza"
+        - "Rodrigues"
+        - "Ferreira"
+        - "Alves"
+        - "Pereira"
+        - "Lima"
+        - "Gomes"
+        - "Costa"
+        - "Ribeiro"
+        - "Martins"
+        - "Carvalho"
+        - "Almeida"
+        - "Lopes"
+        - "Soares"
+        - "Fernandes"
+        - "Vieira"
+        - "Barbosa"
+        - "Rocha"
+        - "Dias"
+        - "Nascimento"
+        - "Andrade"
+        - "Moreira"
+
+vendor_names:
+  categories:
+    distribution:
+      - "Distribuidora Nacional Ltda"
+      - "Atacadão Paulista"
+      - "Centro de Distribuição Sul"
+      - "Logística Brasil Express"
+      - "Transportadora Rápida SP"
+      - "Armazéns Gerais RJ"
+      - "Operador Logístico MG"
+      - "Frete Expresso Nacional"
+    manufacturing:
+      - "Indústria Têxtil Paulista"
+      - "Confecções Brasil Sul"
+      - "Calçados Nordeste"
+      - "Móveis Finos Sul"
+      - "Eletrodomésticos Brasil"
+      - "Cosméticos Naturais Ltda"
+      - "Alimentos Processados SP"
+      - "Bebidas do Brasil SA"
+    services:
+      - "Agência de Marketing Digital"
+      - "Consultoria Empresarial BR"
+      - "Serviços de TI Brasil"
+      - "Contabilidade e Assessoria"
+      - "Segurança Patrimonial"
+      - "Limpeza e Conservação"
+      - "Manutenção Predial"
+
+customer_names:
+  industries:
+    retail_chains:
+      - "Lojas Brasileiras SA"
+      - "Magazine Popular Ltda"
+      - "Rede de Supermercados Sul"
+      - "Hipermercados Centrais"
+      - "Drogarias Brasil"
+      - "Casas de Móveis Nacional"
+      - "Lojas de Departamentos RJ"
+      - "Eletro Fácil Varejo"
+    e_commerce:
+      - "E-Commerce Brasil Digital"
+      - "Marketplace Nacional"
+      - "Vendas Online SP"
+      - "Loja Virtual Premium"
+      - "Portal de Compras BR"
+    wholesale:
+      - "Atacado Regional Norte"
+      - "Distribuidor Centro-Oeste"
+      - "Grossista Alimentos Sul"
+      - "Atacadista Têxtil SP"
+
+material_descriptions:
+  by_type:
+    merchandise:
+      - "Camisa Polo Masculina M"
+      - "Calça Jeans Feminina 38"
+      - "Tênis Esportivo 42"
+      - "Vestido Casual P"
+      - "Mochila Escolar Infantil"
+      - "Relógio Digital Unissex"
+      - "Bolsa Couro Feminina"
+      - "Óculos de Sol Modelo X"
+    electronics:
+      - "Smartphone Android 128GB"
+      - "Notebook Intel Core i5"
+      - "TV LED 55 Polegadas"
+      - "Fone Bluetooth Wireless"
+      - "Tablet 10 Polegadas"
+      - "Console Videogame"
+      - "Câmera Digital 20MP"
+    home_goods:
+      - "Jogo de Cama Casal"
+      - "Panela Pressão 6L"
+      - "Sofá 3 Lugares"
+      - "Geladeira Frost Free"
+      - "Micro-ondas 30L"
+      - "Ventilador de Teto"
+      - "Colchão Mola Ensacada"
+
+asset_descriptions:
+  by_category:
+    store_equipment:
+      - "Gôndola Supermercado"
+      - "Caixa Registradora PDV"
+      - "Estante Expositora"
+      - "Manequim Vitrine"
+      - "Prateleira Metálica"
+      - "Balcão de Atendimento"
+      - "Carrinho de Compras"
+    it_equipment:
+      - "Terminal PDV Touch"
+      - "Impressora Fiscal"
+      - "Leitor Código Barras"
+      - "Servidor de Loja"
+      - "Roteador WiFi Comercial"
+    vehicles:
+      - "Caminhão Baú 10T"
+      - "Van de Entregas"
+      - "Empilhadeira Elétrica"
+      - "Transpaleteira Manual"
+
+line_item_descriptions:
+  p2p:
+    expense:
+      - "Compra de mercadorias"
+      - "Frete sobre compras"
+      - "Serviço de logística"
+      - "Material de escritório"
+      - "Despesa com marketing"
+      - "Aluguel de loja"
+      - "Energia elétrica"
+      - "Serviço de segurança"
+    inventory:
+      - "Entrada de mercadorias"
+      - "Transferência entre lojas"
+      - "Ajuste de inventário"
+      - "Devolução ao fornecedor"
+  o2c:
+    revenue:
+      - "Venda de mercadorias"
+      - "Venda e-commerce"
+      - "Venda no cartão"
+      - "Venda à vista"
+      - "Venda parcelada"
+      - "Receita de frete"
+    receivable:
+      - "Recebimento de cliente"
+      - "Baixa de duplicata"
+      - "Pagamento via PIX"
+      - "Cartão de crédito"
+
+header_text_templates:
+  by_process:
+    p2p:
+      - "Nota Fiscal - {VendorName}"
+      - "Pedido de Compra #{PONumber}"
+      - "Recebimento de Mercadorias"
+      - "Pagamento Fornecedor - {Date}"
+    o2c:
+      - "Cupom Fiscal - Loja {StoreCode}"
+      - "Nota Fiscal Venda - {CustomerName}"
+      - "Pedido E-Commerce #{SONumber}"
+      - "Entrega Cliente - {Date}"
+      - "Recebimento PIX - {CustomerName}"

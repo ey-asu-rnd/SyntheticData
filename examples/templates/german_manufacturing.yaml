@@ -1,0 +1,243 @@
+# German Manufacturing Templates
+# Regional and sector-specific templates for German industrial enterprises
+
+metadata:
+  name: "German Manufacturing Templates"
+  version: "1.0"
+  region: "de"
+  sector: "manufacturing"
+  author: "SyntheticData Team"
+  description: "Templates for German industrial manufacturing companies with authentic naming conventions"
+
+person_names:
+  cultures:
+    german:
+      male_first_names:
+        - "Hans"
+        - "Klaus"
+        - "Wolfgang"
+        - "Dieter"
+        - "Jürgen"
+        - "Werner"
+        - "Helmut"
+        - "Rainer"
+        - "Günther"
+        - "Manfred"
+        - "Stefan"
+        - "Michael"
+        - "Thomas"
+        - "Andreas"
+        - "Markus"
+        - "Frank"
+        - "Bernd"
+        - "Peter"
+        - "Uwe"
+        - "Horst"
+      female_first_names:
+        - "Anna"
+        - "Maria"
+        - "Elisabeth"
+        - "Ursula"
+        - "Ingrid"
+        - "Helga"
+        - "Monika"
+        - "Petra"
+        - "Sabine"
+        - "Claudia"
+        - "Karin"
+        - "Brigitte"
+        - "Renate"
+        - "Gabriele"
+        - "Susanne"
+        - "Andrea"
+        - "Birgit"
+        - "Martina"
+        - "Christine"
+        - "Angelika"
+      last_names:
+        - "Müller"
+        - "Schmidt"
+        - "Schneider"
+        - "Fischer"
+        - "Weber"
+        - "Meyer"
+        - "Wagner"
+        - "Becker"
+        - "Schulz"
+        - "Hoffmann"
+        - "Schäfer"
+        - "Koch"
+        - "Bauer"
+        - "Richter"
+        - "Klein"
+        - "Wolf"
+        - "Neumann"
+        - "Zimmermann"
+        - "Braun"
+        - "Krüger"
+        - "Hartmann"
+        - "Lange"
+        - "Werner"
+        - "Lehmann"
+        - "Schmitz"
+
+vendor_names:
+  categories:
+    manufacturing:
+      - "Präzisionsteile GmbH"
+      - "Industriekomponenten AG"
+      - "Maschinenbau Weber KG"
+      - "Stahlwerk Rheinland GmbH"
+      - "Fertigungstechnik Süd AG"
+      - "Metallverarbeitung Müller"
+      - "Werkzeugbau Schmidt & Co."
+      - "Antriebstechnik Hoffmann GmbH"
+      - "Hydraulik-Systeme Bayern"
+      - "Kunststofftechnik Nord GmbH"
+      - "Elektrotechnik Schneider AG"
+      - "Drehteile Fischer GmbH"
+      - "Gießerei Westfalen"
+      - "Oberflächentechnik Braun"
+      - "Automatisierungstechnik Leipzig"
+    services:
+      - "TÜV Rheinland"
+      - "DEKRA Industrieservice"
+      - "Beratungsgruppe Partner GmbH"
+      - "Technische Dienste GmbH"
+      - "Logistik Spedition Hartmann"
+      - "Wartungsservice Wagner"
+      - "Qualitätsprüfung Becker"
+      - "Ingenieurbüro Zimmermann"
+      - "IT-Systemhaus Neumann"
+      - "Personalberatung Koch & Partner"
+    raw_materials:
+      - "Rohstoffhandel Krüger"
+      - "Chemielieferant Lange GmbH"
+      - "Stahlgroßhandel Richter"
+      - "Aluminiumwerk Sachsen"
+      - "Kupferwerke Mansfeld"
+      - "Kunststoffgranulat Weber"
+      - "Schmierstoffvertrieb Wolf"
+      - "Industriegase Linde"
+
+customer_names:
+  industries:
+    automotive:
+      - "AutoWerke Bayern GmbH"
+      - "Fahrzeugtechnik Süd AG"
+      - "Karosseriebau Wolfsburg"
+      - "Motorenwerk Stuttgart"
+      - "Getriebetechnik Ingolstadt"
+      - "Zulieferer Automotive Nord"
+      - "Elektromobilität Dresden"
+      - "Nutzfahrzeuge Mannheim"
+    machinery:
+      - "Werkzeugmaschinenbau Leipzig"
+      - "Anlagenbau Düsseldorf"
+      - "Fördertechnik Hamburg"
+      - "Verpackungsmaschinen Köln"
+      - "Druckmaschinen Heidelberg"
+      - "Textilmaschinen Chemnitz"
+      - "Landmaschinen Claas"
+    electronics:
+      - "Elektronikfertigung München"
+      - "Halbleiterwerk Dresden"
+      - "Sensorik Nürnberg GmbH"
+      - "Steuerungstechnik Frankfurt"
+      - "Leiterplattenfertigung Berlin"
+
+material_descriptions:
+  by_type:
+    raw_material:
+      - "Stahlblech Güte A 2.0mm"
+      - "Aluminiumlegierung 6061-T6"
+      - "Edelstahl V2A rostfrei"
+      - "Kupferrohr DN25"
+      - "Kunststoffgranulat PA66"
+      - "Gussroheisen EN-GJL-250"
+      - "Titanblech Grade 5"
+      - "Messingprofil CuZn37"
+    semi_finished:
+      - "Drehteile nach Zeichnung"
+      - "Frästeile CNC-gefertigt"
+      - "Stanzteile Serie A"
+      - "Biegeteile nach Muster"
+      - "Schweißbaugruppe WIG"
+      - "Wärmebehandelte Teile"
+      - "Eloxierte Aluminiumteile"
+      - "Verzinkte Stahlkomponenten"
+    finished_good:
+      - "Montiertes Aggregat Typ A"
+      - "Komplettprodukt Serie B"
+      - "Getriebemotor 0.75kW"
+      - "Hydraulikzylinder 100/70"
+      - "Pneumatikventil 5/2-Wege"
+      - "Steuerungseinheit SPS"
+      - "Antriebswelle gehärtet"
+      - "Komplettsystem Baureihe X"
+
+asset_descriptions:
+  by_category:
+    machinery:
+      - "CNC-Bearbeitungszentrum DMG Mori"
+      - "Drehmaschine Gildemeister CTX"
+      - "Fräsmaschine Hermle C42"
+      - "Schleifmaschine Studer S33"
+      - "Laserschneidanlage Trumpf"
+      - "Stanzautomat Bruderer"
+      - "Spritzgussmaschine Arburg"
+      - "Schweißroboter KUKA"
+    vehicles:
+      - "Gabelstapler Linde H35"
+      - "Elektrostapler Still RX20"
+      - "LKW Mercedes Actros"
+      - "Transporter VW Crafter"
+      - "Hubwagen Jungheinrich"
+    equipment:
+      - "Messmaschine Zeiss Contura"
+      - "3D-Drucker EOS M290"
+      - "Härteprüfer Zwick"
+      - "Spektrometer Bruker"
+      - "Wärmebehandlungsofen Nabertherm"
+
+line_item_descriptions:
+  p2p:
+    expense:
+      - "Materialeinkauf laut Bestellung"
+      - "Lieferantenrechnung gemäß Vertrag"
+      - "Werkzeugbeschaffung Produktion"
+      - "Ersatzteilbestellung Instandhaltung"
+      - "Rohstofflieferung Fertigung"
+      - "Verbrauchsmaterial Werkstatt"
+    inventory:
+      - "Warenzugang Lager"
+      - "Materialeingang Produktion"
+      - "Bestandsaufnahme Rohmaterial"
+      - "Halbfertigerzeugnisse Zwischenlager"
+  o2c:
+    revenue:
+      - "Produktverkauf Inland"
+      - "Exportlieferung EU"
+      - "Maschinenverkauf Kunde"
+      - "Ersatzteillieferung"
+      - "Serviceleistung Wartung"
+      - "Projektabrechnung Anlagenbau"
+    receivable:
+      - "Kundenforderung Rechnung"
+      - "Zahlungseingang Überweisung"
+      - "Skonto gewährt"
+
+header_text_templates:
+  by_process:
+    p2p:
+      - "Lieferantenrechnung - {VendorName}"
+      - "Bestellung {PONumber} - {VendorName}"
+      - "Wareneingang zu PO {PONumber}"
+      - "Materiallieferung {Date}"
+      - "Rechnungseingang {InvoiceNumber}"
+    o2c:
+      - "Kundenrechnung - {CustomerName}"
+      - "Auftrag {SONumber} - {CustomerName}"
+      - "Warenausgang zu Auftrag {SONumber}"
+      - "Lieferung an {CustomerName}"
+      - "Zahlungseingang {CustomerName}"

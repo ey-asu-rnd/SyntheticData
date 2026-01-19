@@ -570,6 +570,17 @@ impl O2CGenerator {
             discount_amount,
         );
 
+        // Add document reference linking receipt to invoice
+        receipt.header.add_reference(DocumentReference::new(
+            DocumentType::CustomerReceipt,
+            &receipt.header.document_id,
+            DocumentType::CustomerInvoice,
+            &invoice.header.document_id,
+            ReferenceType::Payment,
+            &receipt.header.company_code,
+            payment_date,
+        ));
+
         // Post the receipt
         receipt.post(created_by, payment_date);
 

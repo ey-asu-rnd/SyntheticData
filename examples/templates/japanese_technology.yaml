@@ -1,0 +1,217 @@
+# Japanese Technology Sector Templates
+# Templates for Japanese tech companies with authentic naming and terminology
+
+metadata:
+  name: "Japanese Technology Templates"
+  version: "1.0"
+  region: "jp"
+  sector: "technology"
+  author: "SyntheticData Team"
+  description: "Templates for Japanese technology and electronics companies"
+
+person_names:
+  cultures:
+    japanese:
+      male_first_names:
+        - "Takeshi"
+        - "Hiroshi"
+        - "Kenji"
+        - "Masashi"
+        - "Yuki"
+        - "Kazuki"
+        - "Daisuke"
+        - "Ryota"
+        - "Shota"
+        - "Naoki"
+        - "Akira"
+        - "Satoshi"
+        - "Taro"
+        - "Makoto"
+        - "Yuichi"
+        - "Kenta"
+        - "Ryo"
+        - "Koji"
+        - "Shinji"
+        - "Tetsuya"
+      female_first_names:
+        - "Yuki"
+        - "Sakura"
+        - "Hana"
+        - "Aoi"
+        - "Miku"
+        - "Rin"
+        - "Yui"
+        - "Haruka"
+        - "Ayumi"
+        - "Nana"
+        - "Mai"
+        - "Emi"
+        - "Keiko"
+        - "Tomoko"
+        - "Noriko"
+        - "Yoko"
+        - "Megumi"
+        - "Chiaki"
+        - "Misaki"
+        - "Kaori"
+      last_names:
+        - "Tanaka"
+        - "Yamamoto"
+        - "Watanabe"
+        - "Suzuki"
+        - "Takahashi"
+        - "Ito"
+        - "Nakamura"
+        - "Kobayashi"
+        - "Kato"
+        - "Yoshida"
+        - "Yamada"
+        - "Sasaki"
+        - "Yamaguchi"
+        - "Matsumoto"
+        - "Inoue"
+        - "Kimura"
+        - "Hayashi"
+        - "Shimizu"
+        - "Saito"
+        - "Mori"
+        - "Fujita"
+        - "Ogawa"
+        - "Goto"
+        - "Hasegawa"
+        - "Okada"
+
+vendor_names:
+  categories:
+    electronics:
+      - "Tokyo Semiconductor Corp."
+      - "Osaka Electronics Manufacturing"
+      - "Kyoto Precision Components"
+      - "Nagoya Display Technologies"
+      - "Yokohama Chip Design Inc."
+      - "Fukuoka Circuit Systems"
+      - "Sapporo Sensor Solutions"
+      - "Hiroshima Power Electronics"
+      - "Sendai Memory Systems"
+      - "Kawasaki Microcontrollers"
+    software:
+      - "Digital Solutions Tokyo"
+      - "Cloud Systems Japan"
+      - "AI Research Osaka"
+      - "Cybersecurity Partners Yokohama"
+      - "Mobile Tech Kyoto"
+      - "Enterprise Software Nagoya"
+      - "Data Analytics Fukuoka"
+      - "IoT Platform Solutions"
+    components:
+      - "Capacitor Manufacturing Japan"
+      - "Resistor Technology Osaka"
+      - "Connector Systems Tokyo"
+      - "Battery Cell Innovations"
+      - "Thermal Management Solutions"
+      - "PCB Assembly Specialists"
+      - "LED Lighting Components"
+      - "Optical Lens Manufacturing"
+
+customer_names:
+  industries:
+    consumer_electronics:
+      - "Smart Device Corporation"
+      - "Home Entertainment Systems"
+      - "Wearable Technology Japan"
+      - "Audio Equipment Specialists"
+      - "Gaming Hardware Tokyo"
+      - "Digital Camera Systems"
+      - "Mobile Phone Innovations"
+    automotive_tech:
+      - "Electric Vehicle Systems"
+      - "Autonomous Driving Solutions"
+      - "In-Vehicle Entertainment"
+      - "EV Battery Management"
+      - "Connected Car Technologies"
+      - "ADAS Sensor Systems"
+    industrial:
+      - "Factory Automation Systems"
+      - "Robot Manufacturing Japan"
+      - "Industrial IoT Solutions"
+      - "Smart Factory Technologies"
+      - "Process Control Systems"
+
+material_descriptions:
+  by_type:
+    components:
+      - "MLCC Capacitor 0402 10uF"
+      - "SMD Resistor 0201 10K Ohm"
+      - "NAND Flash Memory 256GB"
+      - "ARM Cortex-M4 MCU"
+      - "OLED Display Panel 6.5inch"
+      - "Li-Ion Battery Cell 3.7V 5000mAh"
+      - "USB-C Connector 24pin"
+      - "5G RF Module"
+    raw_material:
+      - "Silicon Wafer 300mm"
+      - "Copper Foil 18um"
+      - "Solder Paste SAC305"
+      - "EMI Shielding Material"
+      - "Thermal Interface Material"
+      - "Polyimide Film 25um"
+    finished_good:
+      - "Smartphone Main Board Assembly"
+      - "Tablet Display Module"
+      - "Wireless Earbuds Unit"
+      - "Smart Watch Movement"
+      - "Laptop Battery Pack"
+      - "Server Motherboard Complete"
+
+asset_descriptions:
+  by_category:
+    manufacturing:
+      - "SMT Pick and Place Machine"
+      - "Reflow Oven 12-Zone"
+      - "AOI Inspection System"
+      - "Wire Bonding Machine"
+      - "Die Attach Equipment"
+      - "Wafer Dicing System"
+      - "Clean Room HEPA System"
+    testing:
+      - "ATE Test System Advantest"
+      - "Oscilloscope 8GHz Bandwidth"
+      - "Network Analyzer 50GHz"
+      - "Thermal Chamber -40 to 150C"
+      - "X-Ray Inspection BGA"
+      - "Flying Probe Tester"
+
+line_item_descriptions:
+  p2p:
+    expense:
+      - "Component procurement order"
+      - "Supplier invoice payment"
+      - "Equipment maintenance service"
+      - "Outsourced assembly cost"
+      - "Raw material shipment"
+      - "Tooling and fixtures"
+    inventory:
+      - "Component stock receipt"
+      - "WIP transfer to production"
+      - "Finished goods to warehouse"
+  o2c:
+    revenue:
+      - "Product sales domestic"
+      - "Export shipment overseas"
+      - "OEM supply contract"
+      - "Development service fee"
+      - "License royalty income"
+      - "Technical support service"
+
+header_text_templates:
+  by_process:
+    p2p:
+      - "Purchase Order - {VendorName}"
+      - "Goods Receipt PO#{PONumber}"
+      - "Vendor Invoice - {VendorName}"
+      - "Payment Processing {Date}"
+    o2c:
+      - "Sales Order - {CustomerName}"
+      - "Shipment Invoice {SONumber}"
+      - "Customer Payment Receipt"
+      - "Export Documentation {Date}"

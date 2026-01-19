@@ -112,8 +112,21 @@ SyntheticData generates coherent enterprise data that is indistinguishable from 
 - **Internal Controls System (ICS)**: SOX 404 compliant controls with segregation of duties
 - **Fraud Scenarios**: Configurable fraud injection including suspense account abuse, fictitious transactions, timing anomalies
 - **Weighted Company Selection**: Transaction volume distribution based on company size
-- **Deterministic Generation**: Seeded RNG ensures reproducible output for testing
+- **Deterministic Generation**: Seeded RNG with collision-free UUID factory ensures reproducible output for testing
 - **Multiple Output Formats**: CSV and JSON (Parquet planned for future release)
+
+### Data Integrity Features
+- **Deterministic UUID Factory**: FNV-1a hash-based UUID generation with generator-type discriminators prevents document ID collisions across generators
+- **Decimal Precision**: All monetary values serialized as strings to prevent IEEE 754 floating point artifacts
+- **Three-Way Match Validation**: Actual PO/GR/Invoice quantity and price matching with configurable tolerances
+- **Centralized GL Accounts**: Single source of truth for control account numbers across all generators
+- **Memory Guard**: Cross-platform memory tracking with soft/hard limits and growth rate monitoring to prevent OOM conditions
+
+### Template System
+- **File-Based Templates**: Load custom YAML/JSON templates for regional/sector-specific customization
+- **Template Categories**: Person names, vendor names, customer names, material descriptions, line item texts
+- **Merge Strategies**: Replace, Extend, or MergePreferFile for combining embedded and custom templates
+- **LLM-Friendly**: Templates can be generated using LLMs for locale-specific flavor
 
 ### Server & API
 
@@ -563,11 +576,15 @@ SyntheticData/
     │   │   ├── anomaly.rs          # Anomaly types and labels
     │   │   └── ...
     │   ├── distributions/       # Statistical samplers
+    │   ├── templates/           # Template system (loader, provider)
+    │   ├── uuid_factory.rs      # Deterministic UUID generation
+    │   ├── memory_guard.rs      # Memory limit enforcement
+    │   ├── accounts.rs          # Centralized GL account constants
     │   └── traits/              # Generator, Sink interfaces
     ├── synth-config/            # Configuration schema and validation
     ├── synth-generators/        # Data generators
     │   ├── master_data/         # Entity generators
-    │   ├── document_flow/       # P2P, O2C flow generators
+    │   ├── document_flow/       # P2P, O2C, three-way match validation
     │   ├── intercompany/        # IC transaction generators
     │   ├── balance/             # Balance coherence
     │   ├── subledger/           # AR, AP, FA, Inventory

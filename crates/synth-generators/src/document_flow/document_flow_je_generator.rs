@@ -14,12 +14,12 @@
 //! - CustomerReceipt → DR Cash, CR AR
 
 use rust_decimal::Decimal;
-use uuid::Uuid;
 
 use synth_core::models::{
     documents::{CustomerInvoice, Delivery, GoodsReceipt, Payment, VendorInvoice},
     BusinessProcess, JournalEntry, JournalEntryHeader, JournalEntryLine, TransactionSource,
 };
+use synth_core::uuid_factory::{DeterministicUuidFactory, GeneratorType};
 
 use super::{O2CDocumentChain, P2PDocumentChain};
 
@@ -59,7 +59,7 @@ impl Default for DocumentFlowJeConfig {
 /// Generator for creating JEs from document flows.
 pub struct DocumentFlowJeGenerator {
     config: DocumentFlowJeConfig,
-    je_counter: u64,
+    uuid_factory: DeterministicUuidFactory,
 }
 
 impl DocumentFlowJeGenerator {
@@ -70,9 +70,15 @@ impl DocumentFlowJeGenerator {
 
     /// Create with custom account configuration.
     pub fn with_config(config: DocumentFlowJeConfig) -> Self {
+        // Use a fixed seed for document flow JE generator (can be made configurable)
+        Self::with_config_and_seed(config, 0)
+    }
+
+    /// Create with custom account configuration and seed.
+    pub fn with_config_and_seed(config: DocumentFlowJeConfig, seed: u64) -> Self {
         Self {
             config,
-            je_counter: 0,
+            uuid_factory: DeterministicUuidFactory::new(seed, GeneratorType::DocumentFlow),
         }
     }
 
@@ -139,8 +145,7 @@ impl DocumentFlowJeGenerator {
             return None;
         }
 
-        self.je_counter += 1;
-        let document_id = self.generate_uuid();
+        let document_id = self.uuid_factory.next();
 
         // Use the total_value from the GR, or calculate from line items
         let total_amount = if gr.total_value > Decimal::ZERO {
@@ -206,8 +211,7 @@ impl DocumentFlowJeGenerator {
             return None;
         }
 
-        self.je_counter += 1;
-        let document_id = self.generate_uuid();
+        let document_id = self.uuid_factory.next();
 
         // Use posting_date or fall back to document_date
         let posting_date = invoice
@@ -258,8 +262,7 @@ impl DocumentFlowJeGenerator {
             return None;
         }
 
-        self.je_counter += 1;
-        let document_id = self.generate_uuid();
+        let document_id = self.uuid_factory.next();
 
         // Use posting_date or fall back to document_date
         let posting_date = payment
@@ -310,8 +313,7 @@ impl DocumentFlowJeGenerator {
             return None;
         }
 
-        self.je_counter += 1;
-        let document_id = self.generate_uuid();
+        let document_id = self.uuid_factory.next();
 
         // Calculate total cost from line items
         let total_cost = delivery
@@ -376,8 +378,7 @@ impl DocumentFlowJeGenerator {
             return None;
         }
 
-        self.je_counter += 1;
-        let document_id = self.generate_uuid();
+        let document_id = self.uuid_factory.next();
 
         // Use posting_date or fall back to document_date
         let posting_date = invoice
@@ -428,8 +429,7 @@ impl DocumentFlowJeGenerator {
             return None;
         }
 
-        self.je_counter += 1;
-        let document_id = self.generate_uuid();
+        let document_id = self.uuid_factory.next();
 
         // Use posting_date or fall back to document_date
         let posting_date = payment
@@ -471,22 +471,6 @@ impl DocumentFlowJeGenerator {
         entry.add_line(credit_line);
 
         Some(entry)
-    }
-
-    /// Generate a deterministic UUID.
-    fn generate_uuid(&self) -> Uuid {
-        let mut bytes = [0u8; 16];
-        let counter_bytes = self.je_counter.to_le_bytes();
-        bytes[0..8].copy_from_slice(&counter_bytes);
-
-        // Add marker to distinguish from other UUIDs
-        bytes[8..12].copy_from_slice(b"FLOW");
-
-        // Set version and variant bits
-        bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
-        bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 1
-
-        Uuid::from_bytes(bytes)
     }
 }
 

@@ -16,6 +16,8 @@ use synth_core::models::{
     Material, MaterialPool, PaymentTerms, Vendor, VendorPool,
 };
 
+use super::three_way_match::ThreeWayMatcher;
+
 /// Configuration for P2P flow generation.
 #[derive(Debug, Clone)]
 pub struct P2PGeneratorConfig {
@@ -89,6 +91,7 @@ pub struct P2PGenerator {
     gr_counter: usize,
     vi_counter: usize,
     pay_counter: usize,
+    three_way_matcher: ThreeWayMatcher,
 }
 
 impl P2PGenerator {
@@ -107,6 +110,7 @@ impl P2PGenerator {
             gr_counter: 0,
             vi_counter: 0,
             pay_counter: 0,
+            three_way_matcher: ThreeWayMatcher::new(),
         }
     }
 
@@ -150,10 +154,11 @@ impl P2PGenerator {
         let invoice_date = self.calculate_invoice_date(gr_date);
         let invoice_fiscal_period = self.get_fiscal_period(invoice_date);
 
-        // Perform three-way match
-        let three_way_match_passed = self.rng.gen::<f64>() < self.config.three_way_match_rate;
+        // Determine if we should introduce variances based on configuration
+        // This simulates real-world scenarios where not all invoices match perfectly
+        let should_have_variance = self.rng.gen::<f64>() >= self.config.three_way_match_rate;
 
-        // Generate invoice
+        // Generate invoice (may introduce variances based on config)
         let vendor_invoice = self.generate_vendor_invoice(
             &po,
             &goods_receipts,
@@ -163,8 +168,17 @@ impl P2PGenerator {
             fiscal_year,
             invoice_fiscal_period,
             created_by,
-            three_way_match_passed,
+            !should_have_variance, // Pass whether this should be a clean match
         );
+
+        // Perform actual three-way match validation
+        let three_way_match_passed = if let Some(ref invoice) = vendor_invoice {
+            let gr_refs: Vec<&GoodsReceipt> = goods_receipts.iter().collect();
+            let match_result = self.three_way_matcher.validate(&po, &gr_refs, invoice);
+            match_result.passed
+        } else {
+            false
+        };
 
         // Calculate payment date based on payment terms
         let payment_date = self.calculate_payment_date(invoice_date, &vendor.payment_terms);
@@ -541,6 +555,17 @@ impl P2PGenerator {
             payment_amount,
             discount_amount,
         );
+
+        // Add document reference linking payment to invoice
+        payment.header.add_reference(DocumentReference::new(
+            DocumentType::ApPayment,
+            &payment.header.document_id,
+            DocumentType::VendorInvoice,
+            &invoice.header.document_id,
+            ReferenceType::Payment,
+            &payment.header.company_code,
+            payment_date,
+        ));
 
         // Approve and send to bank
         payment.approve(created_by);

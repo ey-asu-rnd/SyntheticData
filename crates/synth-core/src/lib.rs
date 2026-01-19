@@ -10,14 +10,19 @@
 //! - Statistical distribution samplers based on empirical research
 //! - Templates for realistic data generation (names, descriptions, references)
 
+pub mod accounts;
 pub mod distributions;
 pub mod error;
+pub mod memory_guard;
 pub mod models;
 pub mod templates;
 pub mod traits;
+pub mod uuid_factory;
 
 pub use distributions::*;
 pub use error::*;
+pub use memory_guard::*;
 pub use models::*;
 pub use templates::*;
 pub use traits::*;
+pub use uuid_factory::*;

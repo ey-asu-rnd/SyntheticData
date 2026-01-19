@@ -6,6 +6,7 @@ use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
+use synth_core::accounts::{cash_accounts, control_accounts, revenue_accounts, tax_accounts};
 use synth_core::models::subledger::ar::{
     ARCreditMemo, ARCreditMemoLine, ARInvoice, ARInvoiceLine, ARReceipt, CreditMemoReason,
     PaymentMethod,
@@ -320,30 +321,30 @@ impl ARGenerator {
             format!("AR Invoice {}", invoice.invoice_number),
         );
 
-        // Debit AR
+        // Debit AR (using centralized control account)
         je.add_line(JournalEntryLine {
             line_number: 1,
-            gl_account: "1100".to_string(),
+            gl_account: control_accounts::AR_CONTROL.to_string(),
             debit_amount: invoice.gross_amount.document_amount,
             reference: Some(invoice.invoice_number.clone()),
             assignment: Some(invoice.customer_id.clone()),
             ..Default::default()
         });
 
-        // Credit Revenue
+        // Credit Revenue (using centralized revenue account)
         je.add_line(JournalEntryLine {
             line_number: 2,
-            gl_account: "4000".to_string(),
+            gl_account: revenue_accounts::PRODUCT_REVENUE.to_string(),
             credit_amount: invoice.net_amount.document_amount,
             reference: Some(invoice.invoice_number.clone()),
             ..Default::default()
         });
 
-        // Credit Tax Payable
+        // Credit Tax Payable (using centralized tax account)
         if invoice.tax_amount.document_amount > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: 3,
-                gl_account: "2300".to_string(),
+                gl_account: tax_accounts::VAT_PAYABLE.to_string(),
                 credit_amount: invoice.tax_amount.document_amount,
                 reference: Some(invoice.invoice_number.clone()),
                 tax_code: Some("VAT".to_string()),
@@ -363,20 +364,20 @@ impl ARGenerator {
             format!("AR Receipt {}", receipt.receipt_number),
         );
 
-        // Debit Cash
+        // Debit Cash (using centralized cash account)
         je.add_line(JournalEntryLine {
             line_number: 1,
-            gl_account: "1000".to_string(),
+            gl_account: cash_accounts::OPERATING_CASH.to_string(),
             debit_amount: receipt.amount.document_amount,
             reference: Some(receipt.receipt_number.clone()),
             ..Default::default()
         });
 
-        // Credit AR
+        // Credit AR (using centralized control account)
         let ar_credit = receipt.net_applied + receipt.discount_taken;
         je.add_line(JournalEntryLine {
             line_number: 2,
-            gl_account: "1100".to_string(),
+            gl_account: control_accounts::AR_CONTROL.to_string(),
             credit_amount: ar_credit,
             reference: Some(receipt.receipt_number.clone()),
             assignment: Some(receipt.customer_id.clone()),
@@ -387,7 +388,7 @@ impl ARGenerator {
         if receipt.discount_taken > Decimal::ZERO {
             je.add_line(JournalEntryLine {
                 line_number: 3,
-                gl_account: "4900".to_string(),
+                gl_account: revenue_accounts::SALES_DISCOUNTS.to_string(),
                 debit_amount: receipt.discount_taken,
                 reference: Some(receipt.receipt_number.clone()),
                 ..Default::default()

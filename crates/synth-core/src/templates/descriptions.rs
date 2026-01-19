@@ -109,6 +109,14 @@ pub struct DescriptionGenerator {
     liability_descriptions: Vec<&'static str>,
     /// Bank/cash descriptions
     bank_descriptions: Vec<&'static str>,
+    /// Process-specific line descriptions for P2P
+    p2p_line_descriptions: Vec<&'static str>,
+    /// Process-specific line descriptions for O2C
+    o2c_line_descriptions: Vec<&'static str>,
+    /// Process-specific line descriptions for H2R (Hire to Retire)
+    h2r_line_descriptions: Vec<&'static str>,
+    /// Process-specific line descriptions for R2R (Record to Report)
+    r2r_line_descriptions: Vec<&'static str>,
 }
 
 impl Default for DescriptionGenerator {
@@ -128,7 +136,111 @@ impl DescriptionGenerator {
             asset_descriptions: Self::default_asset_descriptions(),
             liability_descriptions: Self::default_liability_descriptions(),
             bank_descriptions: Self::default_bank_descriptions(),
+            p2p_line_descriptions: Self::default_p2p_line_descriptions(),
+            o2c_line_descriptions: Self::default_o2c_line_descriptions(),
+            h2r_line_descriptions: Self::default_h2r_line_descriptions(),
+            r2r_line_descriptions: Self::default_r2r_line_descriptions(),
         }
+    }
+
+    fn default_p2p_line_descriptions() -> Vec<&'static str> {
+        vec![
+            "Inventory purchase",
+            "Raw materials receipt",
+            "Goods received - standard",
+            "Vendor invoice posting",
+            "AP invoice match",
+            "Purchase goods receipt",
+            "Material receipt",
+            "Components inventory",
+            "Supplies procurement",
+            "Service receipt",
+            "Purchase payment",
+            "Vendor payment",
+            "AP settlement",
+            "GR/IR clearing",
+            "Price variance adjustment",
+            "Quantity variance",
+            "Procurement expense",
+            "Freight charges",
+            "Customs duties",
+            "Import taxes",
+        ]
+    }
+
+    fn default_o2c_line_descriptions() -> Vec<&'static str> {
+        vec![
+            "Product sales",
+            "Service delivery",
+            "Customer invoice",
+            "Revenue recognition",
+            "Sales order fulfillment",
+            "Goods shipped",
+            "Delivery completion",
+            "Customer receipt",
+            "AR receipt",
+            "Cash application",
+            "Sales discount given",
+            "Trade discount",
+            "Early payment discount",
+            "Finished goods sale",
+            "Merchandise sale",
+            "Contract revenue",
+            "Subscription revenue",
+            "License fee revenue",
+            "Commission earned",
+            "COGS recognition",
+        ]
+    }
+
+    fn default_h2r_line_descriptions() -> Vec<&'static str> {
+        vec![
+            "Salary expense",
+            "Wages allocation",
+            "Benefits expense",
+            "Payroll taxes",
+            "Commission payment",
+            "Bonus accrual",
+            "Vacation accrual",
+            "Health insurance",
+            "Retirement contribution",
+            "Training expense",
+            "Recruitment costs",
+            "Relocation expense",
+            "Employee reimbursement",
+            "Contractor payment",
+            "Temporary staff",
+            "Overtime payment",
+            "Shift differential",
+            "On-call allowance",
+            "Travel reimbursement",
+            "Expense report",
+        ]
+    }
+
+    fn default_r2r_line_descriptions() -> Vec<&'static str> {
+        vec![
+            "Period close adjustment",
+            "Depreciation expense",
+            "Amortization expense",
+            "Accrual entry",
+            "Accrual reversal",
+            "Reclassification entry",
+            "Intercompany elimination",
+            "Currency translation",
+            "FX revaluation",
+            "Reserve adjustment",
+            "Provision update",
+            "Impairment charge",
+            "Bad debt provision",
+            "Inventory adjustment",
+            "Valuation adjustment",
+            "Consolidation entry",
+            "Manual adjustment",
+            "Year-end closing",
+            "Opening balance",
+            "Trial balance adjustment",
+        ]
     }
 
     fn default_header_patterns() -> Vec<HeaderTextPattern> {
@@ -566,6 +678,77 @@ impl DescriptionGenerator {
                     .to_string()
             }
             _ => self.substitute_placeholders("Transaction posting", context, rng),
+        }
+    }
+
+    /// Generate line text based on business process and account type.
+    ///
+    /// This method provides semantically appropriate line descriptions that match
+    /// the business process context. If a business process is provided, it uses
+    /// process-specific descriptions; otherwise falls back to account-type-based
+    /// descriptions.
+    pub fn generate_line_text_for_process(
+        &self,
+        gl_account: &str,
+        business_process: Option<BusinessProcess>,
+        _context: &DescriptionContext,
+        rng: &mut impl Rng,
+    ) -> String {
+        // If business process is specified, use process-specific descriptions
+        if let Some(process) = business_process {
+            let pool = match process {
+                BusinessProcess::P2P => &self.p2p_line_descriptions,
+                BusinessProcess::O2C => &self.o2c_line_descriptions,
+                BusinessProcess::H2R => &self.h2r_line_descriptions,
+                BusinessProcess::R2R => &self.r2r_line_descriptions,
+                _ => {
+                    // For other processes, fall back to account-type-based
+                    return self.generate_line_text_by_account(gl_account, rng);
+                }
+            };
+
+            if let Some(desc) = pool.choose(rng) {
+                return (*desc).to_string();
+            }
+        }
+
+        // Fall back to account-type-based descriptions
+        self.generate_line_text_by_account(gl_account, rng)
+    }
+
+    /// Generate line text based solely on account type.
+    fn generate_line_text_by_account(&self, gl_account: &str, rng: &mut impl Rng) -> String {
+        let first_char = gl_account.chars().next().unwrap_or('0');
+
+        match first_char {
+            '1' => self
+                .asset_descriptions
+                .choose(rng)
+                .unwrap_or(&"Asset posting")
+                .to_string(),
+            '2' => self
+                .liability_descriptions
+                .choose(rng)
+                .unwrap_or(&"Liability posting")
+                .to_string(),
+            '3' => "Equity adjustment".to_string(),
+            '4' => self
+                .revenue_descriptions
+                .choose(rng)
+                .unwrap_or(&"Revenue posting")
+                .to_string(),
+            '5' | '6' | '7' => self
+                .expense_descriptions
+                .choose(rng)
+                .unwrap_or(&"Expense posting")
+                .to_string(),
+            '8' | '9' => "Statistical posting".to_string(),
+            '0' => self
+                .bank_descriptions
+                .choose(rng)
+                .unwrap_or(&"Bank transaction")
+                .to_string(),
+            _ => "Transaction posting".to_string(),
         }
     }
 

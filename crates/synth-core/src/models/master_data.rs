@@ -563,9 +563,11 @@ pub struct Customer {
     pub credit_rating: CreditRating,
 
     /// Credit limit
+    #[serde(with = "rust_decimal::serde::str")]
     pub credit_limit: Decimal,
 
     /// Current credit exposure (outstanding AR)
+    #[serde(with = "rust_decimal::serde::str")]
     pub credit_exposure: Decimal,
 
     /// Payment terms (structured)

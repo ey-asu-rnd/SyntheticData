@@ -5,7 +5,6 @@ use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
 use std::sync::Arc;
-use uuid::Uuid;
 
 use synth_config::schema::{FraudConfig, GeneratorConfig, TemplateConfig, TransactionConfig};
 use synth_core::distributions::*;
@@ -14,6 +13,7 @@ use synth_core::templates::{
     descriptions::DescriptionContext, DescriptionGenerator, ReferenceGenerator, ReferenceType,
 };
 use synth_core::traits::Generator;
+use synth_core::uuid_factory::{DeterministicUuidFactory, GeneratorType};
 
 use crate::company_selector::WeightedCompanySelector;
 use crate::user_generator::{UserGenerator, UserGeneratorConfig};
@@ -32,7 +32,7 @@ pub struct JournalEntryGenerator {
     start_date: NaiveDate,
     end_date: NaiveDate,
     count: u64,
-    doc_counter: u64,
+    uuid_factory: DeterministicUuidFactory,
     // Enhanced features
     user_pool: Option<UserPool>,
     description_generator: DescriptionGenerator,
@@ -194,7 +194,7 @@ impl JournalEntryGenerator {
             start_date,
             end_date,
             count: 0,
-            doc_counter: 0,
+            uuid_factory: DeterministicUuidFactory::new(seed, GeneratorType::JournalEntry),
             user_pool,
             description_generator: DescriptionGenerator::new(),
             reference_generator: ref_gen,
@@ -419,23 +419,9 @@ impl JournalEntryGenerator {
         }
     }
 
-    /// Generate a deterministic UUID from seed and counter.
-    fn generate_deterministic_uuid(&self) -> Uuid {
-        // Create a deterministic UUID v4-format from seed and counter
-        // using the seed and counter to generate the UUID bytes
-        let mut bytes = [0u8; 16];
-        let seed_bytes = self.seed.to_le_bytes();
-        let counter_bytes = self.doc_counter.to_le_bytes();
-
-        // Mix seed and counter into the UUID bytes
-        bytes[0..8].copy_from_slice(&seed_bytes);
-        bytes[8..16].copy_from_slice(&counter_bytes);
-
-        // Set version to 4 and variant bits properly
-        bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
-        bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 1
-
-        Uuid::from_bytes(bytes)
+    /// Generate a deterministic UUID using the factory.
+    fn generate_deterministic_uuid(&self) -> uuid::Uuid {
+        self.uuid_factory.next()
     }
 
     /// Generate a single journal entry.
@@ -448,7 +434,6 @@ impl JournalEntryGenerator {
         }
 
         self.count += 1;
-        self.doc_counter += 1;
 
         // Generate deterministic document ID
         let document_id = self.generate_deterministic_uuid();
@@ -712,7 +697,6 @@ impl JournalEntryGenerator {
         let posting_date = batch.base_posting_date;
 
         self.count += 1;
-        self.doc_counter += 1;
         let document_id = self.generate_deterministic_uuid();
 
         // Select same company (batched work is usually same company)
@@ -1384,7 +1368,7 @@ impl Generator for JournalEntryGenerator {
         self.amount_sampler.reset(self.seed + 2);
         self.temporal_sampler.reset(self.seed + 3);
         self.count = 0;
-        self.doc_counter = 0;
+        self.uuid_factory.reset();
 
         // Reset reference generator by recreating it
         let mut ref_gen = ReferenceGenerator::new(

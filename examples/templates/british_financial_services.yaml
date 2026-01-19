@@ -1,0 +1,232 @@
+# British Financial Services Templates
+# Templates for UK banking, insurance, and financial institutions
+
+metadata:
+  name: "British Financial Services Templates"
+  version: "1.0"
+  region: "gb"
+  sector: "financial_services"
+  author: "SyntheticData Team"
+  description: "Templates for UK-based financial institutions with City of London terminology"
+
+person_names:
+  cultures:
+    british:
+      male_first_names:
+        - "James"
+        - "William"
+        - "Oliver"
+        - "George"
+        - "Henry"
+        - "Charles"
+        - "Edward"
+        - "Thomas"
+        - "Alexander"
+        - "Benjamin"
+        - "Richard"
+        - "David"
+        - "Michael"
+        - "Christopher"
+        - "Andrew"
+        - "Nicholas"
+        - "Jonathan"
+        - "Matthew"
+        - "Daniel"
+        - "Robert"
+      female_first_names:
+        - "Charlotte"
+        - "Emma"
+        - "Olivia"
+        - "Sophia"
+        - "Isabella"
+        - "Victoria"
+        - "Elizabeth"
+        - "Catherine"
+        - "Eleanor"
+        - "Margaret"
+        - "Caroline"
+        - "Sarah"
+        - "Rebecca"
+        - "Emily"
+        - "Hannah"
+        - "Grace"
+        - "Alice"
+        - "Amelia"
+        - "Lucy"
+        - "Harriet"
+      last_names:
+        - "Smith"
+        - "Jones"
+        - "Williams"
+        - "Taylor"
+        - "Brown"
+        - "Davies"
+        - "Wilson"
+        - "Evans"
+        - "Thomas"
+        - "Johnson"
+        - "Roberts"
+        - "Walker"
+        - "Wright"
+        - "Thompson"
+        - "White"
+        - "Hughes"
+        - "Edwards"
+        - "Green"
+        - "Hall"
+        - "Wood"
+        - "Harris"
+        - "Martin"
+        - "Jackson"
+        - "Clarke"
+        - "Lewis"
+
+vendor_names:
+  categories:
+    technology:
+      - "City Tech Solutions Ltd"
+      - "Canary Wharf Systems plc"
+      - "FinTech Partners UK"
+      - "Digital Banking Services"
+      - "Cloud Infrastructure London"
+      - "Cybersecurity Consultants Ltd"
+      - "Data Analytics Partners"
+      - "RegTech Solutions UK"
+    professional_services:
+      - "Chartered Accountants LLP"
+      - "Legal Counsel Associates"
+      - "Risk Advisory Partners"
+      - "Compliance Consultants UK"
+      - "Audit Services London"
+      - "Tax Advisory Group"
+      - "Management Consultants Ltd"
+      - "Actuarial Services UK"
+    facilities:
+      - "Property Management Services"
+      - "Office Solutions London"
+      - "Corporate Catering Ltd"
+      - "Security Services UK"
+      - "Cleaning Services London"
+      - "Maintenance Partners"
+
+customer_names:
+  industries:
+    banking:
+      - "Westminster Commercial Bank"
+      - "Thames Valley Building Society"
+      - "Northern Trust Holdings"
+      - "Midlands Merchant Bank"
+      - "Scottish Investment Bank"
+      - "Channel Islands Private Bank"
+      - "London Capital Partners"
+    insurance:
+      - "Lloyd's Syndicate Members"
+      - "Britannia Insurance Group"
+      - "Royal Shield Assurance"
+      - "Guardian Life UK"
+      - "Empire Reinsurance"
+      - "Maritime Underwriters"
+    asset_management:
+      - "Mayfair Asset Management"
+      - "Kensington Fund Managers"
+      - "Edinburgh Investment Trust"
+      - "Cambridge Capital Partners"
+      - "Oxford Wealth Management"
+      - "Bristol Private Equity"
+
+material_descriptions:
+  by_type:
+    software_licenses:
+      - "Core Banking Platform License"
+      - "Trading System Annual Fee"
+      - "Risk Management Software"
+      - "Regulatory Reporting Tool"
+      - "Anti-Money Laundering System"
+      - "Customer Onboarding Platform"
+    data_services:
+      - "Market Data Feed Subscription"
+      - "Credit Rating Data Service"
+      - "FX Rate Feed Annual"
+      - "Reference Data Service"
+      - "Economic Data Package"
+    professional:
+      - "Audit Services Annual"
+      - "Legal Retainer Monthly"
+      - "Consulting Engagement"
+      - "Training Programme Annual"
+
+asset_descriptions:
+  by_category:
+    it_infrastructure:
+      - "Data Centre Server Rack"
+      - "Network Security Appliance"
+      - "Trading Floor Workstation"
+      - "Bloomberg Terminal"
+      - "Reuters Eikon Terminal"
+      - "High-Frequency Trading Server"
+    office_equipment:
+      - "Executive Office Furniture"
+      - "Meeting Room AV System"
+      - "Reception Area Fitout"
+      - "Trading Floor Desk Setup"
+    leasehold:
+      - "Canary Wharf Office Lease"
+      - "City of London Premises"
+      - "Regional Branch Fitout"
+      - "Data Centre Space Lease"
+
+line_item_descriptions:
+  p2p:
+    expense:
+      - "Professional services fee"
+      - "Technology licence renewal"
+      - "Consulting engagement cost"
+      - "Market data subscription"
+      - "Regulatory filing fee"
+      - "Compliance assessment cost"
+      - "Staff training programme"
+      - "Office supplies procurement"
+    accrual:
+      - "Audit fee accrual"
+      - "Bonus provision"
+      - "Legal reserve provision"
+      - "Regulatory fine provision"
+  o2c:
+    revenue:
+      - "Interest income earned"
+      - "Fee income received"
+      - "Trading profit realised"
+      - "Advisory fee billed"
+      - "Custody fee income"
+      - "Asset management fee"
+    receivable:
+      - "Client fee receivable"
+      - "Interbank settlement"
+      - "Corporate loan repayment"
+      - "Investment income due"
+  r2r:
+    adjustment:
+      - "Mark-to-market adjustment"
+      - "Impairment provision"
+      - "Fair value revaluation"
+      - "Foreign exchange adjustment"
+      - "Hedge effectiveness testing"
+      - "Expected credit loss"
+
+header_text_templates:
+  by_process:
+    p2p:
+      - "Vendor Invoice - {VendorName}"
+      - "Professional Services - {VendorName}"
+      - "Technology Procurement #{PONumber}"
+      - "Facilities Management - {Date}"
+    o2c:
+      - "Client Fee Invoice - {CustomerName}"
+      - "Advisory Services - {CustomerName}"
+      - "Interest Income - {Date}"
+      - "Settlement Receipt - {CustomerName}"
+    r2r:
+      - "Month-End Adjustment - {Date}"
+      - "Quarter-End Close - {Period}"
+      - "Regulatory Provision - {Date}"
+      - "Fair Value Revaluation - {Date}"
