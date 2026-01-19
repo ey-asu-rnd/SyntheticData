@@ -12,8 +12,8 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use crate::models::{
-    EventLifecycle, ObjectAttributeValue, ObjectGraph,
-    ObjectQualifier, OcpmEvent, OcpmEventLog, RelationshipIndex,
+    EventLifecycle, ObjectAttributeValue, ObjectGraph, ObjectQualifier, OcpmEvent, OcpmEventLog,
+    RelationshipIndex,
 };
 
 /// OCEL 2.0 complete log structure.
@@ -38,7 +38,10 @@ pub struct Ocel2Log {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Ocel2GlobalLog {
     /// Log name
-    #[serde(rename = "ocel:attribute-names", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "ocel:attribute-names",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub attribute_names: Option<Vec<String>>,
     /// Ordering timestamp attribute
     #[serde(rename = "ocel:ordering", skip_serializing_if = "Option::is_none")]
@@ -544,8 +547,14 @@ mod tests {
         let null_val = ObjectAttributeValue::Null;
 
         assert!(matches!(Ocel2Value::from(&str_val), Ocel2Value::String(_)));
-        assert!(matches!(Ocel2Value::from(&int_val), Ocel2Value::Integer(42)));
-        assert!(matches!(Ocel2Value::from(&bool_val), Ocel2Value::Boolean(true)));
+        assert!(matches!(
+            Ocel2Value::from(&int_val),
+            Ocel2Value::Integer(42)
+        ));
+        assert!(matches!(
+            Ocel2Value::from(&bool_val),
+            Ocel2Value::Boolean(true)
+        ));
         assert!(matches!(Ocel2Value::from(&null_val), Ocel2Value::Null));
     }
 

@@ -247,7 +247,7 @@ impl TemporalChangeType {
 }
 
 /// Temporal query parameters for point-in-time queries.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TemporalQuery {
     /// Query as of this business time (None = current)
     pub as_of_valid_time: Option<NaiveDateTime>,
@@ -255,16 +255,6 @@ pub struct TemporalQuery {
     pub as_of_system_time: Option<DateTime<Utc>>,
     /// Include superseded versions
     pub include_history: bool,
-}
-
-impl Default for TemporalQuery {
-    fn default() -> Self {
-        Self {
-            as_of_valid_time: None,
-            as_of_system_time: None,
-            include_history: false,
-        }
-    }
 }
 
 impl TemporalQuery {

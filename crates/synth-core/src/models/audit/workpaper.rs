@@ -150,11 +150,7 @@ impl Workpaper {
     }
 
     /// Set the procedure.
-    pub fn with_procedure(
-        mut self,
-        procedure: &str,
-        procedure_type: ProcedureType,
-    ) -> Self {
+    pub fn with_procedure(mut self, procedure: &str, procedure_type: ProcedureType) -> Self {
         self.procedure_performed = procedure.into();
         self.procedure_type = procedure_type;
         self
@@ -239,9 +235,12 @@ impl Workpaper {
 
     /// Check if all review notes are resolved.
     pub fn all_notes_resolved(&self) -> bool {
-        self.review_notes
-            .iter()
-            .all(|n| matches!(n.status, ReviewNoteStatus::Resolved | ReviewNoteStatus::NotApplicable))
+        self.review_notes.iter().all(|n| {
+            matches!(
+                n.status,
+                ReviewNoteStatus::Resolved | ReviewNoteStatus::NotApplicable
+            )
+        })
     }
 }
 
@@ -336,14 +335,24 @@ impl Assertion {
     pub fn description(&self) -> &'static str {
         match self {
             Self::Occurrence => "Transactions and events have occurred and pertain to the entity",
-            Self::Completeness => "All transactions and events that should have been recorded have been recorded",
+            Self::Completeness => {
+                "All transactions and events that should have been recorded have been recorded"
+            }
             Self::Accuracy => "Amounts and other data have been recorded appropriately",
             Self::Cutoff => "Transactions and events have been recorded in the correct period",
-            Self::Classification => "Transactions and events have been recorded in the proper accounts",
+            Self::Classification => {
+                "Transactions and events have been recorded in the proper accounts"
+            }
             Self::Existence => "Assets, liabilities, and equity interests exist",
-            Self::RightsAndObligations => "The entity holds rights to assets and liabilities are obligations of the entity",
-            Self::ValuationAndAllocation => "Assets, liabilities, and equity interests are included at appropriate amounts",
-            Self::PresentationAndDisclosure => "Financial information is appropriately presented and described",
+            Self::RightsAndObligations => {
+                "The entity holds rights to assets and liabilities are obligations of the entity"
+            }
+            Self::ValuationAndAllocation => {
+                "Assets, liabilities, and equity interests are included at appropriate amounts"
+            }
+            Self::PresentationAndDisclosure => {
+                "Financial information is appropriately presented and described"
+            }
         }
     }
 }
@@ -512,7 +521,10 @@ mod tests {
         );
 
         assert_eq!(wp.exception_rate, 0.04);
-        assert_eq!(wp.conclusion, WorkpaperConclusion::SatisfactoryWithExceptions);
+        assert_eq!(
+            wp.conclusion,
+            WorkpaperConclusion::SatisfactoryWithExceptions
+        );
     }
 
     #[test]
@@ -524,10 +536,18 @@ mod tests {
             WorkpaperSection::Planning,
         );
 
-        wp.add_first_review("reviewer1", "John Smith", NaiveDate::from_ymd_opt(2025, 1, 15).unwrap());
+        wp.add_first_review(
+            "reviewer1",
+            "John Smith",
+            NaiveDate::from_ymd_opt(2025, 1, 15).unwrap(),
+        );
         assert_eq!(wp.status, WorkpaperStatus::FirstReviewComplete);
 
-        wp.add_second_review("manager1", "Jane Doe", NaiveDate::from_ymd_opt(2025, 1, 16).unwrap());
+        wp.add_second_review(
+            "manager1",
+            "Jane Doe",
+            NaiveDate::from_ymd_opt(2025, 1, 16).unwrap(),
+        );
         assert_eq!(wp.status, WorkpaperStatus::Complete);
         assert!(wp.is_complete());
     }

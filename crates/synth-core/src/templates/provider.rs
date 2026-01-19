@@ -20,7 +20,12 @@ use crate::models::BusinessProcess;
 /// Methods use `&mut dyn RngCore` to allow the trait to be dyn-compatible.
 pub trait TemplateProvider: Send + Sync {
     /// Get a random person first name for the given culture and gender.
-    fn get_person_first_name(&self, culture: NameCulture, is_male: bool, rng: &mut dyn RngCore) -> String;
+    fn get_person_first_name(
+        &self,
+        culture: NameCulture,
+        is_male: bool,
+        rng: &mut dyn RngCore,
+    ) -> String;
 
     /// Get a random person last name for the given culture.
     fn get_person_last_name(&self, culture: NameCulture, rng: &mut dyn RngCore) -> String;
@@ -38,7 +43,12 @@ pub trait TemplateProvider: Send + Sync {
     fn get_asset_description(&self, category: &str, rng: &mut dyn RngCore) -> String;
 
     /// Get a random line text for the given process and account type.
-    fn get_line_text(&self, process: BusinessProcess, account_type: &str, rng: &mut dyn RngCore) -> String;
+    fn get_line_text(
+        &self,
+        process: BusinessProcess,
+        account_type: &str,
+        rng: &mut dyn RngCore,
+    ) -> String;
 
     /// Get a random header text template for the given process.
     fn get_header_template(&self, process: BusinessProcess, rng: &mut dyn RngCore) -> String;
@@ -89,53 +99,146 @@ impl DefaultTemplateProvider {
 
     /// Get embedded German first names (sample).
     fn embedded_german_first_names_male() -> Vec<&'static str> {
-        vec!["Hans", "Klaus", "Wolfgang", "Dieter", "Michael", "Stefan", "Thomas",
-             "Andreas", "Peter", "Jürgen", "Matthias", "Frank", "Martin", "Bernd"]
+        vec![
+            "Hans", "Klaus", "Wolfgang", "Dieter", "Michael", "Stefan", "Thomas", "Andreas",
+            "Peter", "Jürgen", "Matthias", "Frank", "Martin", "Bernd",
+        ]
     }
 
     fn embedded_german_first_names_female() -> Vec<&'static str> {
-        vec!["Anna", "Maria", "Elisabeth", "Ursula", "Monika", "Petra", "Karin",
-             "Sabine", "Andrea", "Christine", "Gabriele", "Heike", "Birgit"]
+        vec![
+            "Anna",
+            "Maria",
+            "Elisabeth",
+            "Ursula",
+            "Monika",
+            "Petra",
+            "Karin",
+            "Sabine",
+            "Andrea",
+            "Christine",
+            "Gabriele",
+            "Heike",
+            "Birgit",
+        ]
     }
 
     fn embedded_german_last_names() -> Vec<&'static str> {
-        vec!["Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner",
-             "Becker", "Schulz", "Hoffmann", "Schäfer", "Koch", "Bauer", "Richter"]
+        vec![
+            "Müller",
+            "Schmidt",
+            "Schneider",
+            "Fischer",
+            "Weber",
+            "Meyer",
+            "Wagner",
+            "Becker",
+            "Schulz",
+            "Hoffmann",
+            "Schäfer",
+            "Koch",
+            "Bauer",
+            "Richter",
+        ]
     }
 
     fn embedded_us_first_names_male() -> Vec<&'static str> {
-        vec!["James", "John", "Robert", "Michael", "William", "David", "Richard",
-             "Joseph", "Thomas", "Charles", "Christopher", "Daniel", "Matthew"]
+        vec![
+            "James",
+            "John",
+            "Robert",
+            "Michael",
+            "William",
+            "David",
+            "Richard",
+            "Joseph",
+            "Thomas",
+            "Charles",
+            "Christopher",
+            "Daniel",
+            "Matthew",
+        ]
     }
 
     fn embedded_us_first_names_female() -> Vec<&'static str> {
-        vec!["Mary", "Patricia", "Jennifer", "Linda", "Barbara", "Elizabeth", "Susan",
-             "Jessica", "Sarah", "Karen", "Lisa", "Nancy", "Betty", "Margaret"]
+        vec![
+            "Mary",
+            "Patricia",
+            "Jennifer",
+            "Linda",
+            "Barbara",
+            "Elizabeth",
+            "Susan",
+            "Jessica",
+            "Sarah",
+            "Karen",
+            "Lisa",
+            "Nancy",
+            "Betty",
+            "Margaret",
+        ]
     }
 
     fn embedded_us_last_names() -> Vec<&'static str> {
-        vec!["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller",
-             "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez"]
+        vec![
+            "Smith",
+            "Johnson",
+            "Williams",
+            "Brown",
+            "Jones",
+            "Garcia",
+            "Miller",
+            "Davis",
+            "Rodriguez",
+            "Martinez",
+            "Hernandez",
+            "Lopez",
+            "Gonzalez",
+        ]
     }
 
     fn embedded_vendor_names_manufacturing() -> Vec<&'static str> {
-        vec!["Precision Parts Inc.", "Industrial Components LLC", "Advanced Materials Corp.",
-             "Steel Solutions GmbH", "Quality Fasteners Ltd.", "Machining Excellence Inc."]
+        vec![
+            "Precision Parts Inc.",
+            "Industrial Components LLC",
+            "Advanced Materials Corp.",
+            "Steel Solutions GmbH",
+            "Quality Fasteners Ltd.",
+            "Machining Excellence Inc.",
+        ]
     }
 
     fn embedded_vendor_names_services() -> Vec<&'static str> {
-        vec!["Consulting Partners LLP", "Technical Services Inc.", "Professional Solutions LLC",
-             "Business Advisory Group", "Strategic Consulting Co.", "Expert Services Ltd."]
+        vec![
+            "Consulting Partners LLP",
+            "Technical Services Inc.",
+            "Professional Solutions LLC",
+            "Business Advisory Group",
+            "Strategic Consulting Co.",
+            "Expert Services Ltd.",
+        ]
     }
 
     fn embedded_customer_names_automotive() -> Vec<&'static str> {
-        vec!["AutoWerke Industries", "Vehicle Tech Solutions", "Motor Parts Direct",
-             "Automotive Excellence Corp.", "Drive Systems Inc.", "Engine Components Ltd."]
+        vec![
+            "AutoWerke Industries",
+            "Vehicle Tech Solutions",
+            "Motor Parts Direct",
+            "Automotive Excellence Corp.",
+            "Drive Systems Inc.",
+            "Engine Components Ltd.",
+        ]
     }
 
     fn embedded_customer_names_retail() -> Vec<&'static str> {
-        vec!["Retail Solutions Corp.", "Consumer Goods Direct", "Shop Smart Inc.",
-             "Merchandise Holdings LLC", "Retail Distribution Co.", "Store Systems Ltd."]
+        vec![
+            "Retail Solutions Corp.",
+            "Consumer Goods Direct",
+            "Shop Smart Inc.",
+            "Merchandise Holdings LLC",
+            "Retail Distribution Co.",
+            "Store Systems Ltd.",
+        ]
     }
 
     fn culture_to_key(culture: NameCulture) -> &'static str {
@@ -168,7 +271,12 @@ impl Default for DefaultTemplateProvider {
 }
 
 impl TemplateProvider for DefaultTemplateProvider {
-    fn get_person_first_name(&self, culture: NameCulture, is_male: bool, rng: &mut dyn RngCore) -> String {
+    fn get_person_first_name(
+        &self,
+        culture: NameCulture,
+        is_male: bool,
+        rng: &mut dyn RngCore,
+    ) -> String {
         let key = Self::culture_to_key(culture);
 
         // Try file templates first
@@ -250,7 +358,10 @@ impl TemplateProvider for DefaultTemplateProvider {
             _ => Self::embedded_vendor_names_manufacturing(),
         };
 
-        embedded.choose(rng).unwrap_or(&"Unknown Vendor").to_string()
+        embedded
+            .choose(rng)
+            .unwrap_or(&"Unknown Vendor")
+            .to_string()
     }
 
     fn get_customer_name(&self, industry: &str, rng: &mut dyn RngCore) -> String {
@@ -272,7 +383,10 @@ impl TemplateProvider for DefaultTemplateProvider {
             _ => Self::embedded_customer_names_retail(),
         };
 
-        embedded.choose(rng).unwrap_or(&"Unknown Customer").to_string()
+        embedded
+            .choose(rng)
+            .unwrap_or(&"Unknown Customer")
+            .to_string()
     }
 
     fn get_material_description(&self, material_type: &str, rng: &mut dyn RngCore) -> String {
@@ -307,7 +421,12 @@ impl TemplateProvider for DefaultTemplateProvider {
         format!("{} asset", category)
     }
 
-    fn get_line_text(&self, process: BusinessProcess, account_type: &str, rng: &mut dyn RngCore) -> String {
+    fn get_line_text(
+        &self,
+        process: BusinessProcess,
+        account_type: &str,
+        rng: &mut dyn RngCore,
+    ) -> String {
         let key = Self::process_to_key(process);
 
         // Try file templates first
@@ -361,15 +480,17 @@ pub fn default_provider() -> SharedTemplateProvider {
 }
 
 /// Create a shared template provider from a file.
-pub fn provider_from_file(path: &std::path::Path) -> Result<SharedTemplateProvider, super::loader::TemplateError> {
+pub fn provider_from_file(
+    path: &std::path::Path,
+) -> Result<SharedTemplateProvider, super::loader::TemplateError> {
     Ok(Arc::new(DefaultTemplateProvider::from_file(path)?))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand_chacha::ChaCha8Rng;
     use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
 
     #[test]
     fn test_default_provider() {

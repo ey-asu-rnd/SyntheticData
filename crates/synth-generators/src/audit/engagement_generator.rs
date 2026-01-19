@@ -99,8 +99,7 @@ impl AuditEngagementGenerator {
 
         // Calculate materiality
         let materiality_pct = self.rng.gen_range(
-            self.config.materiality_percentage_range.0
-                ..=self.config.materiality_percentage_range.1,
+            self.config.materiality_percentage_range.0..=self.config.materiality_percentage_range.1,
         );
         let materiality = total_revenue * Decimal::try_from(materiality_pct).unwrap_or_default();
 
@@ -232,18 +231,38 @@ impl AuditEngagementGenerator {
             }
         }
 
-        (partner_id, partner_name, manager_id, manager_name, team_members)
+        (
+            partner_id,
+            partner_name,
+            manager_id,
+            manager_name,
+            team_members,
+        )
     }
 
     /// Generate a plausible auditor name.
     fn generate_auditor_name(&mut self, seed: u32) -> String {
         let first_names = [
-            "Michael", "Sarah", "David", "Jennifer", "Robert", "Emily", "James", "Amanda",
-            "William", "Jessica", "John", "Ashley", "Daniel", "Nicole", "Christopher", "Michelle",
+            "Michael",
+            "Sarah",
+            "David",
+            "Jennifer",
+            "Robert",
+            "Emily",
+            "James",
+            "Amanda",
+            "William",
+            "Jessica",
+            "John",
+            "Ashley",
+            "Daniel",
+            "Nicole",
+            "Christopher",
+            "Michelle",
         ];
         let last_names = [
-            "Smith", "Johnson", "Williams", "Brown", "Jones", "Davis", "Miller", "Wilson",
-            "Moore", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin",
+            "Smith", "Johnson", "Williams", "Brown", "Jones", "Davis", "Miller", "Wilson", "Moore",
+            "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin",
         ];
 
         let first_idx = (seed as usize) % first_names.len();
@@ -264,7 +283,8 @@ impl AuditEngagementGenerator {
         };
 
         // Determine significant risk count (typically 2-8)
-        let significant_count = if self.rng.gen::<f64>() < self.config.significant_risk_probability {
+        let significant_count = if self.rng.gen::<f64>() < self.config.significant_risk_probability
+        {
             self.rng.gen_range(2..=8)
         } else {
             self.rng.gen_range(0..=2)
@@ -485,7 +505,13 @@ mod tests {
         assert!(engagement.materiality <= max_materiality);
 
         // Performance materiality should be 50-75% of materiality
-        assert!(engagement.performance_materiality >= engagement.materiality * Decimal::try_from(0.50).unwrap());
-        assert!(engagement.performance_materiality <= engagement.materiality * Decimal::try_from(0.75).unwrap());
+        assert!(
+            engagement.performance_materiality
+                >= engagement.materiality * Decimal::try_from(0.50).unwrap()
+        );
+        assert!(
+            engagement.performance_materiality
+                <= engagement.materiality * Decimal::try_from(0.75).unwrap()
+        );
     }
 }

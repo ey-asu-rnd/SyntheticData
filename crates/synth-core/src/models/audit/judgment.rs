@@ -85,19 +85,11 @@ pub struct ProfessionalJudgment {
 
 impl ProfessionalJudgment {
     /// Create a new professional judgment document.
-    pub fn new(
-        engagement_id: Uuid,
-        judgment_type: JudgmentType,
-        subject: &str,
-    ) -> Self {
+    pub fn new(engagement_id: Uuid, judgment_type: JudgmentType, subject: &str) -> Self {
         let now = Utc::now();
         Self {
             judgment_id: Uuid::new_v4(),
-            judgment_ref: format!(
-                "JDG-{}-{:03}",
-                now.format("%Y"),
-                1
-            ),
+            judgment_ref: format!("JDG-{}-{:03}", now.format("%Y"), 1),
             engagement_id,
             judgment_type,
             subject: subject.into(),
@@ -200,10 +192,9 @@ impl ProfessionalJudgment {
     /// Check if judgment is fully approved.
     pub fn is_approved(&self) -> bool {
         let reviewer_ok = self.reviewer_id.is_some();
-        let partner_ok = !self.partner_concurrence_required
-            || self.partner_concurrence_id.is_some();
-        let consultation_ok = !self.consultation_required
-            || self.consultation.is_some();
+        let partner_ok =
+            !self.partner_concurrence_required || self.partner_concurrence_id.is_some();
+        let consultation_ok = !self.consultation_required || self.consultation.is_some();
         reviewer_ok && partner_ok && consultation_ok
     }
 }
@@ -465,12 +456,7 @@ pub struct ConsultationRecord {
 
 impl ConsultationRecord {
     /// Create a new consultation record.
-    pub fn new(
-        consultant: &str,
-        role: &str,
-        is_external: bool,
-        date: NaiveDate,
-    ) -> Self {
+    pub fn new(consultant: &str, role: &str, is_external: bool, date: NaiveDate) -> Self {
         Self {
             consultation_id: Uuid::new_v4(),
             consultant: consultant.into(),
@@ -539,7 +525,10 @@ mod tests {
             "Risk of material misstatement below $1M not individually evaluated",
         );
 
-        assert_eq!(judgment.judgment_type, JudgmentType::MaterialityDetermination);
+        assert_eq!(
+            judgment.judgment_type,
+            JudgmentType::MaterialityDetermination
+        );
         assert!(judgment.partner_concurrence_required);
     }
 
@@ -590,7 +579,11 @@ mod tests {
         assert!(!judgment.is_approved());
 
         // Add reviewer
-        judgment.add_review("reviewer1", "Senior Manager", NaiveDate::from_ymd_opt(2025, 1, 15).unwrap());
+        judgment.add_review(
+            "reviewer1",
+            "Senior Manager",
+            NaiveDate::from_ymd_opt(2025, 1, 15).unwrap(),
+        );
 
         // Risk assessment doesn't require partner concurrence
         assert!(judgment.is_approved());

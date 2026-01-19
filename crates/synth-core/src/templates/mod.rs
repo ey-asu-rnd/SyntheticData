@@ -17,9 +17,8 @@ pub mod references;
 pub use descriptions::{DescriptionGenerator, HeaderTextPattern, LineTextPattern};
 pub use loader::{
     AssetDescriptionTemplates, CultureNames, CustomerNameTemplates, HeaderTextTemplates,
-    LineItemDescriptionTemplates, MaterialDescriptionTemplates, MergeStrategy,
-    PersonNameTemplates, TemplateData, TemplateError, TemplateLoader, TemplateMetadata,
-    VendorNameTemplates,
+    LineItemDescriptionTemplates, MaterialDescriptionTemplates, MergeStrategy, PersonNameTemplates,
+    TemplateData, TemplateError, TemplateLoader, TemplateMetadata, VendorNameTemplates,
 };
 pub use names::{MultiCultureNameGenerator, NameCulture, NamePool, PersonName};
 pub use provider::{

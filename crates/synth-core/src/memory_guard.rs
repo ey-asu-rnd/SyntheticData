@@ -39,9 +39,9 @@ pub struct MemoryGuardConfig {
 impl Default for MemoryGuardConfig {
     fn default() -> Self {
         Self {
-            hard_limit_mb: 0,           // Disabled by default
-            soft_limit_mb: 0,           // Disabled by default
-            check_interval: 500,        // Check every 500 operations
+            hard_limit_mb: 0,    // Disabled by default
+            soft_limit_mb: 0,    // Disabled by default
+            check_interval: 500, // Check every 500 operations
             aggressive_mode: false,
             max_growth_rate_mb_per_sec: 100.0,
         }
@@ -180,7 +180,9 @@ impl MemoryGuard {
             .unwrap_or(0);
 
         let last_time = self.last_check_time_ns.swap(now_ns, Ordering::Relaxed);
-        let last_mem = self.last_check_memory_mb.swap(current_mb, Ordering::Relaxed);
+        let last_mem = self
+            .last_check_memory_mb
+            .swap(current_mb, Ordering::Relaxed);
 
         if last_time > 0 && now_ns > last_time {
             let elapsed_sec = (now_ns - last_time) as f64 / 1_000_000_000.0;
@@ -188,12 +190,8 @@ impl MemoryGuard {
                 let growth_rate = (current_mb - last_mem) as f64 / elapsed_sec;
                 if growth_rate > self.config.max_growth_rate_mb_per_sec {
                     // High memory growth rate detected - consumer should check stats
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!(
-                        "High memory growth rate: {:.1} MB/sec (current: {} MB)",
-                        growth_rate,
-                        current_mb
-                    );
+                    // Note: Growth rate warning is logged by the caller
+                    let _ = growth_rate; // Silence unused variable warning
                 }
             }
         }
@@ -215,17 +213,8 @@ impl MemoryGuard {
 
         // Check soft limit (warning only)
         if self.config.soft_limit_mb > 0 && current_mb > self.config.soft_limit_mb {
-            let _warnings = self.soft_warnings_count.fetch_add(1, Ordering::Relaxed);
+            self.soft_warnings_count.fetch_add(1, Ordering::Relaxed);
             // Soft limit exceeded - consumer should check stats for warning count
-            #[cfg(feature = "tracing")]
-            if _warnings % 10 == 0 {
-                tracing::warn!(
-                    "Memory usage {} MB exceeds soft limit {} MB (hard limit: {} MB)",
-                    current_mb,
-                    self.config.soft_limit_mb,
-                    self.config.hard_limit_mb
-                );
-            }
         }
 
         Ok(())
@@ -354,7 +343,7 @@ pub fn estimate_memory_mb(num_entries: usize, avg_lines_per_entry: usize) -> usi
     let with_overhead = (total_bytes as f64 * 1.5) as usize;
 
     // Convert to MB, round up
-    (with_overhead + 1024 * 1024 - 1) / (1024 * 1024)
+    with_overhead.div_ceil(1024 * 1024)
 }
 
 /// Check if there's enough memory for the planned generation.

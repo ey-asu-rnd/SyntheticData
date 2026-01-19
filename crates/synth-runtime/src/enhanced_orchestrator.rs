@@ -46,21 +46,19 @@ use tracing::{debug, info, warn};
 
 use synth_config::schema::GeneratorConfig;
 use synth_core::error::{SynthError, SynthResult};
+use synth_core::models::audit::{
+    AuditEngagement, AuditEvidence, AuditFinding, ProfessionalJudgment, RiskAssessment, Workpaper,
+};
 use synth_core::models::subledger::ap::APInvoice;
 use synth_core::models::subledger::ar::ARInvoice;
-use synth_core::models::audit::{
-    AuditEngagement, Workpaper, AuditEvidence, RiskAssessment, AuditFinding, ProfessionalJudgment,
-};
 use synth_core::models::*;
-use synth_ocpm::{
-    EventLogMetadata, O2cDocuments, OcpmEventGenerator, OcpmEventLog, OcpmGeneratorConfig,
-    P2pDocuments,
-};
 use synth_generators::{
     // Anomaly injection
     AnomalyInjector,
     AnomalyInjectorConfig,
     AssetGenerator,
+    // Audit generators
+    AuditEngagementGenerator,
     BalanceTrackerConfig,
     // Core generators
     ChartOfAccountsGenerator,
@@ -75,25 +73,27 @@ use synth_generators::{
     // Subledger linker
     DocumentFlowLinker,
     EmployeeGenerator,
+    EvidenceGenerator,
+    FindingGenerator,
     JournalEntryGenerator,
+    JudgmentGenerator,
     MaterialGenerator,
     O2CDocumentChain,
     O2CGenerator,
     P2PDocumentChain,
     // Document flow generators
     P2PGenerator,
+    RiskAssessmentGenerator,
     // Balance validation
     RunningBalanceTracker,
     ValidationError,
     // Master data generators
     VendorGenerator,
-    // Audit generators
-    AuditEngagementGenerator,
     WorkpaperGenerator,
-    EvidenceGenerator,
-    RiskAssessmentGenerator,
-    FindingGenerator,
-    JudgmentGenerator,
+};
+use synth_ocpm::{
+    EventLogMetadata, O2cDocuments, OcpmEventGenerator, OcpmEventLog, OcpmGeneratorConfig,
+    P2pDocuments,
 };
 
 /// Configuration for which generation phases to run.
@@ -1009,10 +1009,7 @@ impl EnhancedOrchestrator {
     ///
     /// Creates OCEL 2.0 compliant event logs from P2P and O2C document flows,
     /// capturing the object-centric process perspective.
-    fn generate_ocpm_events(
-        &mut self,
-        flows: &DocumentFlowSnapshot,
-    ) -> SynthResult<OcpmSnapshot> {
+    fn generate_ocpm_events(&mut self, flows: &DocumentFlowSnapshot) -> SynthResult<OcpmSnapshot> {
         let total_chains = flows.p2p_chains.len() + flows.o2c_chains.len();
         let pb = self.create_progress_bar(total_chains as u64, "Generating OCPM Events");
 
@@ -1073,10 +1070,8 @@ impl EnhancedOrchestrator {
                     .unwrap_or(""),
             );
 
-            let start_time = chrono::DateTime::from_naive_utc_and_offset(
-                po.header.entry_timestamp,
-                chrono::Utc,
-            );
+            let start_time =
+                chrono::DateTime::from_naive_utc_and_offset(po.header.entry_timestamp, chrono::Utc);
             let result = ocpm_gen.generate_p2p_case(&documents, start_time, &available_users);
 
             // Add events and objects to the event log
@@ -1128,10 +1123,8 @@ impl EnhancedOrchestrator {
                     .unwrap_or(""),
             );
 
-            let start_time = chrono::DateTime::from_naive_utc_and_offset(
-                so.header.entry_timestamp,
-                chrono::Utc,
-            );
+            let start_time =
+                chrono::DateTime::from_naive_utc_and_offset(so.header.entry_timestamp, chrono::Utc);
             let result = ocpm_gen.generate_o2c_case(&documents, start_time, &available_users);
 
             // Add events and objects to the event log
@@ -1536,11 +1529,8 @@ impl EnhancedOrchestrator {
                 }
 
                 // Generate risk assessments for the engagement
-                let risks = risk_gen.generate_risks_for_engagement(
-                    &engagement,
-                    &team_members,
-                    &accounts,
-                );
+                let risks =
+                    risk_gen.generate_risks_for_engagement(&engagement, &team_members, &accounts);
 
                 for _ in &risks {
                     if let Some(pb) = &pb {
@@ -1564,10 +1554,8 @@ impl EnhancedOrchestrator {
                 snapshot.findings.extend(findings);
 
                 // Generate professional judgments for the engagement
-                let judgments = judgment_gen.generate_judgments_for_engagement(
-                    &engagement,
-                    &team_members,
-                );
+                let judgments =
+                    judgment_gen.generate_judgments_for_engagement(&engagement, &team_members);
 
                 for _ in &judgments {
                     if let Some(pb) = &pb {

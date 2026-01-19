@@ -202,31 +202,33 @@ pub struct TemplateLoader;
 impl TemplateLoader {
     /// Load template data from a YAML file.
     pub fn load_from_yaml(path: &Path) -> Result<TemplateData, TemplateError> {
-        let contents = std::fs::read_to_string(path)
-            .map_err(|e| TemplateError::new(format!("Failed to read file: {}", e))
-                .with_path(path.display().to_string()))?;
+        let contents = std::fs::read_to_string(path).map_err(|e| {
+            TemplateError::new(format!("Failed to read file: {}", e))
+                .with_path(path.display().to_string())
+        })?;
 
-        serde_yaml::from_str(&contents)
-            .map_err(|e| TemplateError::new(format!("Failed to parse YAML: {}", e))
-                .with_path(path.display().to_string()))
+        serde_yaml::from_str(&contents).map_err(|e| {
+            TemplateError::new(format!("Failed to parse YAML: {}", e))
+                .with_path(path.display().to_string())
+        })
     }
 
     /// Load template data from a JSON file.
     pub fn load_from_json(path: &Path) -> Result<TemplateData, TemplateError> {
-        let contents = std::fs::read_to_string(path)
-            .map_err(|e| TemplateError::new(format!("Failed to read file: {}", e))
-                .with_path(path.display().to_string()))?;
+        let contents = std::fs::read_to_string(path).map_err(|e| {
+            TemplateError::new(format!("Failed to read file: {}", e))
+                .with_path(path.display().to_string())
+        })?;
 
-        serde_json::from_str(&contents)
-            .map_err(|e| TemplateError::new(format!("Failed to parse JSON: {}", e))
-                .with_path(path.display().to_string()))
+        serde_json::from_str(&contents).map_err(|e| {
+            TemplateError::new(format!("Failed to parse JSON: {}", e))
+                .with_path(path.display().to_string())
+        })
     }
 
     /// Load template data from a file (auto-detect format by extension).
     pub fn load_from_file(path: &Path) -> Result<TemplateData, TemplateError> {
-        let extension = path.extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
+        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
         match extension.to_lowercase().as_str() {
             "yaml" | "yml" => Self::load_from_yaml(path),
@@ -234,31 +236,33 @@ impl TemplateLoader {
             _ => Err(TemplateError::new(format!(
                 "Unsupported file extension: {}. Use .yaml, .yml, or .json",
                 extension
-            )).with_path(path.display().to_string()))
+            ))
+            .with_path(path.display().to_string())),
         }
     }
 
     /// Load all template files from a directory.
     pub fn load_from_directory(dir: &Path) -> Result<TemplateData, TemplateError> {
         if !dir.is_dir() {
-            return Err(TemplateError::new("Path is not a directory")
-                .with_path(dir.display().to_string()));
+            return Err(
+                TemplateError::new("Path is not a directory").with_path(dir.display().to_string())
+            );
         }
 
         let mut merged = TemplateData::default();
 
-        let entries = std::fs::read_dir(dir)
-            .map_err(|e| TemplateError::new(format!("Failed to read directory: {}", e))
-                .with_path(dir.display().to_string()))?;
+        let entries = std::fs::read_dir(dir).map_err(|e| {
+            TemplateError::new(format!("Failed to read directory: {}", e))
+                .with_path(dir.display().to_string())
+        })?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| TemplateError::new(format!("Failed to read entry: {}", e)))?;
+            let entry =
+                entry.map_err(|e| TemplateError::new(format!("Failed to read entry: {}", e)))?;
             let path = entry.path();
 
             if path.is_file() {
-                let extension = path.extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or("");
+                let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
                 if matches!(extension.to_lowercase().as_str(), "yaml" | "yml" | "json") {
                     match Self::load_from_file(&path) {
@@ -267,7 +271,11 @@ impl TemplateLoader {
                         }
                         Err(e) => {
                             // Log but continue with other files
-                            eprintln!("Warning: Failed to load template file {}: {}", path.display(), e);
+                            eprintln!(
+                                "Warning: Failed to load template file {}: {}",
+                                path.display(),
+                                e
+                            );
                         }
                     }
                 }
@@ -305,7 +313,11 @@ impl TemplateLoader {
     }
 
     /// Merge two template data sets according to the specified strategy.
-    pub fn merge(base: TemplateData, overlay: TemplateData, strategy: MergeStrategy) -> TemplateData {
+    pub fn merge(
+        base: TemplateData,
+        overlay: TemplateData,
+        strategy: MergeStrategy,
+    ) -> TemplateData {
         match strategy {
             MergeStrategy::Replace => overlay,
             MergeStrategy::Extend => Self::merge_extend(base, overlay),
@@ -316,63 +328,71 @@ impl TemplateLoader {
     fn merge_extend(mut base: TemplateData, overlay: TemplateData) -> TemplateData {
         // Extend cultures
         for (culture, names) in overlay.person_names.cultures {
-            base.person_names.cultures
+            base.person_names
+                .cultures
                 .entry(culture)
-                .or_insert_with(CultureNames::default)
+                .or_default()
                 .extend_from(&names);
         }
 
         // Extend vendor categories
         for (category, names) in overlay.vendor_names.categories {
-            base.vendor_names.categories
+            base.vendor_names
+                .categories
                 .entry(category)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(names);
         }
 
         // Extend customer industries
         for (industry, names) in overlay.customer_names.industries {
-            base.customer_names.industries
+            base.customer_names
+                .industries
                 .entry(industry)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(names);
         }
 
         // Extend material descriptions
         for (mat_type, descs) in overlay.material_descriptions.by_type {
-            base.material_descriptions.by_type
+            base.material_descriptions
+                .by_type
                 .entry(mat_type)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(descs);
         }
 
         // Extend asset descriptions
         for (category, descs) in overlay.asset_descriptions.by_category {
-            base.asset_descriptions.by_category
+            base.asset_descriptions
+                .by_category
                 .entry(category)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(descs);
         }
 
         // Extend line item descriptions
         for (account_type, descs) in overlay.line_item_descriptions.p2p {
-            base.line_item_descriptions.p2p
+            base.line_item_descriptions
+                .p2p
                 .entry(account_type)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(descs);
         }
         for (account_type, descs) in overlay.line_item_descriptions.o2c {
-            base.line_item_descriptions.o2c
+            base.line_item_descriptions
+                .o2c
                 .entry(account_type)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(descs);
         }
 
         // Extend header templates
         for (process, templates) in overlay.header_text_templates.by_process {
-            base.header_text_templates.by_process
+            base.header_text_templates
+                .by_process
                 .entry(process)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(templates);
         }
 
@@ -408,8 +428,10 @@ impl TemplateLoader {
 
 impl CultureNames {
     fn extend_from(&mut self, other: &CultureNames) {
-        self.male_first_names.extend(other.male_first_names.iter().cloned());
-        self.female_first_names.extend(other.female_first_names.iter().cloned());
+        self.male_first_names
+            .extend(other.male_first_names.iter().cloned());
+        self.female_first_names
+            .extend(other.female_first_names.iter().cloned());
         self.last_names.extend(other.last_names.iter().cloned());
     }
 }
@@ -444,16 +466,15 @@ mod tests {
     #[test]
     fn test_merge_extend() {
         let mut base = TemplateData::default();
-        base.vendor_names.categories.insert(
-            "services".to_string(),
-            vec!["Company A".to_string()],
-        );
+        base.vendor_names
+            .categories
+            .insert("services".to_string(), vec!["Company A".to_string()]);
 
         let mut overlay = TemplateData::default();
-        overlay.vendor_names.categories.insert(
-            "services".to_string(),
-            vec!["Company B".to_string()],
-        );
+        overlay
+            .vendor_names
+            .categories
+            .insert("services".to_string(), vec!["Company B".to_string()]);
 
         let merged = TemplateLoader::merge(base, overlay, MergeStrategy::Extend);
         let services = merged.vendor_names.categories.get("services").unwrap();
@@ -465,20 +486,23 @@ mod tests {
     #[test]
     fn test_merge_replace() {
         let mut base = TemplateData::default();
-        base.vendor_names.categories.insert(
-            "services".to_string(),
-            vec!["Company A".to_string()],
-        );
+        base.vendor_names
+            .categories
+            .insert("services".to_string(), vec!["Company A".to_string()]);
 
         let mut overlay = TemplateData::default();
-        overlay.vendor_names.categories.insert(
-            "manufacturing".to_string(),
-            vec!["Company B".to_string()],
-        );
+        overlay
+            .vendor_names
+            .categories
+            .insert("manufacturing".to_string(), vec!["Company B".to_string()]);
 
         let merged = TemplateLoader::merge(base, overlay, MergeStrategy::Replace);
         assert!(merged.vendor_names.categories.get("services").is_none());
-        assert!(merged.vendor_names.categories.get("manufacturing").is_some());
+        assert!(merged
+            .vendor_names
+            .categories
+            .get("manufacturing")
+            .is_some());
     }
 
     #[test]
@@ -509,16 +533,38 @@ mod tests {
             let path = examples_dir.join(file);
             if path.exists() {
                 let result = TemplateLoader::load_from_file(&path);
-                assert!(result.is_ok(), "Failed to load {}: {:?}", file, result.err());
+                assert!(
+                    result.is_ok(),
+                    "Failed to load {}: {:?}",
+                    file,
+                    result.err()
+                );
 
                 let data = result.unwrap();
-                assert!(!data.metadata.name.is_empty(), "{}: metadata.name is empty", file);
-                assert!(data.metadata.region.is_some(), "{}: metadata.region is missing", file);
-                assert!(data.metadata.sector.is_some(), "{}: metadata.sector is missing", file);
+                assert!(
+                    !data.metadata.name.is_empty(),
+                    "{}: metadata.name is empty",
+                    file
+                );
+                assert!(
+                    data.metadata.region.is_some(),
+                    "{}: metadata.region is missing",
+                    file
+                );
+                assert!(
+                    data.metadata.sector.is_some(),
+                    "{}: metadata.sector is missing",
+                    file
+                );
 
                 // Validate the template
                 let errors = TemplateLoader::validate(&data);
-                assert!(errors.is_empty(), "{}: validation errors: {:?}", file, errors);
+                assert!(
+                    errors.is_empty(),
+                    "{}: validation errors: {:?}",
+                    file,
+                    errors
+                );
             }
         }
     }
@@ -538,19 +584,41 @@ mod tests {
         }
 
         let result = TemplateLoader::load_from_directory(&examples_dir);
-        assert!(result.is_ok(), "Failed to load directory: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to load directory: {:?}",
+            result.err()
+        );
 
         let merged = result.unwrap();
 
         // Should have multiple cultures merged
-        assert!(merged.person_names.cultures.len() >= 4,
-            "Expected at least 4 cultures, got {}", merged.person_names.cultures.len());
+        assert!(
+            merged.person_names.cultures.len() >= 4,
+            "Expected at least 4 cultures, got {}",
+            merged.person_names.cultures.len()
+        );
 
         // Check specific cultures exist
-        assert!(merged.person_names.cultures.contains_key("german"), "Missing german culture");
-        assert!(merged.person_names.cultures.contains_key("japanese"), "Missing japanese culture");
-        assert!(merged.person_names.cultures.contains_key("british"), "Missing british culture");
-        assert!(merged.person_names.cultures.contains_key("brazilian"), "Missing brazilian culture");
-        assert!(merged.person_names.cultures.contains_key("indian"), "Missing indian culture");
+        assert!(
+            merged.person_names.cultures.contains_key("german"),
+            "Missing german culture"
+        );
+        assert!(
+            merged.person_names.cultures.contains_key("japanese"),
+            "Missing japanese culture"
+        );
+        assert!(
+            merged.person_names.cultures.contains_key("british"),
+            "Missing british culture"
+        );
+        assert!(
+            merged.person_names.cultures.contains_key("brazilian"),
+            "Missing brazilian culture"
+        );
+        assert!(
+            merged.person_names.cultures.contains_key("indian"),
+            "Missing indian culture"
+        );
     }
 }

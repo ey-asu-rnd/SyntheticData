@@ -123,7 +123,11 @@ impl DeterministicUuidFactory {
     /// Create a factory with a sub-discriminator for additional namespace separation.
     ///
     /// Useful when the same generator type needs multiple independent UUID streams.
-    pub fn with_sub_discriminator(seed: u64, generator_type: GeneratorType, sub_discriminator: u8) -> Self {
+    pub fn with_sub_discriminator(
+        seed: u64,
+        generator_type: GeneratorType,
+        sub_discriminator: u8,
+    ) -> Self {
         Self {
             seed,
             generator_type,
@@ -280,7 +284,9 @@ impl UuidFactoryRegistry {
 
     /// Get the current counter for a generator type.
     pub fn get_counter(&self, generator_type: GeneratorType) -> Option<u64> {
-        self.factories.get(&generator_type).map(|f| f.current_counter())
+        self.factories
+            .get(&generator_type)
+            .map(|f| f.current_counter())
     }
 }
 
@@ -339,7 +345,10 @@ mod tests {
     fn test_thread_safety() {
         use std::sync::Arc;
 
-        let factory = Arc::new(DeterministicUuidFactory::new(12345, GeneratorType::JournalEntry));
+        let factory = Arc::new(DeterministicUuidFactory::new(
+            12345,
+            GeneratorType::JournalEntry,
+        ));
         let mut handles = vec![];
 
         for _ in 0..4 {
@@ -366,8 +375,10 @@ mod tests {
 
     #[test]
     fn test_sub_discriminator() {
-        let factory1 = DeterministicUuidFactory::with_sub_discriminator(12345, GeneratorType::JournalEntry, 0);
-        let factory2 = DeterministicUuidFactory::with_sub_discriminator(12345, GeneratorType::JournalEntry, 1);
+        let factory1 =
+            DeterministicUuidFactory::with_sub_discriminator(12345, GeneratorType::JournalEntry, 0);
+        let factory2 =
+            DeterministicUuidFactory::with_sub_discriminator(12345, GeneratorType::JournalEntry, 1);
 
         // Different sub-discriminators should produce different UUIDs
         let uuid1 = factory1.next();

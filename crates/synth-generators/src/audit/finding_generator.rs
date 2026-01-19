@@ -12,8 +12,8 @@ use rust_decimal::Decimal;
 use chrono::NaiveDate;
 
 use synth_core::models::audit::{
-    Assertion, AuditEngagement, AuditFinding, FindingSeverity, FindingStatus,
-    FindingType, MilestoneStatus, RemediationPlan, RemediationStatus, Workpaper,
+    Assertion, AuditEngagement, AuditFinding, FindingSeverity, FindingStatus, FindingType,
+    MilestoneStatus, RemediationPlan, RemediationStatus, Workpaper,
 };
 
 /// Configuration for finding generation.
@@ -155,12 +155,14 @@ impl FindingGenerator {
         // Set identified by
         let identifier = self.select_team_member(team_members, "senior");
         finding.identified_by = identifier;
-        finding.identified_date = engagement.fieldwork_start + Duration::days(self.rng.gen_range(7..30));
+        finding.identified_date =
+            engagement.fieldwork_start + Duration::days(self.rng.gen_range(7..30));
 
         // Maybe add review
         if self.rng.gen::<f64>() < 0.8 {
             finding.reviewed_by = Some(self.select_team_member(team_members, "manager"));
-            finding.review_date = Some(finding.identified_date + Duration::days(self.rng.gen_range(3..10)));
+            finding.review_date =
+                Some(finding.identified_date + Duration::days(self.rng.gen_range(3..10)));
             finding.status = FindingStatus::PendingReview;
         }
 
@@ -193,9 +195,14 @@ impl FindingGenerator {
 
         if r < self.config.material_weakness_probability {
             FindingType::MaterialWeakness
-        } else if r < self.config.material_weakness_probability + self.config.significant_deficiency_probability {
+        } else if r < self.config.material_weakness_probability
+            + self.config.significant_deficiency_probability
+        {
             FindingType::SignificantDeficiency
-        } else if r < self.config.material_weakness_probability + self.config.significant_deficiency_probability + self.config.misstatement_probability {
+        } else if r < self.config.material_weakness_probability
+            + self.config.significant_deficiency_probability
+            + self.config.misstatement_probability
+        {
             if self.rng.gen::<f64>() < 0.3 {
                 FindingType::MaterialMisstatement
             } else {
@@ -219,27 +226,51 @@ impl FindingGenerator {
         match finding_type {
             FindingType::MaterialWeakness => {
                 let titles = [
-                    ("Inadequate segregation of duties in revenue cycle", "Revenue"),
-                    ("Lack of effective review of journal entries", "General Ledger"),
-                    ("Insufficient IT general controls over financial applications", "IT Controls"),
-                    ("Inadequate controls over financial close process", "Financial Close"),
+                    (
+                        "Inadequate segregation of duties in revenue cycle",
+                        "Revenue",
+                    ),
+                    (
+                        "Lack of effective review of journal entries",
+                        "General Ledger",
+                    ),
+                    (
+                        "Insufficient IT general controls over financial applications",
+                        "IT Controls",
+                    ),
+                    (
+                        "Inadequate controls over financial close process",
+                        "Financial Close",
+                    ),
                 ];
                 let idx = self.rng.gen_range(0..titles.len());
                 (titles[idx].0.into(), titles[idx].1.into())
             }
             FindingType::SignificantDeficiency => {
                 let titles = [
-                    ("Inadequate documentation of account reconciliations", "Accounts Receivable"),
-                    ("Untimely review of vendor master file changes", "Accounts Payable"),
+                    (
+                        "Inadequate documentation of account reconciliations",
+                        "Accounts Receivable",
+                    ),
+                    (
+                        "Untimely review of vendor master file changes",
+                        "Accounts Payable",
+                    ),
                     ("Incomplete fixed asset physical inventory", "Fixed Assets"),
-                    ("Lack of formal approval for manual journal entries", "General Ledger"),
+                    (
+                        "Lack of formal approval for manual journal entries",
+                        "General Ledger",
+                    ),
                 ];
                 let idx = self.rng.gen_range(0..titles.len());
                 (titles[idx].0.into(), titles[idx].1.into())
             }
             FindingType::ControlDeficiency => {
                 let titles = [
-                    ("Missing secondary approval on expense reports", "Operating Expenses"),
+                    (
+                        "Missing secondary approval on expense reports",
+                        "Operating Expenses",
+                    ),
                     ("Incomplete access review documentation", "IT Controls"),
                     ("Delayed bank reconciliation preparation", "Cash"),
                     ("Inconsistent inventory count procedures", "Inventory"),
@@ -251,7 +282,10 @@ impl FindingGenerator {
                 let titles = [
                     ("Revenue cutoff error", "Revenue"),
                     ("Inventory valuation adjustment", "Inventory"),
-                    ("Accounts receivable allowance understatement", "Accounts Receivable"),
+                    (
+                        "Accounts receivable allowance understatement",
+                        "Accounts Receivable",
+                    ),
                     ("Accrued liabilities understatement", "Accrued Liabilities"),
                     ("Fixed asset depreciation calculation error", "Fixed Assets"),
                 ];
@@ -279,9 +313,18 @@ impl FindingGenerator {
             }
             FindingType::OtherMatter | FindingType::ProcessImprovement => {
                 let titles = [
-                    ("Opportunity to improve month-end close efficiency", "Financial Close"),
-                    ("Enhancement to vendor onboarding process", "Accounts Payable"),
-                    ("Automation opportunity in reconciliation process", "General Ledger"),
+                    (
+                        "Opportunity to improve month-end close efficiency",
+                        "Financial Close",
+                    ),
+                    (
+                        "Enhancement to vendor onboarding process",
+                        "Accounts Payable",
+                    ),
+                    (
+                        "Automation opportunity in reconciliation process",
+                        "General Ledger",
+                    ),
                 ];
                 let idx = self.rng.gen_range(0..titles.len());
                 (titles[idx].0.into(), titles[idx].1.into())
@@ -290,9 +333,15 @@ impl FindingGenerator {
     }
 
     /// Generate condition, criteria, cause, effect.
-    fn generate_ccce(&mut self, finding_type: FindingType, account: &str) -> (String, String, String, String) {
+    fn generate_ccce(
+        &mut self,
+        finding_type: FindingType,
+        account: &str,
+    ) -> (String, String, String, String) {
         match finding_type {
-            FindingType::MaterialWeakness | FindingType::SignificantDeficiency | FindingType::ControlDeficiency => {
+            FindingType::MaterialWeakness
+            | FindingType::SignificantDeficiency
+            | FindingType::ControlDeficiency => {
                 let condition = format!(
                     "During our testing of {} controls, we noted that the control was not operating effectively. \
                     Specifically, {} of {} items tested did not have evidence of the required control activity.",
@@ -314,18 +363,25 @@ impl FindingGenerator {
                 (condition, criteria, cause, effect)
             }
             FindingType::MaterialMisstatement | FindingType::ImmaterialMisstatement => {
-                let amount = self.rng.gen_range(self.config.misstatement_range.0..self.config.misstatement_range.1);
+                let amount = self
+                    .rng
+                    .gen_range(self.config.misstatement_range.0..self.config.misstatement_range.1);
                 let condition = format!(
                     "Our testing identified a misstatement in {} of approximately ${}. \
                     The error resulted from incorrect application of accounting standards.",
                     account, amount
                 );
                 let criteria = "US GAAP and company accounting policy require accurate recording of all transactions.".into();
-                let cause = "Manual calculation error combined with inadequate review procedures.".into();
+                let cause =
+                    "Manual calculation error combined with inadequate review procedures.".into();
                 let effect = format!(
                     "The {} balance was {} by ${}, which {}.",
                     account,
-                    if self.rng.gen::<bool>() { "overstated" } else { "understated" },
+                    if self.rng.gen::<bool>() {
+                        "overstated"
+                    } else {
+                        "understated"
+                    },
                     amount,
                     if finding_type == FindingType::MaterialMisstatement {
                         "represents a material misstatement"
@@ -340,16 +396,27 @@ impl FindingGenerator {
                     "The Company did not comply with {} regulatory requirements during the period under audit.",
                     account
                 );
-                let criteria = "Applicable laws and regulations require timely and accurate compliance.".into();
+                let criteria =
+                    "Applicable laws and regulations require timely and accurate compliance."
+                        .into();
                 let cause = "Lack of monitoring procedures to track compliance deadlines.".into();
-                let effect = "The Company may be subject to penalties or regulatory scrutiny.".into();
+                let effect =
+                    "The Company may be subject to penalties or regulatory scrutiny.".into();
                 (condition, criteria, cause, effect)
             }
             _ => {
-                let condition = format!("We identified an opportunity to enhance the {} process.", account);
-                let criteria = "Industry best practices suggest continuous improvement in control processes.".into();
-                let cause = "Current processes have not been updated to reflect operational changes.".into();
-                let effect = "Operational efficiency could be improved with process enhancements.".into();
+                let condition = format!(
+                    "We identified an opportunity to enhance the {} process.",
+                    account
+                );
+                let criteria =
+                    "Industry best practices suggest continuous improvement in control processes."
+                        .into();
+                let cause =
+                    "Current processes have not been updated to reflect operational changes."
+                        .into();
+                let effect =
+                    "Operational efficiency could be improved with process enhancements.".into();
                 (condition, criteria, cause, effect)
             }
         }
@@ -396,7 +463,11 @@ impl FindingGenerator {
     }
 
     /// Determine severity based on finding type and other factors.
-    fn determine_severity(&mut self, finding_type: FindingType, _finding: &AuditFinding) -> FindingSeverity {
+    fn determine_severity(
+        &mut self,
+        finding_type: FindingType,
+        _finding: &AuditFinding,
+    ) -> FindingSeverity {
         let base_severity = finding_type.default_severity();
 
         // Maybe adjust severity
@@ -434,9 +505,12 @@ impl FindingGenerator {
     }
 
     /// Generate misstatement amounts.
-    fn generate_misstatement_amounts(&mut self) -> (Option<Decimal>, Option<Decimal>, Option<Decimal>) {
+    fn generate_misstatement_amounts(
+        &mut self,
+    ) -> (Option<Decimal>, Option<Decimal>, Option<Decimal>) {
         let factual = Decimal::new(
-            self.rng.gen_range(self.config.misstatement_range.0..self.config.misstatement_range.1),
+            self.rng
+                .gen_range(self.config.misstatement_range.0..self.config.misstatement_range.1),
             0,
         );
 
@@ -472,7 +546,9 @@ impl FindingGenerator {
                     assertions.push(Assertion::ValuationAndAllocation);
                 }
             }
-            FindingType::MaterialWeakness | FindingType::SignificantDeficiency | FindingType::ControlDeficiency => {
+            FindingType::MaterialWeakness
+            | FindingType::SignificantDeficiency
+            | FindingType::ControlDeficiency => {
                 let possible = [
                     Assertion::Occurrence,
                     Assertion::Completeness,
@@ -508,7 +584,10 @@ impl FindingGenerator {
         } else if account_lower.contains("fixed asset") {
             vec!["Capital Asset Management".into()]
         } else if account_lower.contains("it") {
-            vec!["IT General Controls".into(), "IT Application Controls".into()]
+            vec![
+                "IT General Controls".into(),
+                "IT Application Controls".into(),
+            ]
         } else if account_lower.contains("payroll") {
             vec!["Hire to Retire".into(), "Payroll Processing".into()]
         } else {
@@ -523,26 +602,32 @@ impl FindingGenerator {
                 FindingType::MaterialWeakness | FindingType::SignificantDeficiency => {
                     "Management agrees with the finding and has initiated a remediation plan to \
                     address the identified control deficiency. We expect to complete remediation \
-                    prior to the next audit cycle.".into()
+                    prior to the next audit cycle."
+                        .into()
                 }
                 FindingType::MaterialMisstatement | FindingType::ImmaterialMisstatement => {
                     "Management agrees with the proposed adjustment and will record the entry. \
-                    We have implemented additional review procedures to prevent similar errors.".into()
+                    We have implemented additional review procedures to prevent similar errors."
+                        .into()
                 }
-                _ => {
-                    "Management agrees with the observation and will implement the recommended \
-                    improvements as resources permit.".into()
-                }
+                _ => "Management agrees with the observation and will implement the recommended \
+                    improvements as resources permit."
+                    .into(),
             }
         } else {
             "Management respectfully disagrees with the finding. We believe that existing \
             controls are adequate and operating effectively. We will provide additional \
-            documentation to support our position.".into()
+            documentation to support our position."
+                .into()
         }
     }
 
     /// Generate remediation plan.
-    fn generate_remediation_plan(&mut self, finding: &AuditFinding, account: &str) -> RemediationPlan {
+    fn generate_remediation_plan(
+        &mut self,
+        finding: &AuditFinding,
+        account: &str,
+    ) -> RemediationPlan {
         let target_date = finding.identified_date + Duration::days(self.rng.gen_range(60..180));
 
         let description = format!(
@@ -568,13 +653,23 @@ impl FindingGenerator {
             target_date,
         );
 
-        plan.validation_approach = "Auditor will test remediated controls during the next audit cycle.".into();
+        plan.validation_approach =
+            "Auditor will test remediated controls during the next audit cycle.".into();
 
         // Add milestones
         let milestone_dates = [
-            (finding.identified_date + Duration::days(30), "Complete root cause analysis"),
-            (finding.identified_date + Duration::days(60), "Document updated control procedures"),
-            (finding.identified_date + Duration::days(90), "Implement control changes"),
+            (
+                finding.identified_date + Duration::days(30),
+                "Complete root cause analysis",
+            ),
+            (
+                finding.identified_date + Duration::days(60),
+                "Document updated control procedures",
+            ),
+            (
+                finding.identified_date + Duration::days(90),
+                "Implement control changes",
+            ),
             (target_date, "Complete testing and validation"),
         ];
 
@@ -715,10 +810,14 @@ mod tests {
         let mut generator = FindingGenerator::with_config(42, config);
         let engagement = create_test_engagement();
 
-        let findings = generator.generate_findings_for_engagement(&engagement, &[], &["STAFF001".into()]);
+        let findings =
+            generator.generate_findings_for_engagement(&engagement, &[], &["STAFF001".into()]);
 
         // At least some findings should have remediation plans
-        let with_plans = findings.iter().filter(|f| f.remediation_plan.is_some()).count();
+        let with_plans = findings
+            .iter()
+            .filter(|f| f.remediation_plan.is_some())
+            .count();
         assert!(with_plans > 0);
 
         for finding in findings.iter().filter(|f| f.remediation_plan.is_some()) {

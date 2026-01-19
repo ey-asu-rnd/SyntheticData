@@ -31,7 +31,7 @@ impl Default for ThreeWayMatchConfig {
             quantity_tolerance: dec!(0.02),        // 2% quantity variance allowed
             absolute_amount_tolerance: dec!(0.01), // $0.01 absolute tolerance
             allow_over_delivery: true,
-            max_over_delivery_pct: dec!(0.10),     // 10% over-delivery allowed
+            max_over_delivery_pct: dec!(0.10), // 10% over-delivery allowed
         }
     }
 }
@@ -180,7 +180,10 @@ impl ThreeWayMatcher {
             let po_price = po_item.base.unit_price;
 
             // Check GR quantity vs PO quantity
-            let gr_qty = gr_quantities.get(&po_line).copied().unwrap_or(Decimal::ZERO);
+            let gr_qty = gr_quantities
+                .get(&po_line)
+                .copied()
+                .unwrap_or(Decimal::ZERO);
             let qty_variance = gr_qty - po_qty;
             let qty_variance_pct = if po_qty > Decimal::ZERO {
                 (qty_variance.abs() / po_qty) * dec!(100)
@@ -208,31 +211,27 @@ impl ThreeWayMatcher {
             }
 
             // Check over-delivery
-            if qty_variance > Decimal::ZERO {
-                if !self.config.allow_over_delivery
-                    || qty_variance_pct > self.config.max_over_delivery_pct * dec!(100)
-                {
-                    all_quantity_matched = false;
-                    result = result.with_variance(MatchVariance {
-                        line_number: po_line,
-                        variance_type: VarianceType::QuantityPoGr,
-                        expected: po_qty,
-                        actual: gr_qty,
-                        variance: qty_variance,
-                        variance_pct: qty_variance_pct,
-                        description: format!(
-                            "Over-delivery: received {} vs ordered {}",
-                            gr_qty, po_qty
-                        ),
-                    });
-                }
+            if qty_variance > Decimal::ZERO
+                && (!self.config.allow_over_delivery
+                    || qty_variance_pct > self.config.max_over_delivery_pct * dec!(100))
+            {
+                all_quantity_matched = false;
+                result = result.with_variance(MatchVariance {
+                    line_number: po_line,
+                    variance_type: VarianceType::QuantityPoGr,
+                    expected: po_qty,
+                    actual: gr_qty,
+                    variance: qty_variance,
+                    variance_pct: qty_variance_pct,
+                    description: format!(
+                        "Over-delivery: received {} vs ordered {}",
+                        gr_qty, po_qty
+                    ),
+                });
             }
 
             // Find matching invoice line
-            let invoice_item = invoice
-                .items
-                .iter()
-                .find(|i| i.po_item == Some(po_line));
+            let invoice_item = invoice.items.iter().find(|i| i.po_item == Some(po_line));
 
             if let Some(inv_item) = invoice_item {
                 // Check price variance

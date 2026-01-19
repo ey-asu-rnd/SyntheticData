@@ -25,3 +25,5 @@ crates/synth-ui/node_modules/
 crates/synth-ui/build/
 crates/synth-ui/.svelte-kit/
 crates/synth-ui/package-lock.json
+crates/synth-ui/playwright-report/
+crates/synth-ui/test-results/

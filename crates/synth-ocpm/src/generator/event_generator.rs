@@ -171,11 +171,7 @@ impl OcpmEventGenerator {
     }
 
     /// Add an attribute to an event.
-    pub fn add_event_attribute(
-        event: &mut OcpmEvent,
-        key: &str,
-        value: ObjectAttributeValue,
-    ) {
+    pub fn add_event_attribute(event: &mut OcpmEvent, key: &str, value: ObjectAttributeValue) {
         event.attributes.insert(key.into(), value);
     }
 
@@ -189,15 +185,17 @@ impl OcpmEventGenerator {
         primary_object_type: &str,
         company_code: &str,
     ) -> CaseTrace {
-        let activity_sequence: Vec<String> = events
-            .iter()
-            .map(|e| e.activity_id.clone())
-            .collect();
+        let activity_sequence: Vec<String> = events.iter().map(|e| e.activity_id.clone()).collect();
 
         let start_time = events.first().map(|e| e.timestamp).unwrap_or_else(Utc::now);
         let end_time = events.last().map(|e| e.timestamp);
 
-        let mut trace = CaseTrace::new(business_process, primary_object_id, primary_object_type, company_code);
+        let mut trace = CaseTrace::new(
+            business_process,
+            primary_object_id,
+            primary_object_type,
+            company_code,
+        );
         trace.activity_sequence = activity_sequence;
         trace.event_ids = events.iter().map(|e| e.event_id).collect();
         trace.start_time = start_time;
@@ -206,7 +204,11 @@ impl OcpmEventGenerator {
     }
 
     /// Select a resource for an activity.
-    pub fn select_resource(&mut self, activity: &ActivityType, available_users: &[String]) -> String {
+    pub fn select_resource(
+        &mut self,
+        activity: &ActivityType,
+        available_users: &[String],
+    ) -> String {
         if activity.is_automated {
             "SYSTEM".into()
         } else if available_users.is_empty() {
@@ -228,7 +230,11 @@ impl OcpmEventGenerator {
     }
 
     /// Generate random delay between activities (in minutes).
-    pub fn generate_inter_activity_delay(&mut self, min_minutes: i64, max_minutes: i64) -> Duration {
+    pub fn generate_inter_activity_delay(
+        &mut self,
+        min_minutes: i64,
+        max_minutes: i64,
+    ) -> Duration {
         let minutes = self.rng.gen_range(min_minutes..=max_minutes);
         Duration::minutes(minutes)
     }
@@ -329,13 +335,7 @@ mod tests {
         let activity = ActivityType::create_po();
         let case_id = generator.new_case_id();
 
-        let event = generator.create_event(
-            &activity,
-            Utc::now(),
-            "user001",
-            "1000",
-            case_id,
-        );
+        let event = generator.create_event(&activity, Utc::now(), "user001", "1000", case_id);
 
         assert_eq!(event.activity_id, "create_po");
         assert_eq!(event.case_id, Some(case_id));

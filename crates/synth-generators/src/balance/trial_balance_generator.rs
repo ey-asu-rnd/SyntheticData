@@ -167,7 +167,7 @@ impl TrialBalanceGenerator {
             total_credits,
             is_balanced: out_of_balance.abs() < dec!(0.01),
             out_of_balance,
-            is_equation_valid: false, // Will be calculated below
+            is_equation_valid: false,           // Will be calculated below
             equation_difference: Decimal::ZERO, // Will be calculated below
             category_summary,
             created_at: chrono::Utc::now().naive_utc(),
@@ -385,7 +385,7 @@ impl TrialBalanceGenerator {
             total_credits,
             is_balanced: out_of_balance.abs() < dec!(0.01),
             out_of_balance,
-            is_equation_valid: false, // Will be calculated below
+            is_equation_valid: false,           // Will be calculated below
             equation_difference: Decimal::ZERO, // Will be calculated below
             category_summary,
             created_at: chrono::Utc::now().naive_utc(),

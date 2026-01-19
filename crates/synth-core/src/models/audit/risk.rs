@@ -92,7 +92,10 @@ impl RiskAssessment {
         let now = Utc::now();
         Self {
             risk_id: Uuid::new_v4(),
-            risk_ref: format!("RISK-{}", Uuid::new_v4().simple().to_string()[..8].to_uppercase()),
+            risk_ref: format!(
+                "RISK-{}",
+                Uuid::new_v4().simple().to_string()[..8].to_uppercase()
+            ),
             engagement_id,
             risk_category,
             account_or_process: account_or_process.into(),
@@ -129,11 +132,7 @@ impl RiskAssessment {
     }
 
     /// Set risk levels.
-    pub fn with_risk_levels(
-        mut self,
-        inherent: RiskLevel,
-        control: RiskLevel,
-    ) -> Self {
+    pub fn with_risk_levels(mut self, inherent: RiskLevel, control: RiskLevel) -> Self {
         self.inherent_risk = inherent;
         self.control_risk = control;
         self.risk_of_material_misstatement = self.calculate_romm();
@@ -186,7 +185,10 @@ impl RiskAssessment {
     /// Check if this risk requires special audit consideration.
     pub fn requires_special_consideration(&self) -> bool {
         self.is_significant_risk
-            || matches!(self.risk_of_material_misstatement, RiskLevel::High | RiskLevel::Significant)
+            || matches!(
+                self.risk_of_material_misstatement,
+                RiskLevel::High | RiskLevel::Significant
+            )
             || !self.fraud_risk_factors.is_empty()
     }
 }
@@ -445,7 +447,10 @@ mod tests {
         .with_risk_levels(RiskLevel::High, RiskLevel::Medium);
 
         assert!(risk.inherent_risk == RiskLevel::High);
-        assert!(risk.requires_special_consideration() || risk.risk_of_material_misstatement != RiskLevel::Low);
+        assert!(
+            risk.requires_special_consideration()
+                || risk.risk_of_material_misstatement != RiskLevel::Low
+        );
     }
 
     #[test]

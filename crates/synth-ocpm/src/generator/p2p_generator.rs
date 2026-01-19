@@ -123,25 +123,49 @@ impl OcpmEventGenerator {
         // Activity: Create PO
         let create_po = ActivityType::create_po();
         let resource = self.select_resource(&create_po, available_users);
-        let mut event = self.create_event(&create_po, current_time, &resource, &documents.company_code, case_id);
+        let mut event = self.create_event(
+            &create_po,
+            current_time,
+            &resource,
+            &documents.company_code,
+            case_id,
+        );
         event = event
-            .with_object(EventObjectRef::created(po_object.object_id, &po_type.type_id)
-                .with_external_id(&documents.po_number))
+            .with_object(
+                EventObjectRef::created(po_object.object_id, &po_type.type_id)
+                    .with_external_id(&documents.po_number),
+            )
             .with_document_ref(&documents.po_number);
-        Self::add_event_attribute(&mut event, "amount", ObjectAttributeValue::Decimal(documents.amount));
-        Self::add_event_attribute(&mut event, "vendor_id", ObjectAttributeValue::String(documents.vendor_id.clone()));
+        Self::add_event_attribute(
+            &mut event,
+            "amount",
+            ObjectAttributeValue::Decimal(documents.amount),
+        );
+        Self::add_event_attribute(
+            &mut event,
+            "vendor_id",
+            ObjectAttributeValue::String(documents.vendor_id.clone()),
+        );
         events.push(event);
 
         // Activity: Approve PO
         current_time = self.calculate_event_time(current_time, &create_po);
-        current_time = current_time + self.generate_inter_activity_delay(30, 480); // 30 min to 8 hours
+        current_time += self.generate_inter_activity_delay(30, 480); // 30 min to 8 hours
 
         let approve_po = ActivityType::approve_po();
         let resource = self.select_resource(&approve_po, available_users);
-        let mut event = self.create_event(&approve_po, current_time, &resource, &documents.company_code, case_id);
+        let mut event = self.create_event(
+            &approve_po,
+            current_time,
+            &resource,
+            &documents.company_code,
+            case_id,
+        );
         event = event
-            .with_object(EventObjectRef::updated(po_object.object_id, &po_type.type_id)
-                .with_external_id(&documents.po_number))
+            .with_object(
+                EventObjectRef::updated(po_object.object_id, &po_type.type_id)
+                    .with_external_id(&documents.po_number),
+            )
             .with_document_ref(&documents.po_number);
         events.push(event);
 
@@ -150,10 +174,18 @@ impl OcpmEventGenerator {
 
         let release_po = ActivityType::release_po();
         let resource = self.select_resource(&release_po, available_users);
-        let mut event = self.create_event(&release_po, current_time, &resource, &documents.company_code, case_id);
+        let mut event = self.create_event(
+            &release_po,
+            current_time,
+            &resource,
+            &documents.company_code,
+            case_id,
+        );
         event = event
-            .with_object(EventObjectRef::updated(po_object.object_id, &po_type.type_id)
-                .with_external_id(&documents.po_number))
+            .with_object(
+                EventObjectRef::updated(po_object.object_id, &po_type.type_id)
+                    .with_external_id(&documents.po_number),
+            )
             .with_document_ref(&documents.po_number);
         events.push(event);
 
@@ -178,15 +210,11 @@ impl OcpmEventGenerator {
 
         // Activity: Create GR
         current_time = self.calculate_event_time(current_time, &release_po);
-        current_time = current_time + self.generate_inter_activity_delay(1440, 10080); // 1-7 days
+        current_time += self.generate_inter_activity_delay(1440, 10080); // 1-7 days
 
         if let Some(gr_number) = &documents.gr_number {
-            let gr_object = self.create_object(
-                &gr_type,
-                gr_number,
-                &documents.company_code,
-                current_time,
-            );
+            let gr_object =
+                self.create_object(&gr_type, gr_number, &documents.company_code, current_time);
             objects.push(gr_object.clone());
 
             // Add relationship: GR references PO
@@ -200,12 +228,22 @@ impl OcpmEventGenerator {
 
             let create_gr = ActivityType::create_gr();
             let resource = self.select_resource(&create_gr, available_users);
-            let mut event = self.create_event(&create_gr, current_time, &resource, &documents.company_code, case_id);
+            let mut event = self.create_event(
+                &create_gr,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
             event = event
-                .with_object(EventObjectRef::created(gr_object.object_id, &gr_type.type_id)
-                    .with_external_id(gr_number))
-                .with_object(EventObjectRef::updated(po_object.object_id, &po_type.type_id)
-                    .with_external_id(&documents.po_number))
+                .with_object(
+                    EventObjectRef::created(gr_object.object_id, &gr_type.type_id)
+                        .with_external_id(gr_number),
+                )
+                .with_object(
+                    EventObjectRef::updated(po_object.object_id, &po_type.type_id)
+                        .with_external_id(&documents.po_number),
+                )
                 .with_document_ref(gr_number);
             events.push(event);
 
@@ -214,17 +252,25 @@ impl OcpmEventGenerator {
 
             let post_gr = ActivityType::post_gr();
             let resource = self.select_resource(&post_gr, available_users);
-            let mut event = self.create_event(&post_gr, current_time, &resource, &documents.company_code, case_id);
+            let mut event = self.create_event(
+                &post_gr,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
             event = event
-                .with_object(EventObjectRef::updated(gr_object.object_id, &gr_type.type_id)
-                    .with_external_id(gr_number))
+                .with_object(
+                    EventObjectRef::updated(gr_object.object_id, &gr_type.type_id)
+                        .with_external_id(gr_number),
+                )
                 .with_document_ref(gr_number);
             events.push(event);
         }
 
         // Activity: Receive Invoice
         current_time = self.calculate_event_time(current_time, &ActivityType::post_gr());
-        current_time = current_time + self.generate_inter_activity_delay(1440, 20160); // 1-14 days
+        current_time += self.generate_inter_activity_delay(1440, 20160); // 1-14 days
 
         if let Some(invoice_number) = &documents.invoice_number {
             let invoice_object = self.create_object(
@@ -246,34 +292,62 @@ impl OcpmEventGenerator {
 
             let receive_invoice = ActivityType::receive_invoice();
             let resource = self.select_resource(&receive_invoice, available_users);
-            let mut event = self.create_event(&receive_invoice, current_time, &resource, &documents.company_code, case_id);
+            let mut event = self.create_event(
+                &receive_invoice,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
             event = event
-                .with_object(EventObjectRef::created(invoice_object.object_id, &invoice_type.type_id)
-                    .with_external_id(invoice_number))
+                .with_object(
+                    EventObjectRef::created(invoice_object.object_id, &invoice_type.type_id)
+                        .with_external_id(invoice_number),
+                )
                 .with_document_ref(invoice_number);
-            Self::add_event_attribute(&mut event, "invoice_amount", ObjectAttributeValue::Decimal(documents.amount));
+            Self::add_event_attribute(
+                &mut event,
+                "invoice_amount",
+                ObjectAttributeValue::Decimal(documents.amount),
+            );
             events.push(event);
 
             // Skip verify for exception paths sometimes
-            if !matches!(variant_type, VariantType::ExceptionPath) || !self.should_skip_activity(0.3) {
+            if !matches!(variant_type, VariantType::ExceptionPath)
+                || !self.should_skip_activity(0.3)
+            {
                 // Activity: Verify Invoice (3-way match)
                 current_time = self.calculate_event_time(current_time, &receive_invoice);
-                current_time = current_time + self.generate_inter_activity_delay(60, 480);
+                current_time += self.generate_inter_activity_delay(60, 480);
 
                 let verify_invoice = ActivityType::verify_invoice();
                 let resource = self.select_resource(&verify_invoice, available_users);
-                let mut event = self.create_event(&verify_invoice, current_time, &resource, &documents.company_code, case_id);
+                let mut event = self.create_event(
+                    &verify_invoice,
+                    current_time,
+                    &resource,
+                    &documents.company_code,
+                    case_id,
+                );
                 event = event
-                    .with_object(EventObjectRef::updated(invoice_object.object_id, &invoice_type.type_id)
-                        .with_external_id(invoice_number))
-                    .with_object(EventObjectRef::read(po_object.object_id, &po_type.type_id)
-                        .with_external_id(&documents.po_number));
+                    .with_object(
+                        EventObjectRef::updated(invoice_object.object_id, &invoice_type.type_id)
+                            .with_external_id(invoice_number),
+                    )
+                    .with_object(
+                        EventObjectRef::read(po_object.object_id, &po_type.type_id)
+                            .with_external_id(&documents.po_number),
+                    );
 
                 if let Some(gr_id) = documents.gr_id {
                     event = event.with_object(EventObjectRef::read(gr_id, &gr_type.type_id));
                 }
 
-                Self::add_event_attribute(&mut event, "match_result", ObjectAttributeValue::String("matched".into()));
+                Self::add_event_attribute(
+                    &mut event,
+                    "match_result",
+                    ObjectAttributeValue::String("matched".into()),
+                );
                 events.push(event);
             }
 
@@ -282,30 +356,54 @@ impl OcpmEventGenerator {
 
             let post_invoice = ActivityType::post_invoice();
             let resource = self.select_resource(&post_invoice, available_users);
-            let mut event = self.create_event(&post_invoice, current_time, &resource, &documents.company_code, case_id);
+            let mut event = self.create_event(
+                &post_invoice,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
             event = event
-                .with_object(EventObjectRef::updated(invoice_object.object_id, &invoice_type.type_id)
-                    .with_external_id(invoice_number))
-                .with_object(EventObjectRef::updated(po_object.object_id, &po_type.type_id)
-                    .with_external_id(&documents.po_number))
+                .with_object(
+                    EventObjectRef::updated(invoice_object.object_id, &invoice_type.type_id)
+                        .with_external_id(invoice_number),
+                )
+                .with_object(
+                    EventObjectRef::updated(po_object.object_id, &po_type.type_id)
+                        .with_external_id(&documents.po_number),
+                )
                 .with_document_ref(invoice_number);
             events.push(event);
 
             // Activity: Execute Payment
             if documents.payment_number.is_some() {
                 current_time = self.calculate_event_time(current_time, &post_invoice);
-                current_time = current_time + self.generate_inter_activity_delay(1440, 43200); // 1-30 days (payment terms)
+                current_time += self.generate_inter_activity_delay(1440, 43200); // 1-30 days (payment terms)
 
                 let execute_payment = ActivityType::execute_payment();
                 let resource = self.select_resource(&execute_payment, available_users);
-                let mut event = self.create_event(&execute_payment, current_time, &resource, &documents.company_code, case_id);
+                let mut event = self.create_event(
+                    &execute_payment,
+                    current_time,
+                    &resource,
+                    &documents.company_code,
+                    case_id,
+                );
                 event = event
-                    .with_object(EventObjectRef::consumed(invoice_object.object_id, &invoice_type.type_id)
-                        .with_external_id(invoice_number))
-                    .with_object(EventObjectRef::consumed(po_object.object_id, &po_type.type_id)
-                        .with_external_id(&documents.po_number))
+                    .with_object(
+                        EventObjectRef::consumed(invoice_object.object_id, &invoice_type.type_id)
+                            .with_external_id(invoice_number),
+                    )
+                    .with_object(
+                        EventObjectRef::consumed(po_object.object_id, &po_type.type_id)
+                            .with_external_id(&documents.po_number),
+                    )
                     .with_document_ref(documents.payment_number.as_deref().unwrap_or(""));
-                Self::add_event_attribute(&mut event, "payment_amount", ObjectAttributeValue::Decimal(documents.amount));
+                Self::add_event_attribute(
+                    &mut event,
+                    "payment_amount",
+                    ObjectAttributeValue::Decimal(documents.amount),
+                );
                 events.push(event);
             }
         }
@@ -374,15 +472,10 @@ mod tests {
             },
         );
 
-        let documents = P2pDocuments::new(
-            "PO-000002",
-            "V000001",
-            "1000",
-            Decimal::new(5000, 0),
-            "USD",
-        )
-        .with_goods_receipt("GR-000002")
-        .with_invoice("INV-000002");
+        let documents =
+            P2pDocuments::new("PO-000002", "V000001", "1000", Decimal::new(5000, 0), "USD")
+                .with_goods_receipt("GR-000002")
+                .with_invoice("INV-000002");
 
         let result = generator.generate_p2p_case(&documents, Utc::now(), &[]);
 

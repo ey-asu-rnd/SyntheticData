@@ -9,8 +9,8 @@ use rand_chacha::ChaCha8Rng;
 
 use synth_core::models::audit::{
     AlternativeEvaluation, AuditEngagement, ConsultationRecord, InformationItem,
-    InformationReliability, InformationWeight, JudgmentStatus, JudgmentType,
-    ProfessionalJudgment, RiskLevel, SkepticismDocumentation,
+    InformationReliability, InformationWeight, JudgmentStatus, JudgmentType, ProfessionalJudgment,
+    RiskLevel, SkepticismDocumentation,
 };
 
 /// Configuration for judgment generation.
@@ -103,7 +103,8 @@ impl JudgmentGenerator {
         let judgment_type = self.select_judgment_type();
         let subject = self.generate_subject(judgment_type);
 
-        let mut judgment = ProfessionalJudgment::new(engagement.engagement_id, judgment_type, &subject);
+        let mut judgment =
+            ProfessionalJudgment::new(engagement.engagement_id, judgment_type, &subject);
 
         judgment.judgment_ref = format!("JDG-{}-{:03}", self.fiscal_year, self.judgment_counter);
 
@@ -121,9 +122,9 @@ impl JudgmentGenerator {
         }
 
         // Add alternative evaluations
-        let alt_count = self.rng.gen_range(
-            self.config.alternatives_range.0..=self.config.alternatives_range.1,
-        );
+        let alt_count = self
+            .rng
+            .gen_range(self.config.alternatives_range.0..=self.config.alternatives_range.1);
         let alternatives = self.generate_alternatives(judgment_type, alt_count);
         for alt in alternatives {
             judgment.add_alternative(alt);
@@ -159,7 +160,9 @@ impl JudgmentGenerator {
         }
 
         // Maybe add consultation
-        if judgment.consultation_required || self.rng.gen::<f64>() < self.config.consultation_probability {
+        if judgment.consultation_required
+            || self.rng.gen::<f64>() < self.config.consultation_probability
+        {
             let consultation = self.generate_consultation(judgment_type, preparer_date);
             judgment.add_consultation(consultation);
         }
@@ -190,7 +193,10 @@ impl JudgmentGenerator {
             "Overall Audit Materiality",
         );
 
-        judgment.judgment_ref = format!("JDG-{}-{:03}", engagement.fiscal_year, self.judgment_counter);
+        judgment.judgment_ref = format!(
+            "JDG-{}-{:03}",
+            engagement.fiscal_year, self.judgment_counter
+        );
 
         judgment = judgment.with_issue(
             "Determination of overall materiality, performance materiality, and clearly trivial \
@@ -198,33 +204,45 @@ impl JudgmentGenerator {
         );
 
         // Add information items
-        judgment.add_information(InformationItem::new(
-            "Prior year audited financial statements",
-            "Audited financial statements",
-            InformationReliability::High,
-            "Establishes baseline for materiality calculation",
-        ).with_weight(InformationWeight::High));
+        judgment.add_information(
+            InformationItem::new(
+                "Prior year audited financial statements",
+                "Audited financial statements",
+                InformationReliability::High,
+                "Establishes baseline for materiality calculation",
+            )
+            .with_weight(InformationWeight::High),
+        );
 
-        judgment.add_information(InformationItem::new(
-            "Current year budget and forecasts",
-            "Management-prepared projections",
-            InformationReliability::Medium,
-            "Provides expectation for current year metrics",
-        ).with_weight(InformationWeight::Moderate));
+        judgment.add_information(
+            InformationItem::new(
+                "Current year budget and forecasts",
+                "Management-prepared projections",
+                InformationReliability::Medium,
+                "Provides expectation for current year metrics",
+            )
+            .with_weight(InformationWeight::Moderate),
+        );
 
-        judgment.add_information(InformationItem::new(
-            "Industry benchmarks for materiality",
-            "Firm guidance and industry data",
-            InformationReliability::High,
-            "Supports selection of appropriate percentage",
-        ).with_weight(InformationWeight::High));
+        judgment.add_information(
+            InformationItem::new(
+                "Industry benchmarks for materiality",
+                "Firm guidance and industry data",
+                InformationReliability::High,
+                "Supports selection of appropriate percentage",
+            )
+            .with_weight(InformationWeight::High),
+        );
 
-        judgment.add_information(InformationItem::new(
-            "User expectations and stakeholder considerations",
-            "Knowledge of the entity and environment",
-            InformationReliability::Medium,
-            "Informs selection of appropriate benchmark",
-        ).with_weight(InformationWeight::Moderate));
+        judgment.add_information(
+            InformationItem::new(
+                "User expectations and stakeholder considerations",
+                "Knowledge of the entity and environment",
+                InformationReliability::Medium,
+                "Informs selection of appropriate benchmark",
+            )
+            .with_weight(InformationWeight::Moderate),
+        );
 
         // Add alternatives
         judgment.add_alternative(
@@ -235,9 +253,7 @@ impl JudgmentGenerator {
                     "Primary focus of financial statement users".into(),
                     "Consistent with prior year approach".into(),
                 ],
-                vec![
-                    "May not capture balance sheet focused risks".into(),
-                ],
+                vec!["May not capture balance sheet focused risks".into()],
             )
             .select(),
         );
@@ -305,7 +321,11 @@ impl JudgmentGenerator {
 
         let reviewer = self.select_team_member(team_members, "senior");
         let reviewer_name = self.generate_name();
-        judgment.add_review(&reviewer, &reviewer_name, engagement.planning_start + Duration::days(3));
+        judgment.add_review(
+            &reviewer,
+            &reviewer_name,
+            engagement.planning_start + Duration::days(3),
+        );
 
         // Partner concurrence required for materiality
         judgment.add_partner_concurrence(
@@ -348,12 +368,23 @@ impl JudgmentGenerator {
         match judgment_type {
             JudgmentType::MaterialityDetermination => "Overall Audit Materiality".into(),
             JudgmentType::RiskAssessment => {
-                let areas = ["Revenue", "Inventory", "Receivables", "Fixed Assets", "Payables"];
+                let areas = [
+                    "Revenue",
+                    "Inventory",
+                    "Receivables",
+                    "Fixed Assets",
+                    "Payables",
+                ];
                 let idx = self.rng.gen_range(0..areas.len());
                 format!("{} Risk Assessment", areas[idx])
             }
             JudgmentType::ControlEvaluation => {
-                let controls = ["Revenue Recognition", "Disbursements", "Payroll", "IT General"];
+                let controls = [
+                    "Revenue Recognition",
+                    "Disbursements",
+                    "Payroll",
+                    "IT General",
+                ];
                 let idx = self.rng.gen_range(0..controls.len());
                 format!("{} Controls Evaluation", controls[idx])
             }
@@ -386,41 +417,50 @@ impl JudgmentGenerator {
         match judgment_type {
             JudgmentType::RiskAssessment => {
                 "Assessment of risk of material misstatement at the assertion level, \
-                considering inherent risk factors and the control environment.".into()
+                considering inherent risk factors and the control environment."
+                    .into()
             }
             JudgmentType::ControlEvaluation => {
                 "Evaluation of the design and operating effectiveness of internal controls \
-                to determine the extent of reliance for audit purposes.".into()
+                to determine the extent of reliance for audit purposes."
+                    .into()
             }
             JudgmentType::EstimateEvaluation => {
                 "Evaluation of management's accounting estimate, including assessment of \
-                methods, assumptions, and data used in developing the estimate.".into()
+                methods, assumptions, and data used in developing the estimate."
+                    .into()
             }
             JudgmentType::GoingConcern => {
                 "Assessment of whether conditions or events indicate substantial doubt \
-                about the entity's ability to continue as a going concern.".into()
+                about the entity's ability to continue as a going concern."
+                    .into()
             }
             JudgmentType::MisstatementEvaluation => {
                 "Evaluation of identified misstatements to determine their effect on the \
-                audit and whether they are material, individually or in aggregate.".into()
+                audit and whether they are material, individually or in aggregate."
+                    .into()
             }
             JudgmentType::SamplingDesign => {
                 "Determination of appropriate sample size and selection method to achieve \
-                the desired level of assurance for substantive testing.".into()
+                the desired level of assurance for substantive testing."
+                    .into()
             }
             JudgmentType::FraudRiskAssessment => {
                 "Assessment of fraud risk factors and determination of appropriate audit \
-                responses to address identified risks per ISA 240.".into()
+                responses to address identified risks per ISA 240."
+                    .into()
             }
             JudgmentType::RelatedPartyAssessment => {
                 "Evaluation of related party relationships and transactions to assess \
-                whether they have been appropriately identified and disclosed.".into()
+                whether they have been appropriately identified and disclosed."
+                    .into()
             }
             JudgmentType::SubsequentEvents => {
                 "Evaluation of events occurring after the balance sheet date to determine \
-                their effect on the financial statements.".into()
+                their effect on the financial statements."
+                    .into()
             }
-            _ => "Professional judgment required for this matter.".into()
+            _ => "Professional judgment required for this matter.".into(),
         }
     }
 
@@ -428,27 +468,87 @@ impl JudgmentGenerator {
     fn generate_information_item(&mut self, judgment_type: JudgmentType) -> InformationItem {
         let items = match judgment_type {
             JudgmentType::RiskAssessment => vec![
-                ("Prior year audit findings", "Prior year workpapers", InformationReliability::High),
-                ("Industry risk factors", "Industry research", InformationReliability::High),
-                ("Management inquiries", "Discussions with management", InformationReliability::Medium),
-                ("Analytical procedures results", "Auditor analysis", InformationReliability::High),
+                (
+                    "Prior year audit findings",
+                    "Prior year workpapers",
+                    InformationReliability::High,
+                ),
+                (
+                    "Industry risk factors",
+                    "Industry research",
+                    InformationReliability::High,
+                ),
+                (
+                    "Management inquiries",
+                    "Discussions with management",
+                    InformationReliability::Medium,
+                ),
+                (
+                    "Analytical procedures results",
+                    "Auditor analysis",
+                    InformationReliability::High,
+                ),
             ],
             JudgmentType::ControlEvaluation => vec![
-                ("Control documentation", "Client-prepared narratives", InformationReliability::Medium),
-                ("Walkthrough results", "Auditor observation", InformationReliability::High),
-                ("Test of controls results", "Auditor testing", InformationReliability::High),
-                ("IT general controls assessment", "IT audit specialists", InformationReliability::High),
+                (
+                    "Control documentation",
+                    "Client-prepared narratives",
+                    InformationReliability::Medium,
+                ),
+                (
+                    "Walkthrough results",
+                    "Auditor observation",
+                    InformationReliability::High,
+                ),
+                (
+                    "Test of controls results",
+                    "Auditor testing",
+                    InformationReliability::High,
+                ),
+                (
+                    "IT general controls assessment",
+                    "IT audit specialists",
+                    InformationReliability::High,
+                ),
             ],
             JudgmentType::EstimateEvaluation => vec![
-                ("Historical accuracy of estimates", "Prior year comparison", InformationReliability::High),
-                ("Key assumptions documentation", "Management memo", InformationReliability::Medium),
-                ("Third-party data used", "External sources", InformationReliability::High),
-                ("Sensitivity analysis", "Auditor recalculation", InformationReliability::High),
+                (
+                    "Historical accuracy of estimates",
+                    "Prior year comparison",
+                    InformationReliability::High,
+                ),
+                (
+                    "Key assumptions documentation",
+                    "Management memo",
+                    InformationReliability::Medium,
+                ),
+                (
+                    "Third-party data used",
+                    "External sources",
+                    InformationReliability::High,
+                ),
+                (
+                    "Sensitivity analysis",
+                    "Auditor recalculation",
+                    InformationReliability::High,
+                ),
             ],
             _ => vec![
-                ("Relevant audit evidence", "Various sources", InformationReliability::Medium),
-                ("Management representations", "Inquiry responses", InformationReliability::Medium),
-                ("External information", "Third-party sources", InformationReliability::High),
+                (
+                    "Relevant audit evidence",
+                    "Various sources",
+                    InformationReliability::Medium,
+                ),
+                (
+                    "Management representations",
+                    "Inquiry responses",
+                    InformationReliability::Medium,
+                ),
+                (
+                    "External information",
+                    "Third-party sources",
+                    InformationReliability::High,
+                ),
             ],
         };
 
@@ -472,29 +572,81 @@ impl JudgmentGenerator {
     }
 
     /// Generate alternative evaluations.
-    fn generate_alternatives(&mut self, judgment_type: JudgmentType, count: u32) -> Vec<AlternativeEvaluation> {
+    fn generate_alternatives(
+        &mut self,
+        judgment_type: JudgmentType,
+        count: u32,
+    ) -> Vec<AlternativeEvaluation> {
         let mut alternatives = Vec::new();
 
         let options = match judgment_type {
             JudgmentType::RiskAssessment => vec![
-                ("Assess risk as high, perform extended substantive testing", vec!["Conservative approach".into()], vec!["May result in over-auditing".into()]),
-                ("Assess risk as medium, perform combined approach", vec!["Balanced approach".into(), "Cost-effective".into()], vec!["Requires strong controls".into()]),
-                ("Assess risk as low with controls reliance", vec!["Efficient approach".into()], vec!["Requires robust controls testing".into()]),
+                (
+                    "Assess risk as high, perform extended substantive testing",
+                    vec!["Conservative approach".into()],
+                    vec!["May result in over-auditing".into()],
+                ),
+                (
+                    "Assess risk as medium, perform combined approach",
+                    vec!["Balanced approach".into(), "Cost-effective".into()],
+                    vec!["Requires strong controls".into()],
+                ),
+                (
+                    "Assess risk as low with controls reliance",
+                    vec!["Efficient approach".into()],
+                    vec!["Requires robust controls testing".into()],
+                ),
             ],
             JudgmentType::ControlEvaluation => vec![
-                ("Rely on controls, reduce substantive testing", vec!["Efficient".into()], vec!["Requires strong ITGC".into()]),
-                ("No reliance, substantive approach only", vec!["Lower documentation".into()], vec!["More substantive work".into()]),
-                ("Partial reliance with moderate substantive testing", vec!["Balanced".into()], vec!["Moderate effort".into()]),
+                (
+                    "Rely on controls, reduce substantive testing",
+                    vec!["Efficient".into()],
+                    vec!["Requires strong ITGC".into()],
+                ),
+                (
+                    "No reliance, substantive approach only",
+                    vec!["Lower documentation".into()],
+                    vec!["More substantive work".into()],
+                ),
+                (
+                    "Partial reliance with moderate substantive testing",
+                    vec!["Balanced".into()],
+                    vec!["Moderate effort".into()],
+                ),
             ],
             JudgmentType::SamplingDesign => vec![
-                ("Statistical sampling with 95% confidence", vec!["Objective".into(), "Defensible".into()], vec!["Larger samples".into()]),
-                ("Non-statistical judgmental sampling", vec!["Flexible".into()], vec!["Less precise".into()]),
-                ("MUS sampling approach", vec!["Effective for overstatement".into()], vec!["Complex calculations".into()]),
+                (
+                    "Statistical sampling with 95% confidence",
+                    vec!["Objective".into(), "Defensible".into()],
+                    vec!["Larger samples".into()],
+                ),
+                (
+                    "Non-statistical judgmental sampling",
+                    vec!["Flexible".into()],
+                    vec!["Less precise".into()],
+                ),
+                (
+                    "MUS sampling approach",
+                    vec!["Effective for overstatement".into()],
+                    vec!["Complex calculations".into()],
+                ),
             ],
             _ => vec![
-                ("Option A - Conservative approach", vec!["Lower risk".into()], vec!["More work".into()]),
-                ("Option B - Standard approach", vec!["Balanced".into()], vec!["Moderate effort".into()]),
-                ("Option C - Efficient approach", vec!["Less work".into()], vec!["Higher risk".into()]),
+                (
+                    "Option A - Conservative approach",
+                    vec!["Lower risk".into()],
+                    vec!["More work".into()],
+                ),
+                (
+                    "Option B - Standard approach",
+                    vec!["Balanced".into()],
+                    vec!["Moderate effort".into()],
+                ),
+                (
+                    "Option C - Efficient approach",
+                    vec!["Less work".into()],
+                    vec!["Higher risk".into()],
+                ),
             ],
         };
 
@@ -520,7 +672,10 @@ impl JudgmentGenerator {
     }
 
     /// Generate skepticism documentation.
-    fn generate_skepticism_documentation(&mut self, judgment_type: JudgmentType) -> SkepticismDocumentation {
+    fn generate_skepticism_documentation(
+        &mut self,
+        judgment_type: JudgmentType,
+    ) -> SkepticismDocumentation {
         let assessment = match judgment_type {
             JudgmentType::FraudRiskAssessment => {
                 "Maintained heightened skepticism given the presumed risks of fraud"
@@ -528,9 +683,7 @@ impl JudgmentGenerator {
             JudgmentType::EstimateEvaluation => {
                 "Critically evaluated management's assumptions and methods"
             }
-            JudgmentType::GoingConcern => {
-                "Objectively assessed going concern indicators"
-            }
+            JudgmentType::GoingConcern => "Objectively assessed going concern indicators",
             _ => "Applied appropriate professional skepticism throughout the evaluation",
         };
 
@@ -541,9 +694,8 @@ impl JudgmentGenerator {
             "Evaluated alternative explanations for observed conditions".into(),
         ];
 
-        skepticism.management_bias_indicators = vec![
-            "Assessed whether management has incentives to bias the outcome".into(),
-        ];
+        skepticism.management_bias_indicators =
+            vec!["Assessed whether management has incentives to bias the outcome".into()];
 
         if judgment_type == JudgmentType::EstimateEvaluation {
             skepticism.challenging_questions = vec![
@@ -553,7 +705,8 @@ impl JudgmentGenerator {
             ];
         }
 
-        skepticism.corroboration_obtained = "Corroborated key representations with independent evidence".into();
+        skepticism.corroboration_obtained =
+            "Corroborated key representations with independent evidence".into();
 
         skepticism
     }
@@ -563,39 +716,52 @@ impl JudgmentGenerator {
         match judgment_type {
             JudgmentType::RiskAssessment => (
                 "Risk of material misstatement assessed as medium based on inherent risk factors \
-                and the control environment".into(),
+                and the control environment"
+                    .into(),
                 "Inherent risk factors are present but mitigated by effective controls. \
-                The combined approach is appropriate given the assessment.".into(),
-                "Possibility that undetected misstatements exist below materiality threshold.".into(),
+                The combined approach is appropriate given the assessment."
+                    .into(),
+                "Possibility that undetected misstatements exist below materiality threshold."
+                    .into(),
             ),
             JudgmentType::ControlEvaluation => (
                 "Controls are designed appropriately and operating effectively. \
-                Reliance on controls is appropriate.".into(),
+                Reliance on controls is appropriate."
+                    .into(),
                 "Testing demonstrated that controls operated consistently throughout the period. \
-                No significant deviations were identified.".into(),
+                No significant deviations were identified."
+                    .into(),
                 "Controls may not prevent or detect all misstatements.".into(),
             ),
             JudgmentType::EstimateEvaluation => (
                 "Management's estimate is reasonable based on the available information \
-                and falls within an acceptable range.".into(),
+                and falls within an acceptable range."
+                    .into(),
                 "The methods and assumptions used are appropriate for the circumstances. \
-                Data inputs are reliable and the estimate is consistent with industry practices.".into(),
-                "Estimation uncertainty remains due to inherent subjectivity in key assumptions.".into(),
+                Data inputs are reliable and the estimate is consistent with industry practices."
+                    .into(),
+                "Estimation uncertainty remains due to inherent subjectivity in key assumptions."
+                    .into(),
             ),
             JudgmentType::GoingConcern => (
                 "No substantial doubt about the entity's ability to continue as a going concern \
-                for at least twelve months from the balance sheet date.".into(),
+                for at least twelve months from the balance sheet date."
+                    .into(),
                 "Management's plans to address identified conditions are feasible and adequately \
-                disclosed. Cash flow projections support the conclusion.".into(),
+                disclosed. Cash flow projections support the conclusion."
+                    .into(),
                 "Future events could impact the entity's ability to continue operations.".into(),
             ),
             JudgmentType::FraudRiskAssessment => (
                 "Fraud risk factors have been identified and appropriate audit responses \
-                have been designed to address those risks.".into(),
+                have been designed to address those risks."
+                    .into(),
                 "Presumed risks per ISA 240 have been addressed through specific procedures. \
-                No fraud was identified during our procedures.".into(),
+                No fraud was identified during our procedures."
+                    .into(),
                 "Fraud is inherently difficult to detect; our procedures provide reasonable \
-                but not absolute assurance.".into(),
+                but not absolute assurance."
+                    .into(),
             ),
             _ => (
                 "Professional judgment has been applied appropriately to this matter.".into(),
@@ -606,7 +772,11 @@ impl JudgmentGenerator {
     }
 
     /// Generate consultation record.
-    fn generate_consultation(&mut self, judgment_type: JudgmentType, base_date: NaiveDate) -> ConsultationRecord {
+    fn generate_consultation(
+        &mut self,
+        judgment_type: JudgmentType,
+        base_date: NaiveDate,
+    ) -> ConsultationRecord {
         let (consultant, role, is_external) = if self.rng.gen::<f64>() < 0.3 {
             ("External Technical Partner", "Industry Specialist", true)
         } else {
@@ -620,19 +790,30 @@ impl JudgmentGenerator {
         };
 
         let issue = match judgment_type {
-            JudgmentType::GoingConcern => "Assessment of going concern indicators and disclosure requirements",
-            JudgmentType::EstimateEvaluation => "Evaluation of complex accounting estimate methodology",
-            JudgmentType::FraudRiskAssessment => "Assessment of fraud risk indicators and response design",
+            JudgmentType::GoingConcern => {
+                "Assessment of going concern indicators and disclosure requirements"
+            }
+            JudgmentType::EstimateEvaluation => {
+                "Evaluation of complex accounting estimate methodology"
+            }
+            JudgmentType::FraudRiskAssessment => {
+                "Assessment of fraud risk indicators and response design"
+            }
             _ => "Technical accounting matter requiring consultation",
         };
 
-        ConsultationRecord::new(consultant, role, is_external, base_date + Duration::days(self.rng.gen_range(1..7)))
-            .with_content(
-                issue,
-                "Consultant provided guidance on the appropriate approach and key considerations",
-                "Guidance has been incorporated into the judgment documentation",
-                "Consultation supports the conclusion reached",
-            )
+        ConsultationRecord::new(
+            consultant,
+            role,
+            is_external,
+            base_date + Duration::days(self.rng.gen_range(1..7)),
+        )
+        .with_content(
+            issue,
+            "Consultant provided guidance on the appropriate approach and key considerations",
+            "Guidance has been incorporated into the judgment documentation",
+            "Consultation supports the conclusion reached",
+        )
     }
 
     /// Select team member.
@@ -667,8 +848,8 @@ impl JudgmentGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use synth_core::models::audit::EngagementType;
     use rust_decimal::Decimal;
+    use synth_core::models::audit::EngagementType;
 
     fn create_test_engagement() -> AuditEngagement {
         AuditEngagement::new(
@@ -713,7 +894,10 @@ mod tests {
         assert!(!judgments.is_empty());
 
         // First judgment should be materiality
-        assert_eq!(judgments[0].judgment_type, JudgmentType::MaterialityDetermination);
+        assert_eq!(
+            judgments[0].judgment_type,
+            JudgmentType::MaterialityDetermination
+        );
 
         for judgment in &judgments {
             assert!(!judgment.issue_description.is_empty());
@@ -731,7 +915,10 @@ mod tests {
         let judgments = generator.generate_judgments_for_engagement(&engagement, &team);
         let materiality = &judgments[0];
 
-        assert_eq!(materiality.judgment_type, JudgmentType::MaterialityDetermination);
+        assert_eq!(
+            materiality.judgment_type,
+            JudgmentType::MaterialityDetermination
+        );
         assert!(materiality.partner_concurrence_id.is_some()); // Partner concurrence required
         assert_eq!(materiality.status, JudgmentStatus::Approved);
         assert!(!materiality.alternatives_evaluated.is_empty());
@@ -762,7 +949,10 @@ mod tests {
         let judgment = generator.generate_judgment(&engagement, &["STAFF001".into()]);
 
         assert!(!judgment.skepticism_applied.skepticism_assessment.is_empty());
-        assert!(!judgment.skepticism_applied.contradictory_evidence_considered.is_empty());
+        assert!(!judgment
+            .skepticism_applied
+            .contradictory_evidence_considered
+            .is_empty());
     }
 
     #[test]

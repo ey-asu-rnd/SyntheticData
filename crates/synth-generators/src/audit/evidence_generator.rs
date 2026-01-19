@@ -9,8 +9,8 @@ use rand_chacha::ChaCha8Rng;
 use uuid::Uuid;
 
 use synth_core::models::audit::{
-    Assertion, AuditEngagement, AuditEvidence, EvidenceSource, EvidenceType,
-    ReliabilityAssessment, ReliabilityLevel, Workpaper,
+    Assertion, AuditEngagement, AuditEvidence, EvidenceSource, EvidenceType, ReliabilityAssessment,
+    ReliabilityLevel, Workpaper,
 };
 
 /// Configuration for evidence generation.
@@ -73,9 +73,9 @@ impl EvidenceGenerator {
         team_members: &[String],
         base_date: NaiveDate,
     ) -> Vec<AuditEvidence> {
-        let count = self.rng.gen_range(
-            self.config.evidence_per_workpaper.0..=self.config.evidence_per_workpaper.1,
-        );
+        let count = self
+            .rng
+            .gen_range(self.config.evidence_per_workpaper.0..=self.config.evidence_per_workpaper.1);
 
         (0..count)
             .map(|i| {
@@ -174,13 +174,8 @@ impl EvidenceGenerator {
         let standalone_count = self.rng.gen_range(5..15);
         for i in 0..standalone_count {
             let date = engagement.fieldwork_start + Duration::days(i as i64 * 3);
-            let evidence = self.generate_evidence(
-                engagement.engagement_id,
-                None,
-                &[],
-                team_members,
-                date,
-            );
+            let evidence =
+                self.generate_evidence(engagement.engagement_id, None, &[], team_members, date);
             all_evidence.push(evidence);
         }
 
@@ -193,21 +188,45 @@ impl EvidenceGenerator {
 
         if is_external {
             let external_types = [
-                (EvidenceType::Confirmation, EvidenceSource::ExternalThirdParty),
-                (EvidenceType::BankStatement, EvidenceSource::ExternalThirdParty),
-                (EvidenceType::LegalLetter, EvidenceSource::ExternalThirdParty),
-                (EvidenceType::Contract, EvidenceSource::ExternalClientProvided),
+                (
+                    EvidenceType::Confirmation,
+                    EvidenceSource::ExternalThirdParty,
+                ),
+                (
+                    EvidenceType::BankStatement,
+                    EvidenceSource::ExternalThirdParty,
+                ),
+                (
+                    EvidenceType::LegalLetter,
+                    EvidenceSource::ExternalThirdParty,
+                ),
+                (
+                    EvidenceType::Contract,
+                    EvidenceSource::ExternalClientProvided,
+                ),
             ];
             let idx = self.rng.gen_range(0..external_types.len());
             external_types[idx]
         } else {
             let internal_types = [
-                (EvidenceType::Document, EvidenceSource::InternalClientPrepared),
-                (EvidenceType::Invoice, EvidenceSource::InternalClientPrepared),
-                (EvidenceType::SystemExtract, EvidenceSource::InternalClientPrepared),
+                (
+                    EvidenceType::Document,
+                    EvidenceSource::InternalClientPrepared,
+                ),
+                (
+                    EvidenceType::Invoice,
+                    EvidenceSource::InternalClientPrepared,
+                ),
+                (
+                    EvidenceType::SystemExtract,
+                    EvidenceSource::InternalClientPrepared,
+                ),
                 (EvidenceType::Analysis, EvidenceSource::AuditorPrepared),
                 (EvidenceType::Recalculation, EvidenceSource::AuditorPrepared),
-                (EvidenceType::MeetingMinutes, EvidenceSource::InternalClientPrepared),
+                (
+                    EvidenceType::MeetingMinutes,
+                    EvidenceSource::InternalClientPrepared,
+                ),
                 (EvidenceType::Email, EvidenceSource::InternalClientPrepared),
             ];
             let idx = self.rng.gen_range(0..internal_types.len());
@@ -279,10 +298,7 @@ impl EvidenceGenerator {
                 "Tax Provision Recalculation",
                 "Allowance Recalculation",
             ],
-            EvidenceType::LegalLetter => vec![
-                "Attorney Response Letter",
-                "Litigation Summary",
-            ],
+            EvidenceType::LegalLetter => vec!["Attorney Response Letter", "Litigation Summary"],
             EvidenceType::ManagementRepresentation => vec![
                 "Management Representation Letter",
                 "Specific Representation",
@@ -359,7 +375,9 @@ impl EvidenceGenerator {
         };
 
         let notes = match base_reliability {
-            ReliabilityLevel::High => "Evidence obtained from independent source with high reliability",
+            ReliabilityLevel::High => {
+                "Evidence obtained from independent source with high reliability"
+            }
             ReliabilityLevel::Medium => "Evidence obtained from client with adequate controls",
             ReliabilityLevel::Low => "Internal evidence requires corroboration",
         };
@@ -374,7 +392,13 @@ impl EvidenceGenerator {
             EvidenceType::Analysis | EvidenceType::Recalculation => "xlsx",
             EvidenceType::MeetingMinutes | EvidenceType::ManagementRepresentation => "pdf",
             EvidenceType::Email => "msg",
-            _ => if self.rng.gen::<f64>() < 0.6 { "pdf" } else { "xlsx" },
+            _ => {
+                if self.rng.gen::<f64>() < 0.6 {
+                    "pdf"
+                } else {
+                    "xlsx"
+                }
+            }
         };
 
         format!("/evidence/EV-{:06}.{}", counter, extension)
@@ -416,22 +440,37 @@ impl EvidenceGenerator {
 
         match evidence_type {
             EvidenceType::Invoice => {
-                terms.insert("invoice_number".into(), format!("INV-{:06}", self.rng.gen_range(100000..999999)));
-                terms.insert("amount".into(), format!("{:.2}", self.rng.gen_range(1000.0..100000.0)));
+                terms.insert(
+                    "invoice_number".into(),
+                    format!("INV-{:06}", self.rng.gen_range(100000..999999)),
+                );
+                terms.insert(
+                    "amount".into(),
+                    format!("{:.2}", self.rng.gen_range(1000.0..100000.0)),
+                );
                 terms.insert("vendor".into(), "Extracted Vendor Name".into());
             }
             EvidenceType::Contract => {
                 terms.insert("effective_date".into(), "2025-01-01".into());
                 terms.insert("term_years".into(), format!("{}", self.rng.gen_range(1..5)));
-                terms.insert("total_value".into(), format!("{:.2}", self.rng.gen_range(50000.0..500000.0)));
+                terms.insert(
+                    "total_value".into(),
+                    format!("{:.2}", self.rng.gen_range(50000.0..500000.0)),
+                );
             }
             EvidenceType::BankStatement => {
-                terms.insert("ending_balance".into(), format!("{:.2}", self.rng.gen_range(100000.0..10000000.0)));
+                terms.insert(
+                    "ending_balance".into(),
+                    format!("{:.2}", self.rng.gen_range(100000.0..10000000.0)),
+                );
                 terms.insert("statement_date".into(), "2025-12-31".into());
             }
             _ => {
                 terms.insert("document_date".into(), "2025-12-31".into());
-                terms.insert("reference".into(), format!("REF-{:06}", self.rng.gen_range(100000..999999)));
+                terms.insert(
+                    "reference".into(),
+                    format!("REF-{:06}", self.rng.gen_range(100000..999999)),
+                );
             }
         }
 

@@ -12,9 +12,8 @@ use chrono::NaiveDate;
 
 use synth_core::models::audit::{
     Assertion, AuditEngagement, DetectionRisk, EngagementPhase, FraudRiskFactor,
-    FraudTriangleElement, PlannedResponse, ResponseNature, ResponseProcedureType,
-    ResponseStatus, ResponseTiming, RiskAssessment, RiskCategory, RiskLevel,
-    RiskReviewStatus, Trend,
+    FraudTriangleElement, PlannedResponse, ResponseNature, ResponseProcedureType, ResponseStatus,
+    ResponseTiming, RiskAssessment, RiskCategory, RiskLevel, RiskReviewStatus, Trend,
 };
 
 /// Configuration for risk assessment generation.
@@ -77,9 +76,9 @@ impl RiskAssessmentGenerator {
         team_members: &[String],
         accounts: &[String],
     ) -> Vec<RiskAssessment> {
-        let count = self.rng.gen_range(
-            self.config.risks_per_engagement.0..=self.config.risks_per_engagement.1,
-        );
+        let count = self
+            .rng
+            .gen_range(self.config.risks_per_engagement.0..=self.config.risks_per_engagement.1);
 
         let mut risks = Vec::with_capacity(count as usize);
 
@@ -90,11 +89,7 @@ impl RiskAssessmentGenerator {
         // Generate additional risks for various accounts/processes
         let risk_areas = self.get_risk_areas(accounts);
         for area in risk_areas.iter().take((count - 2) as usize) {
-            let risk = self.generate_risk_assessment(
-                engagement,
-                area,
-                team_members,
-            );
+            let risk = self.generate_risk_assessment(engagement, area, team_members);
             risks.push(risk);
         }
 
@@ -111,7 +106,8 @@ impl RiskAssessmentGenerator {
         self.risk_counter += 1;
 
         let risk_category = self.select_risk_category();
-        let (description, assertion) = self.generate_risk_description(account_or_process, risk_category);
+        let (description, assertion) =
+            self.generate_risk_description(account_or_process, risk_category);
 
         let mut risk = RiskAssessment::new(
             engagement.engagement_id,
@@ -134,7 +130,10 @@ impl RiskAssessmentGenerator {
 
         // Maybe mark as significant
         if self.rng.gen::<f64>() < self.config.significant_risk_probability
-            || matches!(risk.risk_of_material_misstatement, RiskLevel::High | RiskLevel::Significant)
+            || matches!(
+                risk.risk_of_material_misstatement,
+                RiskLevel::High | RiskLevel::Significant
+            )
         {
             let rationale = self.generate_significant_risk_rationale(risk_category);
             risk = risk.mark_significant(&rationale);
@@ -154,9 +153,9 @@ impl RiskAssessmentGenerator {
         risk.response_extent = self.generate_response_extent(&risk);
 
         // Add planned responses
-        let response_count = self.rng.gen_range(
-            self.config.responses_per_risk.0..=self.config.responses_per_risk.1,
-        );
+        let response_count = self
+            .rng
+            .gen_range(self.config.responses_per_risk.0..=self.config.responses_per_risk.1);
         for _ in 0..response_count {
             let response = self.generate_planned_response(&risk, team_members, engagement);
             risk.add_response(response);
@@ -384,7 +383,10 @@ impl RiskAssessmentGenerator {
             (Assertion::ValuationAndAllocation, "valuation"),
             (Assertion::Cutoff, "cutoff"),
             (Assertion::RightsAndObligations, "rights and obligations"),
-            (Assertion::PresentationAndDisclosure, "presentation and disclosure"),
+            (
+                Assertion::PresentationAndDisclosure,
+                "presentation and disclosure",
+            ),
         ];
 
         let idx = self.rng.gen_range(0..assertions.len());
@@ -491,7 +493,8 @@ impl RiskAssessmentGenerator {
                 "Fraud risk requiring special audit consideration per ISA 240".into()
             }
             RiskCategory::EstimateRisk => {
-                "High estimation uncertainty requiring special audit consideration per ISA 540".into()
+                "High estimation uncertainty requiring special audit consideration per ISA 540"
+                    .into()
             }
             RiskCategory::RelatedParty => {
                 "Related party transactions outside normal course of business per ISA 550".into()
@@ -641,7 +644,8 @@ impl RiskAssessmentGenerator {
     ) -> PlannedResponse {
         let procedure_type = self.select_procedure_type(&risk.response_nature);
         let assertion = risk.assertion.unwrap_or_else(|| self.random_assertion());
-        let procedure = self.generate_procedure_description(procedure_type, &risk.account_or_process);
+        let procedure =
+            self.generate_procedure_description(procedure_type, &risk.account_or_process);
 
         let days_offset = self.rng.gen_range(7..45);
         let target_date = engagement.fieldwork_start + Duration::days(days_offset);
@@ -705,10 +709,16 @@ impl RiskAssessmentGenerator {
                 format!("Test operating effectiveness of controls over {}", account)
             }
             ResponseProcedureType::TestOfDetails => {
-                format!("Select sample of {} transactions and vouch to supporting documentation", account)
+                format!(
+                    "Select sample of {} transactions and vouch to supporting documentation",
+                    account
+                )
             }
             ResponseProcedureType::AnalyticalProcedure => {
-                format!("Perform analytical procedures on {} and investigate variances", account)
+                format!(
+                    "Perform analytical procedures on {} and investigate variances",
+                    account
+                )
             }
             ResponseProcedureType::Confirmation => {
                 format!("Send confirmations for {} balances", account)
@@ -757,8 +767,8 @@ impl RiskAssessmentGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use synth_core::models::audit::EngagementType;
     use rust_decimal::Decimal;
+    use synth_core::models::audit::EngagementType;
 
     fn create_test_engagement() -> AuditEngagement {
         AuditEngagement::new(
@@ -837,11 +847,8 @@ mod tests {
         let mut generator = RiskAssessmentGenerator::with_config(42, config);
         let engagement = create_test_engagement();
 
-        let risk = generator.generate_risk_assessment(
-            &engagement,
-            "Inventory",
-            &["STAFF001".into()],
-        );
+        let risk =
+            generator.generate_risk_assessment(&engagement, "Inventory", &["STAFF001".into()]);
 
         // May or may not have fraud factors depending on risk category
         // But presumed risks always have them
@@ -852,16 +859,15 @@ mod tests {
         let mut generator = RiskAssessmentGenerator::new(42);
         let engagement = create_test_engagement();
 
-        let risks = generator.generate_risks_for_engagement(
-            &engagement,
-            &["STAFF001".into()],
-            &[],
-        );
+        let risks = generator.generate_risks_for_engagement(&engagement, &["STAFF001".into()], &[]);
 
         for risk in &risks {
             let detection_risk = risk.required_detection_risk();
             // High ROMM should require low detection risk
-            if matches!(risk.risk_of_material_misstatement, RiskLevel::High | RiskLevel::Significant) {
+            if matches!(
+                risk.risk_of_material_misstatement,
+                RiskLevel::High | RiskLevel::Significant
+            ) {
                 assert_eq!(detection_risk, DetectionRisk::Low);
             }
         }

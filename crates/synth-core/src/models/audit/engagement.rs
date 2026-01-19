@@ -197,7 +197,10 @@ impl AuditEngagement {
 
     /// Check if the engagement is complete.
     pub fn is_complete(&self) -> bool {
-        matches!(self.status, EngagementStatus::Complete | EngagementStatus::Archived)
+        matches!(
+            self.status,
+            EngagementStatus::Complete | EngagementStatus::Archived
+        )
     }
 
     /// Calculate days until report date.

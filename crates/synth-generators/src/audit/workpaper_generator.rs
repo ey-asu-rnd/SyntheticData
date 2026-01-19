@@ -91,14 +91,12 @@ impl WorkpaperGenerator {
             EngagementPhase::Reporting => WorkpaperSection::Reporting,
         };
 
-        let count = self.rng.gen_range(
-            self.config.workpapers_per_section.0..=self.config.workpapers_per_section.1,
-        );
+        let count = self
+            .rng
+            .gen_range(self.config.workpapers_per_section.0..=self.config.workpapers_per_section.1);
 
         (0..count)
-            .map(|_| {
-                self.generate_workpaper(engagement, section, phase_date, team_members)
-            })
+            .map(|_| self.generate_workpaper(engagement, section, phase_date, team_members))
             .collect()
     }
 
@@ -131,7 +129,8 @@ impl WorkpaperGenerator {
         wp = wp.with_scope(scope, population, sample, method);
 
         // Set results
-        let (summary, exceptions, conclusion) = self.generate_results(sample, &engagement.overall_audit_risk);
+        let (summary, exceptions, conclusion) =
+            self.generate_results(sample, &engagement.overall_audit_risk);
         wp = wp.with_results(&summary, exceptions, conclusion);
 
         wp.risk_level_addressed = engagement.overall_audit_risk;
@@ -266,22 +265,25 @@ impl WorkpaperGenerator {
                     Assertion::balance_assertions()
                 };
                 (
-                    "Obtain sufficient appropriate audit evidence regarding account balances".into(),
+                    "Obtain sufficient appropriate audit evidence regarding account balances"
+                        .into(),
                     assertions,
                 )
             }
             WorkpaperSection::Completion => (
                 "Complete all required completion procedures".into(),
-                vec![Assertion::Completeness, Assertion::PresentationAndDisclosure],
+                vec![
+                    Assertion::Completeness,
+                    Assertion::PresentationAndDisclosure,
+                ],
             ),
             WorkpaperSection::Reporting => (
                 "Ensure compliance with reporting requirements".into(),
                 vec![Assertion::PresentationAndDisclosure],
             ),
-            WorkpaperSection::PermanentFile => (
-                "Maintain permanent file documentation".into(),
-                vec![],
-            ),
+            WorkpaperSection::PermanentFile => {
+                ("Maintain permanent file documentation".into(), vec![])
+            }
         }
     }
 
@@ -293,22 +295,49 @@ impl WorkpaperGenerator {
                 ProcedureType::InquiryObservation,
             ),
             WorkpaperSection::ControlTesting => {
-                let procedures = vec![
-                    ("Selected a sample of transactions and tested the control operation", ProcedureType::TestOfControls),
-                    ("Observed the control being performed by personnel", ProcedureType::InquiryObservation),
-                    ("Inspected documentation of control performance", ProcedureType::Inspection),
-                    ("Reperformed the control procedure", ProcedureType::Reperformance),
+                let procedures = [
+                    (
+                        "Selected a sample of transactions and tested the control operation",
+                        ProcedureType::TestOfControls,
+                    ),
+                    (
+                        "Observed the control being performed by personnel",
+                        ProcedureType::InquiryObservation,
+                    ),
+                    (
+                        "Inspected documentation of control performance",
+                        ProcedureType::Inspection,
+                    ),
+                    (
+                        "Reperformed the control procedure",
+                        ProcedureType::Reperformance,
+                    ),
                 ];
                 let idx = self.rng.gen_range(0..procedures.len());
                 (procedures[idx].0.into(), procedures[idx].1)
             }
             WorkpaperSection::SubstantiveTesting => {
-                let procedures = vec![
-                    ("Selected a sample and agreed details to supporting documentation", ProcedureType::SubstantiveTest),
-                    ("Sent confirmations and agreed responses to records", ProcedureType::Confirmation),
-                    ("Recalculated amounts and agreed to supporting schedules", ProcedureType::Recalculation),
-                    ("Performed analytical procedures and investigated variances", ProcedureType::AnalyticalProcedures),
-                    ("Inspected physical assets and documentation", ProcedureType::Inspection),
+                let procedures = [
+                    (
+                        "Selected a sample and agreed details to supporting documentation",
+                        ProcedureType::SubstantiveTest,
+                    ),
+                    (
+                        "Sent confirmations and agreed responses to records",
+                        ProcedureType::Confirmation,
+                    ),
+                    (
+                        "Recalculated amounts and agreed to supporting schedules",
+                        ProcedureType::Recalculation,
+                    ),
+                    (
+                        "Performed analytical procedures and investigated variances",
+                        ProcedureType::AnalyticalProcedures,
+                    ),
+                    (
+                        "Inspected physical assets and documentation",
+                        ProcedureType::Inspection,
+                    ),
                 ];
                 let idx = self.rng.gen_range(0..procedures.len());
                 (procedures[idx].0.into(), procedures[idx].1)
@@ -384,10 +413,11 @@ impl WorkpaperGenerator {
         let has_exceptions = self.rng.gen::<f64>() < exception_probability;
 
         let (exceptions, conclusion) = if has_exceptions {
-            let exception_rate = self.rng.gen_range(
-                self.config.exception_rate_range.0..=self.config.exception_rate_range.1,
-            );
-            let exceptions = ((sample_size as f64 * exception_rate).max(1.0) as u32).min(sample_size);
+            let exception_rate = self
+                .rng
+                .gen_range(self.config.exception_rate_range.0..=self.config.exception_rate_range.1);
+            let exceptions =
+                ((sample_size as f64 * exception_rate).max(1.0) as u32).min(sample_size);
 
             let conclusion = if self.rng.gen::<f64>() < self.config.unsatisfactory_probability {
                 WorkpaperConclusion::Unsatisfactory
@@ -613,8 +643,7 @@ mod tests {
         assert!(workpapers.len() >= 18); // At least 3 per 6 phases
 
         // Check we have workpapers from different sections
-        let sections: std::collections::HashSet<_> =
-            workpapers.iter().map(|w| w.section).collect();
+        let sections: std::collections::HashSet<_> = workpapers.iter().map(|w| w.section).collect();
         assert!(sections.len() >= 5);
     }
 

@@ -32,10 +32,10 @@
 //! exporter.export_to_file(&event_log, "output/ocel2.json")?;
 //! ```
 
-pub mod models;
-pub mod generator;
 pub mod export;
+pub mod generator;
+pub mod models;
 
-pub use models::*;
-pub use generator::*;
 pub use export::*;
+pub use generator::*;
+pub use models::*;

@@ -255,7 +255,11 @@ impl AccountCategory {
     pub fn is_debit_normal(&self) -> bool {
         matches!(
             self,
-            Self::Asset | Self::Cogs | Self::OperatingExpense | Self::OtherIncomeExpense | Self::Tax
+            Self::Asset
+                | Self::Cogs
+                | Self::OperatingExpense
+                | Self::OtherIncomeExpense
+                | Self::Tax
         )
     }
 
@@ -273,7 +277,11 @@ impl AccountCategory {
     pub fn is_income_statement(&self) -> bool {
         matches!(
             self,
-            Self::Revenue | Self::Cogs | Self::OperatingExpense | Self::OtherIncomeExpense | Self::Tax
+            Self::Revenue
+                | Self::Cogs
+                | Self::OperatingExpense
+                | Self::OtherIncomeExpense
+                | Self::Tax
         )
     }
 }

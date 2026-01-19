@@ -123,13 +123,29 @@ impl OcpmEventGenerator {
         // Activity: Create SO
         let create_so = ActivityType::create_so();
         let resource = self.select_resource(&create_so, available_users);
-        let mut event = self.create_event(&create_so, current_time, &resource, &documents.company_code, case_id);
+        let mut event = self.create_event(
+            &create_so,
+            current_time,
+            &resource,
+            &documents.company_code,
+            case_id,
+        );
         event = event
-            .with_object(EventObjectRef::created(so_object.object_id, &so_type.type_id)
-                .with_external_id(&documents.so_number))
+            .with_object(
+                EventObjectRef::created(so_object.object_id, &so_type.type_id)
+                    .with_external_id(&documents.so_number),
+            )
             .with_document_ref(&documents.so_number);
-        Self::add_event_attribute(&mut event, "amount", ObjectAttributeValue::Decimal(documents.amount));
-        Self::add_event_attribute(&mut event, "customer_id", ObjectAttributeValue::String(documents.customer_id.clone()));
+        Self::add_event_attribute(
+            &mut event,
+            "amount",
+            ObjectAttributeValue::Decimal(documents.amount),
+        );
+        Self::add_event_attribute(
+            &mut event,
+            "customer_id",
+            ObjectAttributeValue::String(documents.customer_id.clone()),
+        );
         events.push(event);
 
         // Activity: Check Credit
@@ -137,11 +153,22 @@ impl OcpmEventGenerator {
 
         let check_credit = ActivityType::check_credit();
         let resource = self.select_resource(&check_credit, available_users);
-        let mut event = self.create_event(&check_credit, current_time, &resource, &documents.company_code, case_id);
-        event = event
-            .with_object(EventObjectRef::updated(so_object.object_id, &so_type.type_id)
-                .with_external_id(&documents.so_number));
-        Self::add_event_attribute(&mut event, "credit_result", ObjectAttributeValue::String("approved".into()));
+        let mut event = self.create_event(
+            &check_credit,
+            current_time,
+            &resource,
+            &documents.company_code,
+            case_id,
+        );
+        event = event.with_object(
+            EventObjectRef::updated(so_object.object_id, &so_type.type_id)
+                .with_external_id(&documents.so_number),
+        );
+        Self::add_event_attribute(
+            &mut event,
+            "credit_result",
+            ObjectAttributeValue::String("approved".into()),
+        );
         events.push(event);
 
         // Activity: Release SO
@@ -149,10 +176,17 @@ impl OcpmEventGenerator {
 
         let release_so = ActivityType::release_so();
         let resource = self.select_resource(&release_so, available_users);
-        let mut event = self.create_event(&release_so, current_time, &resource, &documents.company_code, case_id);
-        event = event
-            .with_object(EventObjectRef::updated(so_object.object_id, &so_type.type_id)
-                .with_external_id(&documents.so_number));
+        let mut event = self.create_event(
+            &release_so,
+            current_time,
+            &resource,
+            &documents.company_code,
+            case_id,
+        );
+        event = event.with_object(
+            EventObjectRef::updated(so_object.object_id, &so_type.type_id)
+                .with_external_id(&documents.so_number),
+        );
         events.push(event);
 
         // Skip remaining steps for error paths
@@ -177,7 +211,7 @@ impl OcpmEventGenerator {
         // Activity: Create Delivery
         if let Some(delivery_number) = &documents.delivery_number {
             current_time = self.calculate_event_time(current_time, &release_so);
-            current_time = current_time + self.generate_inter_activity_delay(60, 480);
+            current_time += self.generate_inter_activity_delay(60, 480);
 
             let delivery_object = self.create_object(
                 &delivery_type,
@@ -198,10 +232,18 @@ impl OcpmEventGenerator {
 
             let create_delivery = ActivityType::create_delivery();
             let resource = self.select_resource(&create_delivery, available_users);
-            let mut event = self.create_event(&create_delivery, current_time, &resource, &documents.company_code, case_id);
+            let mut event = self.create_event(
+                &create_delivery,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
             event = event
-                .with_object(EventObjectRef::created(delivery_object.object_id, &delivery_type.type_id)
-                    .with_external_id(delivery_number))
+                .with_object(
+                    EventObjectRef::created(delivery_object.object_id, &delivery_type.type_id)
+                        .with_external_id(delivery_number),
+                )
                 .with_document_ref(delivery_number);
             events.push(event);
 
@@ -210,10 +252,17 @@ impl OcpmEventGenerator {
 
             let pick = ActivityType::pick();
             let resource = self.select_resource(&pick, available_users);
-            let mut event = self.create_event(&pick, current_time, &resource, &documents.company_code, case_id);
-            event = event
-                .with_object(EventObjectRef::updated(delivery_object.object_id, &delivery_type.type_id)
-                    .with_external_id(delivery_number));
+            let mut event = self.create_event(
+                &pick,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
+            event = event.with_object(
+                EventObjectRef::updated(delivery_object.object_id, &delivery_type.type_id)
+                    .with_external_id(delivery_number),
+            );
             events.push(event);
 
             // Activity: Pack
@@ -221,10 +270,17 @@ impl OcpmEventGenerator {
 
             let pack = ActivityType::pack();
             let resource = self.select_resource(&pack, available_users);
-            let mut event = self.create_event(&pack, current_time, &resource, &documents.company_code, case_id);
-            event = event
-                .with_object(EventObjectRef::updated(delivery_object.object_id, &delivery_type.type_id)
-                    .with_external_id(delivery_number));
+            let mut event = self.create_event(
+                &pack,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
+            event = event.with_object(
+                EventObjectRef::updated(delivery_object.object_id, &delivery_type.type_id)
+                    .with_external_id(delivery_number),
+            );
             events.push(event);
 
             // Activity: Ship
@@ -232,19 +288,29 @@ impl OcpmEventGenerator {
 
             let ship = ActivityType::ship();
             let resource = self.select_resource(&ship, available_users);
-            let mut event = self.create_event(&ship, current_time, &resource, &documents.company_code, case_id);
+            let mut event = self.create_event(
+                &ship,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
             event = event
-                .with_object(EventObjectRef::updated(delivery_object.object_id, &delivery_type.type_id)
-                    .with_external_id(delivery_number))
-                .with_object(EventObjectRef::updated(so_object.object_id, &so_type.type_id)
-                    .with_external_id(&documents.so_number));
+                .with_object(
+                    EventObjectRef::updated(delivery_object.object_id, &delivery_type.type_id)
+                        .with_external_id(delivery_number),
+                )
+                .with_object(
+                    EventObjectRef::updated(so_object.object_id, &so_type.type_id)
+                        .with_external_id(&documents.so_number),
+                );
             events.push(event);
         }
 
         // Activity: Create Customer Invoice
         if let Some(invoice_number) = &documents.invoice_number {
             current_time = self.calculate_event_time(current_time, &ActivityType::ship());
-            current_time = current_time + self.generate_inter_activity_delay(60, 1440);
+            current_time += self.generate_inter_activity_delay(60, 1440);
 
             let invoice_object = self.create_object(
                 &invoice_type,
@@ -265,14 +331,28 @@ impl OcpmEventGenerator {
 
             let create_invoice = ActivityType::create_customer_invoice();
             let resource = self.select_resource(&create_invoice, available_users);
-            let mut event = self.create_event(&create_invoice, current_time, &resource, &documents.company_code, case_id);
+            let mut event = self.create_event(
+                &create_invoice,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
             event = event
-                .with_object(EventObjectRef::created(invoice_object.object_id, &invoice_type.type_id)
-                    .with_external_id(invoice_number))
-                .with_object(EventObjectRef::updated(so_object.object_id, &so_type.type_id)
-                    .with_external_id(&documents.so_number))
+                .with_object(
+                    EventObjectRef::created(invoice_object.object_id, &invoice_type.type_id)
+                        .with_external_id(invoice_number),
+                )
+                .with_object(
+                    EventObjectRef::updated(so_object.object_id, &so_type.type_id)
+                        .with_external_id(&documents.so_number),
+                )
                 .with_document_ref(invoice_number);
-            Self::add_event_attribute(&mut event, "invoice_amount", ObjectAttributeValue::Decimal(documents.amount));
+            Self::add_event_attribute(
+                &mut event,
+                "invoice_amount",
+                ObjectAttributeValue::Decimal(documents.amount),
+            );
             events.push(event);
 
             // Activity: Post Customer Invoice
@@ -280,27 +360,48 @@ impl OcpmEventGenerator {
 
             let post_invoice = ActivityType::post_customer_invoice();
             let resource = self.select_resource(&post_invoice, available_users);
-            let mut event = self.create_event(&post_invoice, current_time, &resource, &documents.company_code, case_id);
-            event = event
-                .with_object(EventObjectRef::updated(invoice_object.object_id, &invoice_type.type_id)
-                    .with_external_id(invoice_number));
+            let mut event = self.create_event(
+                &post_invoice,
+                current_time,
+                &resource,
+                &documents.company_code,
+                case_id,
+            );
+            event = event.with_object(
+                EventObjectRef::updated(invoice_object.object_id, &invoice_type.type_id)
+                    .with_external_id(invoice_number),
+            );
             events.push(event);
 
             // Activity: Receive Payment
             if documents.receipt_number.is_some() {
                 current_time = self.calculate_event_time(current_time, &post_invoice);
-                current_time = current_time + self.generate_inter_activity_delay(1440, 43200); // 1-30 days
+                current_time += self.generate_inter_activity_delay(1440, 43200); // 1-30 days
 
                 let receive_payment = ActivityType::receive_payment();
                 let resource = self.select_resource(&receive_payment, available_users);
-                let mut event = self.create_event(&receive_payment, current_time, &resource, &documents.company_code, case_id);
+                let mut event = self.create_event(
+                    &receive_payment,
+                    current_time,
+                    &resource,
+                    &documents.company_code,
+                    case_id,
+                );
                 event = event
-                    .with_object(EventObjectRef::consumed(invoice_object.object_id, &invoice_type.type_id)
-                        .with_external_id(invoice_number))
-                    .with_object(EventObjectRef::consumed(so_object.object_id, &so_type.type_id)
-                        .with_external_id(&documents.so_number))
+                    .with_object(
+                        EventObjectRef::consumed(invoice_object.object_id, &invoice_type.type_id)
+                            .with_external_id(invoice_number),
+                    )
+                    .with_object(
+                        EventObjectRef::consumed(so_object.object_id, &so_type.type_id)
+                            .with_external_id(&documents.so_number),
+                    )
                     .with_document_ref(documents.receipt_number.as_deref().unwrap_or(""));
-                Self::add_event_attribute(&mut event, "payment_amount", ObjectAttributeValue::Decimal(documents.amount));
+                Self::add_event_attribute(
+                    &mut event,
+                    "payment_amount",
+                    ObjectAttributeValue::Decimal(documents.amount),
+                );
                 events.push(event);
             }
         }

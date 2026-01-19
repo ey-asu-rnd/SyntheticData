@@ -107,19 +107,11 @@ pub struct AuditFinding {
 
 impl AuditFinding {
     /// Create a new audit finding.
-    pub fn new(
-        engagement_id: Uuid,
-        finding_type: FindingType,
-        title: &str,
-    ) -> Self {
+    pub fn new(engagement_id: Uuid, finding_type: FindingType, title: &str) -> Self {
         let now = Utc::now();
         Self {
             finding_id: Uuid::new_v4(),
-            finding_ref: format!(
-                "FIND-{}-{:03}",
-                now.format("%Y"),
-                1
-            ),
+            finding_ref: format!("FIND-{}-{:03}", now.format("%Y"), 1),
             engagement_id,
             finding_type,
             severity: finding_type.default_severity(),
@@ -241,7 +233,10 @@ impl AuditFinding {
         matches!(
             self.finding_type,
             FindingType::MaterialWeakness | FindingType::SignificantDeficiency
-        ) || matches!(self.severity, FindingSeverity::Critical | FindingSeverity::High)
+        ) || matches!(
+            self.severity,
+            FindingSeverity::Critical | FindingSeverity::High
+        )
     }
 }
 
