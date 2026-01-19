@@ -34,6 +34,7 @@ A high-performance, configurable synthetic data generator for enterprise financi
   - [Desktop UI](#desktop-ui)
   - [Documentation](#documentation)
   - [License](#license)
+  - [Support](#support)
   - [Acknowledgments](#acknowledgments)
 
 ---
@@ -290,6 +291,12 @@ The desktop application provides visual configuration, real-time streaming, and 
 Copyright 2024-2026 Michael Ivertowski, Ernst & Young Ltd., Zurich, Switzerland
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+
+---
+
+## Support
+
+Commercial support, custom development, and enterprise licensing are available upon request. Please contact the author at [michael.ivertowski@ch.ey.com](mailto:michael.ivertowski@ch.ey.com) for inquiries.
 
 ---
 
