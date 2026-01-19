@@ -1,20 +1,28 @@
 # synth-ui
 
-Desktop UI for the Synthetic Data Generator built with Tauri 2.0 + SvelteKit.
+Cross-platform desktop application for synthetic data generation.
 
-## Features
+## Overview
 
-- Real-time metrics dashboard with live updates
-- Configuration panel for generation parameters
-- Stream control (start/stop/pause)
-- WebSocket event viewer
-- Swiss-design minimalist interface (Inter font, grid-based layout, high contrast)
+`synth-ui` provides a graphical interface for SyntheticData:
+
+- **Visual Configuration**: Comprehensive UI for all configuration sections
+- **Real-time Streaming**: Live generation viewer with WebSocket
+- **Preset Management**: One-click industry preset application
+- **Validation Feedback**: Real-time configuration validation
+
+## Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Backend | Tauri 2.0 (Rust) |
+| Frontend | SvelteKit + Svelte 5 |
+| Styling | TailwindCSS |
+| State | Svelte stores with runes |
 
 ## Prerequisites
 
 ### Linux
-
-Install GTK and WebKit development libraries:
 
 ```bash
 # Ubuntu/Debian
@@ -29,101 +37,93 @@ sudo pacman -S webkit2gtk-4.1 base-devel curl wget file openssl appmenu-gtk-modu
 
 ### macOS
 
-No additional dependencies required (uses WebKit which is built into macOS).
+No additional dependencies required (uses built-in WebKit).
 
 ### Windows
 
-Install the WebView2 runtime (usually already installed on Windows 10/11).
+WebView2 runtime (usually pre-installed on Windows 10/11).
 
-## Building
-
-### Frontend (Svelte)
+## Development
 
 ```bash
 cd crates/synth-ui
+
+# Install dependencies
 npm install
-npm run build
-```
 
-### Backend (Tauri/Rust)
+# Development server (frontend only)
+npm run dev
 
-First, add synth-ui to the workspace by uncommenting it in the root `Cargo.toml`:
-
-```toml
-[workspace]
-members = [
-    # ... other crates
-    "crates/synth-ui/src-tauri",
-]
-```
-
-Then build:
-
-```bash
-cargo build -p synth-ui --release
-```
-
-### Development
-
-Run both frontend and backend in development mode:
-
-```bash
-cd crates/synth-ui
+# Desktop app development
 npm run tauri dev
+
+# Production build
+npm run build
+npm run tauri build
 ```
 
-## Architecture
+## Configuration Sections
+
+The UI provides 15+ configuration pages:
+
+| Section | Description |
+|---------|-------------|
+| Global | Industry, dates, seed, performance |
+| Transactions | Line items, amounts, sources |
+| Master Data | Vendors, customers, materials |
+| Document Flows | P2P, O2C configuration |
+| Financial | Balance, subledger, FX, period close |
+| Compliance | Fraud, controls, approval |
+| Analytics | Graph export, anomaly, data quality |
+| Output | Formats, compression |
+
+## Project Structure
 
 ```
 synth-ui/
 ├── src/                    # Svelte frontend
-│   ├── app.css            # Swiss-design CSS system
-│   ├── app.html           # HTML template
-│   ├── routes/            # SvelteKit pages
-│   │   ├── +layout.svelte # App layout with navigation
-│   │   ├── +page.svelte   # Dashboard (main page)
-│   │   ├── config/        # Configuration page
-│   │   └── stream/        # Stream viewer page
-│   └── lib/               # Svelte components
-│       ├── StatusBar.svelte
-│       ├── MetricsPanel.svelte
-│       └── ControlPanel.svelte
-├── src-tauri/             # Rust backend (Tauri)
+│   ├── routes/             # SvelteKit pages
+│   │   ├── +page.svelte    # Dashboard
+│   │   ├── config/         # Configuration pages (15+ sections)
+│   │   └── stream/         # Generation streaming viewer
+│   └── lib/
+│       ├── components/     # Reusable UI components
+│       ├── stores/         # Svelte stores
+│       └── utils/          # Utilities
+├── src-tauri/              # Rust backend
 │   ├── src/
-│   │   ├── lib.rs         # Tauri commands
-│   │   └── main.rs        # App entry point
+│   │   ├── lib.rs          # Tauri commands
+│   │   └── main.rs         # App entry point
 │   └── Cargo.toml
-├── package.json           # Node dependencies
-├── svelte.config.js       # SvelteKit config
-└── vite.config.ts         # Vite config
+├── e2e/                    # Playwright E2E tests
+└── package.json
 ```
 
 ## Server Connection
 
-The UI connects to the synth-server REST API at `http://localhost:3000` by default. Make sure to start the server first:
+The UI connects to `synth-server` at `http://localhost:3000` by default:
 
 ```bash
+# Start the server first
 cargo run -p synth-server
+
+# Then run the UI
+npm run tauri dev
 ```
 
-## Pages
+## Testing
 
-### Dashboard (`/`)
+```bash
+# Unit tests (165 tests)
+npm test
 
-- Server connection status
-- Real-time metrics (entries generated, anomalies, rate)
-- Stream control buttons
-- Bulk generation form
+# E2E tests with Playwright
+npx playwright test
 
-### Configuration (`/config`)
+# E2E with UI
+npx playwright test --ui
+```
 
-- Global settings (industry, date range, seed)
-- Chart of Accounts complexity
-- Fraud/anomaly injection settings
-- Company management
+## License
 
-### Stream (`/stream`)
-
-- WebSocket connection to event stream
-- Real-time event table
-- Auto-scroll and event filtering
+Apache-2.0 - See [LICENSE](../../LICENSE) for details.

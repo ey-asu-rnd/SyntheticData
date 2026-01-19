@@ -42,9 +42,13 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 rust-version = "1.75"
-authors = ["Michael Ivertowski"]
+authors = ["Michael Ivertowski <michael.ivertowski@ch.ey.com>"]
 repository = "https://github.com/mivertowski/SyntheticData"
+homepage = "https://github.com/ey-asu-rnd/SyntheticData"
+documentation = "https://github.com/ey-asu-rnd/SyntheticData"
 description = "High-performance synthetic data generator for enterprise accounting data"
+keywords = ["synthetic-data", "accounting", "audit", "machine-learning", "fraud-detection"]
+categories = ["simulation", "finance", "data-structures"]
 
 [workspace.dependencies]
 # Internal crates
