@@ -314,6 +314,9 @@ fn validate_document_flows(config: &GeneratorConfig) -> SynthResult<()> {
                 "p2p.max_price_variance_percent must be non-negative",
             ));
         }
+
+        // P2P payment behavior config
+        validate_p2p_payment_behavior(&p2p.payment_behavior)?;
     }
 
     // O2C config
@@ -337,6 +340,150 @@ fn validate_document_flows(config: &GeneratorConfig) -> SynthResult<()> {
             "o2c.cash_discount.discount_percent",
             o2c.cash_discount.discount_percent,
         )?;
+
+        // O2C payment behavior config
+        validate_o2c_payment_behavior(&o2c.payment_behavior)?;
+    }
+
+    Ok(())
+}
+
+/// Validate P2P payment behavior configuration.
+fn validate_p2p_payment_behavior(
+    config: &crate::schema::P2PPaymentBehaviorConfig,
+) -> SynthResult<()> {
+    validate_rate(
+        "p2p.payment_behavior.late_payment_rate",
+        config.late_payment_rate,
+    )?;
+    validate_rate(
+        "p2p.payment_behavior.partial_payment_rate",
+        config.partial_payment_rate,
+    )?;
+    validate_rate(
+        "p2p.payment_behavior.payment_correction_rate",
+        config.payment_correction_rate,
+    )?;
+
+    // Validate late payment days distribution sums to ~1.0
+    let late_dist = &config.late_payment_days_distribution;
+    let late_sum = late_dist.slightly_late_1_to_7
+        + late_dist.late_8_to_14
+        + late_dist.very_late_15_to_30
+        + late_dist.severely_late_31_to_60
+        + late_dist.extremely_late_over_60;
+    if (late_sum - 1.0).abs() > 0.01 {
+        return Err(SynthError::validation(format!(
+            "p2p.payment_behavior.late_payment_days_distribution must sum to 1.0, got {}",
+            late_sum
+        )));
+    }
+
+    Ok(())
+}
+
+/// Validate O2C payment behavior configuration.
+fn validate_o2c_payment_behavior(
+    config: &crate::schema::O2CPaymentBehaviorConfig,
+) -> SynthResult<()> {
+    // Validate dunning config
+    let dunning = &config.dunning;
+    if dunning.enabled {
+        validate_rate(
+            "o2c.payment_behavior.dunning.dunning_block_rate",
+            dunning.dunning_block_rate,
+        )?;
+
+        // Validate dunning level days are in ascending order
+        if dunning.level_2_days_overdue <= dunning.level_1_days_overdue {
+            return Err(SynthError::validation(
+                "dunning.level_2_days_overdue must be greater than level_1_days_overdue",
+            ));
+        }
+        if dunning.level_3_days_overdue <= dunning.level_2_days_overdue {
+            return Err(SynthError::validation(
+                "dunning.level_3_days_overdue must be greater than level_2_days_overdue",
+            ));
+        }
+        if dunning.collection_days_overdue <= dunning.level_3_days_overdue {
+            return Err(SynthError::validation(
+                "dunning.collection_days_overdue must be greater than level_3_days_overdue",
+            ));
+        }
+
+        // Validate dunning payment rates sum to ~1.0
+        let rates = &dunning.payment_after_dunning_rates;
+        let rates_sum = rates.after_level_1
+            + rates.after_level_2
+            + rates.after_level_3
+            + rates.during_collection
+            + rates.never_pay;
+        if (rates_sum - 1.0).abs() > 0.01 {
+            return Err(SynthError::validation(format!(
+                "dunning.payment_after_dunning_rates must sum to 1.0, got {}",
+                rates_sum
+            )));
+        }
+    }
+
+    // Validate partial payments config
+    let partial = &config.partial_payments;
+    validate_rate("o2c.payment_behavior.partial_payments.rate", partial.rate)?;
+    let partial_dist = &partial.percentage_distribution;
+    let partial_sum = partial_dist.pay_25_percent
+        + partial_dist.pay_50_percent
+        + partial_dist.pay_75_percent
+        + partial_dist.pay_random_percent;
+    if (partial_sum - 1.0).abs() > 0.01 {
+        return Err(SynthError::validation(format!(
+            "partial_payments.percentage_distribution must sum to 1.0, got {}",
+            partial_sum
+        )));
+    }
+
+    // Validate short payments config
+    let short = &config.short_payments;
+    validate_rate("o2c.payment_behavior.short_payments.rate", short.rate)?;
+    validate_rate(
+        "o2c.payment_behavior.short_payments.max_short_percent",
+        short.max_short_percent,
+    )?;
+    let short_dist = &short.reason_distribution;
+    let short_sum = short_dist.pricing_dispute
+        + short_dist.quality_issue
+        + short_dist.quantity_discrepancy
+        + short_dist.unauthorized_deduction
+        + short_dist.incorrect_discount;
+    if (short_sum - 1.0).abs() > 0.01 {
+        return Err(SynthError::validation(format!(
+            "short_payments.reason_distribution must sum to 1.0, got {}",
+            short_sum
+        )));
+    }
+
+    // Validate on-account payments config
+    validate_rate(
+        "o2c.payment_behavior.on_account_payments.rate",
+        config.on_account_payments.rate,
+    )?;
+
+    // Validate payment corrections config
+    let corrections = &config.payment_corrections;
+    validate_rate(
+        "o2c.payment_behavior.payment_corrections.rate",
+        corrections.rate,
+    )?;
+    let corr_dist = &corrections.type_distribution;
+    let corr_sum = corr_dist.nsf
+        + corr_dist.chargeback
+        + corr_dist.wrong_amount
+        + corr_dist.wrong_customer
+        + corr_dist.duplicate_payment;
+    if (corr_sum - 1.0).abs() > 0.01 {
+        return Err(SynthError::validation(format!(
+            "payment_corrections.type_distribution must sum to 1.0, got {}",
+            corr_sum
+        )));
     }
 
     Ok(())

@@ -7,6 +7,7 @@ use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
+
 use synth_core::models::{
     documents::{
         DocumentReference, DocumentType, GoodsReceipt, GoodsReceiptItem, MovementType, Payment,
@@ -41,6 +42,59 @@ pub struct P2PGeneratorConfig {
     pub payment_method_distribution: Vec<(PaymentMethod, f64)>,
     /// Probability of early payment discount being taken
     pub early_payment_discount_rate: f64,
+    /// Payment behavior configuration
+    pub payment_behavior: P2PPaymentBehavior,
+}
+
+/// Payment behavior configuration for P2P.
+#[derive(Debug, Clone)]
+pub struct P2PPaymentBehavior {
+    /// Rate of late payments (beyond due date)
+    pub late_payment_rate: f64,
+    /// Distribution of late payment days
+    pub late_payment_distribution: LatePaymentDistribution,
+    /// Rate of partial payments
+    pub partial_payment_rate: f64,
+    /// Rate of payment corrections
+    pub payment_correction_rate: f64,
+}
+
+impl Default for P2PPaymentBehavior {
+    fn default() -> Self {
+        Self {
+            late_payment_rate: 0.15,
+            late_payment_distribution: LatePaymentDistribution::default(),
+            partial_payment_rate: 0.05,
+            payment_correction_rate: 0.02,
+        }
+    }
+}
+
+/// Distribution of late payment days.
+#[derive(Debug, Clone)]
+pub struct LatePaymentDistribution {
+    /// 1-7 days late
+    pub slightly_late_1_to_7: f64,
+    /// 8-14 days late
+    pub late_8_to_14: f64,
+    /// 15-30 days late
+    pub very_late_15_to_30: f64,
+    /// 31-60 days late
+    pub severely_late_31_to_60: f64,
+    /// Over 60 days late
+    pub extremely_late_over_60: f64,
+}
+
+impl Default for LatePaymentDistribution {
+    fn default() -> Self {
+        Self {
+            slightly_late_1_to_7: 0.50,
+            late_8_to_14: 0.25,
+            very_late_15_to_30: 0.15,
+            severely_late_31_to_60: 0.07,
+            extremely_late_over_60: 0.03,
+        }
+    }
 }
 
 impl Default for P2PGeneratorConfig {
@@ -61,6 +115,7 @@ impl Default for P2PGeneratorConfig {
                 (PaymentMethod::CreditCard, 0.05),
             ],
             early_payment_discount_rate: 0.30,
+            payment_behavior: P2PPaymentBehavior::default(),
         }
     }
 }
@@ -80,6 +135,23 @@ pub struct P2PDocumentChain {
     pub is_complete: bool,
     /// Three-way match status
     pub three_way_match_passed: bool,
+    /// Payment timing information
+    pub payment_timing: Option<PaymentTimingInfo>,
+}
+
+/// Information about payment timing.
+#[derive(Debug, Clone)]
+pub struct PaymentTimingInfo {
+    /// Invoice due date
+    pub due_date: NaiveDate,
+    /// Actual payment date
+    pub payment_date: NaiveDate,
+    /// Days late (0 if on time or early)
+    pub days_late: i32,
+    /// Whether payment was late
+    pub is_late: bool,
+    /// Whether early payment discount was taken
+    pub discount_taken: bool,
 }
 
 /// Generator for P2P document flows.
@@ -184,6 +256,9 @@ impl P2PGenerator {
         let payment_date = self.calculate_payment_date(invoice_date, &vendor.payment_terms);
         let payment_fiscal_period = self.get_fiscal_period(payment_date);
 
+        // Calculate due date for timing info
+        let due_date = self.calculate_due_date(invoice_date, &vendor.payment_terms);
+
         // Generate payment
         let payment = vendor_invoice.as_ref().map(|invoice| {
             self.generate_payment(
@@ -199,6 +274,30 @@ impl P2PGenerator {
 
         let is_complete = payment.is_some();
 
+        // Calculate payment timing information
+        let payment_timing = if payment.is_some() {
+            let days_diff = (payment_date - due_date).num_days() as i32;
+            let is_late = days_diff > 0;
+            let discount_taken = payment
+                .as_ref()
+                .map(|p| {
+                    p.allocations
+                        .iter()
+                        .any(|a| a.discount_taken > Decimal::ZERO)
+                })
+                .unwrap_or(false);
+
+            Some(PaymentTimingInfo {
+                due_date,
+                payment_date,
+                days_late: days_diff.max(0),
+                is_late,
+                discount_taken,
+            })
+        } else {
+            None
+        };
+
         P2PDocumentChain {
             purchase_order: po,
             goods_receipts,
@@ -206,6 +305,7 @@ impl P2PGenerator {
             payment,
             is_complete,
             three_way_match_passed,
+            payment_timing,
         }
     }
 
@@ -647,11 +747,49 @@ impl P2PGenerator {
         payment_terms: &PaymentTerms,
     ) -> NaiveDate {
         let due_days = payment_terms.net_days() as i64;
+        let due_date = invoice_date + chrono::Duration::days(due_days);
 
-        // Some variance around due date (-5 to +10 days)
-        let variance = self.rng.gen_range(-5..=10) as i64;
+        // Determine if this is a late payment
+        if self.rng.gen::<f64>() < self.config.payment_behavior.late_payment_rate {
+            // Calculate late days based on distribution
+            let late_days = self.calculate_late_days();
+            due_date + chrono::Duration::days(late_days as i64)
+        } else {
+            // On-time or slightly early payment (-5 to +5 days variance)
+            let variance = self.rng.gen_range(-5..=5) as i64;
+            due_date + chrono::Duration::days(variance)
+        }
+    }
 
-        invoice_date + chrono::Duration::days(due_days + variance)
+    /// Calculate late payment days based on the distribution.
+    fn calculate_late_days(&mut self) -> u32 {
+        let roll: f64 = self.rng.gen();
+        let dist = &self.config.payment_behavior.late_payment_distribution;
+
+        let mut cumulative = 0.0;
+
+        cumulative += dist.slightly_late_1_to_7;
+        if roll < cumulative {
+            return self.rng.gen_range(1..=7);
+        }
+
+        cumulative += dist.late_8_to_14;
+        if roll < cumulative {
+            return self.rng.gen_range(8..=14);
+        }
+
+        cumulative += dist.very_late_15_to_30;
+        if roll < cumulative {
+            return self.rng.gen_range(15..=30);
+        }
+
+        cumulative += dist.severely_late_31_to_60;
+        if roll < cumulative {
+            return self.rng.gen_range(31..=60);
+        }
+
+        // Extremely late: 61-120 days
+        self.rng.gen_range(61..=120)
     }
 
     /// Calculate due date based on payment terms.

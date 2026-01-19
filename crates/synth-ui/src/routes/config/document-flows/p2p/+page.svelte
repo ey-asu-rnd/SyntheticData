@@ -365,6 +365,207 @@
           </div>
         {/snippet}
       </FormSection>
+
+      <FormSection title="Payment Behavior" description="Configure realistic payment patterns including late payments and corrections">
+        {#snippet children()}
+          <div class="form-grid">
+            <FormGroup
+              label="Late Payment Rate"
+              htmlFor="late-payment-rate"
+              helpText="Percentage of payments made after due date"
+              error={getError('document_flows.p2p.payment_behavior.late_payment_rate')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="late-payment-rate"
+                    bind:value={p2p.payment_behavior.late_payment_rate}
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    disabled={!p2p.enabled}
+                  />
+                  <span class="suffix">{(p2p.payment_behavior.late_payment_rate * 100).toFixed(0)}%</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+
+            <FormGroup
+              label="Partial Payment Rate"
+              htmlFor="partial-payment-rate"
+              helpText="Percentage of invoices paid in multiple installments"
+              error={getError('document_flows.p2p.payment_behavior.partial_payment_rate')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="partial-payment-rate"
+                    bind:value={p2p.payment_behavior.partial_payment_rate}
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    disabled={!p2p.enabled}
+                  />
+                  <span class="suffix">{(p2p.payment_behavior.partial_payment_rate * 100).toFixed(0)}%</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+
+            <FormGroup
+              label="Payment Correction Rate"
+              htmlFor="correction-rate"
+              helpText="Percentage of payments requiring correction (NSF, chargebacks)"
+              error={getError('document_flows.p2p.payment_behavior.payment_correction_rate')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="correction-rate"
+                    bind:value={p2p.payment_behavior.payment_correction_rate}
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    disabled={!p2p.enabled}
+                  />
+                  <span class="suffix">{(p2p.payment_behavior.payment_correction_rate * 100).toFixed(0)}%</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+          </div>
+        {/snippet}
+      </FormSection>
+
+      <FormSection title="Late Payment Distribution" description="Distribution of how late payments are made">
+        {#snippet children()}
+          <div class="distribution-grid">
+            <div class="distribution-item">
+              <FormGroup
+                label="1-7 Days Late"
+                htmlFor="late-1-7"
+                helpText="Slightly late payments"
+                error={getError('document_flows.p2p.payment_behavior.late_payment_days_distribution.slightly_late_1_to_7')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="late-1-7"
+                      bind:value={p2p.payment_behavior.late_payment_days_distribution.slightly_late_1_to_7}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!p2p.enabled}
+                    />
+                    <span class="suffix">{(p2p.payment_behavior.late_payment_days_distribution.slightly_late_1_to_7 * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+            </div>
+
+            <div class="distribution-item">
+              <FormGroup
+                label="8-14 Days Late"
+                htmlFor="late-8-14"
+                helpText="Moderately late"
+                error={getError('document_flows.p2p.payment_behavior.late_payment_days_distribution.late_8_to_14')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="late-8-14"
+                      bind:value={p2p.payment_behavior.late_payment_days_distribution.late_8_to_14}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!p2p.enabled}
+                    />
+                    <span class="suffix">{(p2p.payment_behavior.late_payment_days_distribution.late_8_to_14 * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+            </div>
+
+            <div class="distribution-item">
+              <FormGroup
+                label="15-30 Days Late"
+                htmlFor="late-15-30"
+                helpText="Very late payments"
+                error={getError('document_flows.p2p.payment_behavior.late_payment_days_distribution.very_late_15_to_30')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="late-15-30"
+                      bind:value={p2p.payment_behavior.late_payment_days_distribution.very_late_15_to_30}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!p2p.enabled}
+                    />
+                    <span class="suffix">{(p2p.payment_behavior.late_payment_days_distribution.very_late_15_to_30 * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+            </div>
+
+            <div class="distribution-item">
+              <FormGroup
+                label="31-60 Days Late"
+                htmlFor="late-31-60"
+                helpText="Severely late"
+                error={getError('document_flows.p2p.payment_behavior.late_payment_days_distribution.severely_late_31_to_60')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="late-31-60"
+                      bind:value={p2p.payment_behavior.late_payment_days_distribution.severely_late_31_to_60}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!p2p.enabled}
+                    />
+                    <span class="suffix">{(p2p.payment_behavior.late_payment_days_distribution.severely_late_31_to_60 * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+            </div>
+
+            <div class="distribution-item">
+              <FormGroup
+                label="Over 60 Days Late"
+                htmlFor="late-over-60"
+                helpText="Extremely late"
+                error={getError('document_flows.p2p.payment_behavior.late_payment_days_distribution.extremely_late_over_60')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="late-over-60"
+                      bind:value={p2p.payment_behavior.late_payment_days_distribution.extremely_late_over_60}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!p2p.enabled}
+                    />
+                    <span class="suffix">{(p2p.payment_behavior.late_payment_days_distribution.extremely_late_over_60 * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+            </div>
+          </div>
+          <p class="distribution-note">
+            Distribution must sum to 100%
+          </p>
+        {/snippet}
+      </FormSection>
     </div>
   {:else}
     <div class="loading">
@@ -494,6 +695,23 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4);
+  }
+
+  .distribution-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-3);
+  }
+
+  .distribution-item {
+    min-width: 0;
+  }
+
+  .distribution-note {
+    margin-top: var(--space-3);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-align: center;
   }
 
   .input-with-suffix {

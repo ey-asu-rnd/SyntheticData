@@ -437,6 +437,483 @@
           </div>
         {/snippet}
       </FormSection>
+
+      <!-- Payment Behavior Section -->
+      <div class="section-divider">
+        <h2>Payment Behavior</h2>
+        <p>Configure realistic customer payment patterns</p>
+      </div>
+
+      <FormSection title="Dunning (Mahnungen)" description="Configure the dunning/reminder process for overdue invoices">
+        {#snippet children()}
+          <Toggle
+            bind:checked={o2c.payment_behavior.dunning.enabled}
+            label="Enable Dunning Process"
+            description="Generate dunning letters for overdue invoices"
+          />
+
+          {#if o2c.payment_behavior.dunning.enabled}
+            <div class="form-grid" style="margin-top: var(--space-4);">
+              <FormGroup
+                label="Level 1 (1st Reminder)"
+                htmlFor="dunning-level-1"
+                helpText="Days overdue before 1st reminder"
+                error={getError('document_flows.o2c.payment_behavior.dunning.level_1_days_overdue')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="dunning-level-1"
+                      bind:value={o2c.payment_behavior.dunning.level_1_days_overdue}
+                      min="1"
+                      max="365"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">days</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="Level 2 (2nd Reminder)"
+                htmlFor="dunning-level-2"
+                helpText="Days overdue before 2nd reminder"
+                error={getError('document_flows.o2c.payment_behavior.dunning.level_2_days_overdue')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="dunning-level-2"
+                      bind:value={o2c.payment_behavior.dunning.level_2_days_overdue}
+                      min="1"
+                      max="365"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">days</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="Level 3 (Final Notice)"
+                htmlFor="dunning-level-3"
+                helpText="Days overdue before final notice"
+                error={getError('document_flows.o2c.payment_behavior.dunning.level_3_days_overdue')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="dunning-level-3"
+                      bind:value={o2c.payment_behavior.dunning.level_3_days_overdue}
+                      min="1"
+                      max="365"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">days</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="Collection Handover"
+                htmlFor="dunning-collection"
+                helpText="Days overdue before collection agency"
+                error={getError('document_flows.o2c.payment_behavior.dunning.collection_days_overdue')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="dunning-collection"
+                      bind:value={o2c.payment_behavior.dunning.collection_days_overdue}
+                      min="1"
+                      max="365"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">days</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="Annual Interest Rate"
+                htmlFor="dunning-interest"
+                helpText="Interest charged on overdue amounts"
+                error={getError('document_flows.o2c.payment_behavior.dunning.interest_rate_per_year')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="dunning-interest"
+                      bind:value={o2c.payment_behavior.dunning.interest_rate_per_year}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">{(o2c.payment_behavior.dunning.interest_rate_per_year * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="Dunning Charge"
+                htmlFor="dunning-charge"
+                helpText="Fixed charge per dunning letter"
+                error={getError('document_flows.o2c.payment_behavior.dunning.dunning_charge')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="dunning-charge"
+                      bind:value={o2c.payment_behavior.dunning.dunning_charge}
+                      min="0"
+                      max="1000"
+                      step="1"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">USD</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="Dunning Block Rate"
+                htmlFor="dunning-block"
+                helpText="Rate of invoices blocked from dunning (disputes)"
+                error={getError('document_flows.o2c.payment_behavior.dunning.dunning_block_rate')}
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="dunning-block"
+                      bind:value={o2c.payment_behavior.dunning.dunning_block_rate}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">{(o2c.payment_behavior.dunning.dunning_block_rate * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+            </div>
+
+            <h4 class="subsection-title">Payment Response Rates</h4>
+            <p class="subsection-description">Percentage of customers who pay after each dunning level</p>
+            <div class="form-grid">
+              <FormGroup
+                label="After Level 1"
+                htmlFor="pay-after-1"
+                helpText="Pay after 1st reminder"
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="pay-after-1"
+                      bind:value={o2c.payment_behavior.dunning.payment_after_dunning_rates.after_level_1}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">{(o2c.payment_behavior.dunning.payment_after_dunning_rates.after_level_1 * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="After Level 2"
+                htmlFor="pay-after-2"
+                helpText="Pay after 2nd reminder"
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="pay-after-2"
+                      bind:value={o2c.payment_behavior.dunning.payment_after_dunning_rates.after_level_2}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">{(o2c.payment_behavior.dunning.payment_after_dunning_rates.after_level_2 * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="After Level 3"
+                htmlFor="pay-after-3"
+                helpText="Pay after final notice"
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="pay-after-3"
+                      bind:value={o2c.payment_behavior.dunning.payment_after_dunning_rates.after_level_3}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">{(o2c.payment_behavior.dunning.payment_after_dunning_rates.after_level_3 * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="During Collection"
+                htmlFor="pay-collection"
+                helpText="Pay during collection"
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="pay-collection"
+                      bind:value={o2c.payment_behavior.dunning.payment_after_dunning_rates.during_collection}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">{(o2c.payment_behavior.dunning.payment_after_dunning_rates.during_collection * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+
+              <FormGroup
+                label="Never Pay"
+                htmlFor="never-pay"
+                helpText="Becomes bad debt"
+              >
+                {#snippet children()}
+                  <div class="input-with-suffix">
+                    <input
+                      type="number"
+                      id="never-pay"
+                      bind:value={o2c.payment_behavior.dunning.payment_after_dunning_rates.never_pay}
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      disabled={!o2c.enabled}
+                    />
+                    <span class="suffix">{(o2c.payment_behavior.dunning.payment_after_dunning_rates.never_pay * 100).toFixed(0)}%</span>
+                  </div>
+                {/snippet}
+              </FormGroup>
+            </div>
+            <p class="distribution-note">Response rates must sum to 100%</p>
+          {/if}
+        {/snippet}
+      </FormSection>
+
+      <FormSection title="Partial Payments" description="Configure partial payment behavior">
+        {#snippet children()}
+          <div class="form-grid">
+            <FormGroup
+              label="Partial Payment Rate"
+              htmlFor="partial-rate"
+              helpText="Percentage of invoices paid in installments"
+              error={getError('document_flows.o2c.payment_behavior.partial_payments.rate')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="partial-rate"
+                    bind:value={o2c.payment_behavior.partial_payments.rate}
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    disabled={!o2c.enabled}
+                  />
+                  <span class="suffix">{(o2c.payment_behavior.partial_payments.rate * 100).toFixed(0)}%</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+
+            <FormGroup
+              label="Days Until Remainder"
+              htmlFor="remainder-days"
+              helpText="Average days until remaining balance is paid"
+              error={getError('document_flows.o2c.payment_behavior.partial_payments.avg_days_until_remainder')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="remainder-days"
+                    bind:value={o2c.payment_behavior.partial_payments.avg_days_until_remainder}
+                    min="1"
+                    max="365"
+                    disabled={!o2c.enabled}
+                  />
+                  <span class="suffix">days</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+          </div>
+        {/snippet}
+      </FormSection>
+
+      <FormSection title="Short Payments" description="Configure unauthorized deductions and disputes">
+        {#snippet children()}
+          <div class="form-grid">
+            <FormGroup
+              label="Short Payment Rate"
+              htmlFor="short-rate"
+              helpText="Percentage of payments with unauthorized deductions"
+              error={getError('document_flows.o2c.payment_behavior.short_payments.rate')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="short-rate"
+                    bind:value={o2c.payment_behavior.short_payments.rate}
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    disabled={!o2c.enabled}
+                  />
+                  <span class="suffix">{(o2c.payment_behavior.short_payments.rate * 100).toFixed(0)}%</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+
+            <FormGroup
+              label="Max Short Amount"
+              htmlFor="max-short"
+              helpText="Maximum deduction as percentage of invoice"
+              error={getError('document_flows.o2c.payment_behavior.short_payments.max_short_percent')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="max-short"
+                    bind:value={o2c.payment_behavior.short_payments.max_short_percent}
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    disabled={!o2c.enabled}
+                  />
+                  <span class="suffix">{(o2c.payment_behavior.short_payments.max_short_percent * 100).toFixed(0)}%</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+          </div>
+        {/snippet}
+      </FormSection>
+
+      <FormSection title="On-Account Payments" description="Configure unapplied customer payments">
+        {#snippet children()}
+          <div class="form-grid">
+            <FormGroup
+              label="On-Account Rate"
+              htmlFor="on-account-rate"
+              helpText="Percentage of payments not matched to invoices"
+              error={getError('document_flows.o2c.payment_behavior.on_account_payments.rate')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="on-account-rate"
+                    bind:value={o2c.payment_behavior.on_account_payments.rate}
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    disabled={!o2c.enabled}
+                  />
+                  <span class="suffix">{(o2c.payment_behavior.on_account_payments.rate * 100).toFixed(0)}%</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+
+            <FormGroup
+              label="Application Days"
+              htmlFor="application-days"
+              helpText="Average days until on-account payment is applied"
+              error={getError('document_flows.o2c.payment_behavior.on_account_payments.avg_days_until_application')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="application-days"
+                    bind:value={o2c.payment_behavior.on_account_payments.avg_days_until_application}
+                    min="1"
+                    max="365"
+                    disabled={!o2c.enabled}
+                  />
+                  <span class="suffix">days</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+          </div>
+        {/snippet}
+      </FormSection>
+
+      <FormSection title="Payment Corrections" description="Configure NSF, chargebacks, and reversals">
+        {#snippet children()}
+          <div class="form-grid">
+            <FormGroup
+              label="Correction Rate"
+              htmlFor="correction-rate"
+              helpText="Percentage of payments requiring correction"
+              error={getError('document_flows.o2c.payment_behavior.payment_corrections.rate')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="correction-rate"
+                    bind:value={o2c.payment_behavior.payment_corrections.rate}
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    disabled={!o2c.enabled}
+                  />
+                  <span class="suffix">{(o2c.payment_behavior.payment_corrections.rate * 100).toFixed(0)}%</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+
+            <FormGroup
+              label="Resolution Days"
+              htmlFor="resolution-days"
+              helpText="Average days to resolve a correction"
+              error={getError('document_flows.o2c.payment_behavior.payment_corrections.avg_resolution_days')}
+            >
+              {#snippet children()}
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="resolution-days"
+                    bind:value={o2c.payment_behavior.payment_corrections.avg_resolution_days}
+                    min="1"
+                    max="365"
+                    disabled={!o2c.enabled}
+                  />
+                  <span class="suffix">days</span>
+                </div>
+              {/snippet}
+            </FormGroup>
+          </div>
+        {/snippet}
+      </FormSection>
     </div>
   {:else}
     <div class="loading">
@@ -566,6 +1043,43 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4);
+  }
+
+  .section-divider {
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--color-border);
+    margin-top: var(--space-4);
+  }
+
+  .section-divider h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+  }
+
+  .section-divider p {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .subsection-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-top: var(--space-5);
+    margin-bottom: var(--space-1);
+  }
+
+  .subsection-description {
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    margin-bottom: var(--space-3);
+  }
+
+  .distribution-note {
+    margin-top: var(--space-3);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-align: center;
   }
 
   .input-with-suffix {

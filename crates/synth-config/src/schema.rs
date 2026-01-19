@@ -1530,6 +1530,9 @@ pub struct P2PFlowConfig {
     /// PO line count distribution
     #[serde(default)]
     pub line_count_distribution: DocumentLineCountDistribution,
+    /// Payment behavior configuration
+    #[serde(default)]
+    pub payment_behavior: P2PPaymentBehaviorConfig,
 }
 
 fn default_three_way_match_rate() -> f64 {
@@ -1577,6 +1580,103 @@ impl Default for P2PFlowConfig {
             average_gr_to_invoice_days: default_gr_to_invoice_days(),
             average_invoice_to_payment_days: default_invoice_to_payment_days(),
             line_count_distribution: DocumentLineCountDistribution::default(),
+            payment_behavior: P2PPaymentBehaviorConfig::default(),
+        }
+    }
+}
+
+// ============================================================================
+// P2P Payment Behavior Configuration
+// ============================================================================
+
+/// P2P payment behavior configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct P2PPaymentBehaviorConfig {
+    /// Rate of late payments (beyond due date)
+    #[serde(default = "default_p2p_late_payment_rate")]
+    pub late_payment_rate: f64,
+    /// Distribution of late payment days
+    #[serde(default)]
+    pub late_payment_days_distribution: LatePaymentDaysDistribution,
+    /// Rate of partial payments
+    #[serde(default = "default_p2p_partial_payment_rate")]
+    pub partial_payment_rate: f64,
+    /// Rate of payment corrections (NSF, chargebacks, reversals)
+    #[serde(default = "default_p2p_payment_correction_rate")]
+    pub payment_correction_rate: f64,
+}
+
+fn default_p2p_late_payment_rate() -> f64 {
+    0.15
+}
+
+fn default_p2p_partial_payment_rate() -> f64 {
+    0.05
+}
+
+fn default_p2p_payment_correction_rate() -> f64 {
+    0.02
+}
+
+impl Default for P2PPaymentBehaviorConfig {
+    fn default() -> Self {
+        Self {
+            late_payment_rate: default_p2p_late_payment_rate(),
+            late_payment_days_distribution: LatePaymentDaysDistribution::default(),
+            partial_payment_rate: default_p2p_partial_payment_rate(),
+            payment_correction_rate: default_p2p_payment_correction_rate(),
+        }
+    }
+}
+
+/// Distribution of late payment days for P2P.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LatePaymentDaysDistribution {
+    /// 1-7 days late (slightly late)
+    #[serde(default = "default_slightly_late")]
+    pub slightly_late_1_to_7: f64,
+    /// 8-14 days late
+    #[serde(default = "default_late_8_14")]
+    pub late_8_to_14: f64,
+    /// 15-30 days late (very late)
+    #[serde(default = "default_very_late")]
+    pub very_late_15_to_30: f64,
+    /// 31-60 days late (severely late)
+    #[serde(default = "default_severely_late")]
+    pub severely_late_31_to_60: f64,
+    /// Over 60 days late (extremely late)
+    #[serde(default = "default_extremely_late")]
+    pub extremely_late_over_60: f64,
+}
+
+fn default_slightly_late() -> f64 {
+    0.50
+}
+
+fn default_late_8_14() -> f64 {
+    0.25
+}
+
+fn default_very_late() -> f64 {
+    0.15
+}
+
+fn default_severely_late() -> f64 {
+    0.07
+}
+
+fn default_extremely_late() -> f64 {
+    0.03
+}
+
+impl Default for LatePaymentDaysDistribution {
+    fn default() -> Self {
+        Self {
+            slightly_late_1_to_7: default_slightly_late(),
+            late_8_to_14: default_late_8_14(),
+            very_late_15_to_30: default_very_late(),
+            severely_late_31_to_60: default_severely_late(),
+            extremely_late_over_60: default_extremely_late(),
         }
     }
 }
@@ -1614,6 +1714,9 @@ pub struct O2CFlowConfig {
     /// Cash discount configuration
     #[serde(default)]
     pub cash_discount: CashDiscountConfig,
+    /// Payment behavior configuration
+    #[serde(default)]
+    pub payment_behavior: O2CPaymentBehaviorConfig,
 }
 
 fn default_credit_check_failure_rate() -> f64 {
@@ -1657,6 +1760,435 @@ impl Default for O2CFlowConfig {
             average_invoice_to_receipt_days: default_invoice_to_receipt_days(),
             line_count_distribution: DocumentLineCountDistribution::default(),
             cash_discount: CashDiscountConfig::default(),
+            payment_behavior: O2CPaymentBehaviorConfig::default(),
+        }
+    }
+}
+
+// ============================================================================
+// O2C Payment Behavior Configuration
+// ============================================================================
+
+/// O2C payment behavior configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct O2CPaymentBehaviorConfig {
+    /// Dunning (Mahnung) configuration
+    #[serde(default)]
+    pub dunning: DunningConfig,
+    /// Partial payment configuration
+    #[serde(default)]
+    pub partial_payments: PartialPaymentConfig,
+    /// Short payment configuration (unauthorized deductions)
+    #[serde(default)]
+    pub short_payments: ShortPaymentConfig,
+    /// On-account payment configuration (unapplied payments)
+    #[serde(default)]
+    pub on_account_payments: OnAccountPaymentConfig,
+    /// Payment correction configuration (NSF, chargebacks)
+    #[serde(default)]
+    pub payment_corrections: PaymentCorrectionConfig,
+}
+
+impl Default for O2CPaymentBehaviorConfig {
+    fn default() -> Self {
+        Self {
+            dunning: DunningConfig::default(),
+            partial_payments: PartialPaymentConfig::default(),
+            short_payments: ShortPaymentConfig::default(),
+            on_account_payments: OnAccountPaymentConfig::default(),
+            payment_corrections: PaymentCorrectionConfig::default(),
+        }
+    }
+}
+
+/// Dunning (Mahnungen) configuration for AR collections.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DunningConfig {
+    /// Enable dunning process
+    #[serde(default)]
+    pub enabled: bool,
+    /// Days overdue for level 1 dunning (1st reminder)
+    #[serde(default = "default_dunning_level_1_days")]
+    pub level_1_days_overdue: u32,
+    /// Days overdue for level 2 dunning (2nd reminder)
+    #[serde(default = "default_dunning_level_2_days")]
+    pub level_2_days_overdue: u32,
+    /// Days overdue for level 3 dunning (final notice)
+    #[serde(default = "default_dunning_level_3_days")]
+    pub level_3_days_overdue: u32,
+    /// Days overdue for collection handover
+    #[serde(default = "default_collection_days")]
+    pub collection_days_overdue: u32,
+    /// Payment rates after each dunning level
+    #[serde(default)]
+    pub payment_after_dunning_rates: DunningPaymentRates,
+    /// Rate of invoices blocked from dunning (disputes)
+    #[serde(default = "default_dunning_block_rate")]
+    pub dunning_block_rate: f64,
+    /// Interest rate per year for overdue amounts
+    #[serde(default = "default_dunning_interest_rate")]
+    pub interest_rate_per_year: f64,
+    /// Fixed dunning charge per letter
+    #[serde(default = "default_dunning_charge")]
+    pub dunning_charge: f64,
+}
+
+fn default_dunning_level_1_days() -> u32 {
+    14
+}
+
+fn default_dunning_level_2_days() -> u32 {
+    28
+}
+
+fn default_dunning_level_3_days() -> u32 {
+    42
+}
+
+fn default_collection_days() -> u32 {
+    60
+}
+
+fn default_dunning_block_rate() -> f64 {
+    0.05
+}
+
+fn default_dunning_interest_rate() -> f64 {
+    0.09
+}
+
+fn default_dunning_charge() -> f64 {
+    25.0
+}
+
+impl Default for DunningConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            level_1_days_overdue: default_dunning_level_1_days(),
+            level_2_days_overdue: default_dunning_level_2_days(),
+            level_3_days_overdue: default_dunning_level_3_days(),
+            collection_days_overdue: default_collection_days(),
+            payment_after_dunning_rates: DunningPaymentRates::default(),
+            dunning_block_rate: default_dunning_block_rate(),
+            interest_rate_per_year: default_dunning_interest_rate(),
+            dunning_charge: default_dunning_charge(),
+        }
+    }
+}
+
+/// Payment rates after each dunning level.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DunningPaymentRates {
+    /// Rate that pays after level 1 reminder
+    #[serde(default = "default_after_level_1")]
+    pub after_level_1: f64,
+    /// Rate that pays after level 2 reminder
+    #[serde(default = "default_after_level_2")]
+    pub after_level_2: f64,
+    /// Rate that pays after level 3 final notice
+    #[serde(default = "default_after_level_3")]
+    pub after_level_3: f64,
+    /// Rate that pays during collection
+    #[serde(default = "default_during_collection")]
+    pub during_collection: f64,
+    /// Rate that never pays (becomes bad debt)
+    #[serde(default = "default_never_pay")]
+    pub never_pay: f64,
+}
+
+fn default_after_level_1() -> f64 {
+    0.40
+}
+
+fn default_after_level_2() -> f64 {
+    0.30
+}
+
+fn default_after_level_3() -> f64 {
+    0.15
+}
+
+fn default_during_collection() -> f64 {
+    0.05
+}
+
+fn default_never_pay() -> f64 {
+    0.10
+}
+
+impl Default for DunningPaymentRates {
+    fn default() -> Self {
+        Self {
+            after_level_1: default_after_level_1(),
+            after_level_2: default_after_level_2(),
+            after_level_3: default_after_level_3(),
+            during_collection: default_during_collection(),
+            never_pay: default_never_pay(),
+        }
+    }
+}
+
+/// Partial payment configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartialPaymentConfig {
+    /// Rate of invoices paid partially
+    #[serde(default = "default_partial_payment_rate")]
+    pub rate: f64,
+    /// Distribution of partial payment percentages
+    #[serde(default)]
+    pub percentage_distribution: PartialPaymentPercentageDistribution,
+    /// Average days until remainder is paid
+    #[serde(default = "default_avg_days_until_remainder")]
+    pub avg_days_until_remainder: u32,
+}
+
+fn default_partial_payment_rate() -> f64 {
+    0.08
+}
+
+fn default_avg_days_until_remainder() -> u32 {
+    30
+}
+
+impl Default for PartialPaymentConfig {
+    fn default() -> Self {
+        Self {
+            rate: default_partial_payment_rate(),
+            percentage_distribution: PartialPaymentPercentageDistribution::default(),
+            avg_days_until_remainder: default_avg_days_until_remainder(),
+        }
+    }
+}
+
+/// Distribution of partial payment percentages.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartialPaymentPercentageDistribution {
+    /// Pay 25% of invoice
+    #[serde(default = "default_partial_25")]
+    pub pay_25_percent: f64,
+    /// Pay 50% of invoice
+    #[serde(default = "default_partial_50")]
+    pub pay_50_percent: f64,
+    /// Pay 75% of invoice
+    #[serde(default = "default_partial_75")]
+    pub pay_75_percent: f64,
+    /// Pay random percentage
+    #[serde(default = "default_partial_random")]
+    pub pay_random_percent: f64,
+}
+
+fn default_partial_25() -> f64 {
+    0.15
+}
+
+fn default_partial_50() -> f64 {
+    0.50
+}
+
+fn default_partial_75() -> f64 {
+    0.25
+}
+
+fn default_partial_random() -> f64 {
+    0.10
+}
+
+impl Default for PartialPaymentPercentageDistribution {
+    fn default() -> Self {
+        Self {
+            pay_25_percent: default_partial_25(),
+            pay_50_percent: default_partial_50(),
+            pay_75_percent: default_partial_75(),
+            pay_random_percent: default_partial_random(),
+        }
+    }
+}
+
+/// Short payment configuration (unauthorized deductions).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShortPaymentConfig {
+    /// Rate of payments that are short
+    #[serde(default = "default_short_payment_rate")]
+    pub rate: f64,
+    /// Distribution of short payment reasons
+    #[serde(default)]
+    pub reason_distribution: ShortPaymentReasonDistribution,
+    /// Maximum percentage that can be short
+    #[serde(default = "default_max_short_percent")]
+    pub max_short_percent: f64,
+}
+
+fn default_short_payment_rate() -> f64 {
+    0.03
+}
+
+fn default_max_short_percent() -> f64 {
+    0.10
+}
+
+impl Default for ShortPaymentConfig {
+    fn default() -> Self {
+        Self {
+            rate: default_short_payment_rate(),
+            reason_distribution: ShortPaymentReasonDistribution::default(),
+            max_short_percent: default_max_short_percent(),
+        }
+    }
+}
+
+/// Distribution of short payment reasons.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShortPaymentReasonDistribution {
+    /// Pricing dispute
+    #[serde(default = "default_pricing_dispute")]
+    pub pricing_dispute: f64,
+    /// Quality issue
+    #[serde(default = "default_quality_issue")]
+    pub quality_issue: f64,
+    /// Quantity discrepancy
+    #[serde(default = "default_quantity_discrepancy")]
+    pub quantity_discrepancy: f64,
+    /// Unauthorized deduction
+    #[serde(default = "default_unauthorized_deduction")]
+    pub unauthorized_deduction: f64,
+    /// Early payment discount taken incorrectly
+    #[serde(default = "default_incorrect_discount")]
+    pub incorrect_discount: f64,
+}
+
+fn default_pricing_dispute() -> f64 {
+    0.30
+}
+
+fn default_quality_issue() -> f64 {
+    0.20
+}
+
+fn default_quantity_discrepancy() -> f64 {
+    0.20
+}
+
+fn default_unauthorized_deduction() -> f64 {
+    0.15
+}
+
+fn default_incorrect_discount() -> f64 {
+    0.15
+}
+
+impl Default for ShortPaymentReasonDistribution {
+    fn default() -> Self {
+        Self {
+            pricing_dispute: default_pricing_dispute(),
+            quality_issue: default_quality_issue(),
+            quantity_discrepancy: default_quantity_discrepancy(),
+            unauthorized_deduction: default_unauthorized_deduction(),
+            incorrect_discount: default_incorrect_discount(),
+        }
+    }
+}
+
+/// On-account payment configuration (unapplied payments).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OnAccountPaymentConfig {
+    /// Rate of payments that are on-account (unapplied)
+    #[serde(default = "default_on_account_rate")]
+    pub rate: f64,
+    /// Average days until on-account payments are applied
+    #[serde(default = "default_avg_days_until_applied")]
+    pub avg_days_until_applied: u32,
+}
+
+fn default_on_account_rate() -> f64 {
+    0.02
+}
+
+fn default_avg_days_until_applied() -> u32 {
+    14
+}
+
+impl Default for OnAccountPaymentConfig {
+    fn default() -> Self {
+        Self {
+            rate: default_on_account_rate(),
+            avg_days_until_applied: default_avg_days_until_applied(),
+        }
+    }
+}
+
+/// Payment correction configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentCorrectionConfig {
+    /// Rate of payments requiring correction
+    #[serde(default = "default_payment_correction_rate")]
+    pub rate: f64,
+    /// Distribution of correction types
+    #[serde(default)]
+    pub type_distribution: PaymentCorrectionTypeDistribution,
+}
+
+fn default_payment_correction_rate() -> f64 {
+    0.02
+}
+
+impl Default for PaymentCorrectionConfig {
+    fn default() -> Self {
+        Self {
+            rate: default_payment_correction_rate(),
+            type_distribution: PaymentCorrectionTypeDistribution::default(),
+        }
+    }
+}
+
+/// Distribution of payment correction types.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentCorrectionTypeDistribution {
+    /// NSF (Non-sufficient funds) / bounced check
+    #[serde(default = "default_nsf_rate")]
+    pub nsf: f64,
+    /// Chargeback
+    #[serde(default = "default_chargeback_rate")]
+    pub chargeback: f64,
+    /// Wrong amount applied
+    #[serde(default = "default_wrong_amount_rate")]
+    pub wrong_amount: f64,
+    /// Wrong customer applied
+    #[serde(default = "default_wrong_customer_rate")]
+    pub wrong_customer: f64,
+    /// Duplicate payment
+    #[serde(default = "default_duplicate_payment_rate")]
+    pub duplicate_payment: f64,
+}
+
+fn default_nsf_rate() -> f64 {
+    0.30
+}
+
+fn default_chargeback_rate() -> f64 {
+    0.20
+}
+
+fn default_wrong_amount_rate() -> f64 {
+    0.20
+}
+
+fn default_wrong_customer_rate() -> f64 {
+    0.15
+}
+
+fn default_duplicate_payment_rate() -> f64 {
+    0.15
+}
+
+impl Default for PaymentCorrectionTypeDistribution {
+    fn default() -> Self {
+        Self {
+            nsf: default_nsf_rate(),
+            chargeback: default_chargeback_rate(),
+            wrong_amount: default_wrong_amount_rate(),
+            wrong_customer: default_wrong_customer_rate(),
+            duplicate_payment: default_duplicate_payment_rate(),
         }
     }
 }

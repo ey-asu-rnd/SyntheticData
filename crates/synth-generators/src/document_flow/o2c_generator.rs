@@ -12,6 +12,10 @@ use synth_core::models::{
         CustomerInvoice, CustomerInvoiceItem, Delivery, DeliveryItem, DocumentReference,
         DocumentType, Payment, PaymentMethod, ReferenceType, SalesOrder, SalesOrderItem,
     },
+    subledger::ar::{
+        OnAccountPayment, OnAccountReason, PaymentCorrection, PaymentCorrectionType,
+        ShortPayment, ShortPaymentReasonCode,
+    },
     CreditRating, Customer, CustomerPool, Material, MaterialPool, PaymentTerms,
 };
 
@@ -38,6 +42,38 @@ pub struct O2CGeneratorConfig {
     pub cash_discount_take_rate: f64,
     /// Payment method distribution for AR receipts
     pub payment_method_distribution: Vec<(PaymentMethod, f64)>,
+    /// Payment behavior configuration
+    pub payment_behavior: O2CPaymentBehavior,
+}
+
+/// Payment behavior configuration for O2C.
+#[derive(Debug, Clone)]
+pub struct O2CPaymentBehavior {
+    /// Rate of partial payments
+    pub partial_payment_rate: f64,
+    /// Rate of short payments (unauthorized deductions)
+    pub short_payment_rate: f64,
+    /// Maximum short payment percentage
+    pub max_short_percent: f64,
+    /// Rate of on-account payments (unapplied)
+    pub on_account_rate: f64,
+    /// Rate of payment corrections (NSF, chargebacks)
+    pub payment_correction_rate: f64,
+    /// Average days until partial payment remainder
+    pub avg_days_until_remainder: u32,
+}
+
+impl Default for O2CPaymentBehavior {
+    fn default() -> Self {
+        Self {
+            partial_payment_rate: 0.08,
+            short_payment_rate: 0.03,
+            max_short_percent: 0.10,
+            on_account_rate: 0.02,
+            payment_correction_rate: 0.02,
+            avg_days_until_remainder: 30,
+        }
+    }
 }
 
 impl Default for O2CGeneratorConfig {
@@ -58,6 +94,7 @@ impl Default for O2CGeneratorConfig {
                 (PaymentMethod::Wire, 0.15),
                 (PaymentMethod::CreditCard, 0.05),
             ],
+            payment_behavior: O2CPaymentBehavior::default(),
         }
     }
 }
@@ -79,6 +116,35 @@ pub struct O2CDocumentChain {
     pub credit_check_passed: bool,
     /// Is this a return/credit memo chain
     pub is_return: bool,
+    /// Payment events (partial, short, corrections, etc.)
+    pub payment_events: Vec<PaymentEvent>,
+}
+
+/// Payment event in an O2C chain.
+#[derive(Debug, Clone)]
+pub enum PaymentEvent {
+    /// Full payment received
+    FullPayment(Payment),
+    /// Partial payment received
+    PartialPayment {
+        payment: Payment,
+        remaining_amount: Decimal,
+        expected_remainder_date: Option<NaiveDate>,
+    },
+    /// Short payment (deduction)
+    ShortPayment {
+        payment: Payment,
+        short_payment: ShortPayment,
+    },
+    /// On-account payment (unapplied)
+    OnAccountPayment(OnAccountPayment),
+    /// Payment correction (NSF, chargeback)
+    PaymentCorrection {
+        original_payment: Payment,
+        correction: PaymentCorrection,
+    },
+    /// Remainder payment (follow-up to partial)
+    RemainderPayment(Payment),
 }
 
 /// Generator for O2C document flows.
@@ -90,6 +156,9 @@ pub struct O2CGenerator {
     dlv_counter: usize,
     ci_counter: usize,
     rec_counter: usize,
+    short_payment_counter: usize,
+    on_account_counter: usize,
+    correction_counter: usize,
 }
 
 impl O2CGenerator {
@@ -108,6 +177,9 @@ impl O2CGenerator {
             dlv_counter: 0,
             ci_counter: 0,
             rec_counter: 0,
+            short_payment_counter: 0,
+            on_account_counter: 0,
+            correction_counter: 0,
         }
     }
 
@@ -154,6 +226,7 @@ impl O2CGenerator {
                 is_complete: false,
                 credit_check_passed: false,
                 is_return: false,
+                payment_events: Vec::new(),
             };
         }
 
@@ -201,28 +274,121 @@ impl O2CGenerator {
         // Determine if customer pays
         let will_pay = self.rng.gen::<f64>() >= self.config.bad_debt_rate;
 
-        // Calculate payment date
-        let customer_receipt = if will_pay {
-            customer_invoice.as_ref().map(|invoice| {
+        // Calculate payment date and determine payment type
+        let mut payment_events = Vec::new();
+        let mut customer_receipt = None;
+
+        if will_pay {
+            if let Some(ref invoice) = customer_invoice {
                 let payment_date =
                     self.calculate_payment_date(invoice_date, &customer.payment_terms, customer);
                 let payment_fiscal_period = self.get_fiscal_period(payment_date);
 
-                self.generate_customer_receipt(
-                    invoice,
-                    company_code,
-                    customer,
-                    payment_date,
-                    fiscal_year,
-                    payment_fiscal_period,
-                    created_by,
-                )
-            })
-        } else {
-            None
-        };
+                let payment_type = self.determine_payment_type();
 
-        let is_complete = customer_receipt.is_some();
+                match payment_type {
+                    PaymentType::Partial => {
+                        let payment_percent = self.determine_partial_payment_percent();
+                        let (payment, remaining, expected_date) = self.generate_partial_payment(
+                            invoice,
+                            company_code,
+                            customer,
+                            payment_date,
+                            fiscal_year,
+                            payment_fiscal_period,
+                            created_by,
+                            payment_percent,
+                        );
+
+                        payment_events.push(PaymentEvent::PartialPayment {
+                            payment: payment.clone(),
+                            remaining_amount: remaining,
+                            expected_remainder_date: expected_date,
+                        });
+                        customer_receipt = Some(payment);
+                    }
+                    PaymentType::Short => {
+                        let (payment, short) = self.generate_short_payment(
+                            invoice,
+                            company_code,
+                            customer,
+                            payment_date,
+                            fiscal_year,
+                            payment_fiscal_period,
+                            created_by,
+                        );
+
+                        payment_events.push(PaymentEvent::ShortPayment {
+                            payment: payment.clone(),
+                            short_payment: short,
+                        });
+                        customer_receipt = Some(payment);
+                    }
+                    PaymentType::OnAccount => {
+                        // On-account payment - not tied to this specific invoice
+                        let amount = invoice.total_gross_amount
+                            * Decimal::from_f64_retain(0.8 + self.rng.gen::<f64>() * 0.4)
+                                .unwrap_or(Decimal::ONE);
+                        let (payment, on_account) = self.generate_on_account_payment(
+                            company_code,
+                            customer,
+                            payment_date,
+                            fiscal_year,
+                            payment_fiscal_period,
+                            created_by,
+                            &invoice.header.currency,
+                            amount.round_dp(2),
+                        );
+
+                        payment_events.push(PaymentEvent::OnAccountPayment(on_account));
+                        customer_receipt = Some(payment);
+                    }
+                    PaymentType::Full => {
+                        let payment = self.generate_customer_receipt(
+                            invoice,
+                            company_code,
+                            customer,
+                            payment_date,
+                            fiscal_year,
+                            payment_fiscal_period,
+                            created_by,
+                        );
+
+                        // Check if this payment will have a correction
+                        if self.rng.gen::<f64>() < self.config.payment_behavior.payment_correction_rate
+                        {
+                            let correction_date = payment_date
+                                + chrono::Duration::days(self.rng.gen_range(3..14) as i64);
+
+                            let correction = self.generate_payment_correction(
+                                &payment,
+                                company_code,
+                                &customer.customer_id,
+                                correction_date,
+                                &invoice.header.currency,
+                            );
+
+                            payment_events.push(PaymentEvent::PaymentCorrection {
+                                original_payment: payment.clone(),
+                                correction,
+                            });
+                        } else {
+                            payment_events.push(PaymentEvent::FullPayment(payment.clone()));
+                        }
+
+                        customer_receipt = Some(payment);
+                    }
+                }
+            }
+        }
+
+        let is_complete = customer_receipt.is_some()
+            && payment_events.iter().all(|e| {
+                !matches!(
+                    e,
+                    PaymentEvent::PartialPayment { .. } | PaymentEvent::PaymentCorrection { .. }
+                )
+            });
 
         O2CDocumentChain {
             sales_order: so,
@@ -232,6 +398,7 @@ impl O2CGenerator {
             is_complete,
             credit_check_passed: true,
             is_return: false,
+            payment_events,
         }
     }
 
@@ -753,7 +920,339 @@ impl O2CGenerator {
         self.dlv_counter = 0;
         self.ci_counter = 0;
         self.rec_counter = 0;
+        self.short_payment_counter = 0;
+        self.on_account_counter = 0;
+        self.correction_counter = 0;
     }
+
+    /// Generate a partial payment for an invoice.
+    pub fn generate_partial_payment(
+        &mut self,
+        invoice: &CustomerInvoice,
+        company_code: &str,
+        customer: &Customer,
+        payment_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+        payment_percent: f64,
+    ) -> (Payment, Decimal, Option<NaiveDate>) {
+        self.rec_counter += 1;
+
+        let receipt_id = format!("REC-{}-{:010}", company_code, self.rec_counter);
+
+        let full_amount = invoice.amount_open;
+        let payment_amount = (full_amount
+            * Decimal::from_f64_retain(payment_percent).unwrap_or(Decimal::ONE))
+        .round_dp(2);
+        let remaining_amount = full_amount - payment_amount;
+
+        let mut receipt = Payment::new_ar_receipt(
+            receipt_id,
+            company_code,
+            &customer.customer_id,
+            payment_amount,
+            fiscal_year,
+            fiscal_period,
+            payment_date,
+            created_by,
+        )
+        .with_payment_method(self.select_payment_method())
+        .with_value_date(payment_date);
+
+        // Allocate partial amount to invoice
+        receipt.allocate_to_invoice(
+            &invoice.header.document_id,
+            DocumentType::CustomerInvoice,
+            payment_amount,
+            Decimal::ZERO, // No discount on partial payments
+        );
+
+        // Add document reference
+        receipt.header.add_reference(DocumentReference::new(
+            DocumentType::CustomerReceipt,
+            &receipt.header.document_id,
+            DocumentType::CustomerInvoice,
+            &invoice.header.document_id,
+            ReferenceType::Payment,
+            &receipt.header.company_code,
+            payment_date,
+        ));
+
+        receipt.post(created_by, payment_date);
+
+        // Calculate expected remainder date
+        let expected_remainder_date = Some(
+            payment_date
+                + chrono::Duration::days(self.config.payment_behavior.avg_days_until_remainder as i64)
+                + chrono::Duration::days(self.rng.gen_range(-7..7) as i64),
+        );
+
+        (receipt, remaining_amount, expected_remainder_date)
+    }
+
+    /// Generate a short payment for an invoice.
+    pub fn generate_short_payment(
+        &mut self,
+        invoice: &CustomerInvoice,
+        company_code: &str,
+        customer: &Customer,
+        payment_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+    ) -> (Payment, ShortPayment) {
+        self.rec_counter += 1;
+        self.short_payment_counter += 1;
+
+        let receipt_id = format!("REC-{}-{:010}", company_code, self.rec_counter);
+        let short_id = format!("SHORT-{}-{:06}", company_code, self.short_payment_counter);
+
+        let full_amount = invoice.amount_open;
+
+        // Calculate short amount (1-10% of invoice)
+        let short_percent = self.rng.gen::<f64>() * self.config.payment_behavior.max_short_percent;
+        let short_amount = (full_amount
+            * Decimal::from_f64_retain(short_percent).unwrap_or(Decimal::ZERO))
+        .round_dp(2)
+        .max(Decimal::ONE); // At least $1 short
+
+        let payment_amount = full_amount - short_amount;
+
+        let mut receipt = Payment::new_ar_receipt(
+            receipt_id.clone(),
+            company_code,
+            &customer.customer_id,
+            payment_amount,
+            fiscal_year,
+            fiscal_period,
+            payment_date,
+            created_by,
+        )
+        .with_payment_method(self.select_payment_method())
+        .with_value_date(payment_date);
+
+        // Allocate to invoice
+        receipt.allocate_to_invoice(
+            &invoice.header.document_id,
+            DocumentType::CustomerInvoice,
+            payment_amount,
+            Decimal::ZERO,
+        );
+
+        receipt.header.add_reference(DocumentReference::new(
+            DocumentType::CustomerReceipt,
+            &receipt.header.document_id,
+            DocumentType::CustomerInvoice,
+            &invoice.header.document_id,
+            ReferenceType::Payment,
+            &receipt.header.company_code,
+            payment_date,
+        ));
+
+        receipt.post(created_by, payment_date);
+
+        // Create short payment record
+        let reason_code = self.select_short_payment_reason();
+        let short_payment = ShortPayment::new(
+            short_id,
+            company_code.to_string(),
+            customer.customer_id.clone(),
+            receipt_id,
+            invoice.header.document_id.clone(),
+            full_amount,
+            payment_amount,
+            invoice.header.currency.clone(),
+            payment_date,
+            reason_code,
+        );
+
+        (receipt, short_payment)
+    }
+
+    /// Generate an on-account payment.
+    pub fn generate_on_account_payment(
+        &mut self,
+        company_code: &str,
+        customer: &Customer,
+        payment_date: NaiveDate,
+        fiscal_year: u16,
+        fiscal_period: u8,
+        created_by: &str,
+        currency: &str,
+        amount: Decimal,
+    ) -> (Payment, OnAccountPayment) {
+        self.rec_counter += 1;
+        self.on_account_counter += 1;
+
+        let receipt_id = format!("REC-{}-{:010}", company_code, self.rec_counter);
+        let on_account_id = format!("OA-{}-{:06}", company_code, self.on_account_counter);
+
+        let mut receipt = Payment::new_ar_receipt(
+            receipt_id.clone(),
+            company_code,
+            &customer.customer_id,
+            amount,
+            fiscal_year,
+            fiscal_period,
+            payment_date,
+            created_by,
+        )
+        .with_payment_method(self.select_payment_method())
+        .with_value_date(payment_date);
+
+        // On-account payments are not allocated to any invoice
+        receipt.post(created_by, payment_date);
+
+        // Create on-account payment record
+        let reason = self.select_on_account_reason();
+        let on_account = OnAccountPayment::new(
+            on_account_id,
+            company_code.to_string(),
+            customer.customer_id.clone(),
+            receipt_id,
+            amount,
+            currency.to_string(),
+            payment_date,
+        )
+        .with_reason(reason);
+
+        (receipt, on_account)
+    }
+
+    /// Generate a payment correction (NSF or chargeback).
+    pub fn generate_payment_correction(
+        &mut self,
+        original_payment: &Payment,
+        company_code: &str,
+        customer_id: &str,
+        correction_date: NaiveDate,
+        currency: &str,
+    ) -> PaymentCorrection {
+        self.correction_counter += 1;
+
+        let correction_id = format!("CORR-{}-{:06}", company_code, self.correction_counter);
+
+        let correction_type = if self.rng.gen::<f64>() < 0.6 {
+            PaymentCorrectionType::NSF
+        } else {
+            PaymentCorrectionType::Chargeback
+        };
+
+        let mut correction = PaymentCorrection::new(
+            correction_id,
+            company_code.to_string(),
+            customer_id.to_string(),
+            original_payment.header.document_id.clone(),
+            correction_type,
+            original_payment.amount,
+            original_payment.amount, // Full reversal
+            currency.to_string(),
+            correction_date,
+        );
+
+        // Set appropriate details based on type
+        match correction_type {
+            PaymentCorrectionType::NSF => {
+                correction.bank_reference = Some(format!("NSF-{}", self.rng.gen::<u32>()));
+                correction.fee_amount = Decimal::from(35); // Standard NSF fee
+                correction.reason = Some("Payment returned - Insufficient funds".to_string());
+            }
+            PaymentCorrectionType::Chargeback => {
+                correction.chargeback_code = Some(format!("CB{:04}", self.rng.gen_range(1000..9999)));
+                correction.reason = Some("Credit card chargeback".to_string());
+            }
+            _ => {}
+        }
+
+        // Add affected invoice
+        if let Some(allocation) = original_payment.allocations.first() {
+            correction.add_affected_invoice(allocation.invoice_id.clone());
+        }
+
+        correction
+    }
+
+    /// Select a random short payment reason code.
+    fn select_short_payment_reason(&mut self) -> ShortPaymentReasonCode {
+        let roll: f64 = self.rng.gen();
+        if roll < 0.30 {
+            ShortPaymentReasonCode::PricingDispute
+        } else if roll < 0.50 {
+            ShortPaymentReasonCode::QualityIssue
+        } else if roll < 0.70 {
+            ShortPaymentReasonCode::QuantityDiscrepancy
+        } else if roll < 0.85 {
+            ShortPaymentReasonCode::UnauthorizedDeduction
+        } else {
+            ShortPaymentReasonCode::IncorrectDiscount
+        }
+    }
+
+    /// Select a random on-account reason.
+    fn select_on_account_reason(&mut self) -> OnAccountReason {
+        let roll: f64 = self.rng.gen();
+        if roll < 0.40 {
+            OnAccountReason::NoInvoiceReference
+        } else if roll < 0.60 {
+            OnAccountReason::Overpayment
+        } else if roll < 0.75 {
+            OnAccountReason::Prepayment
+        } else if roll < 0.90 {
+            OnAccountReason::UnclearRemittance
+        } else {
+            OnAccountReason::Other
+        }
+    }
+
+    /// Determine the payment type based on configuration.
+    fn determine_payment_type(&mut self) -> PaymentType {
+        let roll: f64 = self.rng.gen();
+        let pb = &self.config.payment_behavior;
+
+        let mut cumulative = 0.0;
+
+        cumulative += pb.partial_payment_rate;
+        if roll < cumulative {
+            return PaymentType::Partial;
+        }
+
+        cumulative += pb.short_payment_rate;
+        if roll < cumulative {
+            return PaymentType::Short;
+        }
+
+        cumulative += pb.on_account_rate;
+        if roll < cumulative {
+            return PaymentType::OnAccount;
+        }
+
+        PaymentType::Full
+    }
+
+    /// Determine partial payment percentage.
+    fn determine_partial_payment_percent(&mut self) -> f64 {
+        let roll: f64 = self.rng.gen();
+        if roll < 0.15 {
+            0.25
+        } else if roll < 0.65 {
+            0.50
+        } else if roll < 0.90 {
+            0.75
+        } else {
+            // Random between 30-80%
+            0.30 + self.rng.gen::<f64>() * 0.50
+        }
+    }
+}
+
+/// Type of payment to generate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PaymentType {
+    Full,
+    Partial,
+    Short,
+    OnAccount,
 }
 
 #[cfg(test)]

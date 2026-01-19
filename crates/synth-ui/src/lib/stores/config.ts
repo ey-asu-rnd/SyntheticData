@@ -127,6 +127,21 @@ export interface DocumentLineCountDistribution {
   mode_lines: number;
 }
 
+export interface LatePaymentDaysDistribution {
+  slightly_late_1_to_7: number;
+  late_8_to_14: number;
+  very_late_15_to_30: number;
+  severely_late_31_to_60: number;
+  extremely_late_over_60: number;
+}
+
+export interface P2PPaymentBehaviorConfig {
+  late_payment_rate: number;
+  late_payment_days_distribution: LatePaymentDaysDistribution;
+  partial_payment_rate: number;
+  payment_correction_rate: number;
+}
+
 export interface P2PFlowConfig {
   enabled: boolean;
   three_way_match_rate: number;
@@ -138,6 +153,7 @@ export interface P2PFlowConfig {
   average_gr_to_invoice_days: number;
   average_invoice_to_payment_days: number;
   line_count_distribution: DocumentLineCountDistribution;
+  payment_behavior: P2PPaymentBehaviorConfig;
 }
 
 export interface CashDiscountConfig {
@@ -145,6 +161,54 @@ export interface CashDiscountConfig {
   taken_rate: number;
   discount_percent: number;
   discount_days: number;
+}
+
+export interface DunningPaymentRates {
+  after_level_1: number;
+  after_level_2: number;
+  after_level_3: number;
+  during_collection: number;
+  never_pay: number;
+}
+
+export interface DunningConfig {
+  enabled: boolean;
+  level_1_days_overdue: number;
+  level_2_days_overdue: number;
+  level_3_days_overdue: number;
+  collection_days_overdue: number;
+  payment_after_dunning_rates: DunningPaymentRates;
+  dunning_block_rate: number;
+  interest_rate_per_year: number;
+  dunning_charge: number;
+}
+
+export interface PartialPaymentConfig {
+  rate: number;
+  avg_days_until_remainder: number;
+}
+
+export interface ShortPaymentConfig {
+  rate: number;
+  max_short_percent: number;
+}
+
+export interface OnAccountPaymentConfig {
+  rate: number;
+  avg_days_until_application: number;
+}
+
+export interface PaymentCorrectionConfig {
+  rate: number;
+  avg_resolution_days: number;
+}
+
+export interface O2CPaymentBehaviorConfig {
+  dunning: DunningConfig;
+  partial_payments: PartialPaymentConfig;
+  short_payments: ShortPaymentConfig;
+  on_account_payments: OnAccountPaymentConfig;
+  payment_corrections: PaymentCorrectionConfig;
 }
 
 export interface O2CFlowConfig {
@@ -158,6 +222,7 @@ export interface O2CFlowConfig {
   average_invoice_to_receipt_days: number;
   line_count_distribution: DocumentLineCountDistribution;
   cash_discount: CashDiscountConfig;
+  payment_behavior: O2CPaymentBehaviorConfig;
 }
 
 export interface DocumentFlowConfig {
@@ -440,6 +505,18 @@ export function createDefaultConfig(): GeneratorConfig {
           max_lines: 20,
           mode_lines: 3,
         },
+        payment_behavior: {
+          late_payment_rate: 0.15,
+          late_payment_days_distribution: {
+            slightly_late_1_to_7: 0.50,
+            late_8_to_14: 0.25,
+            very_late_15_to_30: 0.15,
+            severely_late_31_to_60: 0.07,
+            extremely_late_over_60: 0.03,
+          },
+          partial_payment_rate: 0.05,
+          payment_correction_rate: 0.02,
+        },
       },
       o2c: {
         enabled: true,
@@ -460,6 +537,41 @@ export function createDefaultConfig(): GeneratorConfig {
           taken_rate: 0.60,
           discount_percent: 0.02,
           discount_days: 10,
+        },
+        payment_behavior: {
+          dunning: {
+            enabled: true,
+            level_1_days_overdue: 14,
+            level_2_days_overdue: 28,
+            level_3_days_overdue: 42,
+            collection_days_overdue: 60,
+            payment_after_dunning_rates: {
+              after_level_1: 0.40,
+              after_level_2: 0.30,
+              after_level_3: 0.15,
+              during_collection: 0.05,
+              never_pay: 0.10,
+            },
+            dunning_block_rate: 0.05,
+            interest_rate_per_year: 0.08,
+            dunning_charge: 15.0,
+          },
+          partial_payments: {
+            rate: 0.08,
+            avg_days_until_remainder: 30,
+          },
+          short_payments: {
+            rate: 0.03,
+            max_short_percent: 0.10,
+          },
+          on_account_payments: {
+            rate: 0.02,
+            avg_days_until_application: 14,
+          },
+          payment_corrections: {
+            rate: 0.02,
+            avg_resolution_days: 7,
+          },
         },
       },
       generate_document_references: true,

@@ -80,9 +80,14 @@ use synth_generators::{
     MaterialGenerator,
     O2CDocumentChain,
     O2CGenerator,
+    O2CGeneratorConfig,
+    O2CPaymentBehavior,
     P2PDocumentChain,
     // Document flow generators
     P2PGenerator,
+    P2PGeneratorConfig,
+    P2PPaymentBehavior,
+    LatePaymentDistribution,
     RiskAssessmentGenerator,
     // Balance validation
     RunningBalanceTracker,
@@ -95,6 +100,80 @@ use synth_ocpm::{
     EventLogMetadata, O2cDocuments, OcpmEventGenerator, OcpmEventLog, OcpmGeneratorConfig,
     P2pDocuments,
 };
+
+use synth_config::schema::{O2CFlowConfig, P2PFlowConfig};
+use synth_core::models::documents::PaymentMethod;
+
+// ============================================================================
+// Configuration Conversion Functions
+// ============================================================================
+
+/// Convert P2P flow config from schema to generator config.
+fn convert_p2p_config(schema_config: &P2PFlowConfig) -> P2PGeneratorConfig {
+    let payment_behavior = &schema_config.payment_behavior;
+    let late_dist = &payment_behavior.late_payment_days_distribution;
+
+    P2PGeneratorConfig {
+        three_way_match_rate: schema_config.three_way_match_rate,
+        partial_delivery_rate: schema_config.partial_delivery_rate,
+        over_delivery_rate: 0.02, // Not in schema, use default
+        price_variance_rate: schema_config.price_variance_rate,
+        max_price_variance_percent: schema_config.max_price_variance_percent,
+        avg_days_po_to_gr: schema_config.average_po_to_gr_days,
+        avg_days_gr_to_invoice: schema_config.average_gr_to_invoice_days,
+        avg_days_invoice_to_payment: schema_config.average_invoice_to_payment_days,
+        payment_method_distribution: vec![
+            (PaymentMethod::BankTransfer, 0.60),
+            (PaymentMethod::Check, 0.25),
+            (PaymentMethod::Wire, 0.10),
+            (PaymentMethod::CreditCard, 0.05),
+        ],
+        early_payment_discount_rate: 0.30, // Not in schema, use default
+        payment_behavior: P2PPaymentBehavior {
+            late_payment_rate: payment_behavior.late_payment_rate,
+            late_payment_distribution: LatePaymentDistribution {
+                slightly_late_1_to_7: late_dist.slightly_late_1_to_7,
+                late_8_to_14: late_dist.late_8_to_14,
+                very_late_15_to_30: late_dist.very_late_15_to_30,
+                severely_late_31_to_60: late_dist.severely_late_31_to_60,
+                extremely_late_over_60: late_dist.extremely_late_over_60,
+            },
+            partial_payment_rate: payment_behavior.partial_payment_rate,
+            payment_correction_rate: payment_behavior.payment_correction_rate,
+        },
+    }
+}
+
+/// Convert O2C flow config from schema to generator config.
+fn convert_o2c_config(schema_config: &O2CFlowConfig) -> O2CGeneratorConfig {
+    let payment_behavior = &schema_config.payment_behavior;
+
+    O2CGeneratorConfig {
+        credit_check_failure_rate: schema_config.credit_check_failure_rate,
+        partial_shipment_rate: schema_config.partial_shipment_rate,
+        avg_days_so_to_delivery: schema_config.average_so_to_delivery_days,
+        avg_days_delivery_to_invoice: schema_config.average_delivery_to_invoice_days,
+        avg_days_invoice_to_payment: schema_config.average_invoice_to_receipt_days,
+        late_payment_rate: 0.15, // Managed through dunning now
+        bad_debt_rate: schema_config.bad_debt_rate,
+        returns_rate: schema_config.return_rate,
+        cash_discount_take_rate: schema_config.cash_discount.taken_rate,
+        payment_method_distribution: vec![
+            (PaymentMethod::BankTransfer, 0.50),
+            (PaymentMethod::Check, 0.30),
+            (PaymentMethod::Wire, 0.15),
+            (PaymentMethod::CreditCard, 0.05),
+        ],
+        payment_behavior: O2CPaymentBehavior {
+            partial_payment_rate: payment_behavior.partial_payments.rate,
+            short_payment_rate: payment_behavior.short_payments.rate,
+            max_short_percent: payment_behavior.short_payments.max_short_percent,
+            on_account_rate: payment_behavior.on_account_payments.rate,
+            payment_correction_rate: payment_behavior.payment_corrections.rate,
+            avg_days_until_remainder: payment_behavior.partial_payments.avg_days_until_remainder,
+        },
+    }
+}
 
 /// Configuration for which generation phases to run.
 #[derive(Debug, Clone)]
@@ -731,7 +810,9 @@ impl EnhancedOrchestrator {
             .min(self.master_data.vendors.len() * 2);
         let pb = self.create_progress_bar(p2p_count as u64, "Generating P2P Document Flows");
 
-        let mut p2p_gen = P2PGenerator::new(self.seed + 1000);
+        // Convert P2P config from schema to generator config
+        let p2p_config = convert_p2p_config(&self.config.document_flows.p2p);
+        let mut p2p_gen = P2PGenerator::with_config(self.seed + 1000, p2p_config);
 
         for i in 0..p2p_count {
             let vendor = &self.master_data.vendors[i % self.master_data.vendors.len()];
@@ -794,7 +875,9 @@ impl EnhancedOrchestrator {
             .min(self.master_data.customers.len() * 2);
         let pb = self.create_progress_bar(o2c_count as u64, "Generating O2C Document Flows");
 
-        let mut o2c_gen = O2CGenerator::new(self.seed + 2000);
+        // Convert O2C config from schema to generator config
+        let o2c_config = convert_o2c_config(&self.config.document_flows.o2c);
+        let mut o2c_gen = O2CGenerator::with_config(self.seed + 2000, o2c_config);
 
         for i in 0..o2c_count {
             let customer = &self.master_data.customers[i % self.master_data.customers.len()];
