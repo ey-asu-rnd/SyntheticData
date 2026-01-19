@@ -14,7 +14,7 @@ test.describe('Dashboard', () => {
 	});
 
 	test('should load dashboard page', async ({ page }) => {
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Dashboard should have some content
 		const body = await page.textContent('body');
@@ -22,7 +22,7 @@ test.describe('Dashboard', () => {
 	});
 
 	test('should display generation controls', async ({ page }) => {
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Look for generate button or similar control
 		const generateButton = page.locator(
@@ -34,7 +34,7 @@ test.describe('Dashboard', () => {
 	});
 
 	test('should have navigation to config', async ({ page }) => {
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Look for config link
 		const configLink = page.locator('a[href*="config"], a:has-text("Config"), a:has-text("Settings")');
@@ -46,11 +46,11 @@ test.describe('Dashboard', () => {
 
 test.describe('Stream Viewer', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/generate/stream');
+		await page.goto('/stream');
 	});
 
 	test('should load stream viewer page', async ({ page }) => {
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Page should load without errors
 		const errorElement = page.locator('[class*="error"], .error-message');
@@ -63,7 +63,7 @@ test.describe('Stream Viewer', () => {
 	});
 
 	test('should display stream controls', async ({ page }) => {
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Look for start/stop/pause controls
 		const controls = page.locator(
@@ -76,7 +76,7 @@ test.describe('Stream Viewer', () => {
 	});
 
 	test('should have status indicator', async ({ page }) => {
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Look for status display
 		const statusIndicator = page.locator(
@@ -96,11 +96,11 @@ test.describe('Stream Viewer', () => {
 test.describe('Generation Controls', () => {
 	test('should disable generate when config invalid', async ({ page }) => {
 		await page.goto('/');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// First, navigate to config and make it invalid
 		await page.goto('/config/global');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Find and modify a number input to invalid value
 		const periodInput = page.locator('input[type="number"]').first();
@@ -112,7 +112,7 @@ test.describe('Generation Controls', () => {
 
 		// Go back to dashboard/generate
 		await page.goto('/');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Generate button should be disabled or show validation warning
 		const generateButton = page.locator(
@@ -130,8 +130,8 @@ test.describe('Generation Controls', () => {
 	});
 
 	test('should show progress during generation', async ({ page }) => {
-		await page.goto('/generate/stream');
-		await page.waitForLoadState('networkidle');
+		await page.goto('/stream');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Look for progress bar or progress indicator
 		const progressElement = page.locator(
@@ -146,7 +146,7 @@ test.describe('Generation Controls', () => {
 test.describe('Generation Presets', () => {
 	test('should have preset options available', async ({ page }) => {
 		await page.goto('/config');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Look for preset selector or preset-related UI
 		const presetElement = page.locator(
@@ -160,7 +160,7 @@ test.describe('Generation Presets', () => {
 
 	test('should apply preset on selection', async ({ page }) => {
 		await page.goto('/config');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Find preset selector
 		const presetSelect = page.locator('select[id*="preset"], [data-testid*="preset-select"]');
@@ -186,7 +186,7 @@ test.describe('Generation Presets', () => {
 test.describe('Error Handling', () => {
 	test('should handle backend connection failure gracefully', async ({ page }) => {
 		await page.goto('/');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Page should still render even without backend
 		const body = await page.textContent('body');
@@ -212,8 +212,8 @@ test.describe('Error Handling', () => {
 	});
 
 	test('should display error state for failed operations', async ({ page }) => {
-		await page.goto('/generate/stream');
-		await page.waitForLoadState('networkidle');
+		await page.goto('/stream');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Click start if available (it will fail without backend)
 		const startButton = page.locator(
@@ -239,7 +239,7 @@ test.describe('Error Handling', () => {
 test.describe('Accessibility', () => {
 	test('should have proper heading hierarchy', async ({ page }) => {
 		await page.goto('/');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Check for h1
 		const h1 = page.locator('h1');
@@ -251,7 +251,7 @@ test.describe('Accessibility', () => {
 
 	test('should have accessible form labels', async ({ page }) => {
 		await page.goto('/config/global');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// All inputs should have associated labels
 		const inputs = page.locator('input:not([type="hidden"]), select, textarea');
@@ -274,7 +274,7 @@ test.describe('Accessibility', () => {
 
 	test('should be keyboard navigable', async ({ page }) => {
 		await page.goto('/config');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Tab through the page
 		await page.keyboard.press('Tab');
