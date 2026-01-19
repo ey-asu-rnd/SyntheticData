@@ -1,0 +1,280 @@
+# Process Mining
+
+Generate OCEL 2.0 event logs for process mining analysis.
+
+## Overview
+
+SyntheticData generates process mining data:
+
+- OCEL 2.0 compliant event logs
+- P2P (Procure-to-Pay) process flows
+- O2C (Order-to-Cash) process flows
+- Object-centric relationships
+
+## Configuration
+
+```yaml
+global:
+  seed: 42
+  industry: manufacturing
+  start_date: 2024-01-01
+  period_months: 6
+
+transactions:
+  target_count: 50000
+
+document_flows:
+  p2p:
+    enabled: true
+    flow_rate: 0.4
+    completion_rate: 0.95
+
+    stages:
+      po_approval_rate: 0.9
+      gr_rate: 0.98
+      invoice_rate: 0.95
+      payment_rate: 0.92
+
+  o2c:
+    enabled: true
+    flow_rate: 0.4
+    completion_rate: 0.90
+
+    stages:
+      so_approval_rate: 0.95
+      credit_check_pass_rate: 0.9
+      delivery_rate: 0.98
+      invoice_rate: 0.95
+      collection_rate: 0.85
+
+master_data:
+  vendors:
+    count: 100
+  customers:
+    count: 200
+  materials:
+    count: 500
+  employees:
+    count: 30
+
+output:
+  format: csv
+```
+
+## OCEL 2.0 Export
+
+Use the `synth-ocpm` crate for OCEL 2.0 export:
+
+```rust
+use synth_ocpm::{OcpmGenerator, Ocel2Exporter, ExportFormat};
+
+let mut generator = OcpmGenerator::new(seed);
+let event_log = generator.generate_event_log(
+    p2p_count: 5000,
+    o2c_count: 5000,
+    start_date,
+    end_date,
+)?;
+
+let exporter = Ocel2Exporter::new(ExportFormat::Json);
+exporter.export(&event_log, "output/ocel2.json")?;
+```
+
+## P2P Process
+
+### Event Sequence
+
+```
+Create PO → Approve PO → Release PO → Create GR → Post GR →
+Receive Invoice → Verify Invoice → Post Invoice → Execute Payment
+```
+
+### Objects
+
+| Object Type | Attributes |
+|-------------|------------|
+| PurchaseOrder | po_number, vendor_id, total_amount |
+| GoodsReceipt | gr_number, po_reference, quantity |
+| VendorInvoice | invoice_number, amount, due_date |
+| Payment | payment_number, amount, bank_ref |
+| Material | material_id, description |
+| Vendor | vendor_id, name |
+
+### Object Relationships
+
+```
+PurchaseOrder ─┬── contains ──→ Material
+               └── from ──────→ Vendor
+
+GoodsReceipt ──── for ──────→ PurchaseOrder
+
+VendorInvoice ─── for ──────→ PurchaseOrder
+               └── matches ──→ GoodsReceipt
+
+Payment ───────── pays ──────→ VendorInvoice
+```
+
+## O2C Process
+
+### Event Sequence
+
+```
+Create SO → Check Credit → Release SO → Create Delivery →
+Pick → Pack → Ship → Create Invoice → Post Invoice → Receive Payment
+```
+
+### Objects
+
+| Object Type | Attributes |
+|-------------|------------|
+| SalesOrder | so_number, customer_id, total_amount |
+| Delivery | delivery_number, so_reference |
+| CustomerInvoice | invoice_number, amount, due_date |
+| CustomerPayment | receipt_number, amount |
+| Material | material_id, description |
+| Customer | customer_id, name |
+
+## Analysis with PM4Py
+
+### Load Event Log
+
+```python
+from pm4py.objects.ocel.importer import jsonocel
+
+# Load OCEL 2.0
+ocel = jsonocel.apply("output/ocel2.json")
+
+print(f"Events: {len(ocel.events)}")
+print(f"Objects: {len(ocel.objects)}")
+print(f"Object types: {ocel.object_types}")
+```
+
+### Process Discovery
+
+```python
+from pm4py.algo.discovery.ocel import algorithm as ocel_discovery
+
+# Discover object-centric Petri net
+ocpn = ocel_discovery.apply(ocel)
+
+# Visualize
+from pm4py.visualization.ocel.ocpn import visualizer
+gviz = visualizer.apply(ocpn)
+visualizer.save(gviz, "ocpn.png")
+```
+
+### Object Lifecycle Analysis
+
+```python
+from pm4py.statistics.ocel import object_lifecycle
+
+# Analyze PurchaseOrder lifecycle
+po_lifecycle = object_lifecycle.get_lifecycle_summary(
+    ocel,
+    object_type="PurchaseOrder"
+)
+
+print("Purchase Order Lifecycle:")
+print(f"  Average duration: {po_lifecycle['avg_duration']}")
+print(f"  Completion rate: {po_lifecycle['completion_rate']:.2%}")
+```
+
+### Conformance Checking
+
+```python
+from pm4py.algo.conformance.ocel import algorithm as ocel_conformance
+
+# Check conformance against expected model
+results = ocel_conformance.apply(ocel, ocpn)
+
+print(f"Conformant cases: {results['conformant']}")
+print(f"Non-conformant: {results['non_conformant']}")
+```
+
+## Process Metrics
+
+### Throughput Time
+
+```python
+import pandas as pd
+from datetime import timedelta
+
+# Load events
+events = pd.DataFrame(ocel.events)
+
+# Calculate case durations
+case_durations = events.groupby('case_id').agg({
+    'timestamp': ['min', 'max']
+})
+case_durations['duration'] = (
+    case_durations[('timestamp', 'max')] -
+    case_durations[('timestamp', 'min')]
+)
+
+print(f"Mean throughput time: {case_durations['duration'].mean()}")
+print(f"Median throughput time: {case_durations['duration'].median()}")
+```
+
+### Activity Frequency
+
+```python
+# Count activity occurrences
+activity_counts = events['activity'].value_counts()
+print("Activity frequency:")
+print(activity_counts)
+```
+
+### Bottleneck Analysis
+
+```python
+# Calculate waiting times between activities
+events = events.sort_values(['case_id', 'timestamp'])
+events['wait_time'] = events.groupby('case_id')['timestamp'].diff()
+
+# Find bottlenecks
+bottlenecks = events.groupby('activity')['wait_time'].mean().sort_values(ascending=False)
+print("Bottleneck activities:")
+print(bottlenecks.head(5))
+```
+
+## Variant Analysis
+
+```python
+from pm4py.algo.discovery.ocel import variants
+
+# Get process variants
+variant_stats = variants.get_variants_statistics(ocel)
+
+print(f"Unique variants: {len(variant_stats)}")
+print("\nTop variants:")
+for variant, stats in sorted(variant_stats.items(), key=lambda x: -x[1]['count'])[:5]:
+    print(f"  {variant}: {stats['count']} cases")
+```
+
+## Integration with Tools
+
+### Celonis
+
+```python
+# Export to Celonis format
+from pm4py.objects.ocel.exporter import csv as ocel_csv_exporter
+
+ocel_csv_exporter.apply(ocel, "output/celonis/")
+# Upload CSV files to Celonis
+```
+
+### OCPA
+
+```python
+# Export to OCPA format
+from pm4py.objects.ocel.exporter import sqlite
+
+sqlite.apply(ocel, "output/ocel.sqlite")
+# Open in OCPA tool
+```
+
+## See Also
+
+- [Document Flows](../configuration/document-flows.md)
+- [synth-ocpm Crate](../crates/synth-ocpm.md)
+- [Audit Analytics](audit-analytics.md)

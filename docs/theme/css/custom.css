@@ -1,0 +1,408 @@
+/* SyntheticData Documentation - EY Brand Styling */
+/* Colors: EY Yellow (#FFE600), EY Dark (#2E2E38), EY Gray (#747480) */
+
+:root {
+    --ey-yellow: #FFE600;
+    --ey-dark: #2E2E38;
+    --ey-gray: #747480;
+    --ey-light-gray: #F6F6FA;
+    --ey-white: #FFFFFF;
+    --ey-navy: #1A237E;
+}
+
+/* Light theme overrides */
+.light {
+    --bg: var(--ey-white);
+    --fg: var(--ey-dark);
+    --sidebar-bg: var(--ey-light-gray);
+    --sidebar-fg: var(--ey-dark);
+    --sidebar-active: var(--ey-yellow);
+    --links: var(--ey-navy);
+    --inline-code-color: var(--ey-dark);
+    --theme-popup-bg: var(--ey-white);
+    --theme-popup-border: var(--ey-gray);
+    --theme-hover: var(--ey-light-gray);
+    --quote-bg: var(--ey-light-gray);
+    --quote-border: var(--ey-yellow);
+    --table-header-bg: var(--ey-yellow);
+    --table-alternate-bg: var(--ey-light-gray);
+}
+
+/* Navy (dark) theme overrides */
+.navy {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --sidebar-bg: #161b22;
+    --sidebar-fg: #e6edf3;
+    --sidebar-active: var(--ey-yellow);
+    --links: #58a6ff;
+    --inline-code-color: #e6edf3;
+    --theme-popup-bg: #161b22;
+    --theme-popup-border: #30363d;
+    --theme-hover: #21262d;
+    --quote-bg: #161b22;
+    --quote-border: var(--ey-yellow);
+    --table-header-bg: #21262d;
+    --table-alternate-bg: #161b22;
+}
+
+/* Hero Section Styling */
+.hero-section {
+    background: linear-gradient(135deg, var(--ey-dark) 0%, #1a1a24 100%);
+    color: var(--ey-white);
+    padding: 3rem 2rem;
+    margin: -20px -15px 2rem -15px;
+    border-radius: 0 0 8px 8px;
+    text-align: center;
+}
+
+.hero-section h1 {
+    color: var(--ey-yellow);
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.hero-section .subtitle {
+    font-size: 1.25rem;
+    color: var(--ey-white);
+    margin-bottom: 1rem;
+    opacity: 0.9;
+}
+
+.hero-section .attribution {
+    font-size: 0.95rem;
+    color: var(--ey-gray);
+    margin-top: 1rem;
+}
+
+.hero-section .attribution a {
+    color: var(--ey-yellow);
+    text-decoration: none;
+}
+
+.hero-section .attribution a:hover {
+    text-decoration: underline;
+}
+
+/* Badge styling */
+.badges {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.badges img {
+    height: 22px;
+}
+
+/* Navigation sidebar styling */
+.sidebar {
+    font-size: 0.95rem;
+}
+
+.sidebar .sidebar-scrollbox {
+    padding-top: 1rem;
+}
+
+.sidebar ol.chapter li.chapter-item {
+    margin: 0.3rem 0;
+}
+
+.sidebar ol.chapter li.chapter-item.expanded > a {
+    font-weight: 600;
+    color: var(--sidebar-active);
+}
+
+.sidebar ol.chapter li a:hover {
+    color: var(--ey-yellow);
+}
+
+/* Table styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+}
+
+table thead {
+    background-color: var(--table-header-bg);
+}
+
+.light table thead {
+    color: var(--ey-dark);
+}
+
+.navy table thead {
+    color: var(--ey-white);
+}
+
+table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--ey-yellow);
+}
+
+table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--quote-border);
+}
+
+table tbody tr:nth-child(even) {
+    background-color: var(--table-alternate-bg);
+}
+
+table tbody tr:hover {
+    background-color: var(--theme-hover);
+}
+
+/* Code block styling */
+pre {
+    border-radius: 6px;
+    border-left: 4px solid var(--ey-yellow);
+}
+
+code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9em;
+}
+
+/* Inline code styling */
+:not(pre) > code {
+    background-color: var(--quote-bg);
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+}
+
+/* Blockquote styling */
+blockquote {
+    border-left: 4px solid var(--ey-yellow);
+    background-color: var(--quote-bg);
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    border-radius: 0 6px 6px 0;
+}
+
+blockquote p {
+    margin: 0;
+}
+
+/* Heading styling */
+h1 {
+    border-bottom: 3px solid var(--ey-yellow);
+    padding-bottom: 0.5rem;
+}
+
+h2 {
+    border-bottom: 1px solid var(--ey-gray);
+    padding-bottom: 0.3rem;
+    margin-top: 2rem;
+}
+
+h3 {
+    margin-top: 1.5rem;
+    color: var(--fg);
+}
+
+/* Link styling */
+a {
+    color: var(--links);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+    color: var(--ey-yellow);
+}
+
+/* Warning/Note boxes */
+.warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-left: 4px solid #ffc107;
+    padding: 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1rem 0;
+}
+
+.navy .warning {
+    background-color: #3d3d00;
+    border-color: #ffc107;
+}
+
+.info {
+    background-color: #cfe2ff;
+    border: 1px solid #084298;
+    border-left: 4px solid #084298;
+    padding: 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1rem 0;
+}
+
+.navy .info {
+    background-color: #0d1b2a;
+    border-color: #58a6ff;
+}
+
+/* Feature grid for landing page */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.feature-card {
+    background-color: var(--quote-bg);
+    border: 1px solid var(--quote-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card h3 {
+    margin-top: 0;
+    color: var(--ey-dark);
+    border-left: 3px solid var(--ey-yellow);
+    padding-left: 0.75rem;
+}
+
+.navy .feature-card h3 {
+    color: var(--ey-white);
+}
+
+/* Quick links grid */
+.quick-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.quick-link {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background-color: var(--quote-bg);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--fg);
+    transition: background-color 0.2s;
+}
+
+.quick-link:hover {
+    background-color: var(--theme-hover);
+    text-decoration: none;
+}
+
+.quick-link-icon {
+    font-size: 1.5rem;
+    margin-right: 0.75rem;
+}
+
+/* Performance metrics styling */
+.metrics-table {
+    margin: 1.5rem 0;
+}
+
+.metrics-table td:first-child {
+    font-weight: 600;
+}
+
+.metrics-table td:last-child {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    color: var(--links);
+}
+
+/* Print styles */
+@media print {
+    .hero-section {
+        background: var(--ey-light-gray);
+        color: var(--ey-dark);
+    }
+
+    .hero-section h1 {
+        color: var(--ey-dark);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 1rem;
+        margin: -10px -10px 1.5rem -10px;
+    }
+
+    .hero-section h1 {
+        font-size: 1.75rem;
+    }
+
+    .hero-section .subtitle {
+        font-size: 1rem;
+    }
+
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    table {
+        font-size: 0.85rem;
+    }
+
+    table th, table td {
+        padding: 0.5rem;
+    }
+}
+
+/* API reference link styling */
+.api-link {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--ey-yellow) 0%, #ffd700 100%);
+    color: var(--ey-dark) !important;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.api-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 230, 0, 0.3);
+}
+
+/* Version badge styling */
+.version-badge {
+    display: inline-block;
+    background-color: var(--ey-yellow);
+    color: var(--ey-dark);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Architecture diagram container */
+.architecture-diagram {
+    background-color: var(--quote-bg);
+    border: 1px solid var(--quote-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+}
+
+.architecture-diagram pre {
+    margin: 0;
+    border: none;
+    background: transparent;
+}

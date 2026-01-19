@@ -1,0 +1,39 @@
+[book]
+title = "SyntheticData Documentation"
+authors = ["Michael Ivertowski", "Ernst & Young Ltd."]
+description = "Professional documentation for SyntheticData - High-performance synthetic enterprise financial data generator"
+language = "en"
+src = "src"
+
+[rust]
+edition = "2021"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/ey-asu-rnd/SyntheticData"
+site-url = "/SyntheticData/"
+additional-css = ["theme/css/custom.css"]
+additional-js = []
+no-section-label = false
+
+[output.html.playground]
+editable = false
+copy-js = true
+
+[output.html.search]
+enable = true
+limit-results = 30
+teaser-word-count = 30
+copy-js = true
+
+[output.html.fold]
+enable = true
+level = 1
+
+[build]
+build-dir = "book"
+create-missing = false
+use-default-preprocessors = true
+
+[preprocessor.links]
