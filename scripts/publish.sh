@@ -15,12 +15,14 @@
 #   ./scripts/publish.sh --status            # Check which crates are published
 #
 # The publishing order respects the dependency graph:
-#   Tier 1 (no deps):     datasynth-core
-#   Tier 2 (core only):   datasynth-banking, datasynth-ocpm, datasynth-output, datasynth-eval
+#   Tier 1 (no deps):      datasynth-core
+#   Tier 2 (core only):    datasynth-banking, datasynth-ocpm, datasynth-output
 #   Tier 3 (core+banking): datasynth-config, datasynth-graph
-#   Tier 4 (config):      datasynth-generators, datasynth-test-utils
-#   Tier 5 (runtime):     datasynth-runtime
-#   Tier 6 (apps):        datasynth-server, datasynth-cli
+#   Tier 4 (config):       datasynth-generators
+#   Tier 5 (generators):   datasynth-eval (depends on core, config, generators, graph)
+#   Tier 6 (config+banking): datasynth-test-utils
+#   Tier 7 (runtime):      datasynth-runtime
+#   Tier 8 (apps):         datasynth-server, datasynth-cli
 #   Note: datasynth-ui is excluded (Tauri desktop app, not published to crates.io)
 #
 
@@ -103,7 +105,6 @@ CRATES=(
     "datasynth-banking"      # depends on: core
     "datasynth-ocpm"         # depends on: core
     "datasynth-output"       # depends on: core
-    "datasynth-eval"         # depends on: core
 
     # Tier 3: Depends on core + banking
     "datasynth-config"       # depends on: core, banking
@@ -111,12 +112,17 @@ CRATES=(
 
     # Tier 4: Depends on config
     "datasynth-generators"   # depends on: core, config
+
+    # Tier 5: Depends on generators + graph
+    "datasynth-eval"         # depends on: core, config, generators, graph
+
+    # Tier 6: Depends on config + banking
     "datasynth-test-utils"   # depends on: core, config, banking
 
-    # Tier 5: Runtime (orchestration layer)
+    # Tier 7: Runtime (orchestration layer)
     "datasynth-runtime"      # depends on: core, config, generators, ocpm, output, banking
 
-    # Tier 6: Applications
+    # Tier 8: Applications
     "datasynth-server"       # depends on: runtime
     "datasynth-cli"          # depends on: runtime, banking
 )
