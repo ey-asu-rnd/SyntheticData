@@ -16,11 +16,11 @@
 #
 # The publishing order respects the dependency graph:
 #   Tier 1 (no deps):     datasynth-core
-#   Tier 2 (core deps):   datasynth-config, datasynth-output, datasynth-test-utils
-#   Tier 3 (domain):      datasynth-generators, datasynth-banking, datasynth-ocpm,
-#                         datasynth-graph, datasynth-eval
-#   Tier 4 (runtime):     datasynth-runtime
-#   Tier 5 (apps):        datasynth-server, datasynth-cli
+#   Tier 2 (core only):   datasynth-banking, datasynth-ocpm, datasynth-output, datasynth-eval
+#   Tier 3 (core+banking): datasynth-config, datasynth-graph
+#   Tier 4 (config):      datasynth-generators, datasynth-test-utils
+#   Tier 5 (runtime):     datasynth-runtime
+#   Tier 6 (apps):        datasynth-server, datasynth-cli
 #   Note: datasynth-ui is excluded (Tauri desktop app, not published to crates.io)
 #
 
@@ -99,24 +99,26 @@ CRATES=(
     # Tier 1: No internal dependencies
     "datasynth-core"
 
-    # Tier 2: Depends only on Tier 1 (core)
-    "datasynth-config"       # depends on: core
-    "datasynth-output"       # depends on: core
-    "datasynth-test-utils"   # depends on: core (test utilities)
-
-    # Tier 3: Domain crates (depend on core and/or config)
-    "datasynth-generators"   # depends on: core, config
+    # Tier 2: Depends only on core
     "datasynth-banking"      # depends on: core
     "datasynth-ocpm"         # depends on: core
-    "datasynth-graph"        # depends on: core
+    "datasynth-output"       # depends on: core
     "datasynth-eval"         # depends on: core
 
-    # Tier 4: Runtime (orchestration layer)
-    "datasynth-runtime"      # depends on: core, config, generators, output, etc.
+    # Tier 3: Depends on core + banking
+    "datasynth-config"       # depends on: core, banking
+    "datasynth-graph"        # depends on: core, banking
 
-    # Tier 5: Applications
+    # Tier 4: Depends on config
+    "datasynth-generators"   # depends on: core, config
+    "datasynth-test-utils"   # depends on: core, config, banking
+
+    # Tier 5: Runtime (orchestration layer)
+    "datasynth-runtime"      # depends on: core, config, generators, ocpm, output, banking
+
+    # Tier 6: Applications
     "datasynth-server"       # depends on: runtime
-    "datasynth-cli"          # depends on: runtime
+    "datasynth-cli"          # depends on: runtime, banking
 )
 
 # Tier 1 crates can be verified independently
