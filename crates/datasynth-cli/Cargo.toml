@@ -16,7 +16,7 @@ datasynth-config = { workspace = true }
 datasynth-generators = { workspace = true }
 datasynth-output = { workspace = true }
 datasynth-runtime = { workspace = true }
-datasynth-banking = { path = "../datasynth-banking" }
+datasynth-banking = { workspace = true }
 clap = { workspace = true }
 indicatif = { workspace = true }
 anyhow = { workspace = true }

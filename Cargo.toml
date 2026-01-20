@@ -52,18 +52,18 @@ keywords = ["synthetic-data", "accounting", "audit", "machine-learning", "fraud-
 categories = ["simulation", "finance", "data-structures"]
 
 [workspace.dependencies]
-# Internal crates
-datasynth-core = { path = "crates/datasynth-core" }
-datasynth-config = { path = "crates/datasynth-config" }
-datasynth-generators = { path = "crates/datasynth-generators" }
-datasynth-output = { path = "crates/datasynth-output" }
-datasynth-runtime = { path = "crates/datasynth-runtime" }
-datasynth-graph = { path = "crates/datasynth-graph" }
-datasynth-server = { path = "crates/datasynth-server" }
-datasynth-test-utils = { path = "crates/datasynth-test-utils" }
-datasynth-eval = { path = "crates/datasynth-eval" }
-datasynth-ocpm = { path = "crates/datasynth-ocpm" }
-datasynth-banking = { path = "crates/datasynth-banking" }
+# Internal crates - version required for crates.io publishing
+datasynth-core = { version = "0.1.0", path = "crates/datasynth-core" }
+datasynth-config = { version = "0.1.0", path = "crates/datasynth-config" }
+datasynth-generators = { version = "0.1.0", path = "crates/datasynth-generators" }
+datasynth-output = { version = "0.1.0", path = "crates/datasynth-output" }
+datasynth-runtime = { version = "0.1.0", path = "crates/datasynth-runtime" }
+datasynth-graph = { version = "0.1.0", path = "crates/datasynth-graph" }
+datasynth-server = { version = "0.1.0", path = "crates/datasynth-server" }
+datasynth-test-utils = { version = "0.1.0", path = "crates/datasynth-test-utils" }
+datasynth-eval = { version = "0.1.0", path = "crates/datasynth-eval" }
+datasynth-ocpm = { version = "0.1.0", path = "crates/datasynth-ocpm" }
+datasynth-banking = { version = "0.1.0", path = "crates/datasynth-banking" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

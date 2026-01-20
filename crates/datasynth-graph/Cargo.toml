@@ -8,7 +8,7 @@ description = "Graph/network export for synthetic accounting data - supports PyT
 
 [dependencies]
 datasynth-core = { workspace = true }
-datasynth-banking = { path = "../datasynth-banking" }
+datasynth-banking = { workspace = true }
 chrono = { workspace = true }
 rust_decimal = { workspace = true }
 serde = { workspace = true }

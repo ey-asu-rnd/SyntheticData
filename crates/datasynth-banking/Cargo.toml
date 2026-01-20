@@ -7,7 +7,7 @@ rust-version.workspace = true
 description = "KYC/AML banking transaction generator for synthetic data - compliance testing and fraud analytics"
 
 [dependencies]
-datasynth-core = { path = "../datasynth-core" }
+datasynth-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 rust_decimal = { workspace = true }

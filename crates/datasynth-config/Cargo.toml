@@ -8,7 +8,7 @@ description = "Configuration schema, validation, and presets for synthetic data 
 
 [dependencies]
 datasynth-core = { workspace = true }
-datasynth-banking = { path = "../datasynth-banking" }
+datasynth-banking = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }

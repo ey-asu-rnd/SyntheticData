@@ -12,7 +12,7 @@ datasynth-config = { workspace = true }
 datasynth-generators = { workspace = true }
 datasynth-ocpm = { workspace = true }
 datasynth-output = { workspace = true }
-datasynth-banking = { path = "../datasynth-banking" }
+datasynth-banking = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 rayon = { workspace = true }
