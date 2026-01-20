@@ -59,7 +59,8 @@ jobs:
 
       - name: Generate Rust API documentation
         run: |
-          cargo doc --workspace --no-deps --document-private-items
+          # Exclude datasynth-ui (Tauri app requires GTK system libraries)
+          cargo doc --workspace --no-deps --document-private-items --exclude datasynth-ui
           # Copy rustdoc to mdBook output
           mkdir -p docs/book/api
           cp -r target/doc/* docs/book/api/
