@@ -66,6 +66,7 @@ pub struct UnmatchedICItem {
 /// Evaluator for intercompany matching.
 pub struct ICMatchingEvaluator {
     /// Tolerance for matching.
+    #[allow(dead_code)] // Reserved for tolerance-based matching
     tolerance: Decimal,
 }
 

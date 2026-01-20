@@ -155,6 +155,7 @@ struct MetricConfigMapping {
 }
 
 /// Strategy for computing suggested config values.
+#[allow(dead_code)] // Variants reserved for future tuning strategies
 #[derive(Debug, Clone, Copy)]
 enum ComputeStrategy {
     /// Enable a boolean flag.

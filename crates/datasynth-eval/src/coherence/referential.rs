@@ -117,6 +117,7 @@ pub struct ReferentialIntegrityEvaluator {
     /// Minimum integrity score threshold.
     min_integrity_score: f64,
     /// Minimum usage rate threshold.
+    #[allow(dead_code)] // Reserved for usage rate validation
     min_usage_rate: f64,
 }
 

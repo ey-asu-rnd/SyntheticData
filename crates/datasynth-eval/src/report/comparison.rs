@@ -241,6 +241,7 @@ impl BaselineComparison {
 }
 
 /// Compares evaluation reports against baselines.
+#[allow(dead_code)] // Reserved for baseline comparison feature
 pub struct BaselineComparer {
     /// Metric definitions with higher_is_better flags.
     metric_definitions: HashMap<String, MetricDefinition>,
@@ -248,12 +249,14 @@ pub struct BaselineComparer {
     significance_threshold: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 struct MetricDefinition {
     category: String,
     higher_is_better: bool,
 }
 
+#[allow(dead_code)]
 impl BaselineComparer {
     /// Create a new baseline comparer with default metric definitions.
     pub fn new() -> Self {
