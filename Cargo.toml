@@ -13,6 +13,7 @@ members = [
     "crates/synth-test-utils",
     "crates/synth-eval",
     "crates/synth-ocpm",
+    "crates/synth-banking",
 ]
 
 # Root package for workspace-level benchmarks
@@ -62,6 +63,7 @@ synth-server = { path = "crates/synth-server" }
 synth-test-utils = { path = "crates/synth-test-utils" }
 synth-eval = { path = "crates/synth-eval" }
 synth-ocpm = { path = "crates/synth-ocpm" }
+synth-banking = { path = "crates/synth-banking" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

@@ -61,6 +61,9 @@ pub struct GeneratorConfig {
     /// Audit engagement and workpaper generation settings
     #[serde(default)]
     pub audit: AuditGenerationConfig,
+    /// Banking KYC/AML transaction generation settings
+    #[serde(default)]
+    pub banking: synth_banking::BankingConfig,
 }
 
 /// Global configuration settings.

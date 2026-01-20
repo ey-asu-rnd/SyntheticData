@@ -613,6 +613,7 @@ mod tests {
             balance: BalanceConfig::default(),
             ocpm: OcpmConfig::default(),
             audit: AuditGenerationConfig::default(),
+            banking: synth_banking::BankingConfig::default(),
         }
     }
 

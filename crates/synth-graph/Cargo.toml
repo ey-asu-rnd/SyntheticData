@@ -8,6 +8,7 @@ description = "Graph/network export for synthetic accounting data - supports PyT
 
 [dependencies]
 synth-core = { workspace = true }
+synth-banking = { path = "../synth-banking" }
 chrono = { workspace = true }
 rust_decimal = { workspace = true }
 serde = { workspace = true }
@@ -16,3 +17,4 @@ serde_json = { workspace = true }
 [dev-dependencies]
 tempfile = { workspace = true }
 rust_decimal_macros = { workspace = true }
+uuid = { workspace = true }

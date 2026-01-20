@@ -47,6 +47,9 @@ pub mod subledger;
 // Audit models (Phase 13-14: RustAssureTwin integration)
 pub mod audit;
 
+// Banking models (KYC/AML transaction generation)
+pub mod banking;
+
 pub use acdoca::*;
 pub use anomaly::*;
 pub use approval::*;

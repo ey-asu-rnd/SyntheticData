@@ -47,6 +47,7 @@ pub fn create_preset(
         balance: BalanceConfig::default(),
         ocpm: OcpmConfig::default(),
         audit: AuditGenerationConfig::default(),
+        banking: synth_banking::BankingConfig::default(),
     }
 }
 

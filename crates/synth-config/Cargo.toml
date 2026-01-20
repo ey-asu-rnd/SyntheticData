@@ -8,6 +8,7 @@ description = "Configuration schema, validation, and presets for synthetic data 
 
 [dependencies]
 synth-core = { workspace = true }
+synth-banking = { path = "../synth-banking" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }

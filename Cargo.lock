@@ -5338,6 +5338,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "synth-banking"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "csv",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rand_distr",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "synth-core",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
 name = "synth-cli"
 version = "0.1.0"
 dependencies = [
@@ -5369,6 +5388,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "synth-banking",
  "synth-core",
  "thiserror 2.0.17",
 ]
@@ -5444,8 +5464,10 @@ dependencies = [
  "rust_decimal_macros",
  "serde",
  "serde_json",
+ "synth-banking",
  "synth-core",
  "tempfile",
+ "uuid",
 ]
 
 [[package]]
