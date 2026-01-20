@@ -1,8 +1,10 @@
 # SyntheticData
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/ey-asu-rnd/SyntheticData)
+[![Crates.io](https://img.shields.io/crates/v/datasynth-core.svg)](https://crates.io/crates/datasynth-core)
+[![Documentation](https://docs.rs/datasynth-core/badge.svg)](https://docs.rs/datasynth-core)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
+[![CI](https://github.com/ey-asu-rnd/SyntheticData/actions/workflows/ci.yml/badge.svg)](https://github.com/ey-asu-rnd/SyntheticData/actions/workflows/ci.yml)
 
 A high-performance, configurable synthetic data generator for enterprise financial simulation. SyntheticData produces realistic, interconnected General Ledger journal entries, Chart of Accounts, SAP HANA-compatible ACDOCA event logs, document flows, subledger records, banking/KYC/AML transactions, OCEL 2.0 process mining data, and ML-ready graph exports at scale.
 
@@ -128,6 +130,16 @@ See individual crate READMEs for detailed documentation.
 
 ## Installation
 
+### From crates.io
+
+```bash
+# Install the CLI tool
+cargo install datasynth-cli
+
+# Or add individual crates to your project
+cargo add datasynth-core datasynth-generators datasynth-config
+```
+
 ### From Source
 
 ```bash
@@ -137,6 +149,20 @@ cargo build --release
 ```
 
 The binary is available at `target/release/datasynth-data`.
+
+### Available Crates
+
+| Crate | Description |
+|-------|-------------|
+| [`datasynth-core`](https://crates.io/crates/datasynth-core) | Domain models, traits, distributions |
+| [`datasynth-config`](https://crates.io/crates/datasynth-config) | Configuration schema and validation |
+| [`datasynth-generators`](https://crates.io/crates/datasynth-generators) | Data generators |
+| [`datasynth-banking`](https://crates.io/crates/datasynth-banking) | KYC/AML banking transactions |
+| [`datasynth-graph`](https://crates.io/crates/datasynth-graph) | Graph/network export |
+| [`datasynth-eval`](https://crates.io/crates/datasynth-eval) | Evaluation framework |
+| [`datasynth-runtime`](https://crates.io/crates/datasynth-runtime) | Orchestration layer |
+| [`datasynth-cli`](https://crates.io/crates/datasynth-cli) | Command-line interface |
+| [`datasynth-server`](https://crates.io/crates/datasynth-server) | REST/gRPC server |
 
 ### Requirements
 
