@@ -60,6 +60,7 @@ pub fn minimal_config() -> GeneratorConfig {
         balance: Default::default(),
         ocpm: OcpmConfig::default(),
         audit: AuditGenerationConfig::default(),
+        banking: synth_banking::BankingConfig::default(),
     }
 }
 

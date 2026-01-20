@@ -16,6 +16,7 @@ synth-config = { workspace = true }
 synth-generators = { workspace = true }
 synth-output = { workspace = true }
 synth-runtime = { workspace = true }
+synth-banking = { path = "../synth-banking" }
 clap = { workspace = true }
 indicatif = { workspace = true }
 anyhow = { workspace = true }
@@ -24,6 +25,8 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 serde_yaml = { workspace = true }
 serde_json = { workspace = true }
+rayon = { workspace = true }
+num_cpus = { workspace = true }
 
 # Signal handling for pause/resume
 [target.'cfg(unix)'.dependencies]

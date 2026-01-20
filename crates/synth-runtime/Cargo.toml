@@ -12,6 +12,7 @@ synth-config = { workspace = true }
 synth-generators = { workspace = true }
 synth-ocpm = { workspace = true }
 synth-output = { workspace = true }
+synth-banking = { path = "../synth-banking" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 rayon = { workspace = true }

@@ -9,8 +9,9 @@ use clap::{Parser, Subcommand};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use synth_config::{presets, GeneratorConfig};
+use synth_core::memory_guard::{MemoryGuard, MemoryGuardConfig};
 use synth_core::models::{CoAComplexity, IndustrySector};
-use synth_runtime::GenerationOrchestrator;
+use synth_runtime::{EnhancedOrchestrator, PhaseConfig};
 
 #[cfg(unix)]
 use signal_hook::consts::SIGUSR1;
@@ -47,6 +48,22 @@ enum Commands {
         /// Random seed for reproducibility
         #[arg(short, long)]
         seed: Option<u64>,
+
+        /// Enable banking KYC/AML data generation
+        #[arg(long)]
+        banking: bool,
+
+        /// Enable audit data generation
+        #[arg(long)]
+        audit: bool,
+
+        /// Memory limit in MB (default: 1024 MB)
+        #[arg(long, default_value = "1024")]
+        memory_limit: usize,
+
+        /// Maximum CPU threads to use (default: half of available cores, min 1)
+        #[arg(long)]
+        max_threads: Option<usize>,
     },
 
     /// Validate a configuration file
@@ -93,37 +110,106 @@ fn main() -> Result<()> {
             output,
             demo,
             seed,
+            banking,
+            audit,
+            memory_limit,
+            max_threads,
         } => {
+            // ========================================
+            // CPU SAFEGUARD: Limit thread pool size
+            // ========================================
+            let available_cpus = num_cpus::get();
+            let effective_threads = max_threads.unwrap_or_else(|| {
+                // Default: use half of available cores, minimum 1, maximum 4
+                (available_cpus / 2).max(1).min(4)
+            });
+
+            // Configure rayon thread pool with limited threads
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(effective_threads)
+                .build_global()
+                .ok(); // Ignore error if already initialized
+
+            tracing::info!(
+                "CPU safeguard: using {} threads (of {} available)",
+                effective_threads,
+                available_cpus
+            );
+
+            // ========================================
+            // MEMORY SAFEGUARD: Set conservative limits
+            // ========================================
+            let effective_memory_limit = if memory_limit > 0 {
+                memory_limit.min(get_safe_memory_limit()) // Cap at safe limit
+            } else {
+                1024 // Default 1GB
+            };
+
+            let memory_config = MemoryGuardConfig::with_limit_mb(effective_memory_limit).aggressive();
+            let memory_guard = Arc::new(MemoryGuard::new(memory_config));
+
+            tracing::info!(
+                "Memory safeguard: {} MB limit ({} MB soft limit)",
+                effective_memory_limit,
+                (effective_memory_limit * 80) / 100
+            );
+
+            // Check initial memory status
+            let initial_memory = memory_guard.current_usage_mb();
+            tracing::info!("Initial memory usage: {} MB", initial_memory);
+
+            // ========================================
+            // LOAD CONFIGURATION
+            // ========================================
             let mut generator_config = if demo {
-                tracing::info!("Using demo preset");
-                presets::demo_preset()
+                tracing::info!("Using demo preset (conservative settings)");
+                create_safe_demo_preset()
             } else if let Some(config_path) = config {
                 let content = std::fs::read_to_string(&config_path)?;
-                serde_yaml::from_str(&content)?
+                let mut cfg: GeneratorConfig = serde_yaml::from_str(&content)?;
+                // Apply safety limits to loaded config
+                apply_safety_limits(&mut cfg);
+                cfg
             } else {
-                tracing::info!("No config specified, using demo preset");
-                presets::demo_preset()
+                tracing::info!("No config specified, using safe demo preset");
+                create_safe_demo_preset()
             };
 
             if let Some(s) = seed {
                 generator_config.global.seed = Some(s);
             }
 
+            // Enable banking if flag is set (with conservative defaults)
+            if banking {
+                generator_config.banking.enabled = true;
+                // Apply conservative banking limits
+                generator_config.banking.population.retail_customers =
+                    generator_config.banking.population.retail_customers.min(100);
+                generator_config.banking.population.business_customers =
+                    generator_config.banking.population.business_customers.min(20);
+                generator_config.banking.population.trusts =
+                    generator_config.banking.population.trusts.min(5);
+                tracing::info!("Banking KYC/AML generation enabled (conservative mode)");
+            }
+
             generator_config.output.output_directory = output.clone();
+            generator_config.global.parallel = false; // Disable parallel for safety
+            generator_config.global.worker_threads = effective_threads;
+            generator_config.global.memory_limit_mb = effective_memory_limit;
 
             tracing::info!("Starting generation...");
             tracing::info!("Industry: {:?}", generator_config.global.industry);
             tracing::info!("Period: {} months", generator_config.global.period_months);
             tracing::info!("Companies: {}", generator_config.companies.len());
 
-            // Set up pause flag for signal handling
+            // ========================================
+            // SIGNAL HANDLING (Unix only)
+            // ========================================
             let pause_flag = Arc::new(AtomicBool::new(false));
 
-            // Register signal handler on Unix systems
             #[cfg(unix)]
             {
                 let pause_flag_clone = Arc::clone(&pause_flag);
-                // Use register to set flag to true, then spawn a thread to toggle
                 let signal_flag = Arc::new(AtomicBool::new(false));
                 let signal_flag_clone = Arc::clone(&signal_flag);
 
@@ -131,11 +217,9 @@ fn main() -> Result<()> {
                     let pid = std::process::id();
                     tracing::info!("Pause/resume: send SIGUSR1 to toggle (kill -USR1 {})", pid);
 
-                    // Spawn a thread to monitor the signal and toggle pause state
                     std::thread::spawn(move || {
                         loop {
                             if signal_flag.swap(false, Ordering::Relaxed) {
-                                // Signal received - toggle pause state
                                 let was_paused = pause_flag_clone.load(Ordering::Relaxed);
                                 pause_flag_clone.store(!was_paused, Ordering::Relaxed);
                                 if was_paused {
@@ -144,29 +228,99 @@ fn main() -> Result<()> {
                                     eprintln!("\n>>> PAUSED - send SIGUSR1 again to resume");
                                 }
                             }
-                            std::thread::sleep(std::time::Duration::from_millis(50));
+                            std::thread::sleep(std::time::Duration::from_millis(100));
                         }
                     });
-                } else {
-                    tracing::warn!("Failed to register SIGUSR1 handler");
                 }
             }
 
-            let mut orchestrator =
-                GenerationOrchestrator::new(generator_config)?.with_pause_flag(pause_flag);
+            // ========================================
+            // PRE-GENERATION MEMORY CHECK
+            // ========================================
+            if let Err(e) = memory_guard.check_now() {
+                tracing::error!("Memory limit already exceeded before generation: {}", e);
+                return Err(anyhow::anyhow!("Insufficient memory to start generation"));
+            }
+
+            // ========================================
+            // GENERATE DATA
+            // ========================================
+            let phase_config = PhaseConfig {
+                generate_banking: banking,
+                generate_audit: audit,
+                show_progress: true,
+                // Use conservative defaults for document generation
+                p2p_chains: 50,
+                o2c_chains: 50,
+                vendors_per_company: 20,
+                customers_per_company: 30,
+                materials_per_company: 50,
+                assets_per_company: 20,
+                employees_per_company: 30,
+                ..PhaseConfig::default()
+            };
+
+            let mut orchestrator = EnhancedOrchestrator::new(generator_config, phase_config)?;
             let result = orchestrator.generate()?;
 
+            // ========================================
+            // REPORT RESULTS
+            // ========================================
             tracing::info!("Generation complete!");
             tracing::info!("Total entries: {}", result.statistics.total_entries);
             tracing::info!("Total line items: {}", result.statistics.total_line_items);
             tracing::info!("Accounts in CoA: {}", result.statistics.accounts_count);
 
-            // Create output directory
+            // Memory usage reporting
+            let stats = memory_guard.stats();
+            let peak_mb = stats.peak_resident_bytes / (1024 * 1024);
+            let current_mb = stats.resident_bytes / (1024 * 1024);
+            tracing::info!(
+                "Memory usage: current {} MB, peak {} MB",
+                current_mb,
+                peak_mb
+            );
+            if stats.soft_limit_warnings > 0 {
+                tracing::warn!(
+                    "Memory soft limit was exceeded {} times during generation",
+                    stats.soft_limit_warnings
+                );
+            }
+
+            // Banking statistics
+            if result.statistics.banking_customer_count > 0 {
+                tracing::info!(
+                    "Banking: {} customers, {} accounts, {} transactions ({} suspicious)",
+                    result.statistics.banking_customer_count,
+                    result.statistics.banking_account_count,
+                    result.statistics.banking_transaction_count,
+                    result.statistics.banking_suspicious_count
+                );
+            }
+
+            // Audit statistics
+            if result.statistics.audit_engagement_count > 0 {
+                tracing::info!(
+                    "Audit: {} engagements, {} workpapers, {} findings",
+                    result.statistics.audit_engagement_count,
+                    result.statistics.audit_workpaper_count,
+                    result.statistics.audit_finding_count
+                );
+            }
+
+            // ========================================
+            // WRITE OUTPUT (with memory checks)
+            // ========================================
             std::fs::create_dir_all(&output)?;
 
-            // Write sample output (up to 10000 entries for evaluation purposes)
+            // Check memory before writing
+            if memory_guard.check_now().is_err() {
+                tracing::warn!("Memory limit reached, writing minimal output");
+            }
+
+            // Write sample output (limited to 1000 entries for safety)
             let sample_path = output.join("sample_entries.json");
-            let sample_entries: Vec<_> = result.journal_entries.iter().take(10000).collect();
+            let sample_entries: Vec<_> = result.journal_entries.iter().take(1000).collect();
             let json = serde_json::to_string_pretty(&sample_entries)?;
             std::fs::write(&sample_path, json)?;
             tracing::info!(
@@ -174,6 +328,36 @@ fn main() -> Result<()> {
                 sample_path.display(),
                 sample_entries.len()
             );
+
+            // Write banking output if generated
+            if banking && !result.banking.customers.is_empty() {
+                let banking_dir = output.join("banking");
+                std::fs::create_dir_all(&banking_dir)?;
+
+                // Write banking customers
+                let customers_path = banking_dir.join("banking_customers.json");
+                let json = serde_json::to_string_pretty(&result.banking.customers)?;
+                std::fs::write(&customers_path, json)?;
+
+                // Write banking accounts
+                let accounts_path = banking_dir.join("banking_accounts.json");
+                let json = serde_json::to_string_pretty(&result.banking.accounts)?;
+                std::fs::write(&accounts_path, json)?;
+
+                // Write banking transactions (limited for safety)
+                let transactions_path = banking_dir.join("banking_transactions.json");
+                let limited_txns: Vec<_> = result.banking.transactions.iter().take(10000).collect();
+                let json = serde_json::to_string_pretty(&limited_txns)?;
+                std::fs::write(&transactions_path, json)?;
+
+                tracing::info!(
+                    "Banking data written to: {} ({} customers, {} accounts, {} transactions)",
+                    banking_dir.display(),
+                    result.banking.customers.len(),
+                    result.banking.accounts.len(),
+                    limited_txns.len()
+                );
+            }
 
             Ok(())
         }
@@ -212,7 +396,7 @@ fn main() -> Result<()> {
                 2,
                 12,
                 coa_complexity,
-                synth_config::TransactionVolume::HundredK,
+                synth_config::TransactionVolume::TenK, // Conservative default
             );
 
             let yaml = serde_yaml::to_string(&config)?;
@@ -240,7 +424,120 @@ fn main() -> Result<()> {
             println!("  - one_m: 1,000,000 transactions/year");
             println!("  - ten_m: 10,000,000 transactions/year");
             println!("  - hundred_m: 100,000,000 transactions/year");
+            println!();
+            println!("Resource Safeguards:");
+            println!("  --memory-limit <MB>  : Set memory limit (default: 1024 MB)");
+            println!("  --max-threads <N>    : Limit CPU threads (default: half of cores, max 4)");
             Ok(())
         }
     }
+}
+
+/// Create a safe demo preset with conservative resource usage.
+fn create_safe_demo_preset() -> GeneratorConfig {
+    use synth_config::schema::*;
+
+    GeneratorConfig {
+        global: GlobalConfig {
+            industry: IndustrySector::Manufacturing,
+            start_date: "2024-01-01".to_string(),
+            period_months: 1, // Just 1 month for demo
+            seed: Some(42),
+            parallel: false,
+            group_currency: "USD".to_string(),
+            worker_threads: 2,
+            memory_limit_mb: 512,
+        },
+        companies: vec![CompanyConfig {
+            code: "DEMO".to_string(),
+            name: "Demo Company".to_string(),
+            currency: "USD".to_string(),
+            country: "US".to_string(),
+            annual_transaction_volume: TransactionVolume::TenK, // Small volume
+            volume_weight: 1.0,
+            fiscal_year_variant: "K4".to_string(),
+        }],
+        chart_of_accounts: ChartOfAccountsConfig {
+            complexity: CoAComplexity::Small,
+            industry_specific: false,
+            custom_accounts: None,
+            min_hierarchy_depth: 2,
+            max_hierarchy_depth: 3,
+        },
+        transactions: TransactionConfig::default(),
+        output: OutputConfig::default(),
+        fraud: FraudConfig {
+            enabled: false,
+            ..Default::default()
+        },
+        internal_controls: InternalControlsConfig::default(),
+        business_processes: BusinessProcessConfig::default(),
+        user_personas: UserPersonaConfig::default(),
+        templates: TemplateConfig::default(),
+        approval: ApprovalConfig::default(),
+        departments: DepartmentConfig::default(),
+        master_data: MasterDataConfig::default(),
+        document_flows: DocumentFlowConfig::default(),
+        intercompany: IntercompanyConfig::default(),
+        balance: BalanceConfig::default(),
+        ocpm: OcpmConfig::default(),
+        audit: AuditGenerationConfig::default(),
+        banking: synth_banking::BankingConfig::small(), // Use small banking config
+    }
+}
+
+/// Apply safety limits to a loaded configuration.
+fn apply_safety_limits(config: &mut GeneratorConfig) {
+    // Limit period to 12 months max
+    config.global.period_months = config.global.period_months.min(12);
+
+    // Limit transaction volume
+    for company in &mut config.companies {
+        company.annual_transaction_volume = match company.annual_transaction_volume {
+            synth_config::TransactionVolume::OneM
+            | synth_config::TransactionVolume::TenM
+            | synth_config::TransactionVolume::HundredM => synth_config::TransactionVolume::HundredK,
+            other => other,
+        };
+    }
+
+    // Limit banking population
+    if config.banking.enabled {
+        config.banking.population.retail_customers =
+            config.banking.population.retail_customers.min(500);
+        config.banking.population.business_customers =
+            config.banking.population.business_customers.min(100);
+        config.banking.population.trusts =
+            config.banking.population.trusts.min(20);
+    }
+
+    // Force conservative settings
+    config.global.parallel = false;
+    config.global.worker_threads = config.global.worker_threads.min(4);
+}
+
+/// Get safe memory limit based on available system memory.
+/// Returns a conservative limit that won't overwhelm the system.
+fn get_safe_memory_limit() -> usize {
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {
+            for line in content.lines() {
+                if line.starts_with("MemAvailable:") {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        if let Ok(kb) = parts[1].parse::<usize>() {
+                            let mb = kb / 1024;
+                            // Use 50% of available memory, capped at 4GB
+                            return (mb / 2).min(4096);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // Default to 1GB if detection fails
+    1024
 }

@@ -10,6 +10,7 @@ description = "Test utilities for synthetic data generation"
 # Internal crates
 synth-core = { workspace = true }
 synth-config = { workspace = true }
+synth-banking = { path = "../synth-banking" }
 
 # Async
 tokio = { workspace = true }

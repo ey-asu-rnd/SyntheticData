@@ -9,6 +9,7 @@
 //! 6. Balance validation
 //! 7. Data quality injection
 //! 8. Audit data generation (engagements, workpapers, evidence, risks, findings, judgments)
+//! 9. Banking KYC/AML data generation (customers, accounts, transactions, typologies)
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -99,6 +100,10 @@ use synth_generators::{
 use synth_ocpm::{
     EventLogMetadata, O2cDocuments, OcpmEventGenerator, OcpmEventLog, OcpmGeneratorConfig,
     P2pDocuments,
+};
+use synth_banking::{
+    BankingOrchestratorBuilder,
+    models::{BankingCustomer, BankAccount, BankTransaction},
 };
 
 use synth_config::schema::{O2CFlowConfig, P2PFlowConfig};
@@ -222,6 +227,8 @@ pub struct PhaseConfig {
     pub findings_per_engagement: usize,
     /// Number of professional judgments per engagement.
     pub judgments_per_engagement: usize,
+    /// Generate banking KYC/AML data (customers, accounts, transactions, typologies).
+    pub generate_banking: bool,
 }
 
 impl Default for PhaseConfig {
@@ -249,6 +256,7 @@ impl Default for PhaseConfig {
             risks_per_engagement: 15,
             findings_per_engagement: 8,
             judgments_per_engagement: 10,
+            generate_banking: false, // Off by default
         }
     }
 }
@@ -330,6 +338,21 @@ pub struct AuditSnapshot {
     pub judgments: Vec<ProfessionalJudgment>,
 }
 
+/// Banking KYC/AML data snapshot containing all generated banking entities.
+#[derive(Debug, Clone, Default)]
+pub struct BankingSnapshot {
+    /// Banking customers (retail, business, trust).
+    pub customers: Vec<BankingCustomer>,
+    /// Bank accounts.
+    pub accounts: Vec<BankAccount>,
+    /// Bank transactions with AML labels.
+    pub transactions: Vec<BankTransaction>,
+    /// Number of suspicious transactions.
+    pub suspicious_count: usize,
+    /// Number of AML scenarios generated.
+    pub scenario_count: usize,
+}
+
 /// Anomaly labels generated during injection.
 #[derive(Debug, Clone, Default)]
 pub struct AnomalyLabels {
@@ -379,6 +402,8 @@ pub struct EnhancedGenerationResult {
     pub ocpm: OcpmSnapshot,
     /// Audit data snapshot (if audit generation enabled).
     pub audit: AuditSnapshot,
+    /// Banking KYC/AML data snapshot (if banking generation enabled).
+    pub banking: BankingSnapshot,
     /// Generated journal entries.
     pub journal_entries: Vec<JournalEntry>,
     /// Anomaly labels (if injection enabled).
@@ -431,6 +456,11 @@ pub struct EnhancedGenerationStatistics {
     pub anomalies_injected: usize,
     /// Data quality issue counts.
     pub data_quality_issues: usize,
+    /// Banking counts.
+    pub banking_customer_count: usize,
+    pub banking_account_count: usize,
+    pub banking_transaction_count: usize,
+    pub banking_suspicious_count: usize,
 }
 
 /// Enhanced orchestrator with full feature integration.
@@ -684,6 +714,24 @@ impl EnhancedOrchestrator {
             debug!("Phase 8: Skipped (audit generation disabled)");
         }
 
+        // Phase 9: Generate Banking KYC/AML Data
+        let mut banking_snapshot = BankingSnapshot::default();
+        if self.phase_config.generate_banking && self.config.banking.enabled {
+            info!("Phase 9: Generating Banking KYC/AML Data");
+            banking_snapshot = self.generate_banking_data()?;
+            stats.banking_customer_count = banking_snapshot.customers.len();
+            stats.banking_account_count = banking_snapshot.accounts.len();
+            stats.banking_transaction_count = banking_snapshot.transactions.len();
+            stats.banking_suspicious_count = banking_snapshot.suspicious_count;
+            info!(
+                "Banking data generated: {} customers, {} accounts, {} transactions ({} suspicious)",
+                stats.banking_customer_count, stats.banking_account_count,
+                stats.banking_transaction_count, stats.banking_suspicious_count
+            );
+        } else {
+            debug!("Phase 9: Skipped (banking generation disabled)");
+        }
+
         info!("Generation workflow complete");
 
         Ok(EnhancedGenerationResult {
@@ -693,6 +741,7 @@ impl EnhancedOrchestrator {
             subledger,
             ocpm: ocpm_snapshot,
             audit: audit_snapshot,
+            banking: banking_snapshot,
             journal_entries: entries,
             anomaly_labels,
             balance_validation,
@@ -1665,6 +1714,44 @@ impl EnhancedOrchestrator {
         Ok(snapshot)
     }
 
+    /// Generate banking KYC/AML data.
+    ///
+    /// Creates banking customers, accounts, and transactions with AML typology injection.
+    /// Uses the BankingOrchestrator from synth-banking crate.
+    fn generate_banking_data(&mut self) -> SynthResult<BankingSnapshot> {
+        let pb = self.create_progress_bar(100, "Generating Banking Data");
+
+        // Build the banking orchestrator from config
+        let orchestrator = BankingOrchestratorBuilder::new()
+            .config(self.config.banking.clone())
+            .seed(self.seed + 9000)
+            .build();
+
+        if let Some(pb) = &pb {
+            pb.inc(10);
+        }
+
+        // Generate the banking data
+        let result = orchestrator.generate();
+
+        if let Some(pb) = &pb {
+            pb.inc(90);
+            pb.finish_with_message(format!(
+                "Banking: {} customers, {} transactions",
+                result.customers.len(),
+                result.transactions.len()
+            ));
+        }
+
+        Ok(BankingSnapshot {
+            customers: result.customers,
+            accounts: result.accounts,
+            transactions: result.transactions,
+            suspicious_count: result.stats.suspicious_count,
+            scenario_count: result.scenarios.len(),
+        })
+    }
+
     /// Calculate total transactions to generate.
     fn calculate_total_transactions(&self) -> u64 {
         let months = self.config.global.period_months as f64;
@@ -1763,6 +1850,7 @@ mod tests {
             balance: BalanceConfig::default(),
             ocpm: OcpmConfig::default(),
             audit: AuditGenerationConfig::default(),
+            banking: synth_banking::BankingConfig::default(),
         }
     }
 
