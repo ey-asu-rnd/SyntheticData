@@ -389,6 +389,7 @@ mod tests {
     }
 
     // Simple test label type
+    #[allow(dead_code)]
     #[derive(Debug, Clone)]
     struct TestLabel {
         field: String,

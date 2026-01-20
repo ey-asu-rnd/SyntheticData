@@ -497,12 +497,8 @@ mod tests {
             .insert("manufacturing".to_string(), vec!["Company B".to_string()]);
 
         let merged = TemplateLoader::merge(base, overlay, MergeStrategy::Replace);
-        assert!(merged.vendor_names.categories.get("services").is_none());
-        assert!(merged
-            .vendor_names
-            .categories
-            .get("manufacturing")
-            .is_some());
+        assert!(!merged.vendor_names.categories.contains_key("services"));
+        assert!(merged.vendor_names.categories.contains_key("manufacturing"));
     }
 
     #[test]
