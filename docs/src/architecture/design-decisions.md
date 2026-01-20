@@ -237,11 +237,11 @@ pub fn check(&self) -> MemoryStatus {
 - Easier testing and maintenance
 
 **Layers:**
-1. Foundation: `synth-core` (no internal dependencies)
-2. Services: `synth-config`, `synth-output`
-3. Processing: `synth-generators`, `synth-graph`
-4. Orchestration: `synth-runtime`
-5. Application: `synth-cli`, `synth-server`, `synth-ui`
+1. Foundation: `datasynth-core` (no internal dependencies)
+2. Services: `datasynth-config`, `datasynth-output`
+3. Processing: `datasynth-generators`, `datasynth-graph`
+4. Orchestration: `datasynth-runtime`
+5. Application: `datasynth-cli`, `datasynth-server`, `datasynth-ui`
 
 ---
 
@@ -274,12 +274,12 @@ pub fn check(&self) -> MemoryStatus {
 
 **Example:**
 ```rust
-// Defined in synth-core
+// Defined in datasynth-core
 pub trait Generator<T> {
     fn generate_batch(&mut self, count: usize) -> Result<Vec<T>>;
 }
 
-// Implemented in synth-generators
+// Implemented in datasynth-generators
 impl Generator<JournalEntry> for JournalEntryGenerator {
     fn generate_batch(&mut self, count: usize) -> Result<Vec<JournalEntry>> {
         // Implementation
@@ -308,4 +308,4 @@ impl Generator<JournalEntry> for JournalEntryGenerator {
 
 - [Architecture Overview](README.md)
 - [Domain Models](domain-models.md)
-- [synth-core](../crates/synth-core.md)
+- [datasynth-core](../crates/datasynth-core.md)

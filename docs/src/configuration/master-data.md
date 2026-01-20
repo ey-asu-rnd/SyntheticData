@@ -277,4 +277,4 @@ master_data:
 
 - [Document Flows](document-flows.md)
 - [Compliance](compliance.md)
-- [synth-generators](../crates/synth-generators.md)
+- [datasynth-generators](../crates/datasynth-generators.md)

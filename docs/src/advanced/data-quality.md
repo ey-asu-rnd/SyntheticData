@@ -240,6 +240,49 @@ data_quality:
 - Missing: `Zürich` → `Zrich`
 - HTML: `R&D` → `R&amp;D`
 
+## ML Training Labels
+
+The data quality module generates labels for ML model training:
+
+### QualityIssueLabel
+
+```rust
+pub struct QualityIssueLabel {
+    pub issue_id: String,
+    pub issue_type: LabeledIssueType,
+    pub issue_subtype: Option<QualityIssueSubtype>,
+    pub document_id: String,
+    pub field_name: String,
+    pub original_value: Option<String>,
+    pub modified_value: Option<String>,
+    pub severity: u8,  // 1-5
+    pub processor: String,
+    pub metadata: HashMap<String, String>,
+}
+```
+
+### Issue Types
+
+| Type | Severity | Description |
+|------|----------|-------------|
+| `MissingValue` | 3 | Field is null/empty |
+| `Typo` | 2 | Character-level errors |
+| `FormatVariation` | 1 | Different formatting |
+| `Duplicate` | 4 | Duplicate record |
+| `EncodingIssue` | 3 | Character encoding problems |
+| `Inconsistency` | 3 | Cross-field inconsistency |
+| `OutOfRange` | 4 | Value outside expected range |
+| `InvalidReference` | 5 | Reference to non-existent entity |
+
+### Subtypes
+
+Each issue type has detailed subtypes:
+
+- **Typo**: Substitution, Transposition, Insertion, Deletion, DoubleChar, CaseError, OcrError, Homophone
+- **FormatVariation**: DateFormat, AmountFormat, IdentifierFormat, TextFormat
+- **Duplicate**: ExactDuplicate, NearDuplicate, FuzzyDuplicate, CrossSystemDuplicate
+- **EncodingIssue**: Mojibake, MissingChars, Bom, ControlChars, HtmlEntities
+
 ## Output
 
 ### quality_issues.csv
@@ -251,6 +294,20 @@ data_quality:
 | `issue_type` | missing, typo, duplicate, etc. |
 | `original_value` | Value before modification |
 | `modified_value` | Value after modification |
+
+### quality_labels.csv (ML Training)
+
+| Field | Description |
+|-------|-------------|
+| `issue_id` | Unique issue identifier |
+| `issue_type` | LabeledIssueType enum |
+| `issue_subtype` | Detailed subtype |
+| `document_id` | Affected document |
+| `field_name` | Affected field |
+| `original_value` | Original value |
+| `modified_value` | Modified value |
+| `severity` | 1-5 severity score |
+| `processor` | Which processor injected |
 
 ## Example Configurations
 
@@ -304,4 +361,4 @@ data_quality:
 
 - [Anomaly Injection](anomaly-injection.md)
 - [Output Formats](../user-guide/output-formats.md)
-- [synth-generators](../crates/synth-generators.md)
+- [datasynth-generators](../crates/datasynth-generators.md)

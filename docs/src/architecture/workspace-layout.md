@@ -5,47 +5,47 @@ SyntheticData is organized as a Rust workspace with 12 crates.
 ## Crate Hierarchy
 
 ```
-synth-cli          → Binary entry point
-synth-server       → REST/gRPC/WebSocket server
-synth-ui           → Desktop application
+datasynth-cli          → Binary entry point
+datasynth-server       → REST/gRPC/WebSocket server
+datasynth-ui           → Desktop application
     │
     ▼
-synth-runtime      → Generation orchestration
+datasynth-runtime      → Generation orchestration
     │
     ├─────────────────┐
     ▼                 ▼
-synth-generators  synth-graph
+datasynth-generators  datasynth-graph
     │                 │
     └────────┬────────┘
              ▼
     ┌────────┴────────┐
     ▼                 ▼
-synth-config     synth-output
+datasynth-config     datasynth-output
     │
     ▼
-synth-core         → Foundation layer
+datasynth-core         → Foundation layer
 
-synth-eval         → Evaluation (standalone)
-synth-ocpm         → Process mining (standalone)
-synth-test-utils   → Testing utilities
+datasynth-eval         → Evaluation (standalone)
+datasynth-ocpm         → Process mining (standalone)
+datasynth-test-utils   → Testing utilities
 ```
 
 ## Dependency Matrix
 
 | Crate | Depends On |
 |-------|------------|
-| synth-core | (none) |
-| synth-config | synth-core |
-| synth-output | synth-core |
-| synth-generators | synth-core, synth-config |
-| synth-graph | synth-core, synth-generators |
-| synth-runtime | synth-core, synth-config, synth-generators, synth-output, synth-graph |
-| synth-cli | synth-runtime |
-| synth-server | synth-runtime |
-| synth-ui | synth-runtime (via Tauri) |
-| synth-eval | synth-core |
-| synth-ocpm | synth-core |
-| synth-test-utils | synth-core |
+| datasynth-core | (none) |
+| datasynth-config | datasynth-core |
+| datasynth-output | datasynth-core |
+| datasynth-generators | datasynth-core, datasynth-config |
+| datasynth-graph | datasynth-core, datasynth-generators |
+| datasynth-runtime | datasynth-core, datasynth-config, datasynth-generators, datasynth-output, datasynth-graph |
+| datasynth-cli | datasynth-runtime |
+| datasynth-server | datasynth-runtime |
+| datasynth-ui | datasynth-runtime (via Tauri) |
+| datasynth-eval | datasynth-core |
+| datasynth-ocpm | datasynth-core |
+| datasynth-test-utils | datasynth-core |
 
 ## Directory Structure
 
@@ -53,7 +53,7 @@ synth-test-utils   → Testing utilities
 SyntheticData/
 ├── Cargo.toml              # Workspace manifest
 ├── crates/
-│   ├── synth-core/
+│   ├── datasynth-core/
 │   │   ├── Cargo.toml
 │   │   ├── README.md
 │   │   └── src/
@@ -62,14 +62,14 @@ SyntheticData/
 │   │       ├── distributions/
 │   │       ├── traits/
 │   │       └── templates/
-│   ├── synth-config/
+│   ├── datasynth-config/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── schema.rs
 │   │       ├── validation.rs
 │   │       └── presets/
-│   ├── synth-generators/
+│   ├── datasynth-generators/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
@@ -83,43 +83,43 @@ SyntheticData/
 │   │       ├── period_close/
 │   │       ├── anomaly/
 │   │       └── data_quality/
-│   ├── synth-output/
+│   ├── datasynth-output/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── csv_sink.rs
 │   │       └── json_sink.rs
-│   ├── synth-graph/
+│   ├── datasynth-graph/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── builders/
 │   │       ├── exporters/
 │   │       └── features/
-│   ├── synth-runtime/
+│   ├── datasynth-runtime/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── orchestrator.rs
 │   │       └── progress.rs
-│   ├── synth-cli/
+│   ├── datasynth-cli/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       └── main.rs
-│   ├── synth-server/
+│   ├── datasynth-server/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── main.rs
 │   │       ├── rest/
 │   │       ├── grpc/
 │   │       └── websocket/
-│   ├── synth-ui/
+│   ├── datasynth-ui/
 │   │   ├── package.json
 │   │   ├── src/              # Svelte frontend
 │   │   └── src-tauri/        # Rust backend
-│   ├── synth-eval/
-│   ├── synth-ocpm/
-│   └── synth-test-utils/
+│   ├── datasynth-eval/
+│   ├── datasynth-ocpm/
+│   └── datasynth-test-utils/
 ├── benches/                  # Benchmark suite
 ├── docs/                     # This documentation
 └── tests/                    # Integration tests
@@ -131,33 +131,33 @@ SyntheticData/
 
 | Crate | Purpose |
 |-------|---------|
-| **synth-cli** | Command-line interface |
-| **synth-server** | REST/gRPC/WebSocket API |
-| **synth-ui** | Desktop application |
+| **datasynth-cli** | Command-line interface |
+| **datasynth-server** | REST/gRPC/WebSocket API |
+| **datasynth-ui** | Desktop application |
 
 ### Processing Layer
 
 | Crate | Purpose |
 |-------|---------|
-| **synth-runtime** | Orchestrates generation workflow |
-| **synth-generators** | All data generation logic |
-| **synth-graph** | Graph construction and export |
+| **datasynth-runtime** | Orchestrates generation workflow |
+| **datasynth-generators** | All data generation logic |
+| **datasynth-graph** | Graph construction and export |
 
 ### Foundation Layer
 
 | Crate | Purpose |
 |-------|---------|
-| **synth-core** | Domain models, traits, distributions |
-| **synth-config** | Configuration schema and validation |
-| **synth-output** | Output sinks (CSV, JSON) |
+| **datasynth-core** | Domain models, traits, distributions |
+| **datasynth-config** | Configuration schema and validation |
+| **datasynth-output** | Output sinks (CSV, JSON) |
 
 ### Supporting Crates
 
 | Crate | Purpose |
 |-------|---------|
-| **synth-eval** | Quality evaluation framework |
-| **synth-ocpm** | OCEL 2.0 process mining |
-| **synth-test-utils** | Test fixtures and assertions |
+| **datasynth-eval** | Quality evaluation framework |
+| **datasynth-ocpm** | OCEL 2.0 process mining |
+| **datasynth-test-utils** | Test fixtures and assertions |
 
 ## Build Commands
 
@@ -166,12 +166,12 @@ SyntheticData/
 cargo build --release
 
 # Build specific crate
-cargo build -p synth-core
-cargo build -p synth-generators
+cargo build -p datasynth-core
+cargo build -p datasynth-generators
 
 # Run tests
 cargo test
-cargo test -p synth-core
+cargo test -p datasynth-core
 
 # Generate documentation
 cargo doc --workspace --no-deps
@@ -196,11 +196,11 @@ graph = []
 Crate-level features:
 
 ```toml
-# synth-core
+# datasynth-core
 [features]
 templates = ["serde_yaml"]
 
-# synth-output
+# datasynth-output
 [features]
 compression = ["flate2", "zstd"]
 ```
@@ -216,7 +216,7 @@ compression = ["flate2", "zstd"]
    edition = "2021"
 
    [dependencies]
-   synth-core = { path = "../synth-core" }
+   datasynth-core = { path = "../datasynth-core" }
    ```
 3. Add to workspace `Cargo.toml`:
    ```toml

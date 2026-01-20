@@ -4,11 +4,10 @@ Thank you for your interest in contributing to SyntheticData! This document prov
 
 ## Quick Links
 
-- [Full Documentation](https://ey-asu-rnd.github.io/SyntheticData/)
-- [Development Setup](https://ey-asu-rnd.github.io/SyntheticData/contributing/development-setup.html)
-- [Code Style Guide](https://ey-asu-rnd.github.io/SyntheticData/contributing/code-style.html)
-- [Testing Guidelines](https://ey-asu-rnd.github.io/SyntheticData/contributing/testing.html)
-- [Pull Request Guide](https://ey-asu-rnd.github.io/SyntheticData/contributing/pull-requests.html)
+- [Development Setup](docs/src/contributing/development-setup.md)
+- [Code Style Guide](docs/src/contributing/code-style.md)
+- [Testing Guidelines](docs/src/contributing/testing.md)
+- [Pull Request Guide](docs/src/contributing/pull-requests.md)
 
 ## Getting Started
 
@@ -22,7 +21,7 @@ Thank you for your interest in contributing to SyntheticData! This document prov
 
 ```bash
 # Clone the repository
-git clone https://github.com/EY-ASU-RnD/SyntheticData.git
+git clone <repository-url>
 cd SyntheticData
 
 # Build the project
@@ -57,7 +56,7 @@ cargo run --release -- generate --demo --output ./output
 
 ```bash
 # Fork the repository on GitHub, then:
-git clone https://github.com/YOUR_USERNAME/SyntheticData.git
+git clone <your-fork-url>
 cd SyntheticData
 git checkout -b feature/my-feature
 ```
@@ -127,27 +126,29 @@ Examples:
 ```
 SyntheticData/
 ├── crates/
-│   ├── synth-cli/          # CLI binary
-│   ├── synth-core/         # Core models and traits
-│   ├── synth-config/       # Configuration schema
-│   ├── synth-generators/   # Data generators
-│   ├── synth-output/       # Output sinks
-│   ├── synth-graph/        # Graph export
-│   ├── synth-runtime/      # Orchestration
-│   ├── synth-server/       # REST/gRPC server
-│   ├── synth-ui/           # Desktop UI
-│   └── synth-ocpm/         # OCEL 2.0 export
-├── benches/                # Benchmarks
-├── docs/                   # Documentation (mdBook)
-├── configs/                # Example configurations
-└── templates/              # Data templates
+│   ├── datasynth-cli/          # CLI binary (datasynth-data)
+│   ├── datasynth-core/         # Core models and traits
+│   ├── datasynth-config/       # Configuration schema
+│   ├── datasynth-generators/   # Data generators
+│   ├── datasynth-output/       # Output sinks (CSV, JSON, Parquet)
+│   ├── datasynth-graph/        # Graph/ML export (PyTorch Geometric, Neo4j)
+│   ├── datasynth-runtime/      # Orchestration layer
+│   ├── datasynth-server/       # REST/gRPC/WebSocket server
+│   ├── datasynth-ui/           # Tauri/SvelteKit desktop UI
+│   ├── datasynth-eval/         # Evaluation framework
+│   ├── datasynth-ocpm/         # OCEL 2.0 process mining
+│   ├── datasynth-banking/      # KYC/AML banking transactions
+│   └── datasynth-test-utils/   # Test utilities and fixtures
+├── benches/                    # Criterion benchmarks
+├── docs/                       # Documentation (mdBook)
+└── scripts/                    # Build and utility scripts
 ```
 
 ## Getting Help
 
 - Open an issue for bugs or feature requests
-- Use GitHub Discussions for questions
 - Check existing issues before creating new ones
+- Review the documentation in `docs/src/`
 
 ## Code of Conduct
 
@@ -160,8 +161,8 @@ We are committed to providing a welcoming environment. Please:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the project's MIT License.
+By contributing, you agree that your contributions will be licensed under the project's Apache 2.0 License.
 
 ---
 
-For more detailed information, see the [full contributing guide](https://ey-asu-rnd.github.io/SyntheticData/contributing/).
+For more detailed information, see the [contributing guide](docs/src/contributing/README.md).

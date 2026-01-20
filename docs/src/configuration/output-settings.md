@@ -258,4 +258,4 @@ output:
 
 - [Output Formats](../user-guide/output-formats.md)
 - [Graph Export](../advanced/graph-export.md)
-- [synth-output Crate](../crates/synth-output.md)
+- [datasynth-output Crate](../crates/datasynth-output.md)

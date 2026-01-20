@@ -5,11 +5,11 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::sync::Arc;
 
-use rust_decimal::Decimal;
-use synth_core::distributions::{
+use datasynth_core::distributions::{
     get_first_digit, AmountDistributionConfig, AmountSampler, BenfordSampler, BENFORD_PROBABILITIES,
 };
-use synth_core::models::{AccountType, JournalEntry};
+use datasynth_core::models::{AccountType, JournalEntry};
+use rust_decimal::Decimal;
 
 mod common;
 use common::*;

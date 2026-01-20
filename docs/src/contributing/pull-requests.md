@@ -261,9 +261,9 @@ Adds [feature] to support [use case].
 
 ## Changes
 
-- Added `NewType` struct in `synth-core`
-- Implemented `NewGenerator` in `synth-generators`
-- Added configuration options in `synth-config`
+- Added `NewType` struct in `datasynth-core`
+- Implemented `NewGenerator` in `datasynth-generators`
+- Added configuration options in `datasynth-config`
 - Updated CLI to support new feature
 
 ## Testing

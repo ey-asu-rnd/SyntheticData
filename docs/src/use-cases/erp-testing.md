@@ -167,13 +167,13 @@ output:
 
 ```bash
 # Time generation
-time synth-data generate --config config.yaml --output ./output
+time datasynth-data generate --config config.yaml --output ./output
 
 # Monitor memory
-/usr/bin/time -v synth-data generate --config config.yaml --output ./output
+/usr/bin/time -v datasynth-data generate --config config.yaml --output ./output
 
 # Watch progress
-synth-data generate --config config.yaml --output ./output -v
+datasynth-data generate --config config.yaml --output ./output -v
 ```
 
 ### Import Metrics
@@ -194,7 +194,7 @@ Track these during ERP import:
 
 ```bash
 # Generate ACDOCA format
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 
 # Use SAP Data Services or LSMW for import
 # Output: output/transactions/acdoca.csv
@@ -268,7 +268,7 @@ For very large volumes, generate in chunks:
 ```bash
 # Generate 10 batches of 1M each
 for i in {1..10}; do
-    synth-data generate \
+    datasynth-data generate \
         --config config.yaml \
         --output ./output/batch_$i \
         --seed $((42 + i))

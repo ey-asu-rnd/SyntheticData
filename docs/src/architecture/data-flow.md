@@ -287,4 +287,4 @@ for batch in generator.generate_batches(1000) {
 
 - [Generation Pipeline](generation-pipeline.md)
 - [Memory Management](memory-management.md)
-- [synth-runtime](../crates/synth-runtime.md)
+- [datasynth-runtime](../crates/datasynth-runtime.md)

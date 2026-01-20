@@ -40,7 +40,7 @@ WebView2 runtime (usually pre-installed on Windows 10/11).
 ### Running in Development
 
 ```bash
-cd crates/synth-ui
+cd crates/datasynth-ui
 npm install
 npm run tauri dev
 ```
@@ -48,11 +48,11 @@ npm run tauri dev
 ### Building for Production
 
 ```bash
-cd crates/synth-ui
+cd crates/datasynth-ui
 npm run tauri build
 ```
 
-Build outputs are in `crates/synth-ui/src-tauri/target/release/bundle/`.
+Build outputs are in `crates/datasynth-ui/src-tauri/target/release/bundle/`.
 
 ## Application Layout
 
@@ -182,9 +182,9 @@ The UI stores configurations in:
 
 | Platform | Location |
 |----------|----------|
-| Linux | `~/.config/synth-data/` |
-| macOS | `~/Library/Application Support/synth-data/` |
-| Windows | `%APPDATA%\synth-data\` |
+| Linux | `~/.config/datasynth-data/` |
+| macOS | `~/Library/Application Support/datasynth-data/` |
+| Windows | `%APPDATA%\datasynth-data\` |
 
 ## Exporting Configuration
 
@@ -193,14 +193,14 @@ To use your configuration with the CLI:
 1. Configure in the UI
 2. Click "Export" → "Export YAML"
 3. Save the `.yaml` file
-4. Use with CLI: `synth-data generate --config exported.yaml --output ./output`
+4. Use with CLI: `datasynth-data generate --config exported.yaml --output ./output`
 
 ## Development
 
 ### Project Structure
 
 ```
-crates/synth-ui/
+crates/datasynth-ui/
 ├── src/                      # SvelteKit frontend
 │   ├── routes/               # Page routes
 │   │   ├── +page.svelte      # Dashboard
@@ -253,7 +253,7 @@ Check file permissions in the config directory.
 
 Ensure the server is running if using streaming features:
 ```bash
-cargo run -p synth-server -- --port 3000
+cargo run -p datasynth-server -- --port 3000
 ```
 
 ## See Also

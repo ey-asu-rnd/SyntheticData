@@ -5,9 +5,9 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::sync::Arc;
 
-use synth_config::schema::TransactionConfig;
-use synth_core::models::{CoAComplexity, IndustrySector, JournalEntry};
-use synth_generators::{ChartOfAccountsGenerator, JournalEntryGenerator};
+use datasynth_config::schema::TransactionConfig;
+use datasynth_core::models::{CoAComplexity, IndustrySector, JournalEntry};
+use datasynth_generators::{ChartOfAccountsGenerator, JournalEntryGenerator};
 
 mod common;
 use common::*;

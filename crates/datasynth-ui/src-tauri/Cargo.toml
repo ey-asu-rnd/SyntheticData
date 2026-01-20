@@ -1,0 +1,27 @@
+[package]
+name = "datasynth-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Tauri desktop UI for synthetic data generation"
+
+[[bin]]
+name = "datasynth-ui"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+tauri-plugin-shell = "2.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+futures = { workspace = true }
+tokio-tungstenite = "0.24"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

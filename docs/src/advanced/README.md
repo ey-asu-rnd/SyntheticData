@@ -64,9 +64,9 @@ period_close:
 Most advanced features are controlled through configuration. Use init to create a base config, then customize:
 
 ```bash
-synth-data init --industry manufacturing --complexity medium -o config.yaml
+datasynth-data init --industry manufacturing --complexity medium -o config.yaml
 # Edit config.yaml to enable advanced features
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Prerequisites
@@ -116,4 +116,4 @@ output/
 
 - [Configuration](../configuration/README.md)
 - [Use Cases](../use-cases/README.md)
-- [synth-generators](../crates/synth-generators.md)
+- [datasynth-generators](../crates/datasynth-generators.md)

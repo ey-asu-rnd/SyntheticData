@@ -1341,6 +1341,293 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
+name = "datasynth-banking"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "csv",
+ "datasynth-core",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rand_distr",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
+name = "datasynth-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "clap",
+ "datasynth-banking",
+ "datasynth-config",
+ "datasynth-core",
+ "datasynth-generators",
+ "datasynth-output",
+ "datasynth-runtime",
+ "indicatif",
+ "num_cpus",
+ "predicates",
+ "rayon",
+ "serde_json",
+ "serde_yaml",
+ "signal-hook",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "datasynth-config"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "datasynth-banking",
+ "datasynth-core",
+ "proptest",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "datasynth-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "libc",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rand_distr",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
+name = "datasynth-eval"
+version = "0.1.0"
+dependencies = [
+ "askama",
+ "chrono",
+ "datasynth-config",
+ "datasynth-core",
+ "datasynth-generators",
+ "datasynth-graph",
+ "datasynth-test-utils",
+ "ndarray",
+ "plotters",
+ "proptest",
+ "rayon",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "statrs",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tracing",
+]
+
+[[package]]
+name = "datasynth-generators"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "datasynth-config",
+ "datasynth-core",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rand_distr",
+ "rayon",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
+name = "datasynth-graph"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "datasynth-banking",
+ "datasynth-core",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "uuid",
+]
+
+[[package]]
+name = "datasynth-ocpm"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "datasynth-core",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
+name = "datasynth-output"
+version = "0.1.0"
+dependencies = [
+ "arrow",
+ "chrono",
+ "crossbeam-channel",
+ "csv",
+ "datasynth-core",
+ "parquet",
+ "proptest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokio",
+]
+
+[[package]]
+name = "datasynth-runtime"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "crossbeam-channel",
+ "datasynth-banking",
+ "datasynth-config",
+ "datasynth-core",
+ "datasynth-generators",
+ "datasynth-ocpm",
+ "datasynth-output",
+ "datasynth-test-utils",
+ "indicatif",
+ "num_cpus",
+ "proptest",
+ "rand 0.8.5",
+ "rayon",
+ "rust_decimal",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "datasynth-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "chrono",
+ "clap",
+ "datasynth-config",
+ "datasynth-core",
+ "datasynth-generators",
+ "datasynth-output",
+ "datasynth-runtime",
+ "futures",
+ "http-body-util",
+ "hyper",
+ "prost",
+ "prost-types",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokio",
+ "tokio-stream",
+ "tokio-test",
+ "tonic",
+ "tonic-build",
+ "tower 0.5.3",
+ "tower-http 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "datasynth-test-utils"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "datasynth-banking",
+ "datasynth-config",
+ "datasynth-core",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "reqwest",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "datasynth-ui"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-shell",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
+name = "datasynth-workspace"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "criterion",
+ "datasynth-config",
+ "datasynth-core",
+ "datasynth-generators",
+ "datasynth-output",
+ "datasynth-runtime",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "deranged"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5335,292 +5622,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.114",
-]
-
-[[package]]
-name = "synth-banking"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "csv",
- "proptest",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rand_distr",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "synth-core",
- "thiserror 2.0.17",
- "uuid",
-]
-
-[[package]]
-name = "synth-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "clap",
- "indicatif",
- "num_cpus",
- "predicates",
- "rayon",
- "serde_json",
- "serde_yaml",
- "signal-hook",
- "synth-banking",
- "synth-config",
- "synth-core",
- "synth-generators",
- "synth-output",
- "synth-runtime",
- "tempfile",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "synth-config"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "serde_yaml",
- "synth-banking",
- "synth-core",
- "thiserror 2.0.17",
-]
-
-[[package]]
-name = "synth-core"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "proptest",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rand_distr",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "serde_yaml",
- "thiserror 2.0.17",
- "uuid",
-]
-
-[[package]]
-name = "synth-eval"
-version = "0.1.0"
-dependencies = [
- "askama",
- "chrono",
- "ndarray",
- "plotters",
- "proptest",
- "rayon",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "statrs",
- "synth-config",
- "synth-core",
- "synth-generators",
- "synth-graph",
- "synth-test-utils",
- "tempfile",
- "thiserror 2.0.17",
- "tracing",
-]
-
-[[package]]
-name = "synth-generators"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "proptest",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rand_distr",
- "rayon",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "synth-config",
- "synth-core",
- "thiserror 2.0.17",
- "uuid",
-]
-
-[[package]]
-name = "synth-graph"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "synth-banking",
- "synth-core",
- "tempfile",
- "uuid",
-]
-
-[[package]]
-name = "synth-ocpm"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "proptest",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rust_decimal",
- "serde",
- "serde_json",
- "synth-core",
- "thiserror 2.0.17",
- "uuid",
-]
-
-[[package]]
-name = "synth-output"
-version = "0.1.0"
-dependencies = [
- "arrow",
- "chrono",
- "crossbeam-channel",
- "csv",
- "parquet",
- "proptest",
- "serde",
- "serde_json",
- "synth-core",
- "tempfile",
- "thiserror 2.0.17",
- "tokio",
-]
-
-[[package]]
-name = "synth-runtime"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "crossbeam-channel",
- "indicatif",
- "num_cpus",
- "proptest",
- "rand 0.8.5",
- "rayon",
- "rust_decimal",
- "synth-banking",
- "synth-config",
- "synth-core",
- "synth-generators",
- "synth-ocpm",
- "synth-output",
- "synth-test-utils",
- "thiserror 2.0.17",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "synth-server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "chrono",
- "clap",
- "futures",
- "http-body-util",
- "hyper",
- "prost",
- "prost-types",
- "rust_decimal",
- "serde",
- "serde_json",
- "synth-config",
- "synth-core",
- "synth-generators",
- "synth-output",
- "synth-runtime",
- "tempfile",
- "thiserror 2.0.17",
- "tokio",
- "tokio-stream",
- "tokio-test",
- "tonic",
- "tonic-build",
- "tower 0.5.3",
- "tower-http 0.5.2",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "synth-test-utils"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "proptest",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "reqwest",
- "rust_decimal",
- "serde",
- "serde_json",
- "synth-banking",
- "synth-config",
- "synth-core",
- "tempfile",
- "thiserror 2.0.17",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "synth-ui"
-version = "0.1.0"
-dependencies = [
- "futures",
- "reqwest",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-shell",
- "tokio",
- "tokio-tungstenite",
-]
-
-[[package]]
-name = "synth-workspace"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "criterion",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rust_decimal",
- "rust_decimal_macros",
- "serde_json",
- "synth-config",
- "synth-core",
- "synth-generators",
- "synth-output",
- "synth-runtime",
- "tempfile",
 ]
 
 [[package]]

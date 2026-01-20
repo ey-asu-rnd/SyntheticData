@@ -50,34 +50,34 @@ cd SyntheticData
 # Build optimized release binary
 cargo build --release
 
-# The binary is at target/release/synth-data
+# The binary is at target/release/datasynth-data
 ```
 
 ### Verify Installation
 
 ```bash
 # Check version
-./target/release/synth-data --version
+./target/release/datasynth-data --version
 
 # View help
-./target/release/synth-data --help
+./target/release/datasynth-data --help
 
 # Run quick validation
-./target/release/synth-data info
+./target/release/datasynth-data info
 ```
 
 ## Adding to PATH
 
-To run `synth-data` from anywhere:
+To run `datasynth-data` from anywhere:
 
 ### Linux/macOS
 
 ```bash
 # Option 1: Symlink to local bin
-ln -s $(pwd)/target/release/synth-data ~/.local/bin/synth-data
+ln -s $(pwd)/target/release/datasynth-data ~/.local/bin/datasynth-data
 
 # Option 2: Copy to system bin (requires sudo)
-sudo cp target/release/synth-data /usr/local/bin/
+sudo cp target/release/datasynth-data /usr/local/bin/
 
 # Option 3: Add target/release to PATH in ~/.bashrc or ~/.zshrc
 export PATH="$PATH:/path/to/SyntheticData/target/release"
@@ -93,7 +93,7 @@ The desktop UI requires additional setup:
 
 ```bash
 # Navigate to UI crate
-cd crates/synth-ui
+cd crates/datasynth-ui
 
 # Install Node.js dependencies
 npm install
@@ -130,8 +130,8 @@ Verify your installation by running the test suite:
 cargo test
 
 # Run tests for a specific crate
-cargo test -p synth-core
-cargo test -p synth-generators
+cargo test -p datasynth-core
+cargo test -p datasynth-generators
 
 # Run with output
 cargo test -- --nocapture
@@ -191,13 +191,13 @@ cargo build --release -j 2
 
 **Permission denied:**
 ```bash
-chmod +x target/release/synth-data
+chmod +x target/release/datasynth-data
 ```
 
 **Library not found (Linux):**
 ```bash
 # Check for missing dependencies
-ldd target/release/synth-data
+ldd target/release/datasynth-data
 ```
 
 ## Next Steps

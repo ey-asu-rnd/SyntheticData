@@ -71,7 +71,7 @@ document_flows:
   o2c:
     enabled: true
 
-# Use synth-ocpm for OCEL 2.0 export
+# Use datasynth-ocpm for OCEL 2.0 export
 ```
 
 ### ERP Testing

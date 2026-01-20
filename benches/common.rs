@@ -8,10 +8,10 @@
 use std::sync::Arc;
 
 use chrono::NaiveDate;
-use synth_config::presets;
-use synth_config::schema::{GeneratorConfig, TransactionConfig};
-use synth_core::models::{ChartOfAccounts, CoAComplexity, IndustrySector, JournalEntry};
-use synth_generators::{ChartOfAccountsGenerator, JournalEntryGenerator};
+use datasynth_config::presets;
+use datasynth_config::schema::{GeneratorConfig, TransactionConfig};
+use datasynth_core::models::{ChartOfAccounts, CoAComplexity, IndustrySector, JournalEntry};
+use datasynth_generators::{ChartOfAccountsGenerator, JournalEntryGenerator};
 
 /// Default seed for reproducible benchmarks.
 pub const BENCHMARK_SEED: u64 = 12345;

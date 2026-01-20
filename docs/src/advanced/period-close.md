@@ -325,4 +325,4 @@ period_close:
 
 - [Financial Settings](../configuration/financial-settings.md)
 - [Intercompany Processing](intercompany.md)
-- [synth-generators](../crates/synth-generators.md)
+- [datasynth-generators](../crates/datasynth-generators.md)

@@ -1,0 +1,29 @@
+[package]
+name = "datasynth-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Runtime orchestration, parallel execution, and memory management"
+
+[dependencies]
+datasynth-core = { workspace = true }
+datasynth-config = { workspace = true }
+datasynth-generators = { workspace = true }
+datasynth-ocpm = { workspace = true }
+datasynth-output = { workspace = true }
+datasynth-banking = { path = "../datasynth-banking" }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+rayon = { workspace = true }
+num_cpus = { workspace = true }
+crossbeam-channel = { workspace = true }
+indicatif = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+rand = { workspace = true }
+rust_decimal = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+datasynth-test-utils = { workspace = true }

@@ -12,9 +12,9 @@ cargo build --release
 cargo test
 
 # Run tests for a specific crate
-cargo test -p synth-core
-cargo test -p synth-generators
-cargo test -p synth-graph
+cargo test -p datasynth-core
+cargo test -p datasynth-generators
+cargo test -p datasynth-graph
 
 # Run a single test by name
 cargo test test_name
@@ -37,59 +37,63 @@ cargo bench --bench generation_throughput
 
 ## CLI Usage
 
-The binary is `synth-data` (located at `target/release/synth-data` after build).
+The binary is `datasynth-data` (located at `target/release/datasynth-data` after build).
 
 ```bash
 # Generate with demo preset
-synth-data generate --demo --output ./output
+datasynth-data generate --demo --output ./output
 
 # Create industry-specific config
-synth-data init --industry manufacturing --complexity medium -o config.yaml
+datasynth-data init --industry manufacturing --complexity medium -o config.yaml
 
 # Validate config
-synth-data validate --config config.yaml
+datasynth-data validate --config config.yaml
 
 # Generate from config
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 
 # Pause/resume during generation (Unix only)
 # Send SIGUSR1 to toggle pause state
-kill -USR1 $(pgrep synth-data)
+kill -USR1 $(pgrep datasynth-data)
 ```
 
 ## Server Usage
 
 ```bash
 # Start REST/gRPC server
-cargo run -p synth-server -- --port 3000
+cargo run -p datasynth-server -- --port 3000
 
 # With worker threads
-cargo run -p synth-server -- --port 3000 --worker-threads 4
+cargo run -p datasynth-server -- --port 3000 --worker-threads 4
 ```
 
 ## Architecture
 
-This is a Rust workspace with 10 crates following a layered architecture:
+This is a Rust workspace with 14 crates following a layered architecture:
 
 ```
-synth-cli          → Binary entry point (commands: generate, validate, init, info)
-synth-server       → REST/gRPC/WebSocket server with auth, rate limiting, timeouts
-synth-ui           → Tauri/SvelteKit desktop UI
+datasynth-cli          → Binary entry point (commands: generate, validate, init, info)
+datasynth-server       → REST/gRPC/WebSocket server with auth, rate limiting, timeouts
+datasynth-ui           → Tauri/SvelteKit desktop UI
     ↓
-synth-runtime      → Orchestration layer (GenerationOrchestrator coordinates workflow)
+datasynth-runtime      → Orchestration layer (GenerationOrchestrator coordinates workflow)
     ↓
-synth-generators   → Data generators (JE, Document Flows, Subledgers, Anomalies, etc.)
+datasynth-generators   → Data generators (JE, Document Flows, Subledgers, Anomalies, Audit)
+datasynth-banking      → KYC/AML banking transaction generator with fraud typologies
+datasynth-ocpm         → Object-Centric Process Mining (OCEL 2.0 event logs)
     ↓
-synth-graph        → Graph/network export (PyTorch Geometric, Neo4j, DGL)
+datasynth-graph        → Graph/network export (PyTorch Geometric, Neo4j, DGL)
+datasynth-eval         → Evaluation framework with auto-tuning and recommendations
     ↓
-synth-config       → Configuration schema, validation, industry presets
+datasynth-config       → Configuration schema, validation, industry presets
     ↓
-synth-core         → Domain models, traits, distributions, templates, UUID factory, memory guard
+datasynth-core         → Domain models, traits, distributions, templates, resource guards
     ↓
-synth-output       → Output sinks (CSV, JSON, ControlExport)
+datasynth-output       → Output sinks (CSV, JSON, Parquet, ControlExport)
+datasynth-test-utils   → Test utilities, fixtures, mocks
 ```
 
-### Key Domain Models (synth-core/src/models/)
+### Key Domain Models (datasynth-core/src/models/)
 
 **Core Accounting:**
 
@@ -153,7 +157,7 @@ synth-output       → Output sinks (CSV, JSON, ControlExport)
 - **ControlMapping**: Control-to-entity mappings (accounts, processes, thresholds)
 - **SoD**: Segregation of Duties conflict types and violation records
 
-### Core Infrastructure (synth-core/src/)
+### Core Infrastructure (datasynth-core/src/)
 
 **UUID Factory (`uuid_factory.rs`):**
 
@@ -162,12 +166,44 @@ synth-output       → Output sinks (CSV, JSON, ControlExport)
 - Thread-safe with `AtomicU64` counter for concurrent generation
 - Prevents document ID collisions across different generator types
 
-**Memory Guard (`memory_guard.rs`):**
+**Resource Guards (memory, disk, CPU):**
 
-- **MemoryGuard**: Cross-platform memory tracking and enforcement
-- **MemoryGuardConfig**: Soft/hard limits, check intervals, growth rate monitoring
-- Platform support: Linux (via /proc/self/statm), macOS (via ps), Windows (stubbed)
-- Memory estimation functions for planning generation volumes
+- **MemoryGuard** (`memory_guard.rs`): Cross-platform memory tracking and enforcement
+  - Soft/hard limits, check intervals, growth rate monitoring
+  - Platform support: Linux (/proc/self/statm), macOS (ps), Windows (stubbed)
+  - Memory estimation functions for planning generation volumes
+
+- **DiskSpaceGuard** (`disk_guard.rs`): Disk space monitoring and enforcement
+  - Hard limit (minimum free space) and soft limit (warning threshold)
+  - Pre-write checks with size estimation
+  - Platform support: Linux/macOS (statvfs), Windows (GetDiskFreeSpaceExW)
+  - `estimate_output_size_mb()` for capacity planning
+
+- **CpuMonitor** (`cpu_monitor.rs`): CPU load tracking with auto-throttling
+  - Configurable high (0.85) and critical (0.95) thresholds
+  - Sample-based load history with sliding window averaging
+  - Auto-throttle with configurable delay when critical threshold exceeded
+  - Platform support: Linux (/proc/stat), macOS (top -l 1)
+
+- **ResourceGuard** (`resource_guard.rs`): Unified resource orchestration
+  - Combines MemoryGuard, DiskSpaceGuard, and CpuMonitor
+  - Single configuration point for all resource constraints
+  - `check_all()` method for comprehensive resource validation
+
+**Graceful Degradation (`degradation.rs`):**
+
+- **DegradationLevel**: Normal → Reduced → Minimal → Emergency
+- **DegradationConfig**: Configurable thresholds for memory, disk, CPU
+- **DegradationController**: Thread-safe degradation state management
+- **DegradationActions**: Actions per level (batch size, skip injections, flush)
+- Auto-recovery with hysteresis to prevent oscillation
+
+| Level | Memory | Disk | Batch Size | Actions |
+|-------|--------|------|------------|---------|
+| Normal | <70% | >1GB | 100% | All features enabled |
+| Reduced | 70-85% | 500MB-1GB | 50% | Skip data quality, 50% anomaly rate |
+| Minimal | 85-95% | 100-500MB | 25% | Essential data only, no injections |
+| Emergency | >95% | <100MB | 0% | Flush and terminate gracefully |
 
 **GL Account Constants (`accounts.rs`):**
 
@@ -182,7 +218,7 @@ synth-output       → Output sinks (CSV, JSON, ControlExport)
 - **MergeStrategy**: Replace, Extend, MergePreferFile for combining templates
 - Categories: person_names, vendor_names, customer_names, material_descriptions, line_item_descriptions
 
-### Generator Modules (synth-generators/src/)
+### Generator Modules (datasynth-generators/src/)
 
 **Core Generators:**
 
@@ -256,8 +292,21 @@ synth-output       → Output sinks (CSV, JSON, ControlExport)
 - `format_variations.rs`: Date, amount, identifier format variations
 - `duplicates.rs`: Exact, near, fuzzy duplicate generation
 - `typos.rs`: Keyboard-aware typos, OCR errors, homophones
+- `labels.rs`: ML training labels for data quality issues
+  - `LabeledIssueType`: MissingValue, Typo, FormatVariation, Duplicate, EncodingIssue, etc.
+  - `QualityIssueSubtype`: Detailed subtypes with severity levels (1-5)
+  - `QualityIssueLabel`: Complete label with original/modified values and metadata
 
-### Server Module (synth-server/src/)
+**Audit (audit/):**
+
+- `engagement_generator.rs`: Audit engagement with phases (Planning, Fieldwork, Completion)
+- `workpaper_generator.rs`: Audit workpapers per ISA 230
+- `evidence_generator.rs`: Audit evidence per ISA 500
+- `risk_generator.rs`: Risk assessment per ISA 315/330
+- `finding_generator.rs`: Audit findings per ISA 265
+- `judgment_generator.rs`: Professional judgment documentation per ISA 200
+
+### Server Module (datasynth-server/src/)
 
 **REST API (rest/):**
 
@@ -285,7 +334,7 @@ synth-output       → Output sinks (CSV, JSON, ControlExport)
 - Timeout: Request timeout with `TimeoutLayer`
 - Memory Limits: Enforced via `/proc/self/statm` on Linux
 
-### Desktop UI Module (synth-ui/)
+### Desktop UI Module (datasynth-ui/)
 
 **Technology Stack:**
 - Tauri (Rust backend for desktop)
@@ -324,14 +373,14 @@ src/routes/
 
 **Running the UI:**
 ```bash
-cd crates/synth-ui
+cd crates/datasynth-ui
 npm install
 npm run dev       # Development server
 npm run build     # Production build
 npm run tauri dev # Desktop app development
 ```
 
-### Graph Module (synth-graph/src/)
+### Graph Module (datasynth-graph/src/)
 
 **Models:**
 
@@ -356,7 +405,124 @@ npm run tauri dev # Desktop app development
 - `features.rs`: Feature computation (temporal, amount, structural, categorical)
 - `splits.rs`: Train/validation/test split generation
 
-### Statistical Distributions (synth-core/src/distributions/)
+### Banking Module (datasynth-banking/src/)
+
+KYC/AML banking transaction generator for compliance testing and fraud detection ML.
+
+**Architecture:**
+```
+BankingOrchestrator → Generators → Typologies → Labels → Models
+```
+
+**Models:**
+
+- **BankingCustomer**: Retail, Business, Trust customer personas
+- **BankAccount**: Multiple account types with feature sets
+- **BankTransaction**: Complete transaction records with direction/channel
+- **KycProfile**: Expected activity envelope (declared turnover, transaction frequency, source of funds, geographic exposure, cash intensity, beneficial owner complexity)
+- **CounterpartyPool**: Transaction counterparty management
+- **CaseNarrative**: Investigation and compliance narratives
+
+**Generators (`generators/`):**
+
+- `customer_generator.rs`: Customer with KYC profile generation
+- `account_generator.rs`: Account creation with proper features
+- `transaction_generator.rs`: Persona-based transaction generation with causal drivers
+- `counterparty_generator.rs`: Counterparty pool management
+
+**AML Typologies (`typologies/`):**
+
+- `structuring.rs`: Structuring below reporting thresholds
+- `funnel.rs`: Funnel account patterns for layering
+- `layering.rs`: Complex transaction layering schemes
+- `mule.rs`: Money mule network patterns
+- `round_tripping.rs`: Round-tripping schemes
+- `fraud.rs`: Credit card fraud, synthetic identity fraud
+- `spoofing.rs`: Adversarial transaction generation for robustness testing
+- `injector.rs`: Pattern injection orchestration
+
+**Personas (`personas/`):**
+
+- `retail.rs`: Individual customer behavioral patterns
+- `business.rs`: Business account patterns
+- `trust.rs`: Trust/corporate patterns
+
+**Labels (`labels/`):**
+
+- `entity_labels.rs`: Entity-level ML labels
+- `relationship_labels.rs`: Relationship risk labels
+- `transaction_labels.rs`: Transaction classification labels
+- `narrative_generator.rs`: Investigation narrative generation
+
+### Process Mining Module (datasynth-ocpm/src/)
+
+Object-Centric Process Mining (OCEL 2.0) event log generation.
+
+**Models:**
+
+- **EventLog**: OCEL 2.0 event log structure
+- **Event**: Activity with many-to-many object relationships
+- **ObjectInstance**: Business entity evolving through processes
+- **ObjectType**: Type definitions (Order, Invoice, PaymentRequest, etc.)
+- **ActivityType**: Activity definitions with allowed transitions
+- **ObjectRelationship**: Many-to-many links between objects
+- **ProcessVariant**: Distinct execution patterns
+
+**Generators (`generator/`):**
+
+- `event_generator.rs`: Core event generation logic
+- `p2p_generator.rs`: P2P process events (PO → GR → Invoice → Payment)
+- `o2c_generator.rs`: O2C process events (SO → Delivery → Invoice → Receipt)
+
+**Export (`export/`):**
+
+- `Ocel2Exporter`: OCEL 2.0 JSON export functionality
+
+### Evaluation Module (datasynth-eval/src/)
+
+Comprehensive evaluation framework for validating generated data quality.
+
+**Core Modules:**
+
+- `statistical/`: Benford's Law, amount distributions, temporal patterns, line items
+- `coherence/`: Balance sheet validation, IC matching, document chains, subledger reconciliation
+- `quality/`: Completeness, consistency, duplicates, format validation, uniqueness
+- `ml/`: Feature distributions, label quality, graph structure, train/val/test splits
+- `report/`: HTML and JSON report generation with baseline comparisons
+- `tuning/`: Configuration optimization recommendations
+
+**Enhancement Module (`enhancement/`):**
+
+Auto-tuning engine for deriving optimal configuration from evaluation results.
+
+```
+Evaluation Results → Threshold Check → Gap Analysis → Root Cause → Config Suggestion
+```
+
+- **AutoTuner** (`auto_tuner.rs`): Analyzes evaluation results and generates config patches
+  - `ConfigPatch`: Suggested configuration change with confidence level
+  - `MetricGap`: Gap between current and target metric values
+  - Metric-to-config mappings for automatic derivation
+
+- **RecommendationEngine** (`recommendation_engine.rs`): Prioritized recommendations
+  - `RecommendationPriority`: Critical, High, Medium, Low, Info
+  - `RecommendationCategory`: Statistical, Coherence, DataQuality, MLReadiness, Performance
+  - `RootCause`: Evidence-based root cause analysis
+  - `Recommendation`: Actionable suggestion with expected improvement
+
+**Key Types:**
+
+```rust
+pub struct AutoTuneResult {
+    pub patches: Vec<ConfigPatch>,
+    pub expected_improvement: f64,
+    pub addressed_metrics: Vec<String>,
+    pub unaddressable_metrics: Vec<String>,
+    pub summary: String,
+}
+```
+
+### Statistical Distributions (datasynth-core/src/distributions/)
 
 - **LineItemSampler**: Empirical distribution (60.68% two-line entries, 88% even line counts)
 - **AmountSampler**: Log-normal with round-number bias, Benford's Law compliance
@@ -366,10 +532,13 @@ npm run tauri dev # Desktop app development
 - **IndustrySeasonality**: Industry-specific volume patterns for 10 sectors
 - **HolidayCalendar**: Regional holidays for US, DE, GB, CN, JP, IN
 
-### Core Traits (synth-core/src/traits/)
+### Core Traits (datasynth-core/src/traits/)
 
 - **Generator**: `generate_batch()` and `generate_stream()` for data generation
-- **Sink**: Output destination interface (CSV, JSON implementations)
+- **Sink**: Output destination interface (CSV, JSON, Parquet implementations)
+- **PostProcessor**: Post-generation transformation interface for data quality variations
+  - `ProcessContext`: Record-level context (index, batch size, output format, metadata)
+  - `ProcessorStats`: Modification tracking (records processed, modified, labels generated)
 
 ## Key Design Decisions
 
@@ -386,6 +555,11 @@ npm run tauri dev # Desktop app development
 11. **Collision-Free UUIDs**: FNV-1a hash-based UUID generation with generator-type discriminators prevents document ID collisions
 12. **Memory Safety**: MemoryGuard with configurable soft/hard limits prevents OOM conditions during large generations
 13. **Three-Way Match Validation**: Actual PO/GR/Invoice matching with configurable quantity and price tolerances
+14. **Graceful Degradation**: Progressive feature reduction under resource pressure (Normal→Reduced→Minimal→Emergency)
+15. **Multi-Resource Guards**: Unified CPU, memory, and disk monitoring with automatic throttling
+16. **Evaluation-Driven Enhancement**: Auto-tuner derives config improvements from evaluation metric gaps
+17. **KYC Profile Coherence**: Banking transactions driven by declared activity envelopes with ground-truth labeling
+18. **OCEL 2.0 Compliance**: Process mining exports follow Object-Centric Event Log standard
 
 ## Configuration Schema
 
@@ -561,6 +735,7 @@ output/graphs/entity_relationship/neo4j/
 - `anomaly_labels.csv`
 - `fraud_labels.csv`
 - `quality_issues.csv`
+- `quality_labels.csv` - Data quality issue labels with original/modified values
 
 ### Control Master Data
 
@@ -569,6 +744,33 @@ output/graphs/entity_relationship/neo4j/
 - `control_process_mappings.csv`
 - `sod_conflict_pairs.csv`
 - `sod_rules.csv`
+
+### Banking/KYC/AML
+
+- `banking_customers.csv` - Customer profiles with KYC data
+- `bank_accounts.csv` - Account records with features
+- `bank_transactions.csv` - Transaction records with channels/categories
+- `kyc_profiles.csv` - Expected activity envelopes
+- `counterparties.csv` - Counterparty pool
+- `aml_typology_labels.csv` - Structuring, funnel, mule, layering labels
+- `entity_risk_labels.csv` - Entity-level risk classifications
+- `transaction_risk_labels.csv` - Transaction-level classifications
+
+### Process Mining (OCEL 2.0)
+
+- `event_log.json` - OCEL 2.0 format event log
+- `objects.json` - Object instances and types
+- `events.json` - Event records with object relationships
+- `process_variants.csv` - Distinct execution patterns
+
+### Audit Data
+
+- `audit_engagements.csv` - Engagement metadata with materiality
+- `audit_workpapers.csv` - Workpaper records per ISA 230
+- `audit_evidence.csv` - Evidence per ISA 500
+- `audit_risks.csv` - Risk assessments per ISA 315
+- `audit_findings.csv` - Findings per ISA 265
+- `audit_judgments.csv` - Professional judgments
 
 ## Journal Entry Header Fields
 
@@ -609,7 +811,7 @@ pub struct JournalEntryHeader {
 
 ## Implementation Phases (Completed)
 
-The enterprise simulation was implemented in 10 phases:
+The enterprise simulation was implemented in 14 phases:
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -623,6 +825,10 @@ The enterprise simulation was implemented in 10 phases:
 | 8 | Graph/Network Export | Complete |
 | 9 | Anomaly Injection | Complete |
 | 10 | Data Quality Variations | Complete |
+| 11 | Banking/KYC/AML Module | Complete |
+| 12 | Process Mining (OCEL 2.0) | Complete |
+| 13 | Audit Data Generation | Complete |
+| 14 | Resource Guards & Evaluation | Complete |
 
 ## Coherence Validation
 
@@ -663,9 +869,19 @@ The codebase has been hardened for production use with the following features:
 - Proper error responses for invalid requests
 
 ### Resource Management
-- Memory limit enforcement with MemoryGuard (Linux: /proc/self/statm, macOS: ps command)
-- Configurable soft/hard memory limits with growth rate monitoring
-- Memory estimation functions for planning generation volumes
+- **MemoryGuard**: Memory limit enforcement (Linux: /proc/self/statm, macOS: ps command)
+  - Configurable soft/hard limits with growth rate monitoring
+  - Memory estimation functions for planning generation volumes
+- **DiskSpaceGuard**: Disk space monitoring and enforcement
+  - Hard/soft limits with pre-write capacity checks
+  - Platform support: Linux/macOS (statvfs), Windows (GetDiskFreeSpaceExW)
+- **CpuMonitor**: CPU load tracking with auto-throttling
+  - High (0.85) and critical (0.95) thresholds
+  - Auto-throttle delay when critical threshold exceeded
+- **ResourceGuard**: Unified resource orchestration combining all guards
+- **DegradationController**: Graceful degradation under resource pressure
+  - Normal → Reduced → Minimal → Emergency levels
+  - Auto-recovery with hysteresis to prevent oscillation
 - Configurable request timeouts
 - Worker thread configuration support
 - CLI pause/resume via SIGUSR1 signal
@@ -687,7 +903,7 @@ The codebase has been hardened for production use with the following features:
 - Approval thresholds: strictly ascending order
 - Distribution sums: must equal 1.0 (±0.01 tolerance)
 
-### Desktop UI (synth-ui)
+### Desktop UI (datasynth-ui)
 - Tauri + SvelteKit cross-platform desktop application
 - 15+ configuration pages covering all config sections
 - Real-time WebSocket streaming viewer

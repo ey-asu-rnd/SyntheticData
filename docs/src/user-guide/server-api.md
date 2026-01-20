@@ -5,7 +5,7 @@ SyntheticData provides a server component with REST, gRPC, and WebSocket APIs fo
 ## Starting the Server
 
 ```bash
-cargo run -p synth-server -- --port 3000 --worker-threads 4
+cargo run -p datasynth-server -- --port 3000 --worker-threads 4
 ```
 
 **Options:**
@@ -287,7 +287,7 @@ The server enforces memory limits:
 
 ```bash
 # Set memory limit (bytes)
-cargo run -p synth-server -- --memory-limit 1073741824  # 1GB
+cargo run -p datasynth-server -- --memory-limit 1073741824  # 1GB
 ```
 
 When memory is low:

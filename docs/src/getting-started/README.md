@@ -24,7 +24,7 @@ git clone https://github.com/ey-asu-rnd/SyntheticData.git
 cd SyntheticData
 cargo build --release
 
-# The binary is at target/release/synth-data
+# The binary is at target/release/datasynth-data
 ```
 
 ## First Steps
@@ -32,7 +32,7 @@ cargo build --release
 The fastest way to explore SyntheticData is through demo mode:
 
 ```bash
-synth-data generate --demo --output ./demo-output
+datasynth-data generate --demo --output ./demo-output
 ```
 
 This generates a complete set of synthetic financial data using sensible defaults.

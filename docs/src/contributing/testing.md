@@ -24,8 +24,8 @@ cargo test -- --test-threads=1
 
 ```bash
 # Run tests for a specific crate
-cargo test -p synth-core
-cargo test -p synth-generators
+cargo test -p datasynth-core
+cargo test -p datasynth-generators
 
 # Run a single test by name
 cargo test test_balanced_entry
@@ -84,7 +84,7 @@ mod tests {
 Place integration tests in the `tests/` directory:
 
 ```
-crates/synth-generators/
+crates/datasynth-generators/
 ├── src/
 │   └── ...
 └── tests/

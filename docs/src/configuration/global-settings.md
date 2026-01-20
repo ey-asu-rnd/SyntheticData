@@ -174,7 +174,7 @@ global:
 | `SYNTH_DATA_MEMORY_LIMIT` | `global.memory_limit` |
 
 ```bash
-SYNTH_DATA_SEED=12345 synth-data generate --config config.yaml --output ./output
+SYNTH_DATA_SEED=12345 datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Examples

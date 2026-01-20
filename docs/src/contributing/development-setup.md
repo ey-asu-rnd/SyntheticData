@@ -12,7 +12,7 @@ Set up your local development environment for SyntheticData.
 
 ### Optional
 
-- **Node.js 18+**: For desktop UI development (synth-ui)
+- **Node.js 18+**: For desktop UI development (datasynth-ui)
 - **Protocol Buffers**: For gRPC development
 - **mdBook**: For documentation development
 
@@ -62,8 +62,8 @@ cargo test
 cargo test -- --nocapture
 
 # Run specific crate tests
-cargo test -p synth-core
-cargo test -p synth-generators
+cargo test -p datasynth-core
+cargo test -p datasynth-generators
 ```
 
 ## IDE Setup
@@ -105,7 +105,7 @@ For developing the Tauri/SvelteKit desktop UI:
 
 ```bash
 # Navigate to UI crate
-cd crates/synth-ui
+cd crates/datasynth-ui
 
 # Install Node.js dependencies
 npm install
@@ -144,16 +144,16 @@ cargo doc --workspace --no-deps --open
 ```
 SyntheticData/
 ├── crates/
-│   ├── synth-cli/          # CLI binary
-│   ├── synth-core/         # Core models and traits
-│   ├── synth-config/       # Configuration schema
-│   ├── synth-generators/   # Data generators
-│   ├── synth-output/       # Output sinks
-│   ├── synth-graph/        # Graph export
-│   ├── synth-runtime/      # Orchestration
-│   ├── synth-server/       # REST/gRPC server
-│   ├── synth-ui/           # Desktop UI
-│   └── synth-ocpm/         # OCEL 2.0 export
+│   ├── datasynth-cli/          # CLI binary
+│   ├── datasynth-core/         # Core models and traits
+│   ├── datasynth-config/       # Configuration schema
+│   ├── datasynth-generators/   # Data generators
+│   ├── datasynth-output/       # Output sinks
+│   ├── datasynth-graph/        # Graph export
+│   ├── datasynth-runtime/      # Orchestration
+│   ├── datasynth-server/       # REST/gRPC server
+│   ├── datasynth-ui/           # Desktop UI
+│   └── datasynth-ocpm/         # OCEL 2.0 export
 ├── benches/                # Benchmarks
 ├── docs/                   # Documentation
 ├── configs/                # Example configs
@@ -181,7 +181,7 @@ SyntheticData/
       "request": "launch",
       "name": "Debug CLI",
       "cargo": {
-        "args": ["build", "--bin=synth-data", "--package=synth-cli"]
+        "args": ["build", "--bin=datasynth-data", "--package=datasynth-cli"]
       },
       "args": ["generate", "--demo", "--output", "./output"],
       "cwd": "${workspaceFolder}"
@@ -236,7 +236,7 @@ For large generation volumes, increase system limits:
 ulimit -n 65536
 
 # Check memory usage during generation
-/usr/bin/time -v synth-data generate --config config.yaml --output ./output
+/usr/bin/time -v datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Next Steps

@@ -1,34 +1,34 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/synth-core",
-    "crates/synth-config",
-    "crates/synth-generators",
-    "crates/synth-output",
-    "crates/synth-runtime",
-    "crates/synth-cli",
-    "crates/synth-graph",
-    "crates/synth-server",
-    "crates/synth-ui/src-tauri",
-    "crates/synth-test-utils",
-    "crates/synth-eval",
-    "crates/synth-ocpm",
-    "crates/synth-banking",
+    "crates/datasynth-core",
+    "crates/datasynth-config",
+    "crates/datasynth-generators",
+    "crates/datasynth-output",
+    "crates/datasynth-runtime",
+    "crates/datasynth-cli",
+    "crates/datasynth-graph",
+    "crates/datasynth-server",
+    "crates/datasynth-ui/src-tauri",
+    "crates/datasynth-test-utils",
+    "crates/datasynth-eval",
+    "crates/datasynth-ocpm",
+    "crates/datasynth-banking",
 ]
 
 # Root package for workspace-level benchmarks
 [package]
-name = "synth-workspace"
+name = "datasynth-workspace"
 version = "0.1.0"
 edition = "2021"
 publish = false
 
 [dev-dependencies]
-synth-core = { path = "crates/synth-core" }
-synth-config = { path = "crates/synth-config" }
-synth-generators = { path = "crates/synth-generators" }
-synth-output = { path = "crates/synth-output" }
-synth-runtime = { path = "crates/synth-runtime" }
+datasynth-core = { path = "crates/datasynth-core" }
+datasynth-config = { path = "crates/datasynth-config" }
+datasynth-generators = { path = "crates/datasynth-generators" }
+datasynth-output = { path = "crates/datasynth-output" }
+datasynth-runtime = { path = "crates/datasynth-runtime" }
 criterion = { workspace = true }
 chrono = { workspace = true }
 rand = { workspace = true }
@@ -44,7 +44,7 @@ edition = "2021"
 license = "Apache-2.0"
 rust-version = "1.75"
 authors = ["Michael Ivertowski <michael.ivertowski@ch.ey.com>"]
-repository = "https://github.com/mivertowski/SyntheticData"
+repository = "https://github.com/ey-asu-rnd/SyntheticData"
 homepage = "https://github.com/ey-asu-rnd/SyntheticData"
 documentation = "https://github.com/ey-asu-rnd/SyntheticData"
 description = "High-performance synthetic data generator for enterprise accounting data"
@@ -53,17 +53,17 @@ categories = ["simulation", "finance", "data-structures"]
 
 [workspace.dependencies]
 # Internal crates
-synth-core = { path = "crates/synth-core" }
-synth-config = { path = "crates/synth-config" }
-synth-generators = { path = "crates/synth-generators" }
-synth-output = { path = "crates/synth-output" }
-synth-runtime = { path = "crates/synth-runtime" }
-synth-graph = { path = "crates/synth-graph" }
-synth-server = { path = "crates/synth-server" }
-synth-test-utils = { path = "crates/synth-test-utils" }
-synth-eval = { path = "crates/synth-eval" }
-synth-ocpm = { path = "crates/synth-ocpm" }
-synth-banking = { path = "crates/synth-banking" }
+datasynth-core = { path = "crates/datasynth-core" }
+datasynth-config = { path = "crates/datasynth-config" }
+datasynth-generators = { path = "crates/datasynth-generators" }
+datasynth-output = { path = "crates/datasynth-output" }
+datasynth-runtime = { path = "crates/datasynth-runtime" }
+datasynth-graph = { path = "crates/datasynth-graph" }
+datasynth-server = { path = "crates/datasynth-server" }
+datasynth-test-utils = { path = "crates/datasynth-test-utils" }
+datasynth-eval = { path = "crates/datasynth-eval" }
+datasynth-ocpm = { path = "crates/datasynth-ocpm" }
+datasynth-banking = { path = "crates/datasynth-banking" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

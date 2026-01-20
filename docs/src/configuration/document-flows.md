@@ -246,4 +246,4 @@ Reference types:
 
 - [Master Data](master-data.md)
 - [Financial Settings](financial-settings.md)
-- [synth-generators](../crates/synth-generators.md)
+- [datasynth-generators](../crates/datasynth-generators.md)

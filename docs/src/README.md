@@ -98,11 +98,11 @@ cd SyntheticData
 cargo build --release
 
 # Run demo mode
-./target/release/synth-data generate --demo --output ./output
+./target/release/datasynth-data generate --demo --output ./output
 
 # Or create a custom configuration
-./target/release/synth-data init --industry manufacturing --complexity medium -o config.yaml
-./target/release/synth-data generate --config config.yaml --output ./output
+./target/release/datasynth-data init --industry manufacturing --complexity medium -o config.yaml
+./target/release/datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## License

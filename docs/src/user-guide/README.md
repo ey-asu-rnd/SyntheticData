@@ -25,25 +25,25 @@ SyntheticData offers three interfaces:
 
 ## CLI Overview
 
-The command-line interface (`synth-data`) is ideal for:
+The command-line interface (`datasynth-data`) is ideal for:
 - Batch generation
 - CI/CD pipelines
 - Scripting and automation
 - Server environments
 
 ```bash
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Server Overview
 
-The server (`synth-server`) provides:
+The server (`datasynth-server`) provides:
 - REST API for configuration and control
 - gRPC for high-performance integration
 - WebSocket for real-time streaming
 
 ```bash
-cargo run -p synth-server -- --port 3000
+cargo run -p datasynth-server -- --port 3000
 ```
 
 ## Desktop UI Overview
@@ -55,7 +55,7 @@ The desktop application offers:
 - Cross-platform support (Windows, macOS, Linux)
 
 ```bash
-cd crates/synth-ui && npm run tauri dev
+cd crates/datasynth-ui && npm run tauri dev
 ```
 
 ## Output Formats

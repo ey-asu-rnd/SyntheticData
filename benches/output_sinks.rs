@@ -6,8 +6,8 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use std::io::Write;
 use tempfile::NamedTempFile;
 
-use synth_core::traits::Sink;
-use synth_output::{CsvSink, JsonLinesSink};
+use datasynth_core::traits::Sink;
+use datasynth_output::{CsvSink, JsonLinesSink};
 
 mod common;
 use common::generate_entries;

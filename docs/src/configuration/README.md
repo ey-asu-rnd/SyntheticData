@@ -6,13 +6,13 @@ SyntheticData uses YAML configuration files to control all aspects of data gener
 
 ```bash
 # Create configuration from preset
-synth-data init --industry manufacturing --complexity medium -o config.yaml
+datasynth-data init --industry manufacturing --complexity medium -o config.yaml
 
 # Validate configuration
-synth-data validate --config config.yaml
+datasynth-data validate --config config.yaml
 
 # Generate with configuration
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Configuration Sections
@@ -123,17 +123,17 @@ Configuration can be loaded from:
 
 1. **YAML file** (recommended):
    ```bash
-   synth-data generate --config config.yaml --output ./output
+   datasynth-data generate --config config.yaml --output ./output
    ```
 
 2. **JSON file**:
    ```bash
-   synth-data generate --config config.json --output ./output
+   datasynth-data generate --config config.json --output ./output
    ```
 
 3. **Demo preset**:
    ```bash
-   synth-data generate --demo --output ./output
+   datasynth-data generate --demo --output ./output
    ```
 
 ## Validation
@@ -151,7 +151,7 @@ The configuration is validated for:
 
 Run validation:
 ```bash
-synth-data validate --config config.yaml
+datasynth-data validate --config config.yaml
 ```
 
 ## Overriding Values
@@ -160,10 +160,10 @@ Command-line options override configuration file values:
 
 ```bash
 # Override seed
-synth-data generate --config config.yaml --seed 12345 --output ./output
+datasynth-data generate --config config.yaml --seed 12345 --output ./output
 
 # Override format
-synth-data generate --config config.yaml --format json --output ./output
+datasynth-data generate --config config.yaml --format json --output ./output
 ```
 
 ## Environment Variables
@@ -180,4 +180,4 @@ Some settings can be controlled via environment variables:
 
 - [Quick Start](../getting-started/quick-start.md)
 - [CLI Reference](../user-guide/cli-reference.md)
-- [synth-config Crate](../crates/synth-config.md)
+- [datasynth-config Crate](../crates/datasynth-config.md)

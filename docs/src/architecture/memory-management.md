@@ -1,15 +1,17 @@
-# Memory Management
+# Resource Management
 
-How SyntheticData manages memory during generation.
+How SyntheticData manages system resources during generation.
 
 ## Overview
 
-Large-scale data generation can consume significant memory. SyntheticData provides:
+Large-scale data generation can stress system resources. SyntheticData provides:
 
-- **Memory Guard**: Cross-platform memory tracking
-- **Soft/Hard Limits**: Configurable thresholds
+- **Memory Guard**: Cross-platform memory tracking with soft/hard limits
+- **Disk Space Guard**: Disk capacity monitoring and pre-write checks
+- **CPU Monitor**: CPU load tracking with auto-throttling
+- **Resource Guard**: Unified orchestration of all resource guards
+- **Graceful Degradation**: Progressive feature reduction under resource pressure
 - **Streaming Output**: Reduce memory pressure
-- **Growth Rate Monitoring**: Detect runaway consumption
 
 ## Memory Guard
 
@@ -288,8 +290,170 @@ curl http://localhost:3000/health
 orchestrator.clear_caches();
 ```
 
+## Disk Space Guard
+
+Monitors disk space and prevents disk exhaustion:
+
+```rust
+pub struct DiskSpaceGuardConfig {
+    pub hard_limit_mb: usize,       // Minimum free space required
+    pub soft_limit_mb: usize,       // Warning threshold
+    pub check_interval: usize,      // Check every N operations
+    pub reserve_buffer_mb: usize,   // Buffer to maintain
+}
+```
+
+### Platform Support
+
+| Platform | Method |
+|----------|--------|
+| Linux/macOS | `statvfs` syscall |
+| Windows | `GetDiskFreeSpaceExW` |
+
+### Usage
+
+```rust
+let guard = DiskSpaceGuard::with_min_free(100);  // 100 MB minimum
+
+// Periodic check
+guard.check()?;
+
+// Pre-write check with size estimation
+guard.check_before_write(estimated_bytes)?;
+
+// Size estimation for planning
+let size = estimate_output_size_mb(100_000, &[OutputFormat::Csv], false);
+```
+
+## CPU Monitor
+
+Tracks CPU load with optional auto-throttling:
+
+```rust
+pub struct CpuMonitorConfig {
+    pub enabled: bool,
+    pub high_load_threshold: f64,      // 0.85 default
+    pub critical_load_threshold: f64,  // 0.95 default
+    pub sample_interval_ms: u64,
+    pub auto_throttle: bool,
+    pub throttle_delay_ms: u64,
+}
+```
+
+### Platform Support
+
+| Platform | Method |
+|----------|--------|
+| Linux | `/proc/stat` parsing |
+| macOS | `top -l 1` command |
+
+### Usage
+
+```rust
+let config = CpuMonitorConfig::with_thresholds(0.85, 0.95)
+    .with_auto_throttle(50);
+
+let monitor = CpuMonitor::new(config);
+
+// In generation loop
+if let Some(load) = monitor.sample() {
+    if load > 0.85 {
+        // Consider slowing down
+    }
+    monitor.maybe_throttle();  // Applies delay if critical
+}
+```
+
+## Unified Resource Guard
+
+Combines all guards into single interface:
+
+```rust
+let guard = ResourceGuard::new(ResourceGuardConfig::default())
+    .with_memory_limit(2 * 1024 * 1024 * 1024)
+    .with_output_path("./output")
+    .with_cpu_monitoring();
+
+// Check all resources at once
+guard.check_all()?;
+
+let stats = guard.stats();
+println!("Memory: {}%", stats.memory_usage_percent);
+println!("Disk: {} MB free", stats.disk_available_mb);
+println!("CPU: {}%", stats.cpu_load * 100.0);
+```
+
+## Graceful Degradation
+
+Progressive feature reduction under resource pressure:
+
+```rust
+pub enum DegradationLevel {
+    Normal,    // All features enabled
+    Reduced,   // 50% batch, skip data quality, 50% anomaly rate
+    Minimal,   // 25% batch, essential only, no injections
+    Emergency, // Flush and terminate
+}
+```
+
+### Thresholds
+
+| Level | Memory | Disk | Batch Size | Actions |
+|-------|--------|------|------------|---------|
+| Normal | <70% | >1GB | 100% | Full operation |
+| Reduced | 70-85% | 500MB-1GB | 50% | Skip data quality |
+| Minimal | 85-95% | 100-500MB | 25% | Essential data only |
+| Emergency | >95% | <100MB | 0% | Graceful shutdown |
+
+### Usage
+
+```rust
+let controller = DegradationController::new(DegradationConfig::default());
+
+// Update based on current resource status
+let status = ResourceStatus::new(
+    Some(memory_usage),
+    Some(disk_available_mb),
+    Some(cpu_load),
+);
+
+let (level, changed) = controller.update(&status);
+
+if changed {
+    let actions = DegradationActions::for_level(level);
+
+    if actions.skip_data_quality {
+        // Disable data quality injection
+    }
+    if actions.terminate {
+        // Flush and exit
+    }
+}
+```
+
+### Configuration
+
+```yaml
+global:
+  resource_budget:
+    memory:
+      hard_limit_mb: 2048
+    disk:
+      min_free_mb: 500
+      reserve_buffer_mb: 100
+    cpu:
+      enabled: true
+      high_load_threshold: 0.85
+      auto_throttle: true
+    degradation:
+      enabled: true
+      reduced_threshold: 0.70
+      minimal_threshold: 0.85
+```
+
 ## See Also
 
 - [Performance Tuning](../advanced/performance.md)
-- [synth-runtime](../crates/synth-runtime.md)
+- [datasynth-runtime](../crates/datasynth-runtime.md)
+- [datasynth-core](../crates/datasynth-core.md)
 - [Configuration](../configuration/global-settings.md)

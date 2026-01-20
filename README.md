@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
 
-A high-performance, configurable synthetic data generator for enterprise financial simulation. SyntheticData produces realistic, interconnected General Ledger journal entries, Chart of Accounts, SAP HANA-compatible ACDOCA event logs, document flows, subledger records, and ML-ready graph exports at scale.
+A high-performance, configurable synthetic data generator for enterprise financial simulation. SyntheticData produces realistic, interconnected General Ledger journal entries, Chart of Accounts, SAP HANA-compatible ACDOCA event logs, document flows, subledger records, banking/KYC/AML transactions, OCEL 2.0 process mining data, and ML-ready graph exports at scale.
 
 **Developed by [Ernst & Young Ltd.](https://www.ey.com/ch), Zurich, Switzerland**
 
@@ -76,6 +76,9 @@ The generator produces statistically accurate data based on empirical research f
 - **Subledger Simulation**: AR, AP, Fixed Assets, Inventory with GL reconciliation
 - **Currency & FX**: Realistic exchange rates, currency translation, CTA generation
 - **Period Close Engine**: Monthly close, depreciation runs, accruals, year-end closing
+- **Banking/KYC/AML**: Customer personas, KYC profiles, AML typologies (structuring, funnel, mule, layering)
+- **Process Mining**: OCEL 2.0 event logs with object-centric relationships
+- **Audit Simulation**: ISA-compliant engagements, workpapers, findings, risk assessments
 
 ### Machine Learning & Analytics
 
@@ -87,31 +90,36 @@ The generator produces statistically accurate data based on empirical research f
 
 - **REST & gRPC APIs**: Streaming generation with authentication and rate limiting
 - **Desktop UI**: Cross-platform Tauri/SvelteKit application
-- **Memory Management**: Configurable limits with OOM prevention
+- **Resource Guards**: Memory, disk, and CPU monitoring with graceful degradation
+- **Evaluation Framework**: Auto-tuning with configuration recommendations
 - **Deterministic Generation**: Seeded RNG for reproducible output
 
 ---
 
 ## Architecture
 
-SyntheticData is organized as a Rust workspace with modular crates:
+SyntheticData is organized as a Rust workspace with 14 modular crates:
 
 ```
-synth-cli          Command-line interface (binary: synth-data)
-synth-server       REST/gRPC/WebSocket server with auth and rate limiting
-synth-ui           Tauri/SvelteKit desktop application
+datasynth-cli          Command-line interface (binary: datasynth-data)
+datasynth-server       REST/gRPC/WebSocket server with auth and rate limiting
+datasynth-ui           Tauri/SvelteKit desktop application
     │
-synth-runtime      Orchestration layer (parallel execution, memory management)
+datasynth-runtime      Orchestration layer (parallel execution, resource guards)
     │
-synth-generators   Data generators (JE, documents, subledgers, anomalies)
+datasynth-generators   Data generators (JE, documents, subledgers, anomalies, audit)
+datasynth-banking      KYC/AML banking transaction generator
+datasynth-ocpm         Object-Centric Process Mining (OCEL 2.0)
     │
-synth-graph        Graph/network export (PyTorch Geometric, Neo4j, DGL)
+datasynth-graph        Graph/network export (PyTorch Geometric, Neo4j, DGL)
+datasynth-eval         Evaluation framework with auto-tuning
     │
-synth-config       Configuration schema, validation, industry presets
+datasynth-config       Configuration schema, validation, industry presets
     │
-synth-core         Domain models, traits, distributions, templates
+datasynth-core         Domain models, traits, distributions, resource guards
     │
-synth-output       Output sinks (CSV, JSON, streaming)
+datasynth-output       Output sinks (CSV, JSON, Parquet, streaming)
+datasynth-test-utils   Test utilities, fixtures, mocks
 ```
 
 See individual crate READMEs for detailed documentation.
@@ -128,7 +136,7 @@ cd SyntheticData
 cargo build --release
 ```
 
-The binary is available at `target/release/synth-data`.
+The binary is available at `target/release/datasynth-data`.
 
 ### Requirements
 
@@ -141,23 +149,23 @@ The binary is available at `target/release/synth-data`.
 
 ```bash
 # Generate a configuration file for a manufacturing company
-synth-data init --industry manufacturing --complexity medium -o config.yaml
+datasynth-data init --industry manufacturing --complexity medium -o config.yaml
 
 # Validate the configuration
-synth-data validate --config config.yaml
+datasynth-data validate --config config.yaml
 
 # Generate synthetic data
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 
 # View available presets and options
-synth-data info
+datasynth-data info
 ```
 
 ### Demo Mode
 
 ```bash
 # Quick demo with default settings
-synth-data generate --demo --output ./demo-output
+datasynth-data generate --demo --output ./demo-output
 ```
 
 ---
@@ -220,8 +228,11 @@ output/
 ├── period_close/         Trial balances, accruals, closing entries
 ├── consolidation/        Eliminations, currency translation
 ├── fx/                   Exchange rates, CTA adjustments
-├── graphs/               PyTorch Geometric, Neo4j exports
-├── labels/               Anomaly and fraud labels for ML
+├── banking/              KYC profiles, bank transactions, AML typology labels
+├── process_mining/       OCEL 2.0 event logs, process variants
+├── audit/                Engagements, workpapers, findings, risk assessments
+├── graphs/               PyTorch Geometric, Neo4j, DGL exports
+├── labels/               Anomaly, fraud, and data quality labels for ML
 └── controls/             Internal control mappings, SoD rules
 ```
 
@@ -233,10 +244,12 @@ output/
 |----------|-------------|
 | **Fraud Detection ML** | Train supervised models with labeled fraud patterns |
 | **Graph Neural Networks** | Entity relationship graphs for anomaly detection |
+| **AML/KYC Testing** | Banking transaction data with structuring, layering, mule patterns |
 | **Audit Analytics** | Test audit procedures with known control exceptions |
 | **Process Mining** | OCEL 2.0 event logs for process discovery |
 | **ERP Testing** | Load testing with realistic transaction volumes |
 | **SOX Compliance** | Test internal control monitoring systems |
+| **Data Quality ML** | Train models to detect missing values, typos, duplicates |
 
 ---
 
@@ -254,7 +267,7 @@ output/
 
 ```bash
 # Start REST/gRPC server
-cargo run -p synth-server -- --port 3000 --worker-threads 4
+cargo run -p datasynth-server -- --port 3000 --worker-threads 4
 
 # API endpoints
 curl http://localhost:3000/api/config
@@ -268,7 +281,7 @@ WebSocket streaming available at `ws://localhost:3000/ws/events`.
 ## Desktop UI
 
 ```bash
-cd crates/synth-ui
+cd crates/datasynth-ui
 npm install
 npm run tauri dev
 ```

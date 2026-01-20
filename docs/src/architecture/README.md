@@ -7,16 +7,16 @@ SyntheticData is designed as a modular, high-performance data generation system.
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         Application Layer                            │
-│   synth-cli │ synth-server │ synth-ui                               │
+│   datasynth-cli │ datasynth-server │ datasynth-ui                               │
 ├─────────────────────────────────────────────────────────────────────┤
 │                        Orchestration Layer                           │
-│                         synth-runtime                                │
+│                         datasynth-runtime                                │
 ├─────────────────────────────────────────────────────────────────────┤
 │                        Generation Layer                              │
-│   synth-generators │ synth-graph                                    │
+│   datasynth-generators │ datasynth-graph                                    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                        Foundation Layer                              │
-│   synth-core │ synth-config │ synth-output                          │
+│   datasynth-core │ datasynth-config │ datasynth-output                          │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,23 +46,23 @@ SyntheticData is designed as a modular, high-performance data generation system.
 ### Separation of Concerns
 
 Each crate has a single responsibility:
-- `synth-core`: Domain models and distributions
-- `synth-config`: Configuration and validation
-- `synth-generators`: Data generation logic
-- `synth-output`: File writing
-- `synth-runtime`: Orchestration
+- `datasynth-core`: Domain models and distributions
+- `datasynth-config`: Configuration and validation
+- `datasynth-generators`: Data generation logic
+- `datasynth-output`: File writing
+- `datasynth-runtime`: Orchestration
 
 ### Dependency Inversion
 
 Core components define traits, implementations provided by higher layers:
 
 ```rust
-// synth-core defines the trait
+// datasynth-core defines the trait
 pub trait Generator<T> {
     fn generate_batch(&mut self, count: usize) -> Result<Vec<T>>;
 }
 
-// synth-generators implements it
+// datasynth-generators implements it
 impl Generator<JournalEntry> for JournalEntryGenerator {
     fn generate_batch(&mut self, count: usize) -> Result<Vec<JournalEntry>> {
         // Implementation
@@ -192,5 +192,5 @@ impl AmountSampler for CustomAmountSampler {
 ## See Also
 
 - [Crate Reference](../crates/README.md)
-- [synth-core](../crates/synth-core.md)
-- [synth-runtime](../crates/synth-runtime.md)
+- [datasynth-core](../crates/datasynth-core.md)
+- [datasynth-runtime](../crates/datasynth-runtime.md)

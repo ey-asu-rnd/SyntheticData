@@ -54,18 +54,19 @@
 # Crate Reference
 
 - [Overview](crates/README.md)
-- [synth-core](crates/synth-core.md)
-- [synth-config](crates/synth-config.md)
-- [synth-generators](crates/synth-generators.md)
-- [synth-output](crates/synth-output.md)
-- [synth-runtime](crates/synth-runtime.md)
-- [synth-graph](crates/synth-graph.md)
-- [synth-cli](crates/synth-cli.md)
-- [synth-server](crates/synth-server.md)
-- [synth-ui](crates/synth-ui.md)
-- [synth-eval](crates/synth-eval.md)
-- [synth-ocpm](crates/synth-ocpm.md)
-- [synth-test-utils](crates/synth-test-utils.md)
+- [datasynth-core](crates/datasynth-core.md)
+- [datasynth-config](crates/datasynth-config.md)
+- [datasynth-generators](crates/datasynth-generators.md)
+- [datasynth-output](crates/datasynth-output.md)
+- [datasynth-runtime](crates/datasynth-runtime.md)
+- [datasynth-graph](crates/datasynth-graph.md)
+- [datasynth-cli](crates/datasynth-cli.md)
+- [datasynth-server](crates/datasynth-server.md)
+- [datasynth-ui](crates/datasynth-ui.md)
+- [datasynth-eval](crates/datasynth-eval.md)
+- [datasynth-banking](crates/datasynth-banking.md)
+- [datasynth-ocpm](crates/datasynth-ocpm.md)
+- [datasynth-test-utils](crates/datasynth-test-utils.md)
 
 ---
 

@@ -174,10 +174,10 @@ cargo bench -- --baseline main
 
 ```bash
 # Time generation
-time synth-data generate --config config.yaml --output ./output
+time datasynth-data generate --config config.yaml --output ./output
 
 # Profile memory
-/usr/bin/time -v synth-data generate --config config.yaml --output ./output
+/usr/bin/time -v datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Profiling
@@ -186,24 +186,24 @@ time synth-data generate --config config.yaml --output ./output
 
 ```bash
 # With perf (Linux)
-perf record synth-data generate --config config.yaml --output ./output
+perf record datasynth-data generate --config config.yaml --output ./output
 perf report
 
 # With Instruments (macOS)
 xcrun xctrace record --template "Time Profiler" \
-    --launch synth-data generate --config config.yaml --output ./output
+    --launch datasynth-data generate --config config.yaml --output ./output
 ```
 
 ### Memory Profiling
 
 ```bash
 # With heaptrack (Linux)
-heaptrack synth-data generate --config config.yaml --output ./output
+heaptrack datasynth-data generate --config config.yaml --output ./output
 heaptrack_print heaptrack.*.gz
 
 # With Instruments (macOS)
 xcrun xctrace record --template "Allocations" \
-    --launch synth-data generate --config config.yaml --output ./output
+    --launch datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Common Bottlenecks
@@ -269,7 +269,7 @@ xcrun xctrace record --template "Allocations" \
 ### Rate Limiting
 
 ```bash
-cargo run -p synth-server -- \
+cargo run -p datasynth-server -- \
     --port 3000 \
     --rate-limit 1000              # Requests per minute
 ```
@@ -279,7 +279,7 @@ cargo run -p synth-server -- \
 For high-concurrency scenarios, configure worker threads:
 
 ```bash
-cargo run -p synth-server -- \
+cargo run -p datasynth-server -- \
     --worker-threads 16            # Handle more connections
 ```
 

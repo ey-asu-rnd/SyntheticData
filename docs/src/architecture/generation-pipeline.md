@@ -1,6 +1,6 @@
 # Generation Pipeline
 
-Step-by-step generation process orchestrated by `synth-runtime`.
+Step-by-step generation process orchestrated by `datasynth-runtime`.
 
 ## Pipeline Overview
 
@@ -362,5 +362,5 @@ where
 ## See Also
 
 - [Data Flow](data-flow.md)
-- [synth-runtime](../crates/synth-runtime.md)
+- [datasynth-runtime](../crates/datasynth-runtime.md)
 - [Memory Management](memory-management.md)

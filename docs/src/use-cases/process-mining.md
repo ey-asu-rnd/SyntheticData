@@ -63,7 +63,7 @@ output:
 
 ## OCEL 2.0 Export
 
-Use the `synth-ocpm` crate for OCEL 2.0 export:
+Use the `datasynth-ocpm` crate for OCEL 2.0 export:
 
 ```rust
 use synth_ocpm::{OcpmGenerator, Ocel2Exporter, ExportFormat};
@@ -276,5 +276,5 @@ sqlite.apply(ocel, "output/ocel.sqlite")
 ## See Also
 
 - [Document Flows](../configuration/document-flows.md)
-- [synth-ocpm Crate](../crates/synth-ocpm.md)
+- [datasynth-ocpm Crate](../crates/datasynth-ocpm.md)
 - [Audit Analytics](audit-analytics.md)

@@ -439,6 +439,6 @@ Serialized as strings to prevent IEEE 754 issues:
 
 ## See Also
 
-- [synth-core Crate](../crates/synth-core.md)
+- [datasynth-core Crate](../crates/datasynth-core.md)
 - [Data Flow](data-flow.md)
 - [Generation Pipeline](generation-pipeline.md)

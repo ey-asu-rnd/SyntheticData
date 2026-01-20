@@ -1,0 +1,37 @@
+//! # synth-core
+//!
+//! Core domain models, traits, and distributions for synthetic accounting data generation.
+//!
+//! This crate provides the foundational types used throughout the synthetic data factory:
+//! - Journal Entry models (header and line items)
+//! - Chart of Accounts structures
+//! - SAP HANA ACDOCA/BSEG compatible event log formats
+//! - Generator and Sink traits for extensibility
+//! - Statistical distribution samplers based on empirical research
+//! - Templates for realistic data generation (names, descriptions, references)
+//! - Resource management (memory, disk, CPU) with graceful degradation
+
+pub mod accounts;
+pub mod cpu_monitor;
+pub mod degradation;
+pub mod disk_guard;
+pub mod distributions;
+pub mod error;
+pub mod memory_guard;
+pub mod models;
+pub mod resource_guard;
+pub mod templates;
+pub mod traits;
+pub mod uuid_factory;
+
+pub use cpu_monitor::*;
+pub use degradation::*;
+pub use disk_guard::*;
+pub use distributions::*;
+pub use error::*;
+pub use memory_guard::*;
+pub use models::*;
+pub use resource_guard::*;
+pub use templates::*;
+pub use traits::*;
+pub use uuid_factory::*;

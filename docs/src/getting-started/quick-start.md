@@ -17,7 +17,7 @@ Create a configuration file for your industry and complexity needs:
 
 ```bash
 # Manufacturing company with medium complexity (~400 accounts)
-synth-data init --industry manufacturing --complexity medium -o config.yaml
+datasynth-data init --industry manufacturing --complexity medium -o config.yaml
 ```
 
 ### Available Industry Presets
@@ -76,7 +76,7 @@ See the [Configuration Guide](../configuration/README.md) for all options.
 Check your configuration for errors:
 
 ```bash
-synth-data validate --config config.yaml
+datasynth-data validate --config config.yaml
 ```
 
 The validator checks:
@@ -90,7 +90,7 @@ The validator checks:
 Run the generation:
 
 ```bash
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 ```
 
 You'll see a progress bar:
@@ -183,9 +183,9 @@ companies:
 
 ```bash
 # Common commands
-synth-data init --industry <industry> --complexity <level> -o config.yaml
-synth-data validate --config config.yaml
-synth-data generate --config config.yaml --output ./output
-synth-data generate --demo --output ./demo-output
-synth-data info                   # Show available presets
+datasynth-data init --industry <industry> --complexity <level> -o config.yaml
+datasynth-data validate --config config.yaml
+datasynth-data generate --config config.yaml --output ./output
+datasynth-data generate --demo --output ./demo-output
+datasynth-data info                   # Show available presets
 ```

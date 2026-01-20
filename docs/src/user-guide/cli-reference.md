@@ -1,14 +1,14 @@
 # CLI Reference
 
-The `synth-data` command-line tool provides commands for generating synthetic financial data.
+The `datasynth-data` command-line tool provides commands for generating synthetic financial data.
 
 ## Installation
 
-After building the project, the binary is at `target/release/synth-data`.
+After building the project, the binary is at `target/release/datasynth-data`.
 
 ```bash
 cargo build --release
-./target/release/synth-data --help
+./target/release/datasynth-data --help
 ```
 
 ## Global Options
@@ -27,7 +27,7 @@ cargo build --release
 Generate synthetic financial data.
 
 ```bash
-synth-data generate [OPTIONS]
+datasynth-data generate [OPTIONS]
 ```
 
 **Options:**
@@ -44,16 +44,16 @@ synth-data generate [OPTIONS]
 
 ```bash
 # Generate with configuration file
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 
 # Use demo mode
-synth-data generate --demo --output ./demo-output
+datasynth-data generate --demo --output ./demo-output
 
 # Override seed for reproducibility
-synth-data generate --config config.yaml --output ./output --seed 12345
+datasynth-data generate --config config.yaml --output ./output --seed 12345
 
 # JSON output format
-synth-data generate --config config.yaml --output ./output --format json
+datasynth-data generate --config config.yaml --output ./output --format json
 ```
 
 ### init
@@ -61,7 +61,7 @@ synth-data generate --config config.yaml --output ./output --format json
 Create a new configuration file from industry presets.
 
 ```bash
-synth-data init [OPTIONS]
+datasynth-data init [OPTIONS]
 ```
 
 **Options:**
@@ -83,10 +83,10 @@ synth-data init [OPTIONS]
 
 ```bash
 # Create manufacturing config
-synth-data init --industry manufacturing --complexity medium -o config.yaml
+datasynth-data init --industry manufacturing --complexity medium -o config.yaml
 
 # Create large retail config
-synth-data init --industry retail --complexity large -o retail.yaml
+datasynth-data init --industry retail --complexity large -o retail.yaml
 ```
 
 ### validate
@@ -94,7 +94,7 @@ synth-data init --industry retail --complexity large -o retail.yaml
 Validate a configuration file.
 
 ```bash
-synth-data validate --config <PATH>
+datasynth-data validate --config <PATH>
 ```
 
 **Options:**
@@ -106,7 +106,7 @@ synth-data validate --config <PATH>
 **Example:**
 
 ```bash
-synth-data validate --config config.yaml
+datasynth-data validate --config config.yaml
 ```
 
 **Validation Checks:**
@@ -121,7 +121,7 @@ synth-data validate --config config.yaml
 Display available presets and configuration options.
 
 ```bash
-synth-data info
+datasynth-data info
 ```
 
 **Output includes:**
@@ -136,13 +136,13 @@ On Unix systems, you can pause and resume generation:
 
 ```bash
 # Start generation in background
-synth-data generate --config config.yaml --output ./output &
+datasynth-data generate --config config.yaml --output ./output &
 
 # Pause generation
-kill -USR1 $(pgrep synth-data)
+kill -USR1 $(pgrep datasynth-data)
 
 # Resume generation
-kill -USR1 $(pgrep synth-data)
+kill -USR1 $(pgrep datasynth-data)
 ```
 
 ## Exit Codes
@@ -164,15 +164,15 @@ kill -USR1 $(pgrep synth-data)
 **Example:**
 
 ```bash
-SYNTH_DATA_LOG=debug synth-data generate --config config.yaml --output ./output
+SYNTH_DATA_LOG=debug datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Configuration File Location
 
 The tool looks for configuration files in this order:
 1. Path specified with `--config`
-2. `./synth-data.yaml` in current directory
-3. `~/.config/synth-data/config.yaml`
+2. `./datasynth-data.yaml` in current directory
+3. `~/.config/datasynth-data/config.yaml`
 
 ## Output Directory Structure
 
@@ -198,8 +198,8 @@ output/
 ```bash
 #!/bin/bash
 for industry in manufacturing retail healthcare; do
-    synth-data init --industry $industry --complexity medium -o ${industry}.yaml
-    synth-data generate --config ${industry}.yaml --output ./output/${industry}
+    datasynth-data init --industry $industry --complexity medium -o ${industry}.yaml
+    datasynth-data generate --config ${industry}.yaml --output ./output/${industry}
 done
 ```
 
@@ -210,15 +210,15 @@ done
 - name: Generate Test Data
   run: |
     cargo build --release
-    ./target/release/synth-data generate --demo --output ./test-data
+    ./target/release/datasynth-data generate --demo --output ./test-data
 ```
 
 ### Reproducible Generation
 
 ```bash
 # Same seed produces identical output
-synth-data generate --config config.yaml --output ./run1 --seed 42
-synth-data generate --config config.yaml --output ./run2 --seed 42
+datasynth-data generate --config config.yaml --output ./run1 --seed 42
+datasynth-data generate --config config.yaml --output ./run2 --seed 42
 diff -r run1 run2  # No differences
 ```
 
@@ -231,13 +231,13 @@ diff -r run1 run2  # No differences
 # Check file path
 ls -la config.yaml
 # Use absolute path
-synth-data generate --config /full/path/to/config.yaml --output ./output
+datasynth-data generate --config /full/path/to/config.yaml --output ./output
 ```
 
 **"Invalid configuration"**
 ```bash
 # Validate first
-synth-data validate --config config.yaml
+datasynth-data validate --config config.yaml
 ```
 
 **"Permission denied"**

@@ -5,11 +5,11 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 use chrono::NaiveDate;
-use rust_decimal::Decimal;
-use synth_core::distributions::{
+use datasynth_core::distributions::{
     AmountDistributionConfig, AmountSampler, LineItemSampler, SeasonalityConfig, TemporalSampler,
     WorkingHoursConfig,
 };
+use rust_decimal::Decimal;
 
 mod common;
 use common::BENCHMARK_SEED;

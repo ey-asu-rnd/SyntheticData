@@ -319,4 +319,4 @@ for epoch in range(100):
 
 - [Anomaly Injection](anomaly-injection.md)
 - [Fraud Detection Use Case](../use-cases/fraud-detection.md)
-- [synth-graph Crate](../crates/synth-graph.md)
+- [datasynth-graph Crate](../crates/datasynth-graph.md)

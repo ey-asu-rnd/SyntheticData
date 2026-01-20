@@ -1,0 +1,24 @@
+[package]
+name = "datasynth-generators"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Data generators for journal entries, chart of accounts, and ACDOCA event logs"
+
+[dependencies]
+datasynth-core = { workspace = true }
+datasynth-config = { workspace = true }
+serde = { workspace = true }
+rust_decimal = { workspace = true }
+rust_decimal_macros = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+rand_distr = { workspace = true }
+rayon = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

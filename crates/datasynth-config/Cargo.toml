@@ -1,0 +1,19 @@
+[package]
+name = "datasynth-config"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Configuration schema, validation, and presets for synthetic data generation"
+
+[dependencies]
+datasynth-core = { workspace = true }
+datasynth-banking = { path = "../datasynth-banking" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

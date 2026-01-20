@@ -393,4 +393,4 @@ output:
 
 - [Configuration Overview](README.md)
 - [Industry Presets](industry-presets.md)
-- [synth-config Crate](../crates/synth-config.md)
+- [datasynth-config Crate](../crates/datasynth-config.md)

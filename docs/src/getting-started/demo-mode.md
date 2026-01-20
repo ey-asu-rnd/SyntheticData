@@ -5,7 +5,7 @@ Demo mode provides a quick way to explore SyntheticData without creating a confi
 ## Running Demo Mode
 
 ```bash
-synth-data generate --demo --output ./demo-output
+datasynth-data generate --demo --output ./demo-output
 ```
 
 ## What Demo Mode Generates
@@ -138,12 +138,12 @@ You can combine demo mode with some options:
 
 ```bash
 # Change output directory
-synth-data generate --demo --output ./my-demo
+datasynth-data generate --demo --output ./my-demo
 
 # Use demo as starting point, then create config
-synth-data init --industry manufacturing --complexity medium -o config.yaml
+datasynth-data init --industry manufacturing --complexity medium -o config.yaml
 # Edit config.yaml as needed
-synth-data generate --config config.yaml --output ./output
+datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Use Cases for Demo Mode
@@ -166,7 +166,7 @@ When you're ready for more control:
 
 1. **Create a configuration file:**
    ```bash
-   synth-data init --industry <your-industry> -o config.yaml
+   datasynth-data init --industry <your-industry> -o config.yaml
    ```
 
 2. **Customize settings:**
@@ -177,7 +177,7 @@ When you're ready for more control:
 
 3. **Generate with your config:**
    ```bash
-   synth-data generate --config config.yaml --output ./output
+   datasynth-data generate --config config.yaml --output ./output
    ```
 
 ## Next Steps

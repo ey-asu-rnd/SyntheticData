@@ -6,7 +6,7 @@ SyntheticData includes pre-configured settings for common industries.
 
 ```bash
 # Create configuration from preset
-synth-data init --industry manufacturing --complexity medium -o config.yaml
+datasynth-data init --industry manufacturing --complexity medium -o config.yaml
 ```
 
 ## Available Industries
@@ -284,7 +284,7 @@ Start with a preset and customize:
 
 ```bash
 # Generate preset
-synth-data init --industry manufacturing -o config.yaml
+datasynth-data init --industry manufacturing -o config.yaml
 
 # Edit config.yaml
 # - Adjust transaction counts
@@ -292,8 +292,8 @@ synth-data init --industry manufacturing -o config.yaml
 # - Enable additional features
 
 # Validate and generate
-synth-data validate --config config.yaml
-synth-data generate --config config.yaml --output ./output
+datasynth-data validate --config config.yaml
+datasynth-data generate --config config.yaml --output ./output
 ```
 
 ## Combining Industries
