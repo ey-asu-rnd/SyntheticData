@@ -439,7 +439,7 @@ impl BankingGraphBuilder {
             edge.features.push(if weekday >= 5.0 { 1.0 } else { 0.0 });
 
             // Is off-hours (before 7am or after 10pm)
-            let is_off_hours = hour < 7.0 || hour > 22.0;
+            let is_off_hours = !(7.0..=22.0).contains(&hour);
             edge.features.push(if is_off_hours { 1.0 } else { 0.0 });
         }
 
