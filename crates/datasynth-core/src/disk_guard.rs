@@ -285,6 +285,7 @@ impl Default for DiskSpaceGuard {
 
 /// Get available disk space in MB (Linux/macOS implementation using statvfs).
 #[cfg(unix)]
+#[allow(clippy::unnecessary_cast)] // Casts needed for cross-platform compatibility
 pub fn get_available_space_mb(path: &Path) -> Option<usize> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
@@ -318,6 +319,7 @@ pub fn get_available_space_mb(path: &Path) -> Option<usize> {
 
 /// Get total and available disk space in bytes (Linux/macOS).
 #[cfg(unix)]
+#[allow(clippy::unnecessary_cast)] // Casts needed for cross-platform compatibility
 pub fn get_disk_space(path: &Path) -> Option<(u64, u64)> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;

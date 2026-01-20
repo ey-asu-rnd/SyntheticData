@@ -31,9 +31,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
-        with:
-          components: rustfmt, clippy
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
         uses: actions/cache@v4
@@ -74,10 +72,10 @@ jobs:
           <head>
             <meta charset="utf-8">
             <title>API Documentation</title>
-            <meta http-equiv="refresh" content="0; url=synth_core/index.html">
+            <meta http-equiv="refresh" content="0; url=datasynth_core/index.html">
           </head>
           <body>
-            <p>Redirecting to <a href="synth_core/index.html">synth_core documentation</a>...</p>
+            <p>Redirecting to <a href="datasynth_core/index.html">datasynth_core documentation</a>...</p>
           </body>
           </html>
           EOF
