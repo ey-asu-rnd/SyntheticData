@@ -917,3 +917,71 @@ The codebase has been hardened for production use with the following features:
 - Output sink benchmarks (CSV, JSON)
 - Scalability benchmarks (memory, parallel scaling)
 - Correctness benchmarks (Benford's Law, balance coherence)
+
+## Python Wrapper (python/datasynth_py)
+
+A Python wrapper is available for programmatic access to DataSynth.
+
+### Installation
+
+```bash
+cd python
+pip install -e ".[all]"
+```
+
+Optional dependency groups:
+- `cli`: PyYAML for config serialization
+- `memory`: pandas for in-memory table loading
+- `streaming`: websockets for server streaming
+- `all`: All optional dependencies
+- `dev`: Development dependencies (pytest, mypy, ruff)
+
+### Usage
+
+```python
+from datasynth_py import DataSynth, CompanyConfig, Config, GlobalSettings, ChartOfAccountsSettings
+
+config = Config(
+    global_settings=GlobalSettings(
+        industry="retail",
+        start_date="2024-01-01",
+        period_months=12,
+    ),
+    companies=[
+        CompanyConfig(code="C001", name="Retail Corp", currency="USD", country="US"),
+    ],
+    chart_of_accounts=ChartOfAccountsSettings(complexity="small"),
+)
+
+synth = DataSynth()
+result = synth.generate(config=config, output={"format": "csv", "sink": "temp_dir"})
+```
+
+### Blueprints
+
+```python
+from datasynth_py.config import blueprints
+
+# Available: retail_small, banking_medium, manufacturing_large
+config = blueprints.retail_small(companies=4, transactions=10000)
+```
+
+### Key Classes
+
+| Class | Description |
+|-------|-------------|
+| `DataSynth` | Main client for generation (CLI batch or server streaming) |
+| `Config` | Root configuration container |
+| `GlobalSettings` | Industry, start_date, period_months, seed, group_currency |
+| `CompanyConfig` | Company code, name, currency, country, volume |
+| `ChartOfAccountsSettings` | Complexity level (small/medium/large) |
+| `FraudSettings` | Fraud injection (enabled, rate) |
+| `OutputSpec` | Output format, sink, path |
+| `GenerationResult` | Result with output_dir or tables |
+
+### Running Tests
+
+```bash
+cd python
+python -m unittest discover -s tests -v
+```

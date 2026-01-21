@@ -316,6 +316,29 @@ The desktop application provides visual configuration, real-time streaming, and 
 
 ---
 
+## Python Wrapper
+
+A Python wrapper is available for programmatic access:
+
+```bash
+cd python
+pip install -e ".[all]"
+```
+
+```python
+from datasynth_py import DataSynth
+from datasynth_py.config import blueprints
+
+config = blueprints.retail_small(companies=4, transactions=10000)
+synth = DataSynth()
+result = synth.generate(config=config, output={"format": "csv", "sink": "temp_dir"})
+print(result.output_dir)
+```
+
+See the [Python Wrapper Guide](docs/src/user-guide/python-wrapper.md) for complete documentation.
+
+---
+
 ## Documentation
 
 - [Configuration Guide](docs/configuration.md)

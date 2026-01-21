@@ -12,7 +12,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Dict, List, Optional
 
-import importlib
+import importlib.util
 
 from datasynth_py.config.models import Config, MissingDependencyError
 
@@ -61,8 +61,8 @@ class DataSynth:
         if output_spec.sink == "path" and not output_spec.path:
             raise ValueError("OutputSpec.path must be set when sink='path'.")
 
-        config_path = self._write_config(config)
         output_dir = self._resolve_output_dir(output_spec)
+        config_path = self._write_config(config, output_dir, output_spec)
         self._run_cli(config_path=config_path, output_dir=output_dir)
 
         if output_spec.sink == "memory":
@@ -97,7 +97,7 @@ class DataSynth:
             request_timeout=self._request_timeout,
         )
 
-    def _write_config(self, config: Config) -> str:
+    def _write_config(self, config: Config, output_dir: str, output_spec: OutputSpec) -> str:
         yaml_spec = importlib.util.find_spec("yaml")
         if yaml_spec is None:
             raise MissingDependencyError(
@@ -106,6 +106,17 @@ class DataSynth:
         import yaml  # type: ignore
 
         payload = config.to_dict()
+
+        # Ensure output section exists with required fields
+        if "output" not in payload:
+            payload["output"] = {}
+        payload["output"]["output_directory"] = output_dir
+
+        # Map output format from OutputSpec
+        format_map = {"csv": "csv", "jsonl": "json", "parquet": "parquet"}
+        cli_format = format_map.get(output_spec.format, "csv")
+        payload["output"]["formats"] = [cli_format]
+
         data = yaml.safe_dump(payload, sort_keys=False)
         fd, path = tempfile.mkstemp(prefix="datasynth_", suffix=".yaml")
         os.close(fd)
@@ -235,30 +246,46 @@ def _load_tables(output_dir: str, output_spec: OutputSpec) -> Dict[str, Any]:
 
 
 def _config_to_server_payload(config: Config, seed: Optional[int]) -> Dict[str, Any]:
+    """Convert Config to server API payload format."""
     payload = config.to_dict()
     global_settings = payload.get("global", {})
-    companies = payload.get("companies", {})
-    transactions = payload.get("transactions", {})
+    companies = payload.get("companies", [])
+    chart_of_accounts = payload.get("chart_of_accounts", {})
+    fraud = payload.get("fraud", {})
 
-    industry = companies.get("industry", "retail")
-    complexity = companies.get("complexity", "small")
-    company_count = companies.get("count", 1)
-    start_date = global_settings.get("fiscal_year_start", "2024-01-01")
-    period_months = global_settings.get("periods", 12)
+    # Extract values from the new schema structure
+    industry = global_settings.get("industry", "retail")
+    complexity = chart_of_accounts.get("complexity", "small")
+    start_date = global_settings.get("start_date", "2024-01-01")
+    period_months = global_settings.get("period_months", 12)
     seed_value = seed if seed is not None else global_settings.get("seed")
 
+    # Companies is now a list of company configs
     company_payloads: List[Dict[str, Any]] = []
-    for index in range(company_count):
-        company_payloads.append(
-            {
-                "code": f"C{index + 1:03d}",
-                "name": f"Company {index + 1}",
-                "currency": transactions.get("currency", "USD"),
-                "country": "US",
+    if isinstance(companies, list):
+        for company in companies:
+            company_payloads.append({
+                "code": company.get("code", "C001"),
+                "name": company.get("name", "Company"),
+                "currency": company.get("currency", "USD"),
+                "country": company.get("country", "US"),
                 "annual_transaction_volume": 10000,
-                "volume_weight": 1.0,
-            }
-        )
+                "volume_weight": company.get("volume_weight", 1.0),
+            })
+    else:
+        # Fallback for legacy format
+        company_payloads.append({
+            "code": "C001",
+            "name": "Company 1",
+            "currency": "USD",
+            "country": "US",
+            "annual_transaction_volume": 10000,
+            "volume_weight": 1.0,
+        })
+
+    # Extract fraud settings
+    fraud_enabled = fraud.get("enabled", False)
+    fraud_rate = fraud.get("rate", 0.0)
 
     return {
         "industry": industry,
@@ -267,6 +294,6 @@ def _config_to_server_payload(config: Config, seed: Optional[int]) -> Dict[str, 
         "seed": seed_value,
         "coa_complexity": complexity,
         "companies": company_payloads,
-        "fraud_enabled": bool(transactions.get("anomaly_rate", 0)),
-        "fraud_rate": float(transactions.get("anomaly_rate", 0)),
+        "fraud_enabled": fraud_enabled,
+        "fraud_rate": fraud_rate,
     }
