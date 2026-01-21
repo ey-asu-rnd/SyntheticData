@@ -321,6 +321,7 @@ The desktop application provides visual configuration, real-time streaming, and 
 - [Configuration Guide](docs/configuration.md)
 - [API Reference](docs/api.md)
 - [Architecture Overview](docs/architecture.md)
+- [Python Wrapper Guide](docs/src/user-guide/python-wrapper.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
 
 ---

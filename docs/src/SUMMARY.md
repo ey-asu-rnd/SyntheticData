@@ -20,6 +20,8 @@
 - [Server API](user-guide/server-api.md)
 - [Desktop UI](user-guide/desktop-ui.md)
 - [Output Formats](user-guide/output-formats.md)
+- [Python Wrapper Specification](user-guide/python-wrapper-spec.md)
+- [Python Wrapper Guide](user-guide/python-wrapper.md)
 
 ---
 
