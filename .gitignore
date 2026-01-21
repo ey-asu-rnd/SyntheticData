@@ -34,3 +34,7 @@ docs/book/
 # Output directories
 output/
 demo-output/
+
+# Python
+**/__pycache__/
+*.pyc
