@@ -67,6 +67,44 @@ pub struct GeneratorConfig {
     /// Banking KYC/AML transaction generation settings
     #[serde(default)]
     pub banking: datasynth_banking::BankingConfig,
+    /// Scenario configuration for metadata and tagging (Phase 1.3)
+    #[serde(default)]
+    pub scenario: ScenarioConfig,
+}
+
+/// Scenario configuration for metadata, tagging, and ML training setup.
+///
+/// This section enables tracking the purpose and characteristics of a generation run.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ScenarioConfig {
+    /// Tags for categorizing and filtering datasets.
+    /// Examples: "fraud_detection", "retail", "month_end_stress", "ml_training"
+    #[serde(default)]
+    pub tags: Vec<String>,
+
+    /// Data quality profile preset.
+    /// - "clean": Minimal data quality issues (0.1% missing, 0.05% typos)
+    /// - "noisy": Moderate issues (5% missing, 2% typos, 1% duplicates)
+    /// - "legacy": Heavy issues simulating legacy system data (10% missing, 5% typos)
+    #[serde(default)]
+    pub profile: Option<String>,
+
+    /// Human-readable description of the scenario purpose.
+    #[serde(default)]
+    pub description: Option<String>,
+
+    /// Whether this run is for ML training (enables balanced labeling).
+    #[serde(default)]
+    pub ml_training: bool,
+
+    /// Target anomaly class balance for ML training.
+    /// If set, anomalies will be injected to achieve this ratio.
+    #[serde(default)]
+    pub target_anomaly_ratio: Option<f64>,
+
+    /// Custom metadata key-value pairs.
+    #[serde(default)]
+    pub metadata: std::collections::HashMap<String, String>,
 }
 
 /// Global configuration settings.
@@ -184,6 +222,18 @@ fn default_min_depth() -> u8 {
 }
 fn default_max_depth() -> u8 {
     5
+}
+
+impl Default for ChartOfAccountsConfig {
+    fn default() -> Self {
+        Self {
+            complexity: CoAComplexity::Small,
+            industry_specific: true,
+            custom_accounts: None,
+            min_hierarchy_depth: default_min_depth(),
+            max_hierarchy_depth: default_max_depth(),
+        }
+    }
 }
 
 /// Transaction generation configuration.

@@ -1,0 +1,156 @@
+# Process Mining Full Template
+# Purpose: Generate OCEL 2.0 event logs for process mining analysis
+# Use case: Process discovery, conformance checking, process enhancement
+
+global:
+  industry: manufacturing
+  start_date: "2024-01-01"
+  period_months: 12
+  seed: 54321
+  group_currency: USD
+  parallel: true
+  worker_threads: 8
+  memory_limit_mb: 8192
+
+companies:
+  - code: "1000"
+    name: "Manufacturing Corp HQ"
+    currency: USD
+    country: US
+    annual_transaction_volume: one_m
+    volume_weight: 0.5
+    fiscal_year_variant: K4
+  - code: "2000"
+    name: "Manufacturing Corp EU"
+    currency: EUR
+    country: DE
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.3
+    fiscal_year_variant: K4
+  - code: "3000"
+    name: "Manufacturing Corp APAC"
+    currency: CNY
+    country: CN
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.2
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: large
+  industry_specific: true
+  min_hierarchy_depth: 3
+  max_hierarchy_depth: 6
+
+master_data:
+  vendors:
+    count_per_company: 500
+    intercompany_rate: 0.20
+    behavior_distribution:
+      reliable: 0.60
+      erratic: 0.25
+      problematic: 0.15
+  customers:
+    count_per_company: 1000
+    intercompany_rate: 0.15
+    credit_rating_distribution:
+      excellent: 0.20
+      good: 0.40
+      fair: 0.30
+      poor: 0.10
+  materials:
+    count_per_company: 2000
+    bom_enabled: true
+    average_bom_depth: 3
+  fixed_assets:
+    count_per_company: 200
+  employees:
+    count_per_company: 100
+    manager_ratio: 0.15
+
+document_flows:
+  p2p:
+    enabled: true
+    chains_per_month: 2000
+    three_way_match_rate: 0.90
+    partial_delivery_rate: 0.15
+    gr_ir_clearing_enabled: true
+    payment_behavior:
+      on_time_rate: 0.70
+      early_rate: 0.10
+      late_rate: 0.20
+  o2c:
+    enabled: true
+    chains_per_month: 3000
+    credit_check_failure_rate: 0.05
+    partial_shipment_rate: 0.12
+    return_rate: 0.03
+    payment_behavior:
+      on_time_rate: 0.65
+      early_rate: 0.15
+      late_rate: 0.20
+
+# OCPM (Object-Centric Process Mining) - Key for this template
+ocpm:
+  enabled: true
+  generate_event_log: true
+  include_object_relationships: true
+  activity_granularity: detailed
+  process_variants:
+    happy_path: 0.70
+    with_returns: 0.10
+    with_changes: 0.15
+    exceptional: 0.05
+
+intercompany:
+  enabled: true
+  transaction_rate: 0.10
+  matching_enabled: true
+  elimination_enabled: true
+  ic_types:
+    goods_sale: 0.40
+    service_provided: 0.25
+    management_fee: 0.15
+    royalty: 0.10
+    loan: 0.10
+
+balance:
+  trial_balance_enabled: true
+  reconciliation_enabled: true
+  period_close_enabled: true
+
+fraud:
+  enabled: true
+  fraud_rate: 0.02
+  clustering_enabled: true
+  clustering_factor: 0.2
+
+data_quality:
+  enabled: false  # Keep clean for process mining
+
+scenario:
+  tags:
+    - process_mining
+    - ocel_2_0
+    - manufacturing
+    - multi_company
+    - full_simulation
+  profile: clean
+  description: "Full enterprise simulation for OCEL 2.0 process mining analysis"
+  ml_training: false
+  metadata:
+    process_scope: end_to_end
+    object_types: order,invoice,payment,delivery,goods_receipt
+
+output:
+  output_directory: ./output/process_mining
+  formats:
+    - csv
+    - json
+    - parquet
+  compression:
+    enabled: true
+    level: 6
+  batch_size: 10000
+  include_acdoca: true
+  partition_by_period: true
+  partition_by_company: true

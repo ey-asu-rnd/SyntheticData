@@ -70,6 +70,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
 
+# Hashing
+sha2 = "0.10"
+hex = "0.4"
+
 # Numeric - precise decimal arithmetic for financial calculations
 rust_decimal = { version = "1.36", features = ["serde", "serde-with-str", "maths"] }
 rust_decimal_macros = "1.36"

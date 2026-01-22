@@ -49,6 +49,7 @@ pub fn create_preset(
         ocpm: OcpmConfig::default(),
         audit: AuditGenerationConfig::default(),
         banking: datasynth_banking::BankingConfig::default(),
+        scenario: ScenarioConfig::default(),
     }
 }
 

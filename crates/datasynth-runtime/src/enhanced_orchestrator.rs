@@ -17,6 +17,7 @@ use std::sync::Arc;
 
 use chrono::{Datelike, NaiveDate};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
 use datasynth_banking::{
@@ -392,7 +393,7 @@ pub struct EnhancedGenerationResult {
 }
 
 /// Enhanced statistics about a generation run.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EnhancedGenerationStatistics {
     /// Total journal entries generated.
     pub total_entries: u64,
@@ -1922,6 +1923,7 @@ mod tests {
             audit: AuditGenerationConfig::default(),
             banking: datasynth_banking::BankingConfig::default(),
             data_quality: DataQualitySchemaConfig::default(),
+            scenario: ScenarioConfig::default(),
         }
     }
 

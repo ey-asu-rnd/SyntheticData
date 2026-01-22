@@ -615,6 +615,7 @@ mod tests {
             audit: AuditGenerationConfig::default(),
             banking: datasynth_banking::BankingConfig::default(),
             data_quality: DataQualitySchemaConfig::default(),
+            scenario: ScenarioConfig::default(),
         }
     }
 

@@ -1,0 +1,118 @@
+# ML Training Balanced Template
+# Purpose: Generate balanced anomaly dataset for supervised learning
+# Use case: Anomaly detection model training with equal class distribution
+
+global:
+  industry: manufacturing
+  start_date: "2024-01-01"
+  period_months: 6
+  seed: 12345
+  group_currency: USD
+  parallel: true
+  worker_threads: 4
+  memory_limit_mb: 4096
+
+companies:
+  - code: "1000"
+    name: "Manufacturing HQ"
+    currency: USD
+    country: US
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.6
+    fiscal_year_variant: K4
+  - code: "2000"
+    name: "Manufacturing EU"
+    currency: EUR
+    country: DE
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.4
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: medium
+  industry_specific: true
+  min_hierarchy_depth: 3
+  max_hierarchy_depth: 5
+
+fraud:
+  enabled: true
+  fraud_rate: 0.10  # 10% for ML training balance
+  fraud_type_distribution:
+    suspense_account_abuse: 0.10
+    fictitious_transaction: 0.15
+    revenue_manipulation: 0.15
+    expense_capitalization: 0.10
+    split_transaction: 0.10
+    timing_anomaly: 0.10
+    unauthorized_access: 0.10
+    duplicate_payment: 0.10
+    round_tripping: 0.05
+    kickback_scheme: 0.05
+  clustering_enabled: true
+  clustering_factor: 0.25
+  approval_thresholds:
+    - 500.0
+    - 2500.0
+    - 10000.0
+    - 50000.0
+
+internal_controls:
+  enabled: true
+  sod_violation_rate: 0.02
+  self_approval_rate: 0.03
+
+master_data:
+  vendors:
+    count_per_company: 100
+    intercompany_rate: 0.15
+  customers:
+    count_per_company: 150
+    intercompany_rate: 0.10
+  materials:
+    count_per_company: 200
+  employees:
+    count_per_company: 50
+
+document_flows:
+  p2p:
+    enabled: true
+    chains_per_month: 200
+    three_way_match_rate: 0.85
+  o2c:
+    enabled: true
+    chains_per_month: 300
+    partial_shipment_rate: 0.10
+
+data_quality:
+  enabled: true
+  preset: clean  # Keep data clean for ML training
+  generate_labels: true
+  missing_values:
+    enabled: true
+    rate: 0.005
+  typos:
+    enabled: false
+
+scenario:
+  tags:
+    - ml_training
+    - anomaly_detection
+    - balanced_classes
+    - manufacturing
+  profile: clean
+  description: "Balanced anomaly detection dataset for supervised ML training"
+  ml_training: true
+  target_anomaly_ratio: 0.10
+
+output:
+  output_directory: ./output/ml_training
+  formats:
+    - csv
+    - parquet
+  compression:
+    enabled: true
+    level: 6
+  batch_size: 5000
+  include_acdoca: true
+  partition_by_period: true
+  partition_by_company: true

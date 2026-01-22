@@ -11,7 +11,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use datasynth_config::{presets, GeneratorConfig};
 use datasynth_core::memory_guard::{MemoryGuard, MemoryGuardConfig};
 use datasynth_core::models::{CoAComplexity, IndustrySector};
-use datasynth_runtime::{EnhancedOrchestrator, PhaseConfig};
+use datasynth_runtime::{
+    export_labels_all_formats, EnhancedOrchestrator, LabelExportConfig, LabelExportSummary,
+    OutputFileInfo, PhaseConfig, RunManifest,
+};
 
 #[cfg(unix)]
 use signal_hook::consts::SIGUSR1;
@@ -265,6 +268,10 @@ fn main() -> Result<()> {
                 ..PhaseConfig::default()
             };
 
+            // Capture values before moving config to orchestrator
+            let effective_seed = generator_config.global.seed.unwrap_or(42);
+            let config_for_manifest = generator_config.clone();
+
             let mut orchestrator = EnhancedOrchestrator::new(generator_config, phase_config)?;
             let result = orchestrator.generate()?;
 
@@ -361,6 +368,81 @@ fn main() -> Result<()> {
                     result.banking.customers.len(),
                     result.banking.accounts.len(),
                     limited_txns.len()
+                );
+            }
+
+            // ========================================
+            // WRITE ANOMALY LABELS (Phase 1.1)
+            // ========================================
+            if !result.anomaly_labels.labels.is_empty() {
+                let labels_dir = output.join("labels");
+                std::fs::create_dir_all(&labels_dir)?;
+
+                let export_config = LabelExportConfig::default();
+                match export_labels_all_formats(
+                    &result.anomaly_labels.labels,
+                    &labels_dir,
+                    "anomaly_labels",
+                    &export_config,
+                ) {
+                    Ok(results) => {
+                        for (path, count) in &results {
+                            tracing::info!("Anomaly labels written to: {} ({} labels)", path, count);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to write anomaly labels: {}", e);
+                    }
+                }
+
+                // Write summary
+                let summary = LabelExportSummary::from_labels(&result.anomaly_labels.labels);
+                if let Err(e) = summary.write_to_file(&labels_dir.join("anomaly_labels_summary.json"))
+                {
+                    tracing::warn!("Failed to write anomaly label summary: {}", e);
+                }
+
+                tracing::info!(
+                    "Anomaly labels: {} total, {} with provenance, {} in clusters",
+                    summary.total_labels,
+                    summary.with_provenance,
+                    summary.in_clusters
+                );
+            }
+
+            // ========================================
+            // WRITE RUN MANIFEST (Phase 1.3)
+            // ========================================
+            let mut manifest = RunManifest::new(&config_for_manifest, effective_seed);
+            manifest.set_output_directory(&output);
+            manifest.complete(result.statistics.clone());
+
+            // Add output file info
+            manifest.add_output_file(OutputFileInfo {
+                path: "sample_entries.json".to_string(),
+                format: "json".to_string(),
+                record_count: Some(sample_entries.len()),
+                size_bytes: None,
+            });
+
+            if !result.anomaly_labels.labels.is_empty() {
+                manifest.add_output_file(OutputFileInfo {
+                    path: "labels/anomaly_labels.csv".to_string(),
+                    format: "csv".to_string(),
+                    record_count: Some(result.anomaly_labels.labels.len()),
+                    size_bytes: None,
+                });
+            }
+
+            // Write manifest
+            let manifest_path = output.join("run_manifest.json");
+            if let Err(e) = manifest.write_to_file(&manifest_path) {
+                tracing::warn!("Failed to write run manifest: {}", e);
+            } else {
+                tracing::info!(
+                    "Run manifest written to: {} (run_id: {})",
+                    manifest_path.display(),
+                    manifest.run_id()
                 );
             }
 
@@ -489,6 +571,7 @@ fn create_safe_demo_preset() -> GeneratorConfig {
         audit: AuditGenerationConfig::default(),
         banking: datasynth_banking::BankingConfig::small(), // Use small banking config
         data_quality: DataQualitySchemaConfig::default(),
+        scenario: datasynth_config::schema::ScenarioConfig::default(),
     }
 }
 

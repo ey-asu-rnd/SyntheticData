@@ -838,6 +838,7 @@ pub fn default_generator_config() -> GeneratorConfig {
         audit: Default::default(),
         banking: Default::default(),
         data_quality: Default::default(),
+        scenario: Default::default(),
     }
 }
 

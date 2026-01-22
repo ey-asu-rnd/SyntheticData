@@ -1517,6 +1517,7 @@ version = "0.1.1"
 dependencies = [
  "chrono",
  "crossbeam-channel",
+ "csv",
  "datasynth-banking",
  "datasynth-config",
  "datasynth-core",
@@ -1524,15 +1525,21 @@ dependencies = [
  "datasynth-ocpm",
  "datasynth-output",
  "datasynth-test-utils",
+ "hex",
  "indicatif",
  "num_cpus",
  "proptest",
  "rand 0.8.5",
  "rayon",
  "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
  "thiserror 2.0.17",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

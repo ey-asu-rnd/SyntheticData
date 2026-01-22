@@ -12,6 +12,224 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Causal reason explaining why an anomaly was injected.
+///
+/// This enables provenance tracking for understanding the "why" behind each anomaly.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum AnomalyCausalReason {
+    /// Injected due to random rate selection.
+    RandomRate {
+        /// Base rate used for selection.
+        base_rate: f64,
+    },
+    /// Injected due to temporal pattern matching.
+    TemporalPattern {
+        /// Name of the temporal pattern (e.g., "year_end_spike", "month_end").
+        pattern_name: String,
+    },
+    /// Injected based on entity targeting rules.
+    EntityTargeting {
+        /// Type of entity targeted (e.g., "vendor", "user", "account").
+        target_type: String,
+        /// ID of the targeted entity.
+        target_id: String,
+    },
+    /// Part of an anomaly cluster.
+    ClusterMembership {
+        /// ID of the cluster this anomaly belongs to.
+        cluster_id: String,
+    },
+    /// Part of a multi-step scenario.
+    ScenarioStep {
+        /// Type of scenario (e.g., "kickback_scheme", "round_tripping").
+        scenario_type: String,
+        /// Step number within the scenario.
+        step_number: u32,
+    },
+    /// Injected based on data quality profile.
+    DataQualityProfile {
+        /// Profile name (e.g., "noisy", "legacy", "clean").
+        profile: String,
+    },
+    /// Injected for ML training balance.
+    MLTrainingBalance {
+        /// Target class being balanced.
+        target_class: String,
+    },
+}
+
+/// Structured injection strategy with captured parameters.
+///
+/// Unlike the string-based `injection_strategy` field, this enum captures
+/// the exact parameters used during injection for full reproducibility.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum InjectionStrategy {
+    /// Amount was manipulated by a factor.
+    AmountManipulation {
+        /// Original amount before manipulation.
+        original: Decimal,
+        /// Multiplication factor applied.
+        factor: f64,
+    },
+    /// Amount adjusted to avoid a threshold.
+    ThresholdAvoidance {
+        /// Threshold being avoided.
+        threshold: Decimal,
+        /// Final amount after adjustment.
+        adjusted_amount: Decimal,
+    },
+    /// Date was backdated or forward-dated.
+    DateShift {
+        /// Number of days shifted (negative = backdated).
+        days_shifted: i32,
+        /// Original date before shift.
+        original_date: NaiveDate,
+    },
+    /// User approved their own transaction.
+    SelfApproval {
+        /// User who created and approved.
+        user_id: String,
+    },
+    /// Segregation of duties violation.
+    SoDViolation {
+        /// First duty involved.
+        duty1: String,
+        /// Second duty involved.
+        duty2: String,
+        /// User who performed both duties.
+        violating_user: String,
+    },
+    /// Exact duplicate of another document.
+    ExactDuplicate {
+        /// ID of the original document.
+        original_doc_id: String,
+    },
+    /// Near-duplicate with small variations.
+    NearDuplicate {
+        /// ID of the original document.
+        original_doc_id: String,
+        /// Fields that were varied.
+        varied_fields: Vec<String>,
+    },
+    /// Circular flow of funds/goods.
+    CircularFlow {
+        /// Chain of entities involved.
+        entity_chain: Vec<String>,
+    },
+    /// Split transaction to avoid threshold.
+    SplitTransaction {
+        /// Original total amount.
+        original_amount: Decimal,
+        /// Number of splits.
+        split_count: u32,
+        /// IDs of the split documents.
+        split_doc_ids: Vec<String>,
+    },
+    /// Round number manipulation.
+    RoundNumbering {
+        /// Original precise amount.
+        original_amount: Decimal,
+        /// Rounded amount.
+        rounded_amount: Decimal,
+    },
+    /// Timing manipulation (weekend, after-hours, etc.).
+    TimingManipulation {
+        /// Type of timing issue.
+        timing_type: String,
+        /// Original timestamp.
+        original_time: Option<NaiveDateTime>,
+    },
+    /// Account misclassification.
+    AccountMisclassification {
+        /// Correct account.
+        correct_account: String,
+        /// Incorrect account used.
+        incorrect_account: String,
+    },
+    /// Missing required field.
+    MissingField {
+        /// Name of the missing field.
+        field_name: String,
+    },
+    /// Custom injection strategy.
+    Custom {
+        /// Strategy name.
+        name: String,
+        /// Additional parameters.
+        parameters: HashMap<String, String>,
+    },
+}
+
+impl InjectionStrategy {
+    /// Returns a human-readable description of the strategy.
+    pub fn description(&self) -> String {
+        match self {
+            InjectionStrategy::AmountManipulation { factor, .. } => {
+                format!("Amount multiplied by {:.2}", factor)
+            }
+            InjectionStrategy::ThresholdAvoidance { threshold, .. } => {
+                format!("Amount adjusted to avoid {} threshold", threshold)
+            }
+            InjectionStrategy::DateShift { days_shifted, .. } => {
+                if *days_shifted < 0 {
+                    format!("Date backdated by {} days", days_shifted.abs())
+                } else {
+                    format!("Date forward-dated by {} days", days_shifted)
+                }
+            }
+            InjectionStrategy::SelfApproval { user_id } => {
+                format!("Self-approval by user {}", user_id)
+            }
+            InjectionStrategy::SoDViolation { duty1, duty2, .. } => {
+                format!("SoD violation: {} and {}", duty1, duty2)
+            }
+            InjectionStrategy::ExactDuplicate { original_doc_id } => {
+                format!("Exact duplicate of {}", original_doc_id)
+            }
+            InjectionStrategy::NearDuplicate { original_doc_id, varied_fields } => {
+                format!("Near-duplicate of {} (varied: {:?})", original_doc_id, varied_fields)
+            }
+            InjectionStrategy::CircularFlow { entity_chain } => {
+                format!("Circular flow through {} entities", entity_chain.len())
+            }
+            InjectionStrategy::SplitTransaction { split_count, .. } => {
+                format!("Split into {} transactions", split_count)
+            }
+            InjectionStrategy::RoundNumbering { .. } => "Amount rounded to even number".to_string(),
+            InjectionStrategy::TimingManipulation { timing_type, .. } => {
+                format!("Timing manipulation: {}", timing_type)
+            }
+            InjectionStrategy::AccountMisclassification { correct_account, incorrect_account } => {
+                format!("Misclassified from {} to {}", correct_account, incorrect_account)
+            }
+            InjectionStrategy::MissingField { field_name } => {
+                format!("Missing required field: {}", field_name)
+            }
+            InjectionStrategy::Custom { name, .. } => format!("Custom: {}", name),
+        }
+    }
+
+    /// Returns the strategy type name.
+    pub fn strategy_type(&self) -> &'static str {
+        match self {
+            InjectionStrategy::AmountManipulation { .. } => "AmountManipulation",
+            InjectionStrategy::ThresholdAvoidance { .. } => "ThresholdAvoidance",
+            InjectionStrategy::DateShift { .. } => "DateShift",
+            InjectionStrategy::SelfApproval { .. } => "SelfApproval",
+            InjectionStrategy::SoDViolation { .. } => "SoDViolation",
+            InjectionStrategy::ExactDuplicate { .. } => "ExactDuplicate",
+            InjectionStrategy::NearDuplicate { .. } => "NearDuplicate",
+            InjectionStrategy::CircularFlow { .. } => "CircularFlow",
+            InjectionStrategy::SplitTransaction { .. } => "SplitTransaction",
+            InjectionStrategy::RoundNumbering { .. } => "RoundNumbering",
+            InjectionStrategy::TimingManipulation { .. } => "TimingManipulation",
+            InjectionStrategy::AccountMisclassification { .. } => "AccountMisclassification",
+            InjectionStrategy::MissingField { .. } => "MissingField",
+            InjectionStrategy::Custom { .. } => "Custom",
+        }
+    }
+}
+
 /// Primary anomaly classification.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AnomalyType {
@@ -433,10 +651,52 @@ pub struct LabeledAnomaly {
     pub metadata: HashMap<String, String>,
     /// Whether this was injected (true) or naturally occurring (false).
     pub is_injected: bool,
-    /// Injection strategy used (if injected).
+    /// Injection strategy used (if injected) - legacy string field.
     pub injection_strategy: Option<String>,
     /// Cluster ID if part of an anomaly cluster.
     pub cluster_id: Option<String>,
+
+    // ========================================
+    // PROVENANCE TRACKING FIELDS (Phase 1.2)
+    // ========================================
+
+    /// Hash of the original document before modification.
+    /// Enables tracking what the document looked like pre-injection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original_document_hash: Option<String>,
+
+    /// Causal reason explaining why this anomaly was injected.
+    /// Provides "why" tracking for each anomaly.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub causal_reason: Option<AnomalyCausalReason>,
+
+    /// Structured injection strategy with parameters.
+    /// More detailed than the legacy string-based injection_strategy field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structured_strategy: Option<InjectionStrategy>,
+
+    /// Parent anomaly ID if this was derived from another anomaly.
+    /// Enables anomaly transformation chains.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_anomaly_id: Option<String>,
+
+    /// Child anomaly IDs that were derived from this anomaly.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub child_anomaly_ids: Vec<String>,
+
+    /// Scenario ID if this anomaly is part of a multi-step scenario.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scenario_id: Option<String>,
+
+    /// Generation run ID that produced this anomaly.
+    /// Enables tracing anomalies back to their generation run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
+
+    /// Seed used for RNG during generation.
+    /// Enables reproducibility.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generation_seed: Option<u64>,
 }
 
 impl LabeledAnomaly {
@@ -474,6 +734,15 @@ impl LabeledAnomaly {
             is_injected: true,
             injection_strategy: None,
             cluster_id: None,
+            // Provenance fields
+            original_document_hash: None,
+            causal_reason: None,
+            structured_strategy: None,
+            parent_anomaly_id: None,
+            child_anomaly_ids: Vec::new(),
+            scenario_id: None,
+            run_id: None,
+            generation_seed: None,
         }
     }
 
@@ -501,7 +770,7 @@ impl LabeledAnomaly {
         self
     }
 
-    /// Sets the injection strategy.
+    /// Sets the injection strategy (legacy string).
     pub fn with_injection_strategy(mut self, strategy: &str) -> Self {
         self.injection_strategy = Some(strategy.to_string());
         self
@@ -513,7 +782,88 @@ impl LabeledAnomaly {
         self
     }
 
+    // ========================================
+    // PROVENANCE BUILDER METHODS (Phase 1.2)
+    // ========================================
+
+    /// Sets the original document hash for provenance tracking.
+    pub fn with_original_document_hash(mut self, hash: &str) -> Self {
+        self.original_document_hash = Some(hash.to_string());
+        self
+    }
+
+    /// Sets the causal reason for this anomaly.
+    pub fn with_causal_reason(mut self, reason: AnomalyCausalReason) -> Self {
+        self.causal_reason = Some(reason);
+        self
+    }
+
+    /// Sets the structured injection strategy.
+    pub fn with_structured_strategy(mut self, strategy: InjectionStrategy) -> Self {
+        // Also set the legacy string field for backward compatibility
+        self.injection_strategy = Some(strategy.strategy_type().to_string());
+        self.structured_strategy = Some(strategy);
+        self
+    }
+
+    /// Sets the parent anomaly ID (for anomaly derivation chains).
+    pub fn with_parent_anomaly(mut self, parent_id: &str) -> Self {
+        self.parent_anomaly_id = Some(parent_id.to_string());
+        self
+    }
+
+    /// Adds a child anomaly ID.
+    pub fn with_child_anomaly(mut self, child_id: &str) -> Self {
+        self.child_anomaly_ids.push(child_id.to_string());
+        self
+    }
+
+    /// Sets the scenario ID for multi-step scenario tracking.
+    pub fn with_scenario(mut self, scenario_id: &str) -> Self {
+        self.scenario_id = Some(scenario_id.to_string());
+        self
+    }
+
+    /// Sets the generation run ID.
+    pub fn with_run_id(mut self, run_id: &str) -> Self {
+        self.run_id = Some(run_id.to_string());
+        self
+    }
+
+    /// Sets the generation seed for reproducibility.
+    pub fn with_generation_seed(mut self, seed: u64) -> Self {
+        self.generation_seed = Some(seed);
+        self
+    }
+
+    /// Sets multiple provenance fields at once for convenience.
+    pub fn with_provenance(
+        mut self,
+        run_id: Option<&str>,
+        seed: Option<u64>,
+        causal_reason: Option<AnomalyCausalReason>,
+    ) -> Self {
+        if let Some(id) = run_id {
+            self.run_id = Some(id.to_string());
+        }
+        self.generation_seed = seed;
+        self.causal_reason = causal_reason;
+        self
+    }
+
     /// Converts to a feature vector for ML.
+    ///
+    /// Returns a vector of 15 features:
+    /// - 6 features: Category one-hot encoding (Fraud, Error, ProcessIssue, Statistical, Relational, Custom)
+    /// - 1 feature: Severity (normalized 0-1)
+    /// - 1 feature: Confidence
+    /// - 1 feature: Has monetary impact (0/1)
+    /// - 1 feature: Monetary impact (log-scaled)
+    /// - 1 feature: Is intentional (0/1)
+    /// - 1 feature: Number of related entities
+    /// - 1 feature: Is part of cluster (0/1)
+    /// - 1 feature: Is part of scenario (0/1)
+    /// - 1 feature: Has parent anomaly (0/1) - indicates derivation
     pub fn to_features(&self) -> Vec<f64> {
         let mut features = Vec::new();
 
@@ -568,7 +918,44 @@ impl LabeledAnomaly {
         // Is part of cluster
         features.push(if self.cluster_id.is_some() { 1.0 } else { 0.0 });
 
+        // Provenance features
+        // Is part of scenario
+        features.push(if self.scenario_id.is_some() { 1.0 } else { 0.0 });
+
+        // Has parent anomaly (indicates this is a derived anomaly)
+        features.push(if self.parent_anomaly_id.is_some() {
+            1.0
+        } else {
+            0.0
+        });
+
         features
+    }
+
+    /// Returns the number of features in the feature vector.
+    pub fn feature_count() -> usize {
+        15 // 6 category + 9 other features
+    }
+
+    /// Returns feature names for documentation/ML metadata.
+    pub fn feature_names() -> Vec<&'static str> {
+        vec![
+            "category_fraud",
+            "category_error",
+            "category_process_issue",
+            "category_statistical",
+            "category_relational",
+            "category_custom",
+            "severity_normalized",
+            "confidence",
+            "has_monetary_impact",
+            "monetary_impact_log",
+            "is_intentional",
+            "related_entity_count",
+            "is_clustered",
+            "is_scenario_part",
+            "is_derived",
+        ]
     }
 }
 
@@ -717,6 +1104,7 @@ impl AnomalyRateConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rust_decimal_macros::dec;
 
     #[test]
     fn test_anomaly_type_category() {
@@ -745,6 +1133,155 @@ mod tests {
         assert_eq!(anomaly.severity, 3);
         assert!(anomaly.is_injected);
         assert_eq!(anomaly.related_entities.len(), 1);
+    }
+
+    #[test]
+    fn test_labeled_anomaly_with_provenance() {
+        let anomaly = LabeledAnomaly::new(
+            "ANO001".to_string(),
+            AnomalyType::Fraud(FraudType::SelfApproval),
+            "JE001".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        )
+        .with_run_id("run-123")
+        .with_generation_seed(42)
+        .with_causal_reason(AnomalyCausalReason::RandomRate { base_rate: 0.02 })
+        .with_structured_strategy(InjectionStrategy::SelfApproval {
+            user_id: "USER001".to_string(),
+        })
+        .with_scenario("scenario-001")
+        .with_original_document_hash("abc123");
+
+        assert_eq!(anomaly.run_id, Some("run-123".to_string()));
+        assert_eq!(anomaly.generation_seed, Some(42));
+        assert!(anomaly.causal_reason.is_some());
+        assert!(anomaly.structured_strategy.is_some());
+        assert_eq!(anomaly.scenario_id, Some("scenario-001".to_string()));
+        assert_eq!(anomaly.original_document_hash, Some("abc123".to_string()));
+
+        // Check that legacy injection_strategy is also set
+        assert_eq!(anomaly.injection_strategy, Some("SelfApproval".to_string()));
+    }
+
+    #[test]
+    fn test_labeled_anomaly_derivation_chain() {
+        let parent = LabeledAnomaly::new(
+            "ANO001".to_string(),
+            AnomalyType::Fraud(FraudType::DuplicatePayment),
+            "JE001".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        );
+
+        let child = LabeledAnomaly::new(
+            "ANO002".to_string(),
+            AnomalyType::Error(ErrorType::DuplicateEntry),
+            "JE002".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        )
+        .with_parent_anomaly(&parent.anomaly_id);
+
+        assert_eq!(child.parent_anomaly_id, Some("ANO001".to_string()));
+    }
+
+    #[test]
+    fn test_injection_strategy_description() {
+        let strategy = InjectionStrategy::AmountManipulation {
+            original: dec!(1000),
+            factor: 2.5,
+        };
+        assert_eq!(strategy.description(), "Amount multiplied by 2.50");
+        assert_eq!(strategy.strategy_type(), "AmountManipulation");
+
+        let strategy = InjectionStrategy::ThresholdAvoidance {
+            threshold: dec!(10000),
+            adjusted_amount: dec!(9999),
+        };
+        assert_eq!(
+            strategy.description(),
+            "Amount adjusted to avoid 10000 threshold"
+        );
+
+        let strategy = InjectionStrategy::DateShift {
+            days_shifted: -5,
+            original_date: NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        };
+        assert_eq!(strategy.description(), "Date backdated by 5 days");
+
+        let strategy = InjectionStrategy::DateShift {
+            days_shifted: 3,
+            original_date: NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        };
+        assert_eq!(strategy.description(), "Date forward-dated by 3 days");
+    }
+
+    #[test]
+    fn test_causal_reason_variants() {
+        let reason = AnomalyCausalReason::RandomRate { base_rate: 0.02 };
+        if let AnomalyCausalReason::RandomRate { base_rate } = reason {
+            assert!((base_rate - 0.02).abs() < 0.001);
+        }
+
+        let reason = AnomalyCausalReason::TemporalPattern {
+            pattern_name: "year_end_spike".to_string(),
+        };
+        if let AnomalyCausalReason::TemporalPattern { pattern_name } = reason {
+            assert_eq!(pattern_name, "year_end_spike");
+        }
+
+        let reason = AnomalyCausalReason::ScenarioStep {
+            scenario_type: "kickback".to_string(),
+            step_number: 3,
+        };
+        if let AnomalyCausalReason::ScenarioStep {
+            scenario_type,
+            step_number,
+        } = reason
+        {
+            assert_eq!(scenario_type, "kickback");
+            assert_eq!(step_number, 3);
+        }
+    }
+
+    #[test]
+    fn test_feature_vector_length() {
+        let anomaly = LabeledAnomaly::new(
+            "ANO001".to_string(),
+            AnomalyType::Fraud(FraudType::SelfApproval),
+            "JE001".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        );
+
+        let features = anomaly.to_features();
+        assert_eq!(features.len(), LabeledAnomaly::feature_count());
+        assert_eq!(features.len(), LabeledAnomaly::feature_names().len());
+    }
+
+    #[test]
+    fn test_feature_vector_with_provenance() {
+        let anomaly = LabeledAnomaly::new(
+            "ANO001".to_string(),
+            AnomalyType::Fraud(FraudType::SelfApproval),
+            "JE001".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        )
+        .with_scenario("scenario-001")
+        .with_parent_anomaly("ANO000");
+
+        let features = anomaly.to_features();
+
+        // Last two features should be 1.0 (has scenario, has parent)
+        assert_eq!(features[features.len() - 2], 1.0); // is_scenario_part
+        assert_eq!(features[features.len() - 1], 1.0); // is_derived
     }
 
     #[test]
@@ -787,5 +1324,40 @@ mod tests {
             ..Default::default()
         };
         assert!(bad_config.validate().is_err());
+    }
+
+    #[test]
+    fn test_injection_strategy_serialization() {
+        let strategy = InjectionStrategy::SoDViolation {
+            duty1: "CreatePO".to_string(),
+            duty2: "ApprovePO".to_string(),
+            violating_user: "USER001".to_string(),
+        };
+
+        let json = serde_json::to_string(&strategy).unwrap();
+        let deserialized: InjectionStrategy = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(strategy, deserialized);
+    }
+
+    #[test]
+    fn test_labeled_anomaly_serialization_with_provenance() {
+        let anomaly = LabeledAnomaly::new(
+            "ANO001".to_string(),
+            AnomalyType::Fraud(FraudType::SelfApproval),
+            "JE001".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        )
+        .with_run_id("run-123")
+        .with_generation_seed(42)
+        .with_causal_reason(AnomalyCausalReason::RandomRate { base_rate: 0.02 });
+
+        let json = serde_json::to_string(&anomaly).unwrap();
+        let deserialized: LabeledAnomaly = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(anomaly.run_id, deserialized.run_id);
+        assert_eq!(anomaly.generation_seed, deserialized.generation_seed);
     }
 }

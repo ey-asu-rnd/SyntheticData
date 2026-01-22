@@ -23,7 +23,14 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 rand = { workspace = true }
 rust_decimal = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+csv = { workspace = true }
+uuid = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
 datasynth-test-utils = { workspace = true }
+tempfile = { workspace = true }

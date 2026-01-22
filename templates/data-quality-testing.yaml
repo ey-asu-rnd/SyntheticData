@@ -1,0 +1,96 @@
+# Data Quality Testing Template
+# Purpose: Generate data with various quality issues for DQ tool validation
+# Use case: Testing data quality detection tools and pipelines
+
+global:
+  industry: financial_services
+  start_date: "2024-01-01"
+  period_months: 3
+  seed: 98765
+  group_currency: USD
+  parallel: true
+  worker_threads: 2
+  memory_limit_mb: 1024
+
+companies:
+  - code: "1000"
+    name: "Financial Services Inc"
+    currency: USD
+    country: US
+    annual_transaction_volume: ten_k
+    volume_weight: 1.0
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: small
+  industry_specific: true
+  min_hierarchy_depth: 2
+  max_hierarchy_depth: 4
+
+fraud:
+  enabled: false  # Focus on data quality, not fraud
+
+data_quality:
+  enabled: true
+  preset: legacy  # Use "legacy" profile for maximum DQ issues
+  generate_labels: true
+  missing_values:
+    enabled: true
+    rate: 0.10
+    strategy: systematic  # Systematic missing for realistic patterns
+    field_weights:
+      description: 0.3
+      reference: 0.25
+      cost_center: 0.2
+      user_id: 0.15
+      tax_code: 0.1
+  typos:
+    enabled: true
+    rate: 0.05
+    keyboard_proximity: true
+    ocr_errors: true
+    homophones: false
+  format_variations:
+    enabled: true
+    date_formats:
+      - iso
+      - us
+      - eu
+    amount_formats:
+      - plain
+      - us_comma
+      - eu_format
+    identifier_variations: true
+  duplicates:
+    enabled: true
+    exact_rate: 0.02
+    near_rate: 0.03
+    fuzzy_rate: 0.01
+  encoding_issues:
+    enabled: true
+    rate: 0.01
+    types:
+      - mojibake
+      - bom
+
+scenario:
+  tags:
+    - data_quality
+    - dq_testing
+    - legacy_data
+    - financial_services
+  profile: legacy
+  description: "Legacy-style data with heavy quality issues for DQ tool testing"
+  ml_training: false
+
+output:
+  output_directory: ./output/dq_testing
+  formats:
+    - csv
+    - json
+  compression:
+    enabled: false
+  batch_size: 500
+  include_acdoca: false
+  partition_by_period: false
+  partition_by_company: false

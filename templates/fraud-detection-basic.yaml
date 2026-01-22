@@ -1,0 +1,81 @@
+# Fraud Detection Basic Template
+# Purpose: Generate labeled fraud data for ML model training
+# Use case: Basic fraud detection model development
+
+global:
+  industry: retail
+  start_date: "2024-01-01"
+  period_months: 12
+  seed: 42
+  group_currency: USD
+  parallel: true
+  worker_threads: 4
+  memory_limit_mb: 2048
+
+companies:
+  - code: "1000"
+    name: "Retail Corp"
+    currency: USD
+    country: US
+    annual_transaction_volume: hundred_k
+    volume_weight: 1.0
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: medium
+  industry_specific: true
+  min_hierarchy_depth: 2
+  max_hierarchy_depth: 5
+
+fraud:
+  enabled: true
+  fraud_rate: 0.05  # 5% fraud rate for balanced training
+  fraud_type_distribution:
+    suspense_account_abuse: 0.15
+    fictitious_transaction: 0.20
+    revenue_manipulation: 0.10
+    expense_capitalization: 0.10
+    split_transaction: 0.15
+    timing_anomaly: 0.10
+    unauthorized_access: 0.10
+    duplicate_payment: 0.10
+  clustering_enabled: true
+  clustering_factor: 0.3
+  approval_thresholds:
+    - 1000.0
+    - 5000.0
+    - 25000.0
+    - 100000.0
+
+data_quality:
+  enabled: true
+  preset: noisy  # Add realistic data quality issues
+  generate_labels: true
+  missing_values:
+    enabled: true
+    rate: 0.02
+  typos:
+    enabled: true
+    rate: 0.01
+
+scenario:
+  tags:
+    - fraud_detection
+    - ml_training
+    - retail
+  profile: noisy
+  description: "Retail fraud detection training dataset with 5% fraud rate"
+  ml_training: true
+  target_anomaly_ratio: 0.05
+
+output:
+  output_directory: ./output/fraud_detection
+  formats:
+    - csv
+    - json
+  compression:
+    enabled: false
+  batch_size: 1000
+  include_acdoca: false
+  partition_by_period: true
+  partition_by_company: false
