@@ -105,4 +105,10 @@
 
 ---
 
+# Roadmap
+
+- [Enterprise Simulation & ML Ground Truth](roadmap/README.md)
+
+---
+
 <!-- API Documentation is generated separately by rustdoc and available at /api/ after deployment -->
