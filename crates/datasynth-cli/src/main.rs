@@ -269,6 +269,9 @@ fn main() -> Result<()> {
                 generate_banking: banking,
                 generate_audit: audit,
                 show_progress: true,
+                // Wire up anomaly and data quality injection from config
+                inject_anomalies: generator_config.fraud.enabled,
+                inject_data_quality: generator_config.data_quality.enabled,
                 // Use conservative defaults for document generation
                 p2p_chains: 50,
                 o2c_chains: 50,
