@@ -213,6 +213,19 @@ pub struct JournalEntryHeader {
     /// Fraud type if applicable
     pub fraud_type: Option<FraudType>,
 
+    // --- Anomaly Tracking Fields ---
+    /// Whether this entry has an injected anomaly
+    #[serde(default)]
+    pub is_anomaly: bool,
+
+    /// Unique anomaly identifier for label linkage
+    #[serde(default)]
+    pub anomaly_id: Option<String>,
+
+    /// Type of anomaly if applicable (serialized enum name)
+    #[serde(default)]
+    pub anomaly_type: Option<String>,
+
     /// Simulation batch ID for traceability
     pub batch_id: Option<Uuid>,
 
@@ -279,6 +292,10 @@ impl JournalEntryHeader {
             ledger: "0L".to_string(),
             is_fraud: false,
             fraud_type: None,
+            // Anomaly tracking
+            is_anomaly: false,
+            anomaly_id: None,
+            anomaly_type: None,
             batch_id: None,
             // Internal Controls / SOX fields
             control_ids: Vec::new(),
@@ -324,6 +341,10 @@ impl JournalEntryHeader {
             ledger: "0L".to_string(),
             is_fraud: false,
             fraud_type: None,
+            // Anomaly tracking
+            is_anomaly: false,
+            anomaly_id: None,
+            anomaly_type: None,
             batch_id: None,
             // Internal Controls / SOX fields
             control_ids: Vec::new(),

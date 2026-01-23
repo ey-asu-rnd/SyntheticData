@@ -369,8 +369,9 @@ impl TypoGenerator {
 
         let mut result: Vec<char> = word.chars().collect();
         let mut typos_in_word = 0;
+        let mut i = 0;
 
-        for i in 0..result.len() {
+        while i < result.len() {
             if typos_in_word >= self.config.max_typos_per_word {
                 break;
             }
@@ -396,16 +397,26 @@ impl TypoGenerator {
                     TypoType::Deletion => {
                         if result.len() > 1 {
                             result.remove(i);
+                            // Don't increment i since we removed the current element
+                            // Stats are tracked below, just continue to avoid index issues
+                            self.stats.total_typos += 1;
+                            *self.stats.by_type.entry(typo_type).or_insert(0) += 1;
+                            typos_in_word += 1;
+                            continue;
                         }
                     }
                     TypoType::Insertion => {
                         let nearby = self.keyboard.get_nearby(c);
                         if !nearby.is_empty() {
                             result.insert(i, nearby[rng.gen_range(0..nearby.len())]);
+                            // Skip the inserted character
+                            i += 1;
                         }
                     }
                     TypoType::DoubleChar => {
                         result.insert(i, c);
+                        // Skip the duplicated character
+                        i += 1;
                     }
                     TypoType::CaseError => {
                         if c.is_uppercase() {
@@ -429,6 +440,7 @@ impl TypoGenerator {
                 *self.stats.by_type.entry(typo_type).or_insert(0) += 1;
                 typos_in_word += 1;
             }
+            i += 1;
         }
 
         result.into_iter().collect()

@@ -148,6 +148,9 @@ pub fn balanced_journal_entry(amount: Decimal) -> JournalEntry {
             ocpm_event_ids: vec![],
             ocpm_object_ids: vec![],
             ocpm_case_id: None,
+            is_anomaly: false,
+            anomaly_id: None,
+            anomaly_type: None,
         },
         lines: vec![
             JournalEntryLine::debit(doc_id, 1, "100000".to_string(), amount),

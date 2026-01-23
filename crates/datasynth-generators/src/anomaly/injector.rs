@@ -11,8 +11,8 @@ use rust_decimal::Decimal;
 use std::collections::HashMap;
 
 use datasynth_core::models::{
-    AnomalyRateConfig, AnomalySummary, AnomalyType, ErrorType, FraudType, JournalEntry,
-    LabeledAnomaly, RelationalAnomalyType,
+    AnomalyCausalReason, AnomalyRateConfig, AnomalySummary, AnomalyType, ErrorType, FraudType,
+    JournalEntry, LabeledAnomaly, RelationalAnomalyType,
 };
 
 use super::patterns::{
@@ -297,6 +297,19 @@ impl AnomalyInjector {
         if self.config.generate_labels {
             let anomaly_id = format!("ANO{:08}", self.labels.len() + 1);
 
+            // Update entry header with anomaly tracking fields
+            entry.header.is_anomaly = true;
+            entry.header.anomaly_id = Some(anomaly_id.clone());
+            entry.header.anomaly_type = Some(type_name.clone());
+
+            // Also set fraud flag if this is a fraud anomaly
+            if matches!(anomaly_type, AnomalyType::Fraud(_)) {
+                entry.header.is_fraud = true;
+                if let AnomalyType::Fraud(ref ft) = anomaly_type {
+                    entry.header.fraud_type = Some(ft.clone());
+                }
+            }
+
             let mut label = LabeledAnomaly::new(
                 anomaly_id,
                 anomaly_type.clone(),
@@ -307,6 +320,12 @@ impl AnomalyInjector {
             )
             .with_description(&result.description)
             .with_injection_strategy(&type_name);
+
+            // Add causal reason with injection context (provenance tracking)
+            let causal_reason = AnomalyCausalReason::RandomRate {
+                base_rate: self.config.rates.total_rate,
+            };
+            label = label.with_causal_reason(causal_reason);
 
             // Add monetary impact
             if let Some(impact) = result.monetary_impact {
@@ -323,12 +342,16 @@ impl AnomalyInjector {
                 label = label.with_metadata(key, value);
             }
 
-            // Assign cluster
+            // Assign cluster and update causal reason if in cluster
             if let Some(cluster_id) =
                 self.cluster_manager
                     .assign_cluster(entry.posting_date(), &type_name, &mut self.rng)
             {
                 label = label.with_cluster(&cluster_id);
+                // Update causal reason to reflect cluster membership
+                label = label.with_causal_reason(AnomalyCausalReason::ClusterMembership {
+                    cluster_id: cluster_id.clone(),
+                });
             }
 
             return Some(label);
@@ -364,7 +387,18 @@ impl AnomalyInjector {
         )
         .with_description(&format!("User {} approved their own transaction", user_id))
         .with_related_entity(user_id)
-        .with_injection_strategy("ManualSelfApproval");
+        .with_injection_strategy("ManualSelfApproval")
+        .with_causal_reason(AnomalyCausalReason::EntityTargeting {
+            target_type: "User".to_string(),
+            target_id: user_id.to_string(),
+        });
+
+        // Set entry header anomaly tracking fields
+        entry.header.is_anomaly = true;
+        entry.header.is_fraud = true;
+        entry.header.anomaly_id = Some(label.anomaly_id.clone());
+        entry.header.anomaly_type = Some("SelfApproval".to_string());
+        entry.header.fraud_type = Some(FraudType::SelfApproval);
 
         // Set approver = requester
         entry.header.created_by = user_id.to_string();
@@ -397,7 +431,18 @@ impl AnomalyInjector {
         .with_related_entity(user_id)
         .with_metadata("duty1", conflicting_duties.0)
         .with_metadata("duty2", conflicting_duties.1)
-        .with_injection_strategy("ManualSoDViolation");
+        .with_injection_strategy("ManualSoDViolation")
+        .with_causal_reason(AnomalyCausalReason::EntityTargeting {
+            target_type: "User".to_string(),
+            target_id: user_id.to_string(),
+        });
+
+        // Set entry header anomaly tracking fields
+        entry.header.is_anomaly = true;
+        entry.header.is_fraud = true;
+        entry.header.anomaly_id = Some(label.anomaly_id.clone());
+        entry.header.anomaly_type = Some("SegregationOfDutiesViolation".to_string());
+        entry.header.fraud_type = Some(FraudType::SegregationOfDutiesViolation);
 
         self.labels.push(label.clone());
         Some(label)
@@ -429,7 +474,16 @@ impl AnomalyInjector {
         .with_monetary_impact(actual_amount - expected_amount)
         .with_metadata("expected_amount", &expected_amount.to_string())
         .with_metadata("actual_amount", &actual_amount.to_string())
-        .with_injection_strategy("ManualICMismatch");
+        .with_injection_strategy("ManualICMismatch")
+        .with_causal_reason(AnomalyCausalReason::EntityTargeting {
+            target_type: "Intercompany".to_string(),
+            target_id: matching_company.to_string(),
+        });
+
+        // Set entry header anomaly tracking fields
+        entry.header.is_anomaly = true;
+        entry.header.anomaly_id = Some(label.anomaly_id.clone());
+        entry.header.anomaly_type = Some("UnmatchedIntercompany".to_string());
 
         self.labels.push(label.clone());
         Some(label)
