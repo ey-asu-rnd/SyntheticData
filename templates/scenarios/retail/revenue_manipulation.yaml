@@ -1,0 +1,153 @@
+# Retail - Revenue Manipulation Scenario
+# Purpose: Simulate revenue-related fraud in retail operations
+# Use case: Detecting fictitious sales, premature recognition, channel stuffing
+
+global:
+  industry: retail
+  start_date: "2024-01-01"
+  period_months: 12
+  seed: 77101
+  group_currency: USD
+  parallel: true
+  worker_threads: 4
+  memory_limit_mb: 4096
+
+companies:
+  - code: "1000"
+    name: "Retail Corp Americas"
+    currency: USD
+    country: US
+    annual_transaction_volume: one_m
+    volume_weight: 0.5
+    fiscal_year_variant: K4
+  - code: "2000"
+    name: "Retail Corp Europe"
+    currency: EUR
+    country: GB
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.3
+    fiscal_year_variant: K4
+  - code: "3000"
+    name: "Retail Corp APAC"
+    currency: JPY
+    country: JP
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.2
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: medium
+  industry_specific: true
+  min_hierarchy_depth: 3
+  max_hierarchy_depth: 5
+
+# Heavy customer/sales focus
+master_data:
+  vendors:
+    count_per_company: 200
+    intercompany_rate: 0.10
+  customers:
+    count_per_company: 1000  # Large customer base
+    intercompany_rate: 0.05
+    credit_rating_distribution:
+      excellent: 0.15
+      good: 0.35
+      fair: 0.35
+      poor: 0.15  # Higher poor credit for fraudulent customers
+  materials:
+    count_per_company: 500
+  employees:
+    count_per_company: 150
+    manager_ratio: 0.08
+
+document_flows:
+  p2p:
+    enabled: true
+    chains_per_month: 500
+    three_way_match_rate: 0.85
+  o2c:
+    enabled: true
+    chains_per_month: 2000  # High sales volume
+    credit_check_failure_rate: 0.08
+    partial_shipment_rate: 0.15
+    return_rate: 0.10  # Higher returns
+    payment_behavior:
+      on_time_rate: 0.55
+      early_rate: 0.10
+      late_rate: 0.35
+
+# Revenue manipulation fraud focus
+fraud:
+  enabled: true
+  fraud_rate: 0.06
+  fraud_type_distribution:
+    # Revenue manipulation heavy
+    revenue_manipulation: 0.35      # Premature/fictitious revenue
+    fictitious_transaction: 0.20    # Fake sales
+    timing_anomaly: 0.15            # Cutoff manipulation
+    round_tripping: 0.10            # Sales round-tripping
+    unauthorized_discount: 0.10     # Unauthorized customer discounts
+    suspense_account_abuse: 0.05
+    duplicate_payment: 0.05
+  clustering_enabled: true
+  clustering_factor: 0.40  # Revenue fraud often clusters at period ends
+  temporal_patterns:
+    year_end_spike: true
+    quarter_end_spike: true
+    month_end_spike: true
+  approval_thresholds:
+    - 500.0
+    - 2000.0
+    - 10000.0
+    - 50000.0
+
+internal_controls:
+  enabled: true
+  sod_violation_rate: 0.03
+  self_approval_rate: 0.04
+  exception_rate: 0.04
+
+balance:
+  trial_balance_enabled: true
+  reconciliation_enabled: true
+  period_close_enabled: true
+
+data_quality:
+  enabled: true
+  preset: noisy
+  generate_labels: true
+
+scenario:
+  tags:
+    - fraud_detection
+    - revenue_manipulation
+    - retail
+    - o2c_fraud
+    - channel_stuffing
+    - fictitious_revenue
+  profile: noisy
+  description: "Retail revenue manipulation for fraud detection training"
+  ml_training: true
+  metadata:
+    fraud_focus: revenue
+    primary_schemes: premature_recognition,fictitious_sales,channel_stuffing
+
+temporal:
+  enabled: true
+  amount_mean_drift: 0.025  # Retail typically has higher growth targets
+  anomaly_rate_drift: 0.0015
+  seasonal_drift: true  # Retail has strong seasonality
+  drift_type: mixed
+
+output:
+  output_directory: ./output/scenarios/retail_revenue_fraud
+  formats:
+    - csv
+    - parquet
+  compression:
+    enabled: true
+    level: 6
+  batch_size: 10000
+  include_acdoca: true
+  partition_by_period: true
+  partition_by_company: true

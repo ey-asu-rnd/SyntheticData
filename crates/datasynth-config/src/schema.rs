@@ -70,6 +70,9 @@ pub struct GeneratorConfig {
     /// Scenario configuration for metadata and tagging (Phase 1.3)
     #[serde(default)]
     pub scenario: ScenarioConfig,
+    /// Temporal drift configuration for simulating distribution changes over time (Phase 2.2)
+    #[serde(default)]
+    pub temporal: TemporalDriftConfig,
 }
 
 /// Scenario configuration for metadata, tagging, and ML training setup.
@@ -105,6 +108,128 @@ pub struct ScenarioConfig {
     /// Custom metadata key-value pairs.
     #[serde(default)]
     pub metadata: std::collections::HashMap<String, String>,
+}
+
+/// Temporal drift configuration for simulating distribution changes over time.
+///
+/// This enables generation of data that shows realistic temporal evolution,
+/// useful for training drift detection models and testing temporal robustness.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemporalDriftConfig {
+    /// Enable temporal drift simulation.
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Amount mean drift per period (e.g., 0.02 = 2% mean shift per month).
+    /// Simulates gradual inflation or business growth.
+    #[serde(default = "default_amount_drift")]
+    pub amount_mean_drift: f64,
+
+    /// Amount variance drift per period (e.g., 0.01 = 1% variance increase per month).
+    /// Simulates increasing volatility over time.
+    #[serde(default)]
+    pub amount_variance_drift: f64,
+
+    /// Anomaly rate drift per period (e.g., 0.001 = 0.1% increase per month).
+    /// Simulates increasing fraud attempts or degrading controls.
+    #[serde(default)]
+    pub anomaly_rate_drift: f64,
+
+    /// Concept drift rate - how quickly feature distributions change (0.0-1.0).
+    /// Higher values cause more rapid distribution shifts.
+    #[serde(default = "default_concept_drift")]
+    pub concept_drift_rate: f64,
+
+    /// Sudden drift events - probability of a sudden distribution shift in any period.
+    #[serde(default)]
+    pub sudden_drift_probability: f64,
+
+    /// Magnitude of sudden drift events when they occur (multiplier).
+    #[serde(default = "default_sudden_drift_magnitude")]
+    pub sudden_drift_magnitude: f64,
+
+    /// Seasonal drift - enable cyclic patterns that repeat annually.
+    #[serde(default)]
+    pub seasonal_drift: bool,
+
+    /// Drift start period (0 = from beginning). Use to simulate stable baseline before drift.
+    #[serde(default)]
+    pub drift_start_period: u32,
+
+    /// Drift type: "gradual", "sudden", "recurring", "mixed"
+    #[serde(default = "default_drift_type")]
+    pub drift_type: DriftType,
+}
+
+fn default_amount_drift() -> f64 {
+    0.02
+}
+
+fn default_concept_drift() -> f64 {
+    0.01
+}
+
+fn default_sudden_drift_magnitude() -> f64 {
+    2.0
+}
+
+fn default_drift_type() -> DriftType {
+    DriftType::Gradual
+}
+
+impl Default for TemporalDriftConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            amount_mean_drift: 0.02,
+            amount_variance_drift: 0.0,
+            anomaly_rate_drift: 0.0,
+            concept_drift_rate: 0.01,
+            sudden_drift_probability: 0.0,
+            sudden_drift_magnitude: 2.0,
+            seasonal_drift: false,
+            drift_start_period: 0,
+            drift_type: DriftType::Gradual,
+        }
+    }
+}
+
+impl TemporalDriftConfig {
+    /// Convert to core DriftConfig for use in generators.
+    pub fn to_core_config(&self) -> datasynth_core::distributions::DriftConfig {
+        datasynth_core::distributions::DriftConfig {
+            enabled: self.enabled,
+            amount_mean_drift: self.amount_mean_drift,
+            amount_variance_drift: self.amount_variance_drift,
+            anomaly_rate_drift: self.anomaly_rate_drift,
+            concept_drift_rate: self.concept_drift_rate,
+            sudden_drift_probability: self.sudden_drift_probability,
+            sudden_drift_magnitude: self.sudden_drift_magnitude,
+            seasonal_drift: self.seasonal_drift,
+            drift_start_period: self.drift_start_period,
+            drift_type: match self.drift_type {
+                DriftType::Gradual => datasynth_core::distributions::DriftType::Gradual,
+                DriftType::Sudden => datasynth_core::distributions::DriftType::Sudden,
+                DriftType::Recurring => datasynth_core::distributions::DriftType::Recurring,
+                DriftType::Mixed => datasynth_core::distributions::DriftType::Mixed,
+            },
+        }
+    }
+}
+
+/// Types of temporal drift patterns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DriftType {
+    /// Gradual, continuous drift over time (like inflation).
+    #[default]
+    Gradual,
+    /// Sudden, point-in-time shifts (like policy changes).
+    Sudden,
+    /// Recurring patterns that cycle (like seasonal variations).
+    Recurring,
+    /// Combination of gradual background drift with occasional sudden shifts.
+    Mixed,
 }
 
 /// Global configuration settings.
@@ -2915,6 +3040,96 @@ impl Default for DataQualitySchemaConfig {
     }
 }
 
+impl DataQualitySchemaConfig {
+    /// Creates a config for a specific preset profile.
+    pub fn with_preset(preset: DataQualityPreset) -> Self {
+        let mut config = Self::default();
+        config.preset = preset;
+        config.apply_preset();
+        config
+    }
+
+    /// Applies the preset settings to the individual configuration fields.
+    /// Call this after deserializing if preset is not Custom or None.
+    pub fn apply_preset(&mut self) {
+        if !self.preset.overrides_settings() {
+            return;
+        }
+
+        self.enabled = true;
+
+        // Missing values
+        self.missing_values.enabled = self.preset.missing_rate() > 0.0;
+        self.missing_values.rate = self.preset.missing_rate();
+
+        // Typos
+        self.typos.enabled = self.preset.typo_rate() > 0.0;
+        self.typos.char_error_rate = self.preset.typo_rate();
+
+        // Duplicates
+        self.duplicates.enabled = self.preset.duplicate_rate() > 0.0;
+        self.duplicates.exact_duplicate_ratio = self.preset.duplicate_rate() * 0.4;
+        self.duplicates.near_duplicate_ratio = self.preset.duplicate_rate() * 0.4;
+        self.duplicates.fuzzy_duplicate_ratio = self.preset.duplicate_rate() * 0.2;
+
+        // Format variations
+        self.format_variations.enabled = self.preset.format_variations_enabled();
+
+        // Encoding issues
+        self.encoding_issues.enabled = self.preset.encoding_issues_enabled();
+        self.encoding_issues.rate = self.preset.encoding_issue_rate();
+
+        // OCR errors for typos in legacy preset
+        if self.preset.ocr_errors_enabled() {
+            self.typos.type_weights.ocr_errors = 0.3;
+        }
+    }
+
+    /// Returns the effective missing value rate (considering preset).
+    pub fn effective_missing_rate(&self) -> f64 {
+        if self.preset.overrides_settings() {
+            self.preset.missing_rate()
+        } else {
+            self.missing_values.rate
+        }
+    }
+
+    /// Returns the effective typo rate (considering preset).
+    pub fn effective_typo_rate(&self) -> f64 {
+        if self.preset.overrides_settings() {
+            self.preset.typo_rate()
+        } else {
+            self.typos.char_error_rate
+        }
+    }
+
+    /// Returns the effective duplicate rate (considering preset).
+    pub fn effective_duplicate_rate(&self) -> f64 {
+        if self.preset.overrides_settings() {
+            self.preset.duplicate_rate()
+        } else {
+            self.duplicates.exact_duplicate_ratio
+                + self.duplicates.near_duplicate_ratio
+                + self.duplicates.fuzzy_duplicate_ratio
+        }
+    }
+
+    /// Creates a clean profile config.
+    pub fn clean() -> Self {
+        Self::with_preset(DataQualityPreset::Clean)
+    }
+
+    /// Creates a noisy profile config.
+    pub fn noisy() -> Self {
+        Self::with_preset(DataQualityPreset::Noisy)
+    }
+
+    /// Creates a legacy profile config.
+    pub fn legacy() -> Self {
+        Self::with_preset(DataQualityPreset::Legacy)
+    }
+}
+
 /// Preset configurations for common data quality scenarios.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -2930,6 +3145,121 @@ pub enum DataQualityPreset {
     High,
     /// Custom (use individual settings)
     Custom,
+
+    // ========================================
+    // ML-Oriented Profiles (Phase 2.1)
+    // ========================================
+
+    /// Clean profile for ML training - minimal data quality issues
+    /// Missing: 0.1%, Typos: 0.05%, Duplicates: 0%, Format: None
+    Clean,
+    /// Noisy profile simulating typical production data issues
+    /// Missing: 5%, Typos: 2%, Duplicates: 1%, Format: Medium
+    Noisy,
+    /// Legacy profile simulating migrated/OCR'd historical data
+    /// Missing: 10%, Typos: 5%, Duplicates: 3%, Format: Heavy + OCR
+    Legacy,
+}
+
+impl DataQualityPreset {
+    /// Returns the missing value rate for this preset.
+    pub fn missing_rate(&self) -> f64 {
+        match self {
+            DataQualityPreset::None => 0.0,
+            DataQualityPreset::Minimal => 0.005,
+            DataQualityPreset::Normal => 0.02,
+            DataQualityPreset::High => 0.08,
+            DataQualityPreset::Custom => 0.01, // Use config value
+            DataQualityPreset::Clean => 0.001,
+            DataQualityPreset::Noisy => 0.05,
+            DataQualityPreset::Legacy => 0.10,
+        }
+    }
+
+    /// Returns the typo rate for this preset.
+    pub fn typo_rate(&self) -> f64 {
+        match self {
+            DataQualityPreset::None => 0.0,
+            DataQualityPreset::Minimal => 0.0005,
+            DataQualityPreset::Normal => 0.002,
+            DataQualityPreset::High => 0.01,
+            DataQualityPreset::Custom => 0.001, // Use config value
+            DataQualityPreset::Clean => 0.0005,
+            DataQualityPreset::Noisy => 0.02,
+            DataQualityPreset::Legacy => 0.05,
+        }
+    }
+
+    /// Returns the duplicate rate for this preset.
+    pub fn duplicate_rate(&self) -> f64 {
+        match self {
+            DataQualityPreset::None => 0.0,
+            DataQualityPreset::Minimal => 0.001,
+            DataQualityPreset::Normal => 0.005,
+            DataQualityPreset::High => 0.02,
+            DataQualityPreset::Custom => 0.0, // Use config value
+            DataQualityPreset::Clean => 0.0,
+            DataQualityPreset::Noisy => 0.01,
+            DataQualityPreset::Legacy => 0.03,
+        }
+    }
+
+    /// Returns whether format variations are enabled for this preset.
+    pub fn format_variations_enabled(&self) -> bool {
+        match self {
+            DataQualityPreset::None | DataQualityPreset::Clean => false,
+            DataQualityPreset::Minimal => true,
+            DataQualityPreset::Normal => true,
+            DataQualityPreset::High => true,
+            DataQualityPreset::Custom => true,
+            DataQualityPreset::Noisy => true,
+            DataQualityPreset::Legacy => true,
+        }
+    }
+
+    /// Returns whether OCR-style errors are enabled for this preset.
+    pub fn ocr_errors_enabled(&self) -> bool {
+        matches!(self, DataQualityPreset::Legacy | DataQualityPreset::High)
+    }
+
+    /// Returns whether encoding issues are enabled for this preset.
+    pub fn encoding_issues_enabled(&self) -> bool {
+        matches!(
+            self,
+            DataQualityPreset::Legacy | DataQualityPreset::High | DataQualityPreset::Noisy
+        )
+    }
+
+    /// Returns the encoding issue rate for this preset.
+    pub fn encoding_issue_rate(&self) -> f64 {
+        match self {
+            DataQualityPreset::None | DataQualityPreset::Clean | DataQualityPreset::Minimal => 0.0,
+            DataQualityPreset::Normal => 0.002,
+            DataQualityPreset::High => 0.01,
+            DataQualityPreset::Custom => 0.0,
+            DataQualityPreset::Noisy => 0.005,
+            DataQualityPreset::Legacy => 0.02,
+        }
+    }
+
+    /// Returns true if this preset overrides individual settings.
+    pub fn overrides_settings(&self) -> bool {
+        !matches!(self, DataQualityPreset::Custom | DataQualityPreset::None)
+    }
+
+    /// Returns a human-readable description of this preset.
+    pub fn description(&self) -> &'static str {
+        match self {
+            DataQualityPreset::None => "No data quality issues (pristine data)",
+            DataQualityPreset::Minimal => "Very rare data quality issues",
+            DataQualityPreset::Normal => "Realistic enterprise data quality",
+            DataQualityPreset::High => "Messy data for stress testing",
+            DataQualityPreset::Custom => "Custom settings from configuration",
+            DataQualityPreset::Clean => "ML-ready clean data with minimal issues",
+            DataQualityPreset::Noisy => "Typical production data with moderate issues",
+            DataQualityPreset::Legacy => "Legacy/migrated data with heavy issues and OCR errors",
+        }
+    }
 }
 
 /// Missing value injection configuration.

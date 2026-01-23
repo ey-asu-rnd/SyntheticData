@@ -1,0 +1,180 @@
+# Financial Services - Regulatory Violation Scenario
+# Purpose: Simulate regulatory compliance violations in financial services
+# Use case: Training compliance monitoring models, AML/KYC violations, reporting fraud
+
+global:
+  industry: financial_services
+  start_date: "2024-01-01"
+  period_months: 12
+  seed: 77202
+  group_currency: USD
+  parallel: true
+  worker_threads: 4
+  memory_limit_mb: 8192
+
+companies:
+  - code: "1000"
+    name: "Regional Bank HQ"
+    currency: USD
+    country: US
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.5
+    fiscal_year_variant: K4
+  - code: "2000"
+    name: "Regional Bank West"
+    currency: USD
+    country: US
+    annual_transaction_volume: fifty_k
+    volume_weight: 0.25
+    fiscal_year_variant: K4
+  - code: "3000"
+    name: "Regional Bank East"
+    currency: USD
+    country: US
+    annual_transaction_volume: fifty_k
+    volume_weight: 0.25
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: large
+  industry_specific: true
+  min_hierarchy_depth: 4
+  max_hierarchy_depth: 6
+
+# Banking master data
+master_data:
+  vendors:
+    count_per_company: 80
+    intercompany_rate: 0.20
+  customers:
+    count_per_company: 2000  # Large customer base
+    intercompany_rate: 0.05
+    credit_rating_distribution:
+      excellent: 0.25
+      good: 0.35
+      fair: 0.25
+      poor: 0.15
+  materials:
+    count_per_company: 30  # Financial products
+  employees:
+    count_per_company: 150
+    manager_ratio: 0.12
+
+document_flows:
+  p2p:
+    enabled: true
+    chains_per_month: 150
+    three_way_match_rate: 0.90
+  o2c:
+    enabled: true
+    chains_per_month: 3000
+    credit_check_failure_rate: 0.03
+    payment_behavior:
+      on_time_rate: 0.85
+      early_rate: 0.05
+      late_rate: 0.10
+
+# Enable banking module for AML scenarios
+banking:
+  enabled: true
+  customers_per_company: 500
+  accounts_per_customer:
+    min: 1
+    max: 5
+  transactions_per_account_month:
+    min: 5
+    max: 100
+  aml_typologies:
+    structuring:
+      enabled: true
+      rate: 0.03
+      threshold: 10000.0
+    funnel:
+      enabled: true
+      rate: 0.02
+    layering:
+      enabled: true
+      rate: 0.015
+    mule:
+      enabled: true
+      rate: 0.01
+
+# Regulatory violation focus
+fraud:
+  enabled: true
+  fraud_rate: 0.04
+  fraud_type_distribution:
+    # Regulatory violation heavy
+    split_transaction: 0.30         # Structuring to avoid reporting
+    timing_anomaly: 0.20            # Regulatory reporting timing
+    fictitious_transaction: 0.15    # False documentation
+    suspense_account_abuse: 0.15    # Hiding non-compliant transactions
+    unauthorized_access: 0.10       # Unauthorized account access
+    round_tripping: 0.05            # Money movement to avoid detection
+    expense_capitalization: 0.05
+  clustering_enabled: true
+  clustering_factor: 0.30
+  temporal_patterns:
+    year_end_spike: false  # Regulatory violations are continuous
+    quarter_end_spike: true  # Reporting deadline pressure
+
+internal_controls:
+  enabled: true
+  sod_violation_rate: 0.04  # Higher SoD issues in compliance violations
+  self_approval_rate: 0.03
+  exception_rate: 0.06  # Higher exceptions indicate control gaps
+
+balance:
+  trial_balance_enabled: true
+  reconciliation_enabled: true
+  period_close_enabled: true
+
+data_quality:
+  enabled: true
+  preset: noisy  # Poor data quality often accompanies compliance issues
+  generate_labels: true
+  missing_values:
+    enabled: true
+    rate: 0.05
+    field_weights:
+      customer_id: 0.2
+      documentation: 0.3
+      verification_date: 0.25
+      source_of_funds: 0.25
+
+scenario:
+  tags:
+    - fraud_detection
+    - regulatory_violation
+    - financial_services
+    - aml_violation
+    - kyc_failure
+    - structuring
+    - compliance
+  profile: noisy
+  description: "Financial services regulatory violation for compliance monitoring"
+  ml_training: true
+  metadata:
+    fraud_focus: regulatory
+    primary_schemes: structuring,reporting_violation,kyc_failure
+
+temporal:
+  enabled: true
+  amount_mean_drift: 0.01
+  anomaly_rate_drift: 0.001
+  seasonal_drift: false
+  drift_type: gradual
+
+output:
+  output_directory: ./output/scenarios/financial_regulatory_violation
+  formats:
+    - csv
+    - parquet
+    - json
+  compression:
+    enabled: true
+    level: 6
+  batch_size: 5000
+  include_acdoca: true
+  partition_by_period: true
+  partition_by_company: true

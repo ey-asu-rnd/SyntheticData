@@ -5,6 +5,7 @@
 
 mod amount;
 mod benford;
+mod drift;
 mod holidays;
 mod line_item;
 mod seasonality;
@@ -12,6 +13,7 @@ mod temporal;
 
 pub use amount::*;
 pub use benford::*;
+pub use drift::*;
 pub use holidays::*;
 pub use line_item::*;
 pub use seasonality::*;

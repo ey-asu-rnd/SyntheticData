@@ -1,0 +1,162 @@
+# Manufacturing - Inventory Manipulation Scenario
+# Purpose: Simulate inventory-related fraud in manufacturing
+# Use case: Detecting inventory theft, overstatement, and channel stuffing
+
+global:
+  industry: manufacturing
+  start_date: "2024-01-01"
+  period_months: 12
+  seed: 77002
+  group_currency: USD
+  parallel: true
+  worker_threads: 4
+  memory_limit_mb: 4096
+
+companies:
+  - code: "1000"
+    name: "Manufacturing Corp HQ"
+    currency: USD
+    country: US
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.5
+    fiscal_year_variant: K4
+  - code: "2000"
+    name: "Manufacturing Corp EU"
+    currency: EUR
+    country: DE
+    annual_transaction_volume: fifty_k
+    volume_weight: 0.3
+    fiscal_year_variant: K4
+  - code: "3000"
+    name: "Manufacturing Corp APAC"
+    currency: CNY
+    country: CN
+    annual_transaction_volume: fifty_k
+    volume_weight: 0.2
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: large
+  industry_specific: true
+  min_hierarchy_depth: 3
+  max_hierarchy_depth: 6
+
+# Heavy material/inventory focus
+master_data:
+  vendors:
+    count_per_company: 200
+    intercompany_rate: 0.25  # Higher IC for inventory transfers
+  customers:
+    count_per_company: 250
+    intercompany_rate: 0.20
+  materials:
+    count_per_company: 1000  # Large material base
+    bom_enabled: true
+    average_bom_depth: 3
+  fixed_assets:
+    count_per_company: 150
+  employees:
+    count_per_company: 100
+    manager_ratio: 0.10
+
+document_flows:
+  p2p:
+    enabled: true
+    chains_per_month: 1000
+    three_way_match_rate: 0.80
+    partial_delivery_rate: 0.25  # Higher partial deliveries
+    gr_ir_clearing_enabled: true
+  o2c:
+    enabled: true
+    chains_per_month: 600
+    partial_shipment_rate: 0.30  # Higher partial shipments for channel stuffing
+    return_rate: 0.08  # Higher return rate
+
+intercompany:
+  enabled: true
+  transaction_rate: 0.15
+  matching_enabled: true
+  elimination_enabled: true
+  ic_types:
+    goods_sale: 0.60  # Heavy goods movement
+    service_provided: 0.20
+    management_fee: 0.10
+    royalty: 0.10
+
+# Fraud focused on inventory manipulation
+fraud:
+  enabled: true
+  fraud_rate: 0.04
+  fraud_type_distribution:
+    # Inventory manipulation heavy
+    revenue_manipulation: 0.30      # Channel stuffing, premature revenue
+    expense_capitalization: 0.20    # Capitalizing inventory costs
+    timing_anomaly: 0.15            # Cutoff manipulation
+    fictitious_transaction: 0.10    # Fictitious inventory entries
+    suspense_account_abuse: 0.10    # Hiding inventory discrepancies
+    round_tripping: 0.10            # Inventory round-tripping
+    duplicate_payment: 0.05
+  clustering_enabled: true
+  clustering_factor: 0.30
+  temporal_patterns:
+    year_end_spike: true  # Inventory manipulation peaks at year-end
+    quarter_end_spike: true
+
+internal_controls:
+  enabled: true
+  sod_violation_rate: 0.03
+  self_approval_rate: 0.04
+  exception_rate: 0.05
+
+balance:
+  trial_balance_enabled: true
+  reconciliation_enabled: true
+  period_close_enabled: true
+
+data_quality:
+  enabled: true
+  preset: noisy
+  generate_labels: true
+  missing_values:
+    enabled: true
+    rate: 0.03
+    field_weights:
+      quantity: 0.3
+      unit_price: 0.2
+      reference: 0.2
+      description: 0.3
+
+scenario:
+  tags:
+    - fraud_detection
+    - inventory_manipulation
+    - manufacturing
+    - channel_stuffing
+    - inventory_theft
+    - cutoff_fraud
+  profile: noisy
+  description: "Manufacturing inventory manipulation for fraud detection training"
+  ml_training: true
+  metadata:
+    fraud_focus: inventory
+    primary_schemes: channel_stuffing,inventory_overstatement,cutoff
+
+temporal:
+  enabled: true
+  amount_mean_drift: 0.02
+  anomaly_rate_drift: 0.001
+  seasonal_drift: true
+  drift_type: mixed  # Gradual with sudden quarter-end spikes
+
+output:
+  output_directory: ./output/scenarios/manufacturing_inventory_fraud
+  formats:
+    - csv
+    - parquet
+  compression:
+    enabled: true
+    level: 6
+  batch_size: 5000
+  include_acdoca: true
+  partition_by_period: true
+  partition_by_company: true

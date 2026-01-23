@@ -99,10 +99,22 @@ scenario:
     - anomaly_detection
     - balanced_classes
     - manufacturing
+    - temporal_drift
   profile: clean
-  description: "Balanced anomaly detection dataset for supervised ML training"
+  description: "Balanced anomaly detection dataset for supervised ML training with drift"
   ml_training: true
   target_anomaly_ratio: 0.10
+
+# Temporal drift for training drift-robust models
+temporal:
+  enabled: true
+  amount_mean_drift: 0.02        # 2% mean shift per month (simulates inflation)
+  amount_variance_drift: 0.01   # 1% variance increase per month
+  anomaly_rate_drift: 0.001     # 0.1% anomaly rate increase per month
+  concept_drift_rate: 0.01      # Feature distribution changes
+  seasonal_drift: true          # Enable seasonal patterns
+  drift_start_period: 0         # Start drift from beginning
+  drift_type: gradual           # Gradual drift for training
 
 output:
   output_directory: ./output/ml_training

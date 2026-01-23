@@ -616,6 +616,7 @@ mod tests {
             banking: datasynth_banking::BankingConfig::default(),
             data_quality: DataQualitySchemaConfig::default(),
             scenario: ScenarioConfig::default(),
+            temporal: TemporalDriftConfig::default(),
         }
     }
 

@@ -1096,6 +1096,12 @@ impl EnhancedOrchestrator {
             .with_persona_errors(true)
             .with_fraud_config(self.config.fraud.clone());
 
+        // Apply temporal drift if configured
+        if self.config.temporal.enabled {
+            let drift_config = self.config.temporal.to_core_config();
+            generator = generator.with_drift_config(drift_config, self.seed + 100);
+        }
+
         let mut entries = Vec::with_capacity(total as usize);
 
         // Check memory limit at start
@@ -1924,6 +1930,7 @@ mod tests {
             banking: datasynth_banking::BankingConfig::default(),
             data_quality: DataQualitySchemaConfig::default(),
             scenario: ScenarioConfig::default(),
+            temporal: TemporalDriftConfig::default(),
         }
     }
 

@@ -1,15 +1,36 @@
 //! CLI integration tests for synth-data.
 //!
 //! These tests verify the CLI commands work correctly.
+//!
+//! IMPORTANT: All tests use strict resource limits to prevent system hangs.
 
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
+use std::time::Duration;
 use tempfile::TempDir;
 
-/// Get a Command for our binary.
+/// Safe resource limits for tests
+const TEST_MEMORY_LIMIT: &str = "128";
+const TEST_MAX_THREADS: &str = "1";
+const TEST_TIMEOUT_SECS: u64 = 30;
+
+/// Get a Command for our binary with timeout.
 fn synth_data() -> Command {
-    Command::cargo_bin("synth-data").unwrap()
+    let mut cmd = Command::cargo_bin("synth-data").unwrap();
+    cmd.timeout(Duration::from_secs(TEST_TIMEOUT_SECS));
+    cmd
+}
+
+/// Get a Command for generate with safe resource limits.
+fn synth_data_generate() -> Command {
+    let mut cmd = synth_data();
+    cmd.arg("generate")
+        .arg("--memory-limit")
+        .arg(TEST_MEMORY_LIMIT)
+        .arg("--max-threads")
+        .arg(TEST_MAX_THREADS);
+    cmd
 }
 
 // ==========================================================================
@@ -249,8 +270,7 @@ fn test_generate_demo_creates_output() {
     let temp_dir = TempDir::new().unwrap();
     let output_dir = temp_dir.path().join("output");
 
-    synth_data()
-        .arg("generate")
+    synth_data_generate()
         .arg("--demo")
         .arg("-o")
         .arg(output_dir.to_str().unwrap())
@@ -276,8 +296,7 @@ fn test_generate_with_seed() {
     let temp_dir = TempDir::new().unwrap();
     let output_dir = temp_dir.path().join("output");
 
-    synth_data()
-        .arg("generate")
+    synth_data_generate()
         .arg("--demo")
         .arg("-o")
         .arg(output_dir.to_str().unwrap())
@@ -303,9 +322,8 @@ fn test_generate_from_config_file() {
         .assert()
         .success();
 
-    // Generate from config
-    synth_data()
-        .arg("generate")
+    // Generate from config (with safe resource limits)
+    synth_data_generate()
         .arg("-c")
         .arg(config_path.to_str().unwrap())
         .arg("-o")
@@ -322,8 +340,8 @@ fn test_generate_defaults_to_demo_preset() {
     let output_dir = temp_dir.path().join("output");
 
     // Running without --demo or --config should default to demo preset
-    synth_data()
-        .arg("generate")
+    // (with safe resource limits)
+    synth_data_generate()
         .arg("-o")
         .arg(output_dir.to_str().unwrap())
         .assert()

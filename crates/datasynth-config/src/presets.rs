@@ -50,6 +50,7 @@ pub fn create_preset(
         audit: AuditGenerationConfig::default(),
         banking: datasynth_banking::BankingConfig::default(),
         scenario: ScenarioConfig::default(),
+        temporal: TemporalDriftConfig::default(),
     }
 }
 

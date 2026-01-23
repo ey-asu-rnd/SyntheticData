@@ -1,0 +1,166 @@
+# Financial Services - Trading Fraud Scenario
+# Purpose: Simulate trading-related fraud in financial services
+# Use case: Detecting unauthorized trading, rogue traders, front-running
+
+global:
+  industry: financial_services
+  start_date: "2024-01-01"
+  period_months: 12
+  seed: 77201
+  group_currency: USD
+  parallel: true
+  worker_threads: 4
+  memory_limit_mb: 8192
+
+companies:
+  - code: "1000"
+    name: "Global Investment Bank HQ"
+    currency: USD
+    country: US
+    annual_transaction_volume: one_m
+    volume_weight: 0.5
+    fiscal_year_variant: K4
+  - code: "2000"
+    name: "Global Investment Bank EU"
+    currency: EUR
+    country: GB
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.3
+    fiscal_year_variant: K4
+  - code: "3000"
+    name: "Global Investment Bank APAC"
+    currency: HKD
+    country: HK
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.2
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: large
+  industry_specific: true
+  min_hierarchy_depth: 4
+  max_hierarchy_depth: 7
+
+# Financial services master data
+master_data:
+  vendors:
+    count_per_company: 100
+    intercompany_rate: 0.25
+  customers:
+    count_per_company: 500
+    intercompany_rate: 0.30  # High intercompany for internal transfers
+    credit_rating_distribution:
+      excellent: 0.40
+      good: 0.40
+      fair: 0.15
+      poor: 0.05
+  materials:
+    count_per_company: 50  # Financial products
+  employees:
+    count_per_company: 200
+    manager_ratio: 0.15  # Higher management ratio
+
+document_flows:
+  p2p:
+    enabled: true
+    chains_per_month: 200
+    three_way_match_rate: 0.95
+  o2c:
+    enabled: true
+    chains_per_month: 5000  # High transaction volume
+    credit_check_failure_rate: 0.02
+    partial_shipment_rate: 0.05
+    payment_behavior:
+      on_time_rate: 0.90
+      early_rate: 0.05
+      late_rate: 0.05
+
+intercompany:
+  enabled: true
+  transaction_rate: 0.25  # High intercompany activity
+  matching_enabled: true
+  elimination_enabled: true
+  ic_types:
+    goods_sale: 0.10
+    service_provided: 0.30
+    management_fee: 0.20
+    royalty: 0.05
+    loan: 0.35  # High loan activity
+
+# Trading fraud focus
+fraud:
+  enabled: true
+  fraud_rate: 0.03  # Lower rate but higher impact
+  fraud_type_distribution:
+    # Trading fraud heavy
+    unauthorized_access: 0.25       # Unauthorized trading
+    timing_anomaly: 0.20            # Mark-to-market manipulation
+    round_tripping: 0.20            # Wash trading, circular trades
+    revenue_manipulation: 0.15      # P&L manipulation
+    suspense_account_abuse: 0.10    # Hiding losses
+    fictitious_transaction: 0.05    # Fictitious trades
+    split_transaction: 0.05         # Position splitting
+  clustering_enabled: true
+  clustering_factor: 0.25
+  temporal_patterns:
+    year_end_spike: true
+    quarter_end_spike: true
+    month_end_spike: true  # MTM timing
+  approval_thresholds:
+    - 10000.0
+    - 100000.0
+    - 1000000.0
+    - 10000000.0
+
+internal_controls:
+  enabled: true
+  sod_violation_rate: 0.02
+  self_approval_rate: 0.02
+  exception_rate: 0.03
+
+balance:
+  trial_balance_enabled: true
+  reconciliation_enabled: true
+  period_close_enabled: true
+
+data_quality:
+  enabled: true
+  preset: clean  # Financial services has strict data quality
+  generate_labels: true
+
+scenario:
+  tags:
+    - fraud_detection
+    - trading_fraud
+    - financial_services
+    - rogue_trader
+    - unauthorized_trading
+    - wash_trading
+  profile: clean
+  description: "Financial services trading fraud for detection model training"
+  ml_training: true
+  metadata:
+    fraud_focus: trading
+    primary_schemes: unauthorized_trading,wash_trading,position_hiding
+
+temporal:
+  enabled: true
+  amount_mean_drift: 0.03  # Higher volatility in financial services
+  amount_variance_drift: 0.02
+  anomaly_rate_drift: 0.0005
+  seasonal_drift: false  # Less seasonal, more market-driven
+  drift_type: mixed  # Sudden market events
+
+output:
+  output_directory: ./output/scenarios/financial_trading_fraud
+  formats:
+    - csv
+    - parquet
+    - json
+  compression:
+    enabled: true
+    level: 6
+  batch_size: 10000
+  include_acdoca: true
+  partition_by_period: true
+  partition_by_company: true

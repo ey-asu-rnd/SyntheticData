@@ -2,12 +2,20 @@
 //!
 //! Validates that generated data is suitable for machine learning tasks
 //! including feature distributions, label quality, and graph structure.
+//!
+//! Also provides baseline task definitions for benchmarking synthetic data.
 
+mod baselines;
 mod features;
 mod graph;
 mod labels;
 mod splits;
 
+pub use baselines::{
+    BaselineAlgorithm, BaselineConfig, BaselineEvaluation, BaselineResult, BaselineSummary,
+    BaselineTask, ClassificationMetrics, ExpectedMetrics, MLTaskType, PerformanceGrade,
+    RankingMetrics, RegressionMetrics, get_accounting_baseline_tasks,
+};
 pub use features::{FeatureAnalysis, FeatureAnalyzer, FeatureStats};
 pub use graph::{GraphAnalysis, GraphAnalyzer, GraphMetrics};
 pub use labels::{LabelAnalysis, LabelAnalyzer, LabelDistribution};

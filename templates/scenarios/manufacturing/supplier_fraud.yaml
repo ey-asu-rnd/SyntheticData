@@ -1,0 +1,141 @@
+# Manufacturing - Supplier Fraud Scenario
+# Purpose: Simulate supplier-related fraud schemes in manufacturing
+# Use case: Training fraud detection models for P2P fraud, kickbacks, fictitious vendors
+
+global:
+  industry: manufacturing
+  start_date: "2024-01-01"
+  period_months: 12
+  seed: 77001
+  group_currency: USD
+  parallel: true
+  worker_threads: 4
+  memory_limit_mb: 4096
+
+companies:
+  - code: "1000"
+    name: "Manufacturing Corp HQ"
+    currency: USD
+    country: US
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.6
+    fiscal_year_variant: K4
+  - code: "2000"
+    name: "Manufacturing Corp EU"
+    currency: EUR
+    country: DE
+    annual_transaction_volume: fifty_k
+    volume_weight: 0.4
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: medium
+  industry_specific: true
+  min_hierarchy_depth: 3
+  max_hierarchy_depth: 5
+
+# High vendor count with problematic vendor behavior
+master_data:
+  vendors:
+    count_per_company: 300
+    intercompany_rate: 0.15
+    behavior_distribution:
+      reliable: 0.50
+      erratic: 0.30
+      problematic: 0.20  # Higher problematic rate for fraud scenario
+  customers:
+    count_per_company: 100
+    intercompany_rate: 0.10
+  materials:
+    count_per_company: 500
+    bom_enabled: true
+  employees:
+    count_per_company: 80
+    manager_ratio: 0.12
+
+document_flows:
+  p2p:
+    enabled: true
+    chains_per_month: 800
+    three_way_match_rate: 0.75  # Lower match rate to allow discrepancies
+    partial_delivery_rate: 0.20
+    gr_ir_clearing_enabled: true
+    payment_behavior:
+      on_time_rate: 0.60
+      early_rate: 0.15
+      late_rate: 0.25
+  o2c:
+    enabled: true
+    chains_per_month: 200
+    partial_shipment_rate: 0.10
+
+# Fraud configuration focused on supplier schemes
+fraud:
+  enabled: true
+  fraud_rate: 0.05
+  fraud_type_distribution:
+    # Supplier fraud heavy
+    fictitious_transaction: 0.25    # Fictitious vendors/invoices
+    kickback_scheme: 0.25           # Vendor kickbacks
+    duplicate_payment: 0.15         # Duplicate invoice schemes
+    round_tripping: 0.10            # Round-tripping with vendors
+    split_transaction: 0.10         # Splitting to avoid approval
+    unauthorized_discount: 0.05     # Unauthorized vendor discounts
+    expense_capitalization: 0.05    # Capitalizing expenses
+    suspense_account_abuse: 0.05
+  clustering_enabled: true
+  clustering_factor: 0.35  # Fraud often clusters around specific vendors
+  temporal_patterns:
+    year_end_spike: true
+    quarter_end_spike: true
+  approval_thresholds:
+    - 1000.0
+    - 5000.0
+    - 25000.0
+    - 100000.0
+
+internal_controls:
+  enabled: true
+  sod_violation_rate: 0.04  # Higher SoD violations in fraud scenario
+  self_approval_rate: 0.05
+  exception_rate: 0.03
+
+data_quality:
+  enabled: true
+  preset: noisy  # Noisy data often accompanies fraud
+  generate_labels: true
+
+scenario:
+  tags:
+    - fraud_detection
+    - supplier_fraud
+    - manufacturing
+    - p2p_fraud
+    - kickback
+    - fictitious_vendor
+  profile: noisy
+  description: "Manufacturing supplier fraud scenario for training P2P fraud detection"
+  ml_training: true
+  metadata:
+    fraud_focus: supplier
+    primary_schemes: fictitious_vendor,kickback,duplicate_payment
+
+temporal:
+  enabled: true
+  amount_mean_drift: 0.015
+  anomaly_rate_drift: 0.002  # Increasing fraud over time
+  seasonal_drift: true
+  drift_type: gradual
+
+output:
+  output_directory: ./output/scenarios/manufacturing_supplier_fraud
+  formats:
+    - csv
+    - parquet
+  compression:
+    enabled: true
+    level: 6
+  batch_size: 5000
+  include_acdoca: true
+  partition_by_period: true
+  partition_by_company: true

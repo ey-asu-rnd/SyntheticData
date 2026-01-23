@@ -4,10 +4,11 @@ use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::*;
 use std::sync::Arc;
 
 use datasynth_config::schema::{FraudConfig, GeneratorConfig, TemplateConfig, TransactionConfig};
-use datasynth_core::distributions::*;
+use datasynth_core::distributions::{*, DriftController, DriftConfig, DriftAdjustments};
 use datasynth_core::models::*;
 use datasynth_core::templates::{
     descriptions::DescriptionContext, DescriptionGenerator, ReferenceGenerator, ReferenceType,
@@ -53,6 +54,8 @@ pub struct JournalEntryGenerator {
     approval_threshold: rust_decimal::Decimal,
     // Batching behavior - humans often process similar items together
     batch_state: Option<BatchState>,
+    // Temporal drift controller for simulating distribution changes over time
+    drift_controller: Option<DriftController>,
 }
 
 /// State for tracking batch processing behavior.
@@ -208,6 +211,7 @@ impl JournalEntryGenerator {
             approval_enabled: true,       // Enable by default for realism
             approval_threshold: rust_decimal::Decimal::new(10000, 0), // $10,000 default threshold
             batch_state: None,
+            drift_controller: None,
         }
     }
 
@@ -528,11 +532,24 @@ impl JournalEntryGenerator {
             self.amount_sampler.sample()
         };
 
+        // Apply temporal drift if configured
+        let drift_adjusted_amount = {
+            let drift = self.get_drift_adjustments(posting_date);
+            if drift.amount_mean_multiplier != 1.0 {
+                // Apply drift multiplier (includes seasonal factor if enabled)
+                let multiplier = drift.amount_mean_multiplier * drift.seasonal_factor;
+                let adjusted = base_amount.to_f64().unwrap_or(1.0) * multiplier;
+                Decimal::from_f64_retain(adjusted).unwrap_or(base_amount)
+            } else {
+                base_amount
+            }
+        };
+
         // Apply human variation to amounts for non-automated transactions
         let total_amount = if is_automated {
-            base_amount // Automated systems use exact amounts
+            drift_adjusted_amount // Automated systems use exact amounts
         } else {
-            self.apply_human_variation(base_amount)
+            self.apply_human_variation(drift_adjusted_amount)
         };
 
         // Generate debit lines
@@ -1234,6 +1251,58 @@ impl JournalEntryGenerator {
     pub fn with_approval_threshold(mut self, threshold: rust_decimal::Decimal) -> Self {
         self.approval_threshold = threshold;
         self
+    }
+
+    /// Set the temporal drift controller for simulating distribution changes over time.
+    ///
+    /// When drift is enabled, amounts and other distributions will shift based on
+    /// the period (month) to simulate realistic temporal evolution like inflation
+    /// or increasing fraud rates.
+    pub fn with_drift_controller(mut self, controller: DriftController) -> Self {
+        self.drift_controller = Some(controller);
+        self
+    }
+
+    /// Set drift configuration directly.
+    ///
+    /// Creates a drift controller from the config. Total periods is calculated
+    /// from the date range.
+    pub fn with_drift_config(mut self, config: DriftConfig, seed: u64) -> Self {
+        if config.enabled {
+            let total_periods = self.calculate_total_periods();
+            self.drift_controller = Some(DriftController::new(config, seed, total_periods));
+        }
+        self
+    }
+
+    /// Calculate total periods (months) in the date range.
+    fn calculate_total_periods(&self) -> u32 {
+        let start_year = self.start_date.year();
+        let start_month = self.start_date.month();
+        let end_year = self.end_date.year();
+        let end_month = self.end_date.month();
+
+        ((end_year - start_year) * 12 + (end_month as i32 - start_month as i32) + 1).max(1) as u32
+    }
+
+    /// Calculate the period number (0-indexed) for a given date.
+    fn date_to_period(&self, date: NaiveDate) -> u32 {
+        let start_year = self.start_date.year();
+        let start_month = self.start_date.month() as i32;
+        let date_year = date.year();
+        let date_month = date.month() as i32;
+
+        ((date_year - start_year) * 12 + (date_month - start_month)).max(0) as u32
+    }
+
+    /// Get drift adjustments for a given date.
+    fn get_drift_adjustments(&self, date: NaiveDate) -> DriftAdjustments {
+        if let Some(ref controller) = self.drift_controller {
+            let period = self.date_to_period(date);
+            controller.compute_adjustments(period)
+        } else {
+            DriftAdjustments::none()
+        }
     }
 
     /// Select a user from the pool or generate a generic user ID.

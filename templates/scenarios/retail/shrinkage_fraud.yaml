@@ -1,0 +1,145 @@
+# Retail - Shrinkage and Loss Prevention Scenario
+# Purpose: Simulate inventory shrinkage and theft in retail
+# Use case: Training loss prevention models, detecting employee theft, vendor fraud
+
+global:
+  industry: retail
+  start_date: "2024-01-01"
+  period_months: 12
+  seed: 77102
+  group_currency: USD
+  parallel: true
+  worker_threads: 4
+  memory_limit_mb: 4096
+
+companies:
+  - code: "1000"
+    name: "Retail Stores North"
+    currency: USD
+    country: US
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.4
+    fiscal_year_variant: K4
+  - code: "2000"
+    name: "Retail Stores South"
+    currency: USD
+    country: US
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.3
+    fiscal_year_variant: K4
+  - code: "3000"
+    name: "Retail Stores West"
+    currency: USD
+    country: US
+    annual_transaction_volume: hundred_k
+    volume_weight: 0.3
+    fiscal_year_variant: K4
+
+chart_of_accounts:
+  complexity: medium
+  industry_specific: true
+  min_hierarchy_depth: 3
+  max_hierarchy_depth: 5
+
+# Multiple stores with employee fraud risk
+master_data:
+  vendors:
+    count_per_company: 150
+    intercompany_rate: 0.15
+    behavior_distribution:
+      reliable: 0.60
+      erratic: 0.25
+      problematic: 0.15
+  customers:
+    count_per_company: 500
+    intercompany_rate: 0.05
+  materials:
+    count_per_company: 800  # Large SKU count
+  employees:
+    count_per_company: 200  # Many employees = higher theft risk
+    manager_ratio: 0.08
+
+document_flows:
+  p2p:
+    enabled: true
+    chains_per_month: 600
+    three_way_match_rate: 0.70  # Lower match rate - receiving fraud
+    partial_delivery_rate: 0.20
+  o2c:
+    enabled: true
+    chains_per_month: 1200
+    partial_shipment_rate: 0.10
+    return_rate: 0.15  # Higher returns for return fraud
+
+# Shrinkage and employee fraud focus
+fraud:
+  enabled: true
+  fraud_rate: 0.08  # Higher rate for shrinkage scenario
+  fraud_type_distribution:
+    # Shrinkage/theft heavy
+    fictitious_transaction: 0.25    # Fictitious returns, voids
+    split_transaction: 0.20         # Splitting to avoid detection
+    unauthorized_discount: 0.15     # Sweethearting, unauthorized discounts
+    duplicate_payment: 0.15         # Duplicate refunds
+    kickback_scheme: 0.10           # Vendor kickbacks on receiving
+    suspense_account_abuse: 0.10    # Hiding shrinkage
+    timing_anomaly: 0.05
+  clustering_enabled: true
+  clustering_factor: 0.50  # Employee theft often clusters by store/shift
+  temporal_patterns:
+    year_end_spike: false  # Shrinkage is more continuous
+    quarter_end_spike: false
+
+internal_controls:
+  enabled: true
+  sod_violation_rate: 0.06  # Higher SoD violations in retail
+  self_approval_rate: 0.08  # Self-approved voids/returns
+  exception_rate: 0.05
+
+data_quality:
+  enabled: true
+  preset: noisy
+  generate_labels: true
+  missing_values:
+    enabled: true
+    rate: 0.04
+    field_weights:
+      register_id: 0.2
+      employee_id: 0.3
+      transaction_id: 0.2
+      reference: 0.3
+
+scenario:
+  tags:
+    - fraud_detection
+    - shrinkage
+    - retail
+    - employee_theft
+    - return_fraud
+    - loss_prevention
+  profile: noisy
+  description: "Retail shrinkage and employee theft detection scenario"
+  ml_training: true
+  metadata:
+    fraud_focus: shrinkage
+    primary_schemes: employee_theft,return_fraud,receiving_fraud
+
+temporal:
+  enabled: true
+  amount_mean_drift: 0.01
+  anomaly_rate_drift: 0.002  # Shrinkage tends to increase over time
+  seasonal_drift: true  # Holiday season has higher shrinkage
+  drift_type: gradual
+
+output:
+  output_directory: ./output/scenarios/retail_shrinkage
+  formats:
+    - csv
+    - parquet
+  compression:
+    enabled: true
+    level: 6
+  batch_size: 5000
+  include_acdoca: true
+  partition_by_period: true
+  partition_by_company: true

@@ -64,6 +64,7 @@ pub fn minimal_config() -> GeneratorConfig {
         banking: datasynth_banking::BankingConfig::default(),
         data_quality: DataQualitySchemaConfig::default(),
         scenario: ScenarioConfig::default(),
+        temporal: Default::default(),
     }
 }
 

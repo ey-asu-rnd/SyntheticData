@@ -48,6 +48,10 @@ enum Commands {
         #[arg(long)]
         demo: bool,
 
+        /// Load a scenario pack (e.g., "manufacturing/supplier_fraud")
+        #[arg(long)]
+        scenario_pack: Option<String>,
+
         /// Random seed for reproducibility
         #[arg(short, long)]
         seed: Option<u64>,
@@ -112,6 +116,7 @@ fn main() -> Result<()> {
             config,
             output,
             demo,
+            scenario_pack,
             seed,
             banking,
             audit,
@@ -168,6 +173,13 @@ fn main() -> Result<()> {
             let mut generator_config = if demo {
                 tracing::info!("Using demo preset (conservative settings)");
                 create_safe_demo_preset()
+            } else if let Some(ref pack) = scenario_pack {
+                tracing::info!("Loading scenario pack: {}", pack);
+                let scenario_path = find_scenario_pack(pack)?;
+                let content = std::fs::read_to_string(&scenario_path)?;
+                let mut cfg: GeneratorConfig = serde_yaml::from_str(&content)?;
+                apply_safety_limits(&mut cfg);
+                cfg
             } else if let Some(config_path) = config {
                 let content = std::fs::read_to_string(&config_path)?;
                 let mut cfg: GeneratorConfig = serde_yaml::from_str(&content)?;
@@ -520,6 +532,72 @@ fn main() -> Result<()> {
     }
 }
 
+/// Find a scenario pack file by name.
+///
+/// Searches in the following locations:
+/// 1. templates/scenarios/{pack}.yaml
+/// 2. Current directory templates/scenarios/{pack}.yaml
+/// 3. Executable directory templates/scenarios/{pack}.yaml
+fn find_scenario_pack(pack: &str) -> Result<PathBuf> {
+    // Normalize the pack name (remove .yaml if present)
+    let pack_name = pack.trim_end_matches(".yaml");
+
+    // Search paths in order of priority
+    let search_paths = [
+        PathBuf::from(format!("templates/scenarios/{}.yaml", pack_name)),
+        PathBuf::from(format!("./templates/scenarios/{}.yaml", pack_name)),
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .map(|p| p.join(format!("templates/scenarios/{}.yaml", pack_name)))
+            .unwrap_or_default(),
+    ];
+
+    for path in search_paths.iter() {
+        if path.exists() {
+            tracing::info!("Found scenario pack at: {}", path.display());
+            return Ok(path.clone());
+        }
+    }
+
+    // List available scenario packs if not found
+    let available = list_available_scenarios();
+    anyhow::bail!(
+        "Scenario pack '{}' not found.\n\nAvailable scenario packs:\n{}",
+        pack,
+        available.join("\n")
+    );
+}
+
+/// List available scenario packs.
+fn list_available_scenarios() -> Vec<String> {
+    let mut scenarios = Vec::new();
+    let base_path = PathBuf::from("templates/scenarios");
+
+    if let Ok(industries) = std::fs::read_dir(&base_path) {
+        for industry in industries.flatten() {
+            if industry.path().is_dir() {
+                let industry_name = industry.file_name().to_string_lossy().to_string();
+                if let Ok(files) = std::fs::read_dir(industry.path()) {
+                    for file in files.flatten() {
+                        let file_name = file.file_name().to_string_lossy().to_string();
+                        if file_name.ends_with(".yaml") {
+                            let scenario_name = file_name.trim_end_matches(".yaml");
+                            scenarios.push(format!("  - {}/{}", industry_name, scenario_name));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if scenarios.is_empty() {
+        scenarios.push("  (no scenario packs found in templates/scenarios/)".to_string());
+    }
+
+    scenarios
+}
+
 /// Create a safe demo preset with conservative resource usage.
 fn create_safe_demo_preset() -> GeneratorConfig {
     use datasynth_config::schema::*;
@@ -572,6 +650,7 @@ fn create_safe_demo_preset() -> GeneratorConfig {
         banking: datasynth_banking::BankingConfig::small(), // Use small banking config
         data_quality: DataQualitySchemaConfig::default(),
         scenario: datasynth_config::schema::ScenarioConfig::default(),
+        temporal: datasynth_config::schema::TemporalDriftConfig::default(),
     }
 }
 
