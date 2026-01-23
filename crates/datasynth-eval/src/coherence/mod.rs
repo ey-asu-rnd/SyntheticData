@@ -6,12 +6,18 @@
 mod balance;
 mod document_chain;
 mod intercompany;
+mod multi_table;
 mod referential;
 mod subledger;
 
 pub use balance::{BalanceSheetEvaluation, BalanceSheetEvaluator};
 pub use document_chain::{DocumentChainEvaluation, DocumentChainEvaluator};
 pub use intercompany::{ICMatchingEvaluation, ICMatchingEvaluator};
+pub use multi_table::{
+    AnomalyRecord, CascadeAnomalyAnalysis, CascadePath, ConsistencyViolation, MultiTableConsistencyEvaluator,
+    MultiTableData, MultiTableEvaluation, TableConsistencyResult, TableRecord, TableRelationship,
+    TableRelationshipDef, ViolationType, get_o2c_flow_relationships, get_p2p_flow_relationships,
+};
 pub use referential::{ReferentialIntegrityEvaluation, ReferentialIntegrityEvaluator};
 pub use subledger::{SubledgerEvaluator, SubledgerReconciliationEvaluation};
 
@@ -30,6 +36,8 @@ pub struct CoherenceEvaluation {
     pub intercompany: Option<ICMatchingEvaluation>,
     /// Referential integrity results.
     pub referential: Option<ReferentialIntegrityEvaluation>,
+    /// Multi-table consistency results.
+    pub multi_table: Option<MultiTableEvaluation>,
     /// Overall pass/fail status.
     pub passes: bool,
     /// Summary of failed checks.
@@ -45,6 +53,7 @@ impl CoherenceEvaluation {
             document_chain: None,
             intercompany: None,
             referential: None,
+            multi_table: None,
             passes: true,
             failures: Vec::new(),
         }
@@ -104,6 +113,18 @@ impl CoherenceEvaluation {
                     referential.overall_integrity_score, thresholds.referential_integrity_min
                 ));
             }
+        }
+
+        if let Some(ref multi_table) = self.multi_table {
+            // Check multi-table consistency (use referential_integrity_min as default threshold)
+            if multi_table.overall_consistency_score < thresholds.referential_integrity_min {
+                self.failures.push(format!(
+                    "Multi-table consistency {} < {} (threshold)",
+                    multi_table.overall_consistency_score, thresholds.referential_integrity_min
+                ));
+            }
+            // Add any issues from the multi-table evaluation
+            self.failures.extend(multi_table.issues.clone());
         }
 
         self.passes = self.failures.is_empty();

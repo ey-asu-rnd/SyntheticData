@@ -17,6 +17,8 @@ parquet = { workspace = true }
 csv = { workspace = true }
 tokio = { workspace = true }
 crossbeam-channel = { workspace = true }
+rust_decimal = { workspace = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
