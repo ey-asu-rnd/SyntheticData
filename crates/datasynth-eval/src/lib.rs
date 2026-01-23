@@ -26,6 +26,7 @@
 //! result.generate_html_report("evaluation_report.html")?;
 //! ```
 
+pub mod benchmarks;
 pub mod config;
 pub mod enhancement;
 pub mod error;
@@ -79,6 +80,13 @@ pub use enhancement::{
     AutoTuneResult, AutoTuner, ConfigPatch, EnhancementReport, Recommendation,
     RecommendationCategory, RecommendationEngine, RecommendationPriority, RootCause,
     SuggestedAction,
+};
+
+pub use benchmarks::{
+    all_benchmarks, anomaly_bench_1k, data_quality_100k, entity_match_5k, fraud_detect_10k,
+    get_benchmark, graph_fraud_10k, BaselineModelType, BaselineResult, BenchmarkBuilder,
+    BenchmarkSuite, BenchmarkTaskType, CostMatrix, DatasetSpec, EvaluationSpec, FeatureSet,
+    LeaderboardEntry, MetricType, SplitRatios,
 };
 
 use serde::{Deserialize, Serialize};
