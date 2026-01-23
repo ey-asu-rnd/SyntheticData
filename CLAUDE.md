@@ -69,10 +69,10 @@ cargo run -p datasynth-server -- --port 3000 --worker-threads 4
 
 ## Architecture
 
-This is a Rust workspace with 14 crates following a layered architecture:
+This is a Rust workspace with 15 crates following a layered architecture:
 
 ```
-datasynth-cli          → Binary entry point (commands: generate, validate, init, info)
+datasynth-cli          → Binary entry point (commands: generate, validate, init, info, fingerprint)
 datasynth-server       → REST/gRPC/WebSocket server with auth, rate limiting, timeouts
 datasynth-ui           → Tauri/SvelteKit desktop UI
     ↓
@@ -81,6 +81,7 @@ datasynth-runtime      → Orchestration layer (GenerationOrchestrator coordinat
 datasynth-generators   → Data generators (JE, Document Flows, Subledgers, Anomalies, Audit)
 datasynth-banking      → KYC/AML banking transaction generator with fraud typologies
 datasynth-ocpm         → Object-Centric Process Mining (OCEL 2.0 event logs)
+datasynth-fingerprint  → Privacy-preserving fingerprint extraction and synthesis
     ↓
 datasynth-graph        → Graph/network export (PyTorch Geometric, Neo4j, DGL)
 datasynth-eval         → Evaluation framework with auto-tuning and recommendations
@@ -477,6 +478,109 @@ Object-Centric Process Mining (OCEL 2.0) event log generation.
 **Export (`export/`):**
 
 - `Ocel2Exporter`: OCEL 2.0 JSON export functionality
+
+### Fingerprinting Module (datasynth-fingerprint/src/)
+
+Privacy-preserving fingerprint extraction from real data and synthesis of matching synthetic data.
+
+**Architecture:**
+
+```
+Real Data → Extract → .dsf File → Generate → Synthetic Data → Evaluate
+```
+
+**Models (`models/`):**
+
+- **Fingerprint**: Root container with manifest, schema, statistics, correlations, integrity, rules, anomalies, privacy_audit
+- **Manifest**: Version, format, created_at, source metadata, privacy metadata, checksums, optional signature
+- **SchemaFingerprint**: Tables with columns, data types, cardinalities, relationships
+- **StatisticsFingerprint**: Numeric stats (distribution, percentiles, Benford), categorical stats (frequencies, entropy)
+- **CorrelationFingerprint**: Correlation matrices with copula parameters
+- **IntegrityFingerprint**: Foreign key definitions, cardinality rules
+- **RulesFingerprint**: Balance rules, approval thresholds
+- **AnomalyFingerprint**: Anomaly rates, type distributions, temporal patterns
+- **PrivacyAudit**: Actions log, epsilon spent, k-anonymity, warnings
+
+**Privacy Engine (`privacy/`):**
+
+- **LaplaceMechanism**: Differential privacy with configurable epsilon
+- **GaussianMechanism**: Alternative DP mechanism for (ε,δ)-privacy
+- **KAnonymity**: Suppression of rare categorical values below k threshold
+- **PrivacyEngine**: Unified interface combining DP, k-anonymity, winsorization
+- **PrivacyAuditBuilder**: Build privacy audit with actions and warnings
+
+**Privacy Levels:**
+
+| Level | Epsilon | k | Outlier % | Use Case |
+|-------|---------|---|-----------|----------|
+| Minimal | 5.0 | 3 | 99% | Low privacy, high utility |
+| Standard | 1.0 | 5 | 95% | Balanced (default) |
+| High | 0.5 | 10 | 90% | Higher privacy |
+| Maximum | 0.1 | 20 | 85% | Maximum privacy |
+
+**Extraction Engine (`extraction/`):**
+
+- **FingerprintExtractor**: Main coordinator for all extraction
+- **SchemaExtractor**: Infer data types, cardinalities, relationships
+- **StatsExtractor**: Compute distributions, percentiles, Benford analysis
+- **CorrelationExtractor**: Pearson correlations, copula fitting
+- **IntegrityExtractor**: Detect foreign key relationships
+- **RulesExtractor**: Detect balance rules, approval patterns
+- **AnomalyExtractor**: Analyze anomaly rates and patterns
+
+**I/O (`io/`):**
+
+- **FingerprintWriter**: Write .dsf files (ZIP with YAML/JSON components)
+- **FingerprintReader**: Read .dsf files with checksum verification
+- **FingerprintValidator**: Validate DSF structure and integrity
+- **validate_dsf()**: Convenience function for CLI validation
+
+**DSF File Format:** ZIP archive containing:
+- `manifest.json` - Version, checksums, privacy config
+- `schema.yaml` - Tables, columns, relationships
+- `statistics.yaml` - Distributions, percentiles, Benford
+- `correlations.yaml` - Correlation matrices, copulas
+- `integrity.yaml` - FK relationships, cardinality
+- `rules.yaml` - Balance constraints, approval thresholds
+- `anomalies.yaml` - Anomaly rates, type distribution
+- `privacy_audit.json` - Privacy decisions, epsilon spent
+
+**Synthesis (`synthesis/`):**
+
+- **ConfigSynthesizer**: Convert fingerprint to GeneratorConfig
+- **DistributionFitter**: Fit AmountSampler parameters from statistics
+- **GaussianCopula**: Generate correlated values preserving multivariate structure
+
+**Evaluation (`evaluation/`):**
+
+- **FidelityEvaluator**: Compare synthetic data against fingerprint
+- **FidelityReport**: Overall score, component scores, pass/fail status
+- **FidelityConfig**: Thresholds and weights for evaluation
+
+**Fidelity Metrics:**
+- Statistical: KS statistic, Wasserstein distance, Benford MAD
+- Correlation: Correlation matrix RMSE
+- Schema: Column type match, row count ratio
+- Rules: Balance equation compliance rate
+
+**CLI Commands:**
+
+```bash
+# Extract fingerprint
+datasynth-data fingerprint extract --input ./data.csv --output ./fp.dsf --privacy-level standard
+
+# Validate
+datasynth-data fingerprint validate ./fp.dsf
+
+# Show info
+datasynth-data fingerprint info ./fp.dsf --detailed
+
+# Compare
+datasynth-data fingerprint diff ./fp1.dsf ./fp2.dsf
+
+# Evaluate fidelity
+datasynth-data fingerprint evaluate --fingerprint ./fp.dsf --synthetic ./synthetic/ --threshold 0.8
+```
 
 ### Evaluation Module (datasynth-eval/src/)
 

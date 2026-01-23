@@ -1,0 +1,66 @@
+[package]
+name = "datasynth-fingerprint"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Privacy-preserving synthetic data fingerprinting for DataSynth"
+keywords = ["synthetic-data", "fingerprint", "privacy", "differential-privacy"]
+categories = ["simulation", "cryptography"]
+
+[dependencies]
+# Internal crates
+datasynth-core = { workspace = true }
+datasynth-config = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Archive format
+zip = "2.2"
+
+# Date/Time
+chrono = { workspace = true }
+
+# Numeric
+rust_decimal = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Random & Statistics
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+rand_distr = "0.4"
+statrs = "0.18"
+
+# Matrix operations for correlations
+nalgebra = "0.33"
+
+# Checksums
+sha2 = { workspace = true }
+hex = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# CSV parsing for data extraction
+csv = { workspace = true }
+
+# UUID
+uuid = { workspace = true }
+
+# Regex for pattern matching
+regex-lite = "0.1"
+
+[dev-dependencies]
+tempfile = { workspace = true }
+proptest = { workspace = true }
+rust_decimal_macros = { workspace = true }

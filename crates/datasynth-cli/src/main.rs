@@ -11,6 +11,13 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use datasynth_config::{presets, GeneratorConfig};
 use datasynth_core::memory_guard::{MemoryGuard, MemoryGuardConfig};
 use datasynth_core::models::{CoAComplexity, IndustrySector};
+use datasynth_fingerprint::{
+    extraction::{ExtractionConfig, FingerprintExtractor, CsvDataSource, DataSource},
+    io::{FingerprintReader, FingerprintWriter, validate_dsf},
+    models::PrivacyLevel,
+    privacy::PrivacyConfig,
+    evaluation::FidelityEvaluator,
+};
 use datasynth_runtime::{
     export_labels_all_formats, EnhancedOrchestrator, LabelExportConfig, LabelExportSummary,
     OutputFileInfo, PhaseConfig, RunManifest,
@@ -97,6 +104,90 @@ enum Commands {
 
     /// Show information about available presets
     Info,
+
+    /// Fingerprint extraction and management
+    Fingerprint {
+        #[command(subcommand)]
+        command: FingerprintCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum FingerprintCommands {
+    /// Extract fingerprint from data
+    Extract {
+        /// Input data path (CSV file or directory)
+        #[arg(short, long)]
+        input: PathBuf,
+
+        /// Output fingerprint file (.dsf)
+        #[arg(short, long)]
+        output: PathBuf,
+
+        /// Privacy level (minimal, standard, high, maximum)
+        #[arg(long, default_value = "standard")]
+        privacy_level: String,
+
+        /// Custom epsilon budget for differential privacy
+        #[arg(long)]
+        privacy_epsilon: Option<f64>,
+
+        /// Custom k-anonymity threshold
+        #[arg(long)]
+        privacy_k: Option<u32>,
+
+        /// Sign the fingerprint
+        #[arg(long)]
+        sign: bool,
+    },
+
+    /// Validate a fingerprint file
+    Validate {
+        /// Fingerprint file to validate
+        #[arg(required = true)]
+        file: PathBuf,
+    },
+
+    /// Show fingerprint information
+    Info {
+        /// Fingerprint file
+        #[arg(required = true)]
+        file: PathBuf,
+
+        /// Show detailed statistics
+        #[arg(long)]
+        detailed: bool,
+    },
+
+    /// Compare two fingerprints
+    Diff {
+        /// First fingerprint file
+        #[arg(required = true)]
+        file1: PathBuf,
+
+        /// Second fingerprint file
+        #[arg(required = true)]
+        file2: PathBuf,
+    },
+
+    /// Evaluate fidelity of synthetic data against fingerprint
+    Evaluate {
+        /// Fingerprint file
+        #[arg(short, long)]
+        fingerprint: PathBuf,
+
+        /// Synthetic data directory
+        #[arg(short, long)]
+        synthetic: PathBuf,
+
+        /// Output report path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Fidelity threshold (0.0-1.0)
+        #[arg(long, default_value = "0.8")]
+        threshold: f64,
+    },
 }
 
 fn main() -> Result<()> {
@@ -530,6 +621,322 @@ fn main() -> Result<()> {
             println!("Resource Safeguards:");
             println!("  --memory-limit <MB>  : Set memory limit (default: 1024 MB)");
             println!("  --max-threads <N>    : Limit CPU threads (default: half of cores, max 4)");
+            Ok(())
+        }
+
+        Commands::Fingerprint { command } => handle_fingerprint_command(command),
+    }
+}
+
+/// Handle fingerprint subcommands.
+fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
+    match command {
+        FingerprintCommands::Extract {
+            input,
+            output,
+            privacy_level,
+            privacy_epsilon,
+            privacy_k,
+            sign,
+        } => {
+            tracing::info!("Extracting fingerprint from: {}", input.display());
+
+            // Parse privacy level
+            let level = match privacy_level.to_lowercase().as_str() {
+                "minimal" => PrivacyLevel::Minimal,
+                "standard" => PrivacyLevel::Standard,
+                "high" => PrivacyLevel::High,
+                "maximum" => PrivacyLevel::Maximum,
+                _ => {
+                    tracing::warn!("Unknown privacy level '{}', using standard", privacy_level);
+                    PrivacyLevel::Standard
+                }
+            };
+
+            // Create extraction config with privacy settings
+            let mut privacy_config = PrivacyConfig::from_level(level);
+            if let Some(eps) = privacy_epsilon {
+                privacy_config.epsilon = eps;
+            }
+            if let Some(k) = privacy_k {
+                privacy_config.k_anonymity = k;
+            }
+
+            let extraction_config = ExtractionConfig {
+                privacy: privacy_config,
+                ..Default::default()
+            };
+
+            // Create data source
+            let data_source = if input.is_file() {
+                DataSource::Csv(CsvDataSource::new(input.clone()))
+            } else {
+                // For directories, find CSV files
+                let csv_files: Vec<_> = std::fs::read_dir(&input)?
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().extension().map_or(false, |ext| ext == "csv"))
+                    .collect();
+
+                if csv_files.is_empty() {
+                    anyhow::bail!("No CSV files found in directory: {}", input.display());
+                }
+
+                // Use first CSV file for now (multi-table support would require more logic)
+                let first_csv = csv_files[0].path();
+                tracing::info!("Using CSV file: {}", first_csv.display());
+                DataSource::Csv(CsvDataSource::new(first_csv))
+            };
+
+            // Extract fingerprint
+            let extractor = FingerprintExtractor::with_config(extraction_config);
+            let fingerprint = extractor.extract(&data_source)?;
+
+            // Write fingerprint
+            let writer = FingerprintWriter::new();
+            if sign {
+                tracing::info!("Signing is not yet implemented, writing unsigned fingerprint");
+            }
+            writer.write_to_file(&fingerprint, &output)?;
+
+            tracing::info!("Fingerprint written to: {}", output.display());
+            tracing::info!("Privacy audit: {} actions recorded", fingerprint.privacy_audit.actions.len());
+            tracing::info!("Epsilon spent: {:.3} of {:.3} budget",
+                fingerprint.privacy_audit.total_epsilon_spent,
+                fingerprint.privacy_audit.epsilon_budget);
+
+            Ok(())
+        }
+
+        FingerprintCommands::Validate { file } => {
+            tracing::info!("Validating fingerprint: {}", file.display());
+
+            match validate_dsf(&file) {
+                Ok(report) => {
+                    if report.is_valid {
+                        println!("✓ Fingerprint is valid");
+                        println!("  Version: {}", report.version);
+                        println!("  Components: {:?}", report.components);
+                        if !report.warnings.is_empty() {
+                            println!("  Warnings:");
+                            for warning in &report.warnings {
+                                println!("    - {}", warning);
+                            }
+                        }
+                    } else {
+                        println!("✗ Fingerprint validation failed");
+                        for error in &report.errors {
+                            println!("  Error: {}", error);
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("✗ Failed to validate fingerprint: {}", e);
+                    return Err(e.into());
+                }
+            }
+
+            Ok(())
+        }
+
+        FingerprintCommands::Info { file, detailed } => {
+            let reader = FingerprintReader::new();
+            let fingerprint = reader.read_from_file(&file)?;
+
+            println!("Fingerprint Information");
+            println!("=======================");
+            println!();
+            println!("Manifest:");
+            println!("  Version: {}", fingerprint.manifest.version);
+            println!("  Format: {}", fingerprint.manifest.format);
+            println!("  Created: {}", fingerprint.manifest.created_at);
+            println!();
+            println!("Source:");
+            println!("  Description: {}", fingerprint.manifest.source.description);
+            println!("  Tables: {}", fingerprint.manifest.source.table_count);
+            println!("  Total Rows: {}", fingerprint.manifest.source.total_rows);
+            if let Some(ref industry) = fingerprint.manifest.source.industry {
+                println!("  Industry: {}", industry);
+            }
+            println!();
+            println!("Privacy:");
+            println!("  Level: {:?}", fingerprint.manifest.privacy.level);
+            println!("  Epsilon: {}", fingerprint.manifest.privacy.epsilon);
+            println!("  K-Anonymity: {}", fingerprint.manifest.privacy.k_anonymity);
+            println!();
+            println!("Schema:");
+            println!("  Tables: {}", fingerprint.schema.tables.len());
+            for (name, table) in &fingerprint.schema.tables {
+                println!("    - {} ({} columns)", name, table.columns.len());
+            }
+            println!();
+            println!("Statistics:");
+            println!("  Numeric columns: {}", fingerprint.statistics.numeric_columns.len());
+            println!("  Categorical columns: {}", fingerprint.statistics.categorical_columns.len());
+
+            if detailed {
+                println!();
+                println!("Detailed Statistics:");
+                for (name, stats) in &fingerprint.statistics.numeric_columns {
+                    println!("  {}:", name);
+                    println!("    Count: {}", stats.count);
+                    println!("    Min: {:.2}, Max: {:.2}", stats.min, stats.max);
+                    println!("    Mean: {:.2}, StdDev: {:.2}", stats.mean, stats.std_dev);
+                    println!("    Distribution: {:?}", stats.distribution);
+                }
+                for (name, stats) in &fingerprint.statistics.categorical_columns {
+                    println!("  {}:", name);
+                    println!("    Count: {}", stats.count);
+                    println!("    Cardinality: {}", stats.cardinality);
+                    println!("    Top values: {}", stats.top_values.len());
+                }
+            }
+
+            println!();
+            println!("Privacy Audit:");
+            println!("  Total actions: {}", fingerprint.privacy_audit.actions.len());
+            println!("  Epsilon spent: {:.3}", fingerprint.privacy_audit.total_epsilon_spent);
+            println!("  Warnings: {}", fingerprint.privacy_audit.warnings.len());
+
+            Ok(())
+        }
+
+        FingerprintCommands::Diff { file1, file2 } => {
+            let reader = FingerprintReader::new();
+            let fp1 = reader.read_from_file(&file1)?;
+            let fp2 = reader.read_from_file(&file2)?;
+
+            println!("Fingerprint Comparison");
+            println!("======================");
+            println!();
+
+            // Compare manifests
+            println!("Manifests:");
+            if fp1.manifest.version != fp2.manifest.version {
+                println!("  Version: {} vs {}", fp1.manifest.version, fp2.manifest.version);
+            }
+            if fp1.manifest.privacy.level != fp2.manifest.privacy.level {
+                println!("  Privacy Level: {:?} vs {:?}",
+                    fp1.manifest.privacy.level, fp2.manifest.privacy.level);
+            }
+            if fp1.manifest.privacy.epsilon != fp2.manifest.privacy.epsilon {
+                println!("  Epsilon: {} vs {}",
+                    fp1.manifest.privacy.epsilon, fp2.manifest.privacy.epsilon);
+            }
+
+            // Compare schemas
+            println!();
+            println!("Schema:");
+            let tables1: std::collections::HashSet<_> = fp1.schema.tables.keys().collect();
+            let tables2: std::collections::HashSet<_> = fp2.schema.tables.keys().collect();
+
+            let only_in_1: Vec<_> = tables1.difference(&tables2).collect();
+            let only_in_2: Vec<_> = tables2.difference(&tables1).collect();
+            let common: Vec<_> = tables1.intersection(&tables2).collect();
+
+            if !only_in_1.is_empty() {
+                println!("  Only in {}: {:?}", file1.display(), only_in_1);
+            }
+            if !only_in_2.is_empty() {
+                println!("  Only in {}: {:?}", file2.display(), only_in_2);
+            }
+            println!("  Common tables: {}", common.len());
+
+            // Compare statistics
+            println!();
+            println!("Statistics:");
+            println!("  Numeric columns: {} vs {}",
+                fp1.statistics.numeric_columns.len(),
+                fp2.statistics.numeric_columns.len());
+            println!("  Categorical columns: {} vs {}",
+                fp1.statistics.categorical_columns.len(),
+                fp2.statistics.categorical_columns.len());
+
+            // Compare numeric stats for common columns
+            for col in fp1.statistics.numeric_columns.keys() {
+                if let (Some(s1), Some(s2)) = (
+                    fp1.statistics.numeric_columns.get(col),
+                    fp2.statistics.numeric_columns.get(col),
+                ) {
+                    let mean_diff = (s1.mean - s2.mean).abs();
+                    let std_diff = (s1.std_dev - s2.std_dev).abs();
+                    if mean_diff > 0.01 || std_diff > 0.01 {
+                        println!("  {}:", col);
+                        println!("    Mean: {:.2} vs {:.2} (diff: {:.2})", s1.mean, s2.mean, mean_diff);
+                        println!("    StdDev: {:.2} vs {:.2} (diff: {:.2})", s1.std_dev, s2.std_dev, std_diff);
+                    }
+                }
+            }
+
+            Ok(())
+        }
+
+        FingerprintCommands::Evaluate {
+            fingerprint,
+            synthetic,
+            output,
+            threshold,
+        } => {
+            tracing::info!("Evaluating fidelity of synthetic data");
+            tracing::info!("  Fingerprint: {}", fingerprint.display());
+            tracing::info!("  Synthetic data: {}", synthetic.display());
+
+            // Read fingerprint
+            let reader = FingerprintReader::new();
+            let fp = reader.read_from_file(&fingerprint)?;
+
+            // Find CSV files in synthetic directory
+            let csv_files: Vec<PathBuf> = std::fs::read_dir(&synthetic)?
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().map_or(false, |ext| ext == "csv"))
+                .map(|e| e.path())
+                .collect();
+
+            if csv_files.is_empty() {
+                anyhow::bail!("No CSV files found in synthetic directory: {}", synthetic.display());
+            }
+
+            // Load synthetic data from first CSV (simplified)
+            let first_csv = &csv_files[0];
+            tracing::info!("  Using: {}", first_csv.display());
+
+            let data_source = DataSource::Csv(CsvDataSource::new(first_csv.clone()));
+
+            // Extract fingerprint from synthetic data for comparison
+            let extractor = FingerprintExtractor::new();
+            let synthetic_fp = extractor.extract(&data_source)?;
+
+            // Evaluate fidelity
+            let evaluator = FidelityEvaluator::with_threshold(threshold);
+            let report = evaluator.evaluate_fingerprints(&fp, &synthetic_fp)?;
+
+            // Print report
+            println!();
+            println!("Fidelity Report");
+            println!("===============");
+            println!();
+            println!("Overall Score: {:.1}%", report.overall_score * 100.0);
+            println!("Threshold: {:.1}%", threshold * 100.0);
+            println!("Status: {}", if report.passes { "PASS ✓" } else { "FAIL ✗" });
+            println!();
+            println!("Component Scores:");
+            println!("  Statistical Fidelity:  {:.1}%", report.statistical_fidelity * 100.0);
+            println!("  Correlation Fidelity:  {:.1}%", report.correlation_fidelity * 100.0);
+            println!("  Schema Fidelity:       {:.1}%", report.schema_fidelity * 100.0);
+            println!("  Rule Compliance:       {:.1}%", report.rule_compliance * 100.0);
+            println!("  Anomaly Fidelity:      {:.1}%", report.anomaly_fidelity * 100.0);
+
+            // Write report if output path specified
+            if let Some(output_path) = output {
+                let json = serde_json::to_string_pretty(&report)?;
+                std::fs::write(&output_path, json)?;
+                tracing::info!("Report written to: {}", output_path.display());
+            }
+
+            if !report.passes {
+                anyhow::bail!("Fidelity check failed: {:.1}% < {:.1}%",
+                    report.overall_score * 100.0, threshold * 100.0);
+            }
+
             Ok(())
         }
     }

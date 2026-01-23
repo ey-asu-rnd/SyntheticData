@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-01-23
+
+### Added
+
+- **Synthetic Data Fingerprinting** (`datasynth-fingerprint`): New crate for privacy-preserving fingerprint extraction and generation
+  - Extract statistical fingerprints from real data into `.dsf` files (ZIP archives with YAML/JSON components)
+  - **Privacy Engine**: Differential privacy with Laplace mechanism, k-anonymity suppression, winsorization, full audit trail
+  - **Privacy Levels**: Configurable presets (minimal ε=5.0/k=3, standard ε=1.0/k=5, high ε=0.5/k=10, maximum ε=0.1/k=20)
+  - **Extraction Engine**: 6 extractors (schema, statistics, correlation, integrity, rules, anomaly)
+  - **I/O System**: DSF file format with SHA-256 checksums and signature support
+  - **Config Synthesis**: Generate `GeneratorConfig` from fingerprints with distribution fitting
+  - **Gaussian Copula**: Preserve multivariate correlations during synthesis
+  - **Fidelity Evaluation**: Compare synthetic data against fingerprints with KS statistics, Wasserstein distance, correlation RMSE, Benford MAD
+
+- **CLI Fingerprint Commands**: New `fingerprint` subcommand with operations:
+  - `extract`: Extract fingerprint from CSV data with privacy controls
+  - `validate`: Validate DSF file integrity and checksums
+  - `info`: Display fingerprint metadata and statistics
+  - `diff`: Compare two fingerprints
+  - `evaluate`: Evaluate fidelity of synthetic data against fingerprint
+
+### Changed
+
+- Bumped all Rust crate versions to 0.2.0
+
 ## [0.1.1] - 2026-01-21
 
 ### Changed

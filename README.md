@@ -88,6 +88,14 @@ The generator produces statistically accurate data based on empirical research f
 - **Anomaly Injection**: 20+ fraud types, errors, process issues with full labeling
 - **Data Quality Variations**: Missing values, format variations, duplicates, typos
 
+### Privacy-Preserving Fingerprinting
+
+- **Fingerprint Extraction**: Extract statistical properties from real data into `.dsf` files
+- **Differential Privacy**: Laplace mechanism with configurable epsilon budget
+- **K-Anonymity**: Suppression of rare categorical values
+- **Privacy Audit Trail**: Complete logging of all privacy decisions
+- **Fidelity Evaluation**: Validate synthetic data matches original fingerprint
+
 ### Production Features
 
 - **REST & gRPC APIs**: Streaming generation with authentication and rate limiting
@@ -100,7 +108,7 @@ The generator produces statistically accurate data based on empirical research f
 
 ## Architecture
 
-SyntheticData is organized as a Rust workspace with 14 modular crates:
+SyntheticData is organized as a Rust workspace with 15 modular crates:
 
 ```
 datasynth-cli          Command-line interface (binary: datasynth-data)
@@ -112,6 +120,7 @@ datasynth-runtime      Orchestration layer (parallel execution, resource guards)
 datasynth-generators   Data generators (JE, documents, subledgers, anomalies, audit)
 datasynth-banking      KYC/AML banking transaction generator
 datasynth-ocpm         Object-Centric Process Mining (OCEL 2.0)
+datasynth-fingerprint  Privacy-preserving fingerprint extraction and synthesis
     │
 datasynth-graph        Graph/network export (PyTorch Geometric, Neo4j, DGL)
 datasynth-eval         Evaluation framework with auto-tuning
@@ -158,6 +167,7 @@ The binary is available at `target/release/datasynth-data`.
 | [`datasynth-config`](https://crates.io/crates/datasynth-config) | Configuration schema and validation |
 | [`datasynth-generators`](https://crates.io/crates/datasynth-generators) | Data generators |
 | [`datasynth-banking`](https://crates.io/crates/datasynth-banking) | KYC/AML banking transactions |
+| [`datasynth-fingerprint`](https://crates.io/crates/datasynth-fingerprint) | Privacy-preserving fingerprint extraction |
 | [`datasynth-graph`](https://crates.io/crates/datasynth-graph) | Graph/network export |
 | [`datasynth-eval`](https://crates.io/crates/datasynth-eval) | Evaluation framework |
 | [`datasynth-runtime`](https://crates.io/crates/datasynth-runtime) | Orchestration layer |
@@ -313,6 +323,46 @@ npm run tauri dev
 ```
 
 The desktop application provides visual configuration, real-time streaming, and preset management.
+
+---
+
+## Fingerprinting
+
+Extract privacy-preserving fingerprints from real data and generate matching synthetic data:
+
+```bash
+# Extract fingerprint from CSV data
+datasynth-data fingerprint extract \
+    --input ./real_data.csv \
+    --output ./fingerprint.dsf \
+    --privacy-level standard
+
+# Validate fingerprint
+datasynth-data fingerprint validate ./fingerprint.dsf
+
+# Show fingerprint info
+datasynth-data fingerprint info ./fingerprint.dsf --detailed
+
+# Compare fingerprints
+datasynth-data fingerprint diff ./fp1.dsf ./fp2.dsf
+
+# Evaluate synthetic data fidelity
+datasynth-data fingerprint evaluate \
+    --fingerprint ./fingerprint.dsf \
+    --synthetic ./synthetic_data/ \
+    --threshold 0.8
+```
+
+**Privacy Levels:**
+
+| Level | Epsilon | k | Use Case |
+|-------|---------|---|----------|
+| minimal | 5.0 | 3 | Low privacy, high utility |
+| standard | 1.0 | 5 | Balanced (default) |
+| high | 0.5 | 10 | Higher privacy |
+| maximum | 0.1 | 20 | Maximum privacy |
+
+See the [Fingerprinting Guide](docs/fingerprint/) for complete documentation.
 
 ---
 
