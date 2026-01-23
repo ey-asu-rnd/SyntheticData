@@ -39,7 +39,10 @@ impl KAnonymity {
 
         // If significant suppression, add an "Other" category
         if suppressed_total > 0 && total > 0 {
-            kept.push(("__OTHER__".to_string(), suppressed_total as f64 / total as f64));
+            kept.push((
+                "__OTHER__".to_string(),
+                suppressed_total as f64 / total as f64,
+            ));
         }
 
         (kept, suppressed_count)
@@ -125,8 +128,8 @@ mod tests {
         let frequencies = vec![
             ("A".to_string(), 100),
             ("B".to_string(), 50),
-            ("C".to_string(), 3),  // Below threshold
-            ("D".to_string(), 2),  // Below threshold
+            ("C".to_string(), 3), // Below threshold
+            ("D".to_string(), 2), // Below threshold
         ];
 
         let (kept, suppressed) = kanon.filter_frequencies(frequencies, 155);
@@ -142,7 +145,10 @@ mod tests {
     fn test_generalization() {
         assert_eq!(generalization::age_to_group(25), "25-34");
         assert_eq!(generalization::age_to_group(65), "65+");
-        assert_eq!(generalization::date_to_month("2024-03-15"), Some("2024-03".to_string()));
+        assert_eq!(
+            generalization::date_to_month("2024-03-15"),
+            Some("2024-03".to_string())
+        );
         assert_eq!(generalization::zip_to_prefix("12345", 3), "123*");
     }
 }

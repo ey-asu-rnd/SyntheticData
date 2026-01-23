@@ -1412,7 +1412,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "datasynth-banking"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "csv",
@@ -1431,7 +1431,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-cli"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1458,7 +1458,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-config"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "datasynth-banking",
@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "libc",
@@ -1491,7 +1491,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-eval"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "askama",
  "chrono",
@@ -1516,15 +1516,17 @@ dependencies = [
 
 [[package]]
 name = "datasynth-fingerprint"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
+ "arrow",
  "chrono",
  "csv",
  "datasynth-config",
  "datasynth-core",
  "hex",
  "nalgebra 0.33.2",
+ "parquet",
  "proptest",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -1546,7 +1548,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-generators"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "datasynth-config",
@@ -1565,7 +1567,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-graph"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "datasynth-banking",
@@ -1580,7 +1582,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-ocpm"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "datasynth-core",
@@ -1596,7 +1598,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-output"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "arrow",
  "chrono",
@@ -1616,7 +1618,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-runtime"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "crossbeam-channel",
@@ -1624,6 +1626,7 @@ dependencies = [
  "datasynth-banking",
  "datasynth-config",
  "datasynth-core",
+ "datasynth-fingerprint",
  "datasynth-generators",
  "datasynth-ocpm",
  "datasynth-output",
@@ -1647,7 +1650,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-server"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1683,7 +1686,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-test-utils"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "datasynth-banking",
@@ -1705,7 +1708,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-ui"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "futures",
  "reqwest",
@@ -1720,7 +1723,7 @@ dependencies = [
 
 [[package]]
 name = "datasynth-workspace"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "criterion",

@@ -2,8 +2,11 @@
 
 use std::collections::HashMap;
 
+use super::CopulaGenerator;
 use crate::error::FingerprintResult;
-use crate::models::{DistributionType, Fingerprint, NumericStats};
+use crate::models::{
+    CorrelationMatrix, DistributionType, Fingerprint, GaussianCopula, NumericStats,
+};
 
 /// Options for config synthesis.
 #[derive(Debug, Clone)]
@@ -54,12 +57,18 @@ impl ConfigSynthesizer {
         let mut patch = ConfigPatch::new();
 
         // Extract row count with scaling
-        let total_rows: u64 = fingerprint.schema.tables.values()
+        let total_rows: u64 = fingerprint
+            .schema
+            .tables
+            .values()
             .map(|t| t.row_count)
             .sum();
         let scaled_rows = (total_rows as f64 * self.options.scale) as u64;
 
-        patch.set("transactions.count", ConfigValue::Integer(scaled_rows as i64));
+        patch.set(
+            "transactions.count",
+            ConfigValue::Integer(scaled_rows as i64),
+        );
 
         // Set seed if specified
         if let Some(seed) = self.options.seed {
@@ -114,7 +123,10 @@ impl ConfigSynthesizer {
                     let mu = stats.mean.ln() - sigma_sq / 2.0;
 
                     config.insert("lognormal_mu".to_string(), ConfigValue::Float(mu));
-                    config.insert("lognormal_sigma".to_string(), ConfigValue::Float(sigma_sq.sqrt()));
+                    config.insert(
+                        "lognormal_sigma".to_string(),
+                        ConfigValue::Float(sigma_sq.sqrt()),
+                    );
                 }
             }
             _ => {
@@ -123,7 +135,10 @@ impl ConfigSynthesizer {
                     let mu = stats.percentiles.p50.ln();
                     let sigma = (stats.percentiles.p75 / stats.percentiles.p25).ln() / 1.349;
                     config.insert("lognormal_mu".to_string(), ConfigValue::Float(mu));
-                    config.insert("lognormal_sigma".to_string(), ConfigValue::Float(sigma.abs()));
+                    config.insert(
+                        "lognormal_sigma".to_string(),
+                        ConfigValue::Float(sigma.abs()),
+                    );
                 }
             }
         }
@@ -132,7 +147,10 @@ impl ConfigSynthesizer {
         if let Some(benford) = stats.benford_first_digit {
             // Higher digit 1 frequency suggests round number bias
             let round_bias = if benford[0] < 0.25 { 0.3 } else { 0.15 };
-            config.insert("round_number_probability".to_string(), ConfigValue::Float(round_bias));
+            config.insert(
+                "round_number_probability".to_string(),
+                ConfigValue::Float(round_bias),
+            );
         }
 
         config
@@ -142,6 +160,97 @@ impl ConfigSynthesizer {
 impl Default for ConfigSynthesizer {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Result of config synthesis including optional copula generators.
+#[derive(Debug)]
+pub struct SynthesisResult {
+    /// Configuration patch to apply.
+    pub config_patch: ConfigPatch,
+    /// Copula generators for preserving correlations (if enabled and correlations present).
+    pub copula_generators: Vec<CopulaGeneratorSpec>,
+}
+
+/// Specification for a copula generator.
+#[derive(Debug)]
+pub struct CopulaGeneratorSpec {
+    /// Name identifier.
+    pub name: String,
+    /// Table this copula applies to.
+    pub table: String,
+    /// Column names.
+    pub columns: Vec<String>,
+    /// The copula generator (ready to use).
+    pub generator: CopulaGenerator,
+}
+
+impl ConfigSynthesizer {
+    /// Synthesize config and copula generators from a fingerprint.
+    ///
+    /// This is the full synthesis method that also creates copula generators
+    /// for preserving correlations.
+    pub fn synthesize_full(
+        &self,
+        fingerprint: &Fingerprint,
+        seed: u64,
+    ) -> FingerprintResult<SynthesisResult> {
+        let config_patch = self.synthesize(fingerprint)?;
+
+        let mut copula_generators = Vec::new();
+
+        if self.options.preserve_correlations {
+            // Create copula generators from fingerprint
+            if let Some(ref correlations) = fingerprint.correlations {
+                // First, try to use pre-built copulas
+                for copula in &correlations.copulas {
+                    if let Some(generator) = CopulaGenerator::from_copula(copula, seed) {
+                        copula_generators.push(CopulaGeneratorSpec {
+                            name: copula.name.clone(),
+                            table: copula.table.clone(),
+                            columns: copula.columns.clone(),
+                            generator,
+                        });
+                    }
+                }
+
+                // If no copulas, create from correlation matrices
+                if copula_generators.is_empty() {
+                    for (table_name, matrix) in &correlations.matrices {
+                        if matrix.columns.len() >= 2 {
+                            if let Some(generator) =
+                                CopulaGenerator::from_correlation_matrix(matrix, seed)
+                            {
+                                copula_generators.push(CopulaGeneratorSpec {
+                                    name: format!("{}_copula", table_name),
+                                    table: table_name.clone(),
+                                    columns: matrix.columns.clone(),
+                                    generator,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(SynthesisResult {
+            config_patch,
+            copula_generators,
+        })
+    }
+
+    /// Create a copula generator from a Gaussian copula specification.
+    pub fn create_copula_generator(copula: &GaussianCopula, seed: u64) -> Option<CopulaGenerator> {
+        CopulaGenerator::from_copula(copula, seed)
+    }
+
+    /// Create a copula generator from a correlation matrix.
+    pub fn create_copula_from_matrix(
+        matrix: &CorrelationMatrix,
+        seed: u64,
+    ) -> Option<CopulaGenerator> {
+        CopulaGenerator::from_correlation_matrix(matrix, seed)
     }
 }
 

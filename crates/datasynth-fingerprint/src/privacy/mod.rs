@@ -4,6 +4,88 @@
 //! - **Differential Privacy**: Laplace noise with epsilon budgeting
 //! - **K-Anonymity**: Suppression of rare categorical values
 //! - **Audit Trail**: Complete logging of privacy decisions
+//!
+//! # Overview
+//!
+//! The [`PrivacyEngine`] applies privacy protections during fingerprint extraction,
+//! ensuring that the extracted statistics cannot be used to identify individuals.
+//!
+//! # Privacy Levels
+//!
+//! Four pre-configured privacy levels are available:
+//!
+//! | Level | Epsilon | K | Use Case |
+//! |-------|---------|---|----------|
+//! | Minimal | 5.0 | 3 | Low privacy requirements |
+//! | Standard | 1.0 | 5 | Balanced (default) |
+//! | High | 0.5 | 10 | Sensitive data |
+//! | Maximum | 0.1 | 20 | Highly sensitive data |
+//!
+//! # Usage
+//!
+//! ```ignore
+//! use datasynth_fingerprint::privacy::{PrivacyEngine, PrivacyConfig};
+//! use datasynth_fingerprint::models::PrivacyLevel;
+//!
+//! // Create engine with standard privacy
+//! let mut engine = PrivacyEngine::from_level(PrivacyLevel::Standard);
+//!
+//! // Add noise to a numeric statistic
+//! let noised_mean = engine.add_noise(100.5, 1.0, "table.amount.mean")?;
+//!
+//! // Filter categories by k-anonymity
+//! let frequencies = vec![
+//!     ("USA".to_string(), 1000),
+//!     ("UK".to_string(), 500),
+//!     ("Rare".to_string(), 2),  // Will be suppressed (< k=5)
+//! ];
+//! let filtered = engine.filter_categories(frequencies, 1502, "table.country");
+//!
+//! // Get the audit trail
+//! let audit = engine.audit();
+//! println!("Epsilon spent: {}", audit.total_epsilon_spent);
+//! println!("Actions: {}", audit.actions.len());
+//! ```
+//!
+//! # Differential Privacy
+//!
+//! The [`LaplaceMechanism`] adds calibrated noise to numeric statistics:
+//!
+//! ```ignore
+//! let mechanism = LaplaceMechanism::new(epsilon);
+//! let noised = mechanism.add_noise(value, sensitivity, epsilon_per_query);
+//! ```
+//!
+//! The noise is calibrated based on:
+//! - **Sensitivity**: How much a single record can change the statistic
+//! - **Epsilon**: Privacy budget (lower = more privacy, more noise)
+//!
+//! # K-Anonymity
+//!
+//! The [`KAnonymity`] mechanism suppresses rare categorical values:
+//!
+//! ```ignore
+//! let kanon = KAnonymity::new(k, min_occurrence);
+//! let (kept, suppressed_count) = kanon.filter_frequencies(frequencies, total);
+//! ```
+//!
+//! Values appearing fewer than k times are replaced with an "Other" category.
+//!
+//! # Audit Trail
+//!
+//! Every privacy decision is recorded in the [`PrivacyAudit`]:
+//!
+//! - Noise additions with epsilon spent
+//! - Value suppressions
+//! - Generalizations
+//! - Winsorization of outliers
+//!
+//! The audit is included in the fingerprint file for transparency.
+//!
+//! [`PrivacyEngine`]: PrivacyEngine
+//! [`LaplaceMechanism`]: differential::LaplaceMechanism
+//! [`KAnonymity`]: kanonymity::KAnonymity
+//! [`PrivacyAudit`]: crate::models::PrivacyAudit
 
 mod audit;
 mod differential;
@@ -14,11 +96,15 @@ pub use differential::*;
 pub use kanonymity::*;
 
 use crate::error::{FingerprintError, FingerprintResult};
-use crate::models::{PrivacyAction, PrivacyActionType, PrivacyAudit, PrivacyLevel, PrivacyMetadata};
+use crate::models::{
+    PrivacyAction, PrivacyActionType, PrivacyAudit, PrivacyLevel, PrivacyMetadata,
+};
 
 /// Configuration for privacy mechanisms.
 #[derive(Debug, Clone)]
 pub struct PrivacyConfig {
+    /// Privacy level.
+    pub level: PrivacyLevel,
     /// Differential privacy epsilon budget.
     pub epsilon: f64,
     /// K-anonymity threshold.
@@ -36,6 +122,7 @@ impl PrivacyConfig {
     pub fn from_level(level: PrivacyLevel) -> Self {
         let metadata = PrivacyMetadata::from_level(level);
         Self {
+            level,
             epsilon: metadata.epsilon,
             k_anonymity: metadata.k_anonymity,
             outlier_percentile: metadata.outlier_percentile,
@@ -46,7 +133,19 @@ impl PrivacyConfig {
 
     /// Create custom configuration.
     pub fn custom(epsilon: f64, k_anonymity: u32) -> Self {
+        // Infer level from epsilon
+        let level = if epsilon >= 5.0 {
+            PrivacyLevel::Minimal
+        } else if epsilon >= 1.0 {
+            PrivacyLevel::Standard
+        } else if epsilon >= 0.5 {
+            PrivacyLevel::High
+        } else {
+            PrivacyLevel::Maximum
+        };
+
         Self {
+            level,
             epsilon,
             k_anonymity,
             outlier_percentile: 95.0,
@@ -92,7 +191,12 @@ impl PrivacyEngine {
     }
 
     /// Add noise to a numeric value.
-    pub fn add_noise(&mut self, value: f64, sensitivity: f64, target: &str) -> FingerprintResult<f64> {
+    pub fn add_noise(
+        &mut self,
+        value: f64,
+        sensitivity: f64,
+        target: &str,
+    ) -> FingerprintResult<f64> {
         let epsilon_per_query = self.config.epsilon / 100.0; // Budget across many queries
 
         if !self.can_spend(epsilon_per_query) {
@@ -102,12 +206,17 @@ impl PrivacyEngine {
             });
         }
 
-        let noised = self.laplace.add_noise(value, sensitivity, epsilon_per_query);
+        let noised = self
+            .laplace
+            .add_noise(value, sensitivity, epsilon_per_query);
 
         let action = PrivacyAction::new(
             PrivacyActionType::LaplaceNoise,
             target,
-            format!("Added Laplace noise with sensitivity={}, epsilon={}", sensitivity, epsilon_per_query),
+            format!(
+                "Added Laplace noise with sensitivity={}, epsilon={}",
+                sensitivity, epsilon_per_query
+            ),
             "Differential privacy protection",
         )
         .with_epsilon(epsilon_per_query);
@@ -135,7 +244,10 @@ impl PrivacyEngine {
             let action = PrivacyAction::new(
                 PrivacyActionType::Suppression,
                 target,
-                format!("Suppressed {} rare categories below k={}", suppressed, self.config.k_anonymity),
+                format!(
+                    "Suppressed {} rare categories below k={}",
+                    suppressed, self.config.k_anonymity
+                ),
                 "K-anonymity protection",
             );
             self.audit.record_action(action);

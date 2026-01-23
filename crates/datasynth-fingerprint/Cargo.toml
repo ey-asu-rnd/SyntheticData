@@ -54,6 +54,10 @@ tracing = { workspace = true }
 # CSV parsing for data extraction
 csv = { workspace = true }
 
+# Parquet support
+parquet = { workspace = true }
+arrow = { workspace = true }
+
 # UUID
 uuid = { workspace = true }
 

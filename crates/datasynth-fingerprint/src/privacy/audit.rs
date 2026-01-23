@@ -1,6 +1,6 @@
 //! Privacy audit utilities.
 
-use crate::models::{PrivacyAction, PrivacyAudit, WarningLevel, PrivacyWarning};
+use crate::models::{PrivacyAction, PrivacyAudit, PrivacyWarning, WarningLevel};
 
 /// Builder for creating privacy audits.
 pub struct PrivacyAuditBuilder {
@@ -54,7 +54,8 @@ pub fn generate_privacy_report(audit: &PrivacyAudit) -> String {
     report.push_str("=== Privacy Audit Report ===\n\n");
 
     report.push_str(&format!("Epsilon Budget: {:.3}\n", audit.epsilon_budget));
-    report.push_str(&format!("Epsilon Spent:  {:.3} ({:.1}%)\n",
+    report.push_str(&format!(
+        "Epsilon Spent:  {:.3} ({:.1}%)\n",
         audit.total_epsilon_spent,
         audit.total_epsilon_spent / audit.epsilon_budget * 100.0
     ));
@@ -62,12 +63,30 @@ pub fn generate_privacy_report(audit: &PrivacyAudit) -> String {
     report.push_str(&format!("Total Actions:  {}\n\n", audit.actions.len()));
 
     report.push_str("Summary:\n");
-    report.push_str(&format!("  - Noise additions:   {}\n", audit.summary.noise_additions));
-    report.push_str(&format!("  - Suppressions:      {}\n", audit.summary.suppressions));
-    report.push_str(&format!("  - Generalizations:   {}\n", audit.summary.generalizations));
-    report.push_str(&format!("  - Winsorizations:    {}\n", audit.summary.winsorizations));
-    report.push_str(&format!("  - Binnings:          {}\n", audit.summary.binnings));
-    report.push_str(&format!("  - Roundings:         {}\n", audit.summary.roundings));
+    report.push_str(&format!(
+        "  - Noise additions:   {}\n",
+        audit.summary.noise_additions
+    ));
+    report.push_str(&format!(
+        "  - Suppressions:      {}\n",
+        audit.summary.suppressions
+    ));
+    report.push_str(&format!(
+        "  - Generalizations:   {}\n",
+        audit.summary.generalizations
+    ));
+    report.push_str(&format!(
+        "  - Winsorizations:    {}\n",
+        audit.summary.winsorizations
+    ));
+    report.push_str(&format!(
+        "  - Binnings:          {}\n",
+        audit.summary.binnings
+    ));
+    report.push_str(&format!(
+        "  - Roundings:         {}\n",
+        audit.summary.roundings
+    ));
 
     if !audit.warnings.is_empty() {
         report.push_str(&format!("\nWarnings ({}):\n", audit.warnings.len()));
@@ -110,7 +129,9 @@ pub fn check_audit_issues(audit: &PrivacyAudit) -> Vec<String> {
     }
 
     // Check for critical warnings
-    let critical_count = audit.warnings.iter()
+    let critical_count = audit
+        .warnings
+        .iter()
         .filter(|w| w.level == WarningLevel::Critical)
         .count();
     if critical_count > 0 {
@@ -129,12 +150,15 @@ mod tests {
     fn test_audit_builder() {
         let mut builder = PrivacyAuditBuilder::new(1.0, 5);
 
-        builder.add_action(PrivacyAction::new(
-            PrivacyActionType::LaplaceNoise,
-            "test.column",
-            "Added noise",
-            "DP protection",
-        ).with_epsilon(0.1));
+        builder.add_action(
+            PrivacyAction::new(
+                PrivacyActionType::LaplaceNoise,
+                "test.column",
+                "Added noise",
+                "DP protection",
+            )
+            .with_epsilon(0.1),
+        );
 
         let audit = builder.build();
 

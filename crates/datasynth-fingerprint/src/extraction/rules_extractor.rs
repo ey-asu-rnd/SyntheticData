@@ -4,7 +4,7 @@ use crate::error::FingerprintResult;
 use crate::models::RulesFingerprint;
 use crate::privacy::PrivacyEngine;
 
-use super::{DataSource, ExtractionConfig, ExtractedComponent, Extractor};
+use super::{DataSource, ExtractedComponent, ExtractionConfig, Extractor};
 
 /// Extractor for business rules.
 pub struct RulesExtractor;

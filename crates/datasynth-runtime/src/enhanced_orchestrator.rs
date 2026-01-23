@@ -33,6 +33,11 @@ use datasynth_core::models::subledger::ap::APInvoice;
 use datasynth_core::models::subledger::ar::ARInvoice;
 use datasynth_core::models::*;
 use datasynth_core::{DegradationActions, DegradationLevel, ResourceGuard, ResourceGuardBuilder};
+use datasynth_fingerprint::{
+    io::FingerprintReader,
+    models::Fingerprint,
+    synthesis::{ConfigSynthesizer, CopulaGeneratorSpec, SynthesisOptions},
+};
 use datasynth_generators::{
     // Anomaly injection
     AnomalyInjector,
@@ -451,6 +456,8 @@ pub struct EnhancedOrchestrator {
     resource_guard: ResourceGuard,
     /// Output path for disk space monitoring
     output_path: Option<PathBuf>,
+    /// Copula generators for preserving correlations (from fingerprint)
+    copula_generators: Vec<CopulaGeneratorSpec>,
 }
 
 impl EnhancedOrchestrator {
@@ -472,6 +479,7 @@ impl EnhancedOrchestrator {
             multi_progress: None,
             resource_guard,
             output_path: None,
+            copula_generators: Vec::new(),
         })
     }
 
@@ -496,6 +504,231 @@ impl EnhancedOrchestrator {
         // Rebuild resource guard with the output path
         self.resource_guard = Self::build_resource_guard(&self.config, Some(path));
         self
+    }
+
+    /// Check if copula generators are available.
+    ///
+    /// Returns true if the orchestrator has copula generators for preserving
+    /// correlations (typically from fingerprint-based generation).
+    pub fn has_copulas(&self) -> bool {
+        !self.copula_generators.is_empty()
+    }
+
+    /// Get the copula generators.
+    ///
+    /// Returns a reference to the copula generators for use during generation.
+    /// These can be used to generate correlated samples that preserve the
+    /// statistical relationships from the source data.
+    pub fn copulas(&self) -> &[CopulaGeneratorSpec] {
+        &self.copula_generators
+    }
+
+    /// Get a mutable reference to the copula generators.
+    ///
+    /// Allows generators to sample from copulas during data generation.
+    pub fn copulas_mut(&mut self) -> &mut [CopulaGeneratorSpec] {
+        &mut self.copula_generators
+    }
+
+    /// Sample correlated values from a named copula.
+    ///
+    /// Returns None if the copula doesn't exist.
+    pub fn sample_from_copula(&mut self, copula_name: &str) -> Option<Vec<f64>> {
+        self.copula_generators
+            .iter_mut()
+            .find(|c| c.name == copula_name)
+            .map(|c| c.generator.sample())
+    }
+
+    /// Create an orchestrator from a fingerprint file.
+    ///
+    /// This reads the fingerprint, synthesizes a GeneratorConfig from it,
+    /// and creates an orchestrator configured to generate data matching
+    /// the statistical properties of the original data.
+    ///
+    /// # Arguments
+    /// * `fingerprint_path` - Path to the .dsf fingerprint file
+    /// * `phase_config` - Phase configuration for generation
+    /// * `scale` - Scale factor for row counts (1.0 = same as original)
+    ///
+    /// # Example
+    /// ```no_run
+    /// use datasynth_runtime::{EnhancedOrchestrator, PhaseConfig};
+    /// use std::path::Path;
+    ///
+    /// let orchestrator = EnhancedOrchestrator::from_fingerprint(
+    ///     Path::new("fingerprint.dsf"),
+    ///     PhaseConfig::default(),
+    ///     1.0,
+    /// ).unwrap();
+    /// ```
+    pub fn from_fingerprint(
+        fingerprint_path: &std::path::Path,
+        phase_config: PhaseConfig,
+        scale: f64,
+    ) -> SynthResult<Self> {
+        info!("Loading fingerprint from: {}", fingerprint_path.display());
+
+        // Read the fingerprint
+        let reader = FingerprintReader::new();
+        let fingerprint = reader
+            .read_from_file(fingerprint_path)
+            .map_err(|e| SynthError::config(format!("Failed to read fingerprint: {}", e)))?;
+
+        Self::from_fingerprint_data(fingerprint, phase_config, scale)
+    }
+
+    /// Create an orchestrator from a loaded fingerprint.
+    ///
+    /// # Arguments
+    /// * `fingerprint` - The loaded fingerprint
+    /// * `phase_config` - Phase configuration for generation
+    /// * `scale` - Scale factor for row counts (1.0 = same as original)
+    pub fn from_fingerprint_data(
+        fingerprint: Fingerprint,
+        phase_config: PhaseConfig,
+        scale: f64,
+    ) -> SynthResult<Self> {
+        info!(
+            "Synthesizing config from fingerprint (version: {}, tables: {})",
+            fingerprint.manifest.version,
+            fingerprint.schema.tables.len()
+        );
+
+        // Generate a seed for the synthesis
+        let seed: u64 = rand::random();
+
+        // Use ConfigSynthesizer with scale option to convert fingerprint to GeneratorConfig
+        let options = SynthesisOptions {
+            scale,
+            seed: Some(seed),
+            preserve_correlations: true,
+            inject_anomalies: true,
+        };
+        let synthesizer = ConfigSynthesizer::with_options(options);
+
+        // Synthesize full result including copula generators
+        let synthesis_result = synthesizer
+            .synthesize_full(&fingerprint, seed)
+            .map_err(|e| {
+                SynthError::config(format!(
+                    "Failed to synthesize config from fingerprint: {}",
+                    e
+                ))
+            })?;
+
+        // Start with a base config from the fingerprint's industry if available
+        let mut config = if let Some(ref industry) = fingerprint.manifest.source.industry {
+            Self::base_config_for_industry(industry)
+        } else {
+            Self::base_config_for_industry("manufacturing")
+        };
+
+        // Apply the synthesized patches
+        config = Self::apply_config_patch(config, &synthesis_result.config_patch);
+
+        // Log synthesis results
+        info!(
+            "Config synthesized: {} tables, scale={:.2}, copula generators: {}",
+            fingerprint.schema.tables.len(),
+            scale,
+            synthesis_result.copula_generators.len()
+        );
+
+        if !synthesis_result.copula_generators.is_empty() {
+            for spec in &synthesis_result.copula_generators {
+                info!(
+                    "  Copula '{}' for table '{}': {} columns",
+                    spec.name,
+                    spec.table,
+                    spec.columns.len()
+                );
+            }
+        }
+
+        // Create the orchestrator with the synthesized config
+        let mut orchestrator = Self::new(config, phase_config)?;
+
+        // Store copula generators for use during generation
+        orchestrator.copula_generators = synthesis_result.copula_generators;
+
+        Ok(orchestrator)
+    }
+
+    /// Create a base config for a given industry.
+    fn base_config_for_industry(industry: &str) -> GeneratorConfig {
+        use datasynth_config::presets::create_preset;
+        use datasynth_config::TransactionVolume;
+        use datasynth_core::models::{CoAComplexity, IndustrySector};
+
+        let sector = match industry.to_lowercase().as_str() {
+            "manufacturing" => IndustrySector::Manufacturing,
+            "retail" => IndustrySector::Retail,
+            "financial" | "financial_services" => IndustrySector::FinancialServices,
+            "healthcare" => IndustrySector::Healthcare,
+            "technology" | "tech" => IndustrySector::Technology,
+            _ => IndustrySector::Manufacturing,
+        };
+
+        // Create a preset with reasonable defaults
+        create_preset(
+            sector,
+            1,  // company count
+            12, // period months
+            CoAComplexity::Medium,
+            TransactionVolume::TenK,
+        )
+    }
+
+    /// Apply a config patch to a GeneratorConfig.
+    fn apply_config_patch(
+        mut config: GeneratorConfig,
+        patch: &datasynth_fingerprint::synthesis::ConfigPatch,
+    ) -> GeneratorConfig {
+        use datasynth_fingerprint::synthesis::ConfigValue;
+
+        for (key, value) in patch.values() {
+            match (key.as_str(), value) {
+                // Transaction count is handled via TransactionVolume enum on companies
+                // Log it but cannot directly set it (would need to modify company volumes)
+                ("transactions.count", ConfigValue::Integer(n)) => {
+                    info!(
+                        "Fingerprint suggests {} transactions (apply via company volumes)",
+                        n
+                    );
+                }
+                ("global.period_months", ConfigValue::Integer(n)) => {
+                    config.global.period_months = *n as u32;
+                }
+                ("global.start_date", ConfigValue::String(s)) => {
+                    config.global.start_date = s.clone();
+                }
+                ("global.seed", ConfigValue::Integer(n)) => {
+                    config.global.seed = Some(*n as u64);
+                }
+                ("fraud.enabled", ConfigValue::Bool(b)) => {
+                    config.fraud.enabled = *b;
+                }
+                ("fraud.fraud_rate", ConfigValue::Float(f)) => {
+                    config.fraud.fraud_rate = *f;
+                }
+                ("data_quality.enabled", ConfigValue::Bool(b)) => {
+                    config.data_quality.enabled = *b;
+                }
+                // Handle anomaly injection paths (mapped to fraud config)
+                ("anomaly_injection.enabled", ConfigValue::Bool(b)) => {
+                    config.fraud.enabled = *b;
+                }
+                ("anomaly_injection.overall_rate", ConfigValue::Float(f)) => {
+                    config.fraud.fraud_rate = *f;
+                }
+                _ => {
+                    debug!("Ignoring unknown config patch key: {}", key);
+                }
+            }
+        }
+
+        config
     }
 
     /// Build a resource guard from the configuration.

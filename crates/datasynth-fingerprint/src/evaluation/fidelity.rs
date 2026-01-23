@@ -206,16 +206,17 @@ impl FidelityEvaluator {
 
                 scores.push(col_score.max(0.0));
 
-                details.ks_statistics.insert(col_name.clone(), metrics.ks_statistic);
+                details
+                    .ks_statistics
+                    .insert(col_name.clone(), metrics.ks_statistic);
                 details.column_metrics.insert(col_name.clone(), metrics);
             }
         }
 
         // Compare Benford's Law if available
-        if let (Some(orig_benford), Some(syn_benford)) = (
-            &original.benford_analysis,
-            &synthetic.benford_analysis,
-        ) {
+        if let (Some(orig_benford), Some(syn_benford)) =
+            (&original.benford_analysis, &synthetic.benford_analysis)
+        {
             let benford_mad = compute_benford_mad(
                 &orig_benford.observed_frequencies,
                 &syn_benford.observed_frequencies,
@@ -255,7 +256,7 @@ impl FidelityEvaluator {
             name: name.to_string(),
             ks_statistic,
             wasserstein_distance: mean_diff.abs(), // Simplified
-            js_divergence: 0.0, // Would require full distributions
+            js_divergence: 0.0,                    // Would require full distributions
             mean_diff,
             std_dev_diff,
         }
@@ -329,7 +330,9 @@ impl FidelityEvaluator {
         if orig_tables != syn_tables {
             let missing = orig_tables.difference(&syn_tables).count();
             score -= 0.1 * missing as f64;
-            details.warnings.push(format!("{} tables missing in synthetic data", missing));
+            details
+                .warnings
+                .push(format!("{} tables missing in synthetic data", missing));
         }
 
         // Check row count ratio
@@ -382,7 +385,11 @@ impl FidelityEvaluator {
 
         // Compare balance rule compliance
         for orig_rule in &orig_rules.balance_rules {
-            if let Some(syn_rule) = syn_rules.balance_rules.iter().find(|r| r.name == orig_rule.name) {
+            if let Some(syn_rule) = syn_rules
+                .balance_rules
+                .iter()
+                .find(|r| r.name == orig_rule.name)
+            {
                 let diff = (orig_rule.compliance_rate - syn_rule.compliance_rate).abs();
                 score -= diff * 0.1;
             }
@@ -404,7 +411,8 @@ impl FidelityEvaluator {
         };
 
         // Compare overall anomaly rates
-        let rate_diff = (orig_anomalies.overall.anomaly_rate - syn_anomalies.overall.anomaly_rate).abs();
+        let rate_diff =
+            (orig_anomalies.overall.anomaly_rate - syn_anomalies.overall.anomaly_rate).abs();
 
         // Convert to score (0.1 rate difference = 0.0 score)
         1.0 - (rate_diff * 10.0).min(1.0)
@@ -482,8 +490,16 @@ pub fn generate_html_report(report: &FidelityReport) -> String {
         report.rule_compliance * 100.0,
         report.anomaly_fidelity * 100.0,
         report.details.row_count_ratio,
-        report.details.benford_mad.map(|m| format!("<p>Benford MAD: {:.4}</p>", m)).unwrap_or_default(),
-        report.details.correlation_rmse.map(|r| format!("<p>Correlation RMSE: {:.4}</p>", r)).unwrap_or_default(),
+        report
+            .details
+            .benford_mad
+            .map(|m| format!("<p>Benford MAD: {:.4}</p>", m))
+            .unwrap_or_default(),
+        report
+            .details
+            .correlation_rmse
+            .map(|r| format!("<p>Correlation RMSE: {:.4}</p>", r))
+            .unwrap_or_default(),
     )
 }
 
@@ -493,8 +509,12 @@ mod tests {
 
     #[test]
     fn test_benford_mad() {
-        let original = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046];
-        let synthetic = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046];
+        let original = [
+            0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046,
+        ];
+        let synthetic = [
+            0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046,
+        ];
 
         let mad = compute_benford_mad(&original, &synthetic);
         assert!(mad < 0.001); // Identical distributions

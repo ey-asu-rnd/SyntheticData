@@ -4,12 +4,12 @@ use std::collections::HashMap;
 
 use crate::error::FingerprintResult;
 use crate::models::{
-    CategoricalStats, CategoryFrequency, DistributionParams,
-    DistributionType, NumericStats, Percentiles, StatisticsFingerprint,
+    CategoricalStats, CategoryFrequency, DistributionParams, DistributionType, NumericStats,
+    Percentiles, StatisticsFingerprint,
 };
 use crate::privacy::PrivacyEngine;
 
-use super::{DataSource, ExtractionConfig, ExtractedComponent, Extractor};
+use super::{DataSource, ExtractedComponent, ExtractionConfig, Extractor};
 
 /// Extractor for statistical information.
 pub struct StatsExtractor;
@@ -27,7 +27,16 @@ impl Extractor for StatsExtractor {
     ) -> FingerprintResult<ExtractedComponent> {
         let stats = match data {
             DataSource::Csv(csv) => extract_from_csv(csv, config, privacy)?,
+            DataSource::Parquet(pq) => extract_from_parquet(pq, config, privacy)?,
+            DataSource::Json(json) => extract_from_json(json, config, privacy)?,
             DataSource::Memory(mem) => extract_from_memory(mem, config, privacy)?,
+            DataSource::Directory(_) => {
+                // Directory sources are handled by FingerprintExtractor::extract_from_directory_impl
+                return Err(crate::error::FingerprintError::extraction(
+                    "statistics",
+                    "Directory sources should be handled at the FingerprintExtractor level",
+                ));
+            }
         };
 
         Ok(ExtractedComponent::Statistics(stats))
@@ -59,7 +68,9 @@ fn extract_from_csv(
         }
     }
 
-    let table_name = csv.path.file_stem()
+    let table_name = csv
+        .path
+        .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("data");
 
@@ -84,6 +95,114 @@ fn extract_from_memory(
     }
 
     extract_column_stats(&mem.columns, &columns, "memory", config, privacy)
+}
+
+/// Extract statistics from Parquet file.
+fn extract_from_parquet(
+    pq: &super::ParquetDataSource,
+    config: &ExtractionConfig,
+    privacy: &mut PrivacyEngine,
+) -> FingerprintResult<StatisticsFingerprint> {
+    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+    use std::fs::File;
+
+    let file = File::open(&pq.path)?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file)?;
+    let schema = builder.schema().clone();
+    let reader = builder.with_batch_size(10000).build()?;
+
+    // Collect column names
+    let headers: Vec<String> = schema.fields().iter().map(|f| f.name().clone()).collect();
+    let mut columns: Vec<Vec<String>> = vec![Vec::new(); headers.len()];
+
+    // Read batches
+    for batch_result in reader {
+        let batch = batch_result?;
+        for (i, _field) in schema.fields().iter().enumerate() {
+            let column = batch.column(i);
+            let values = super::schema_extractor::arrow_column_to_strings(column.as_ref());
+            columns[i].extend(values);
+        }
+    }
+
+    let table_name = pq
+        .path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("data");
+
+    extract_column_stats(&headers, &columns, table_name, config, privacy)
+}
+
+/// Extract statistics from JSON/JSONL file.
+fn extract_from_json(
+    json: &super::JsonDataSource,
+    config: &ExtractionConfig,
+    privacy: &mut PrivacyEngine,
+) -> FingerprintResult<StatisticsFingerprint> {
+    use std::collections::HashSet;
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+
+    let file = File::open(&json.path)?;
+    let reader = BufReader::new(file);
+
+    let mut rows: Vec<HashMap<String, serde_json::Value>> = Vec::new();
+
+    if json.is_array {
+        // JSON array format
+        let content = std::fs::read_to_string(&json.path)?;
+        let array: Vec<serde_json::Value> = serde_json::from_str(&content)?;
+
+        for value in array {
+            if let serde_json::Value::Object(obj) = value {
+                rows.push(obj.into_iter().collect());
+            }
+        }
+    } else {
+        // JSONL format
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            if let Ok(serde_json::Value::Object(obj)) = serde_json::from_str(&line) {
+                rows.push(obj.into_iter().collect());
+            }
+        }
+    }
+
+    // Collect all column names
+    let mut all_columns: HashSet<String> = HashSet::new();
+    for row in &rows {
+        for key in row.keys() {
+            all_columns.insert(key.clone());
+        }
+    }
+
+    // Sort columns for consistency
+    let mut headers: Vec<String> = all_columns.into_iter().collect();
+    headers.sort();
+
+    // Build columns
+    let mut columns: Vec<Vec<String>> = vec![Vec::new(); headers.len()];
+    for row in &rows {
+        for (i, header) in headers.iter().enumerate() {
+            let value = row
+                .get(header)
+                .map(super::schema_extractor::json_value_to_string)
+                .unwrap_or_default();
+            columns[i].push(value);
+        }
+    }
+
+    let table_name = json
+        .path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("data");
+
+    extract_column_stats(&headers, &columns, table_name, config, privacy)
 }
 
 /// Extract statistics for all columns.
@@ -119,7 +238,9 @@ fn extract_column_stats(
     }
 
     // Compute global Benford analysis for numeric columns
-    let all_amounts: Vec<f64> = stats.numeric_columns.values()
+    let all_amounts: Vec<f64> = stats
+        .numeric_columns
+        .values()
         .flat_map(|s| vec![s.mean]) // Simplified - would use actual values in production
         .filter(|v| *v > 0.0)
         .collect();
@@ -154,12 +275,14 @@ fn compute_numeric_stats(
     let sum: f64 = sorted.iter().sum();
     let mean = sum / sorted.len() as f64;
 
-    let variance: f64 = sorted.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / sorted.len() as f64;
+    let variance: f64 =
+        sorted.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / sorted.len() as f64;
     let std_dev = variance.sqrt();
 
     // Add noise to statistics
     let noised_mean = privacy.add_noise(mean, max - min, &format!("{}.mean", target))?;
-    let noised_std_dev = privacy.add_noise(std_dev, (max - min) / 2.0, &format!("{}.std_dev", target))?;
+    let noised_std_dev =
+        privacy.add_noise(std_dev, (max - min) / 2.0, &format!("{}.std_dev", target))?;
 
     // Compute percentiles
     let percentiles = compute_percentiles(&sorted);
@@ -213,7 +336,11 @@ fn compute_percentiles(sorted: &[f64]) -> Percentiles {
 }
 
 /// Fit a distribution to the data.
-fn fit_distribution(sorted: &[f64], mean: f64, std_dev: f64) -> (DistributionType, DistributionParams) {
+fn fit_distribution(
+    sorted: &[f64],
+    mean: f64,
+    std_dev: f64,
+) -> (DistributionType, DistributionParams) {
     // Simple heuristic-based fitting
 
     // Check for uniform
@@ -222,7 +349,10 @@ fn fit_distribution(sorted: &[f64], mean: f64, std_dev: f64) -> (DistributionTyp
     if (std_dev - expected_std_uniform).abs() / expected_std_uniform < 0.1 {
         return (
             DistributionType::Uniform,
-            DistributionParams::uniform(*sorted.first().unwrap_or(&0.0), *sorted.last().unwrap_or(&1.0)),
+            DistributionParams::uniform(
+                *sorted.first().unwrap_or(&0.0),
+                *sorted.last().unwrap_or(&1.0),
+            ),
         );
     }
 
@@ -234,7 +364,11 @@ fn fit_distribution(sorted: &[f64], mean: f64, std_dev: f64) -> (DistributionTyp
         // Fit log-normal
         let log_values: Vec<f64> = sorted.iter().map(|v| v.ln()).collect();
         let log_mean: f64 = log_values.iter().sum::<f64>() / log_values.len() as f64;
-        let log_var: f64 = log_values.iter().map(|v| (v - log_mean).powi(2)).sum::<f64>() / log_values.len() as f64;
+        let log_var: f64 = log_values
+            .iter()
+            .map(|v| (v - log_mean).powi(2))
+            .sum::<f64>()
+            / log_values.len() as f64;
         let log_std = log_var.sqrt();
 
         return (
@@ -316,10 +450,8 @@ fn compute_categorical_stats(
     let cardinality = freq_map.len() as u64;
 
     // Convert to list for privacy filtering
-    let frequencies: Vec<(String, u64)> = freq_map
-        .into_iter()
-        .map(|(k, v)| (k.clone(), v))
-        .collect();
+    let frequencies: Vec<(String, u64)> =
+        freq_map.into_iter().map(|(k, v)| (k.clone(), v)).collect();
 
     // Apply k-anonymity filtering
     let filtered = privacy.filter_categories(frequencies, count, target);
@@ -339,7 +471,7 @@ fn compute_categorical_stats(
         cardinality,
         top_values,
         rare_values_suppressed: true, // Privacy filtering applied
-        suppressed_count: 0, // Would be computed from filtering
+        suppressed_count: 0,          // Would be computed from filtering
         entropy,
     })
 }

@@ -28,6 +28,14 @@ pub enum FingerprintError {
     #[error("CSV error: {0}")]
     Csv(#[from] csv::Error),
 
+    /// Error during Parquet operations.
+    #[error("Parquet error: {0}")]
+    Parquet(#[from] parquet::errors::ParquetError),
+
+    /// Error during Arrow operations.
+    #[error("Arrow error: {0}")]
+    Arrow(#[from] arrow::error::ArrowError),
+
     /// Invalid fingerprint format.
     #[error("Invalid fingerprint format: {0}")]
     InvalidFormat(String),

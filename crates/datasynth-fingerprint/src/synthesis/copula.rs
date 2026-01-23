@@ -3,9 +3,10 @@
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 
-use crate::models::{CorrelationMatrix, GaussianCopula, EmpiricalCdf};
+use crate::models::{CorrelationMatrix, EmpiricalCdf, GaussianCopula};
 
 /// Generator using Gaussian copula for correlated samples.
+#[derive(Debug)]
 pub struct CopulaGenerator {
     /// Correlation matrix (Cholesky decomposed).
     cholesky: Vec<Vec<f64>>,
@@ -89,9 +90,7 @@ impl CopulaGenerator {
         }
 
         // Transform to uniform through normal CDF
-        y.iter()
-            .map(|&v| standard_normal_cdf(v))
-            .collect()
+        y.iter().map(|&v| standard_normal_cdf(v)).collect()
     }
 
     /// Generate one sample, transforming through marginals.
@@ -184,10 +183,7 @@ mod tests {
     #[test]
     fn test_cholesky() {
         // Identity matrix should decompose to itself
-        let identity = vec![
-            vec![1.0, 0.0],
-            vec![0.0, 1.0],
-        ];
+        let identity = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
         let l = cholesky_decompose(&identity).unwrap();
         assert!((l[0][0] - 1.0).abs() < 0.001);
         assert!((l[1][1] - 1.0).abs() < 0.001);
@@ -195,10 +191,7 @@ mod tests {
 
     #[test]
     fn test_copula_samples_in_range() {
-        let corr = vec![
-            vec![1.0, 0.5],
-            vec![0.5, 1.0],
-        ];
+        let corr = vec![vec![1.0, 0.5], vec![0.5, 1.0]];
         let cholesky = cholesky_decompose(&corr).unwrap();
 
         let mut gen = CopulaGenerator {

@@ -83,7 +83,11 @@ pub fn estimate_normal_params(values: &[f64]) -> (f64, f64) {
 }
 
 /// Goodness of fit test (simplified KS-like).
-pub fn goodness_of_fit(observed: &[f64], dist_type: DistributionType, params: &DistributionParams) -> f64 {
+pub fn goodness_of_fit(
+    observed: &[f64],
+    dist_type: DistributionType,
+    params: &DistributionParams,
+) -> f64 {
     // Returns a score 0-1 where 1 is perfect fit
     if observed.is_empty() {
         return 0.0;

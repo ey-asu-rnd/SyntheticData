@@ -4,7 +4,7 @@ use crate::error::FingerprintResult;
 use crate::models::{IntegrityFingerprint, UniqueConstraint};
 use crate::privacy::PrivacyEngine;
 
-use super::{DataSource, ExtractionConfig, ExtractedComponent, Extractor};
+use super::{DataSource, ExtractedComponent, ExtractionConfig, Extractor};
 
 /// Extractor for integrity constraints.
 pub struct IntegrityExtractor;
@@ -22,7 +22,18 @@ impl Extractor for IntegrityExtractor {
     ) -> FingerprintResult<ExtractedComponent> {
         let integrity = match data {
             DataSource::Csv(csv) => extract_from_csv(csv, config, privacy)?,
+            DataSource::Parquet(_) | DataSource::Json(_) => {
+                // For Parquet and JSON, return empty integrity (can be extended later)
+                IntegrityFingerprint::new()
+            }
             DataSource::Memory(mem) => extract_from_memory(mem, config, privacy)?,
+            DataSource::Directory(_) => {
+                // Directory sources are handled by FingerprintExtractor::extract_from_directory_impl
+                return Err(crate::error::FingerprintError::extraction(
+                    "integrity",
+                    "Directory sources should be handled at the FingerprintExtractor level",
+                ));
+            }
         };
 
         Ok(ExtractedComponent::Integrity(integrity))
@@ -54,7 +65,9 @@ fn extract_from_csv(
         }
     }
 
-    let table_name = csv.path.file_stem()
+    let table_name = csv
+        .path
+        .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("data");
 

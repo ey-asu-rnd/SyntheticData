@@ -12,11 +12,11 @@ use datasynth_config::{presets, GeneratorConfig};
 use datasynth_core::memory_guard::{MemoryGuard, MemoryGuardConfig};
 use datasynth_core::models::{CoAComplexity, IndustrySector};
 use datasynth_fingerprint::{
-    extraction::{ExtractionConfig, FingerprintExtractor, CsvDataSource, DataSource},
-    io::{FingerprintReader, FingerprintWriter, validate_dsf},
+    evaluation::FidelityEvaluator,
+    extraction::{CsvDataSource, DataSource, ExtractionConfig, FingerprintExtractor},
+    io::{validate_dsf, FingerprintReader, FingerprintWriter},
     models::PrivacyLevel,
     privacy::PrivacyConfig,
-    evaluation::FidelityEvaluator,
 };
 use datasynth_runtime::{
     export_labels_all_formats, EnhancedOrchestrator, LabelExportConfig, LabelExportSummary,
@@ -58,6 +58,14 @@ enum Commands {
         /// Load a scenario pack (e.g., "manufacturing/supplier_fraud")
         #[arg(long)]
         scenario_pack: Option<String>,
+
+        /// Generate from a fingerprint file (.dsf)
+        #[arg(long)]
+        fingerprint: Option<PathBuf>,
+
+        /// Scale factor for fingerprint-based generation (default: 1.0)
+        #[arg(long, default_value = "1.0")]
+        scale: f64,
 
         /// Random seed for reproducibility
         #[arg(short, long)]
@@ -208,6 +216,8 @@ fn main() -> Result<()> {
             output,
             demo,
             scenario_pack,
+            fingerprint,
+            scale,
             seed,
             banking,
             audit,
@@ -259,61 +269,107 @@ fn main() -> Result<()> {
             tracing::info!("Initial memory usage: {} MB", initial_memory);
 
             // ========================================
-            // LOAD CONFIGURATION
+            // LOAD CONFIGURATION OR ORCHESTRATOR
             // ========================================
-            let mut generator_config = if demo {
+            // When generating from fingerprint, we create the orchestrator directly.
+            // Otherwise, we load a config and create the orchestrator later.
+            enum ConfigOrOrchestrator {
+                Config(GeneratorConfig),
+                Orchestrator(EnhancedOrchestrator),
+            }
+
+            let config_or_orchestrator = if demo {
                 tracing::info!("Using demo preset (conservative settings)");
-                create_safe_demo_preset()
+                ConfigOrOrchestrator::Config(create_safe_demo_preset())
+            } else if let Some(ref fp_path) = fingerprint {
+                tracing::info!("Generating from fingerprint: {}", fp_path.display());
+                tracing::info!("Scale factor: {:.2}", scale);
+
+                let phase_config = PhaseConfig {
+                    generate_banking: banking,
+                    generate_audit: audit,
+                    show_progress: true,
+                    inject_anomalies: true, // Let fingerprint control this
+                    inject_data_quality: true,
+                    ..PhaseConfig::default()
+                };
+
+                // Create orchestrator directly from fingerprint
+                let orchestrator =
+                    EnhancedOrchestrator::from_fingerprint(fp_path, phase_config, scale)?;
+                ConfigOrOrchestrator::Orchestrator(orchestrator)
             } else if let Some(ref pack) = scenario_pack {
                 tracing::info!("Loading scenario pack: {}", pack);
                 let scenario_path = find_scenario_pack(pack)?;
                 let content = std::fs::read_to_string(&scenario_path)?;
                 let mut cfg: GeneratorConfig = serde_yaml::from_str(&content)?;
                 apply_safety_limits(&mut cfg);
-                cfg
+                ConfigOrOrchestrator::Config(cfg)
             } else if let Some(config_path) = config {
                 let content = std::fs::read_to_string(&config_path)?;
                 let mut cfg: GeneratorConfig = serde_yaml::from_str(&content)?;
                 // Apply safety limits to loaded config
                 apply_safety_limits(&mut cfg);
-                cfg
+                ConfigOrOrchestrator::Config(cfg)
             } else {
                 tracing::info!("No config specified, using safe demo preset");
-                create_safe_demo_preset()
+                ConfigOrOrchestrator::Config(create_safe_demo_preset())
             };
 
-            if let Some(s) = seed {
-                generator_config.global.seed = Some(s);
-            }
+            // Apply config modifications only when we have a Config (not fingerprint)
+            let config_or_orchestrator = match config_or_orchestrator {
+                ConfigOrOrchestrator::Config(mut cfg) => {
+                    // Apply seed override
+                    if let Some(s) = seed {
+                        cfg.global.seed = Some(s);
+                    }
 
-            // Enable banking if flag is set (with conservative defaults)
-            if banking {
-                generator_config.banking.enabled = true;
-                // Apply conservative banking limits
-                generator_config.banking.population.retail_customers = generator_config
-                    .banking
-                    .population
-                    .retail_customers
-                    .min(100);
-                generator_config.banking.population.business_customers = generator_config
-                    .banking
-                    .population
-                    .business_customers
-                    .min(20);
-                generator_config.banking.population.trusts =
-                    generator_config.banking.population.trusts.min(5);
-                tracing::info!("Banking KYC/AML generation enabled (conservative mode)");
-            }
+                    // Enable banking if flag is set (with conservative defaults)
+                    if banking {
+                        cfg.banking.enabled = true;
+                        cfg.banking.population.retail_customers =
+                            cfg.banking.population.retail_customers.min(100);
+                        cfg.banking.population.business_customers =
+                            cfg.banking.population.business_customers.min(20);
+                        cfg.banking.population.trusts = cfg.banking.population.trusts.min(5);
+                        tracing::info!("Banking KYC/AML generation enabled (conservative mode)");
+                    }
 
-            generator_config.output.output_directory = output.clone();
-            generator_config.global.parallel = false; // Disable parallel for safety
-            generator_config.global.worker_threads = effective_threads;
-            generator_config.global.memory_limit_mb = effective_memory_limit;
+                    // Apply output and resource settings
+                    cfg.output.output_directory = output.clone();
+                    cfg.global.parallel = false;
+                    cfg.global.worker_threads = effective_threads;
+                    cfg.global.memory_limit_mb = effective_memory_limit;
+
+                    ConfigOrOrchestrator::Config(cfg)
+                }
+                orch @ ConfigOrOrchestrator::Orchestrator(_) => {
+                    // For fingerprint-based generation, the orchestrator already has its config
+                    orch
+                }
+            };
+
+            // Extract generator_config for logging and manifest
+            let generator_config = match &config_or_orchestrator {
+                ConfigOrOrchestrator::Config(cfg) => cfg.clone(),
+                ConfigOrOrchestrator::Orchestrator(_) => {
+                    // Placeholder for logging - fingerprint orchestrator has its own config
+                    // Use demo preset as a stand-in for manifest generation
+                    create_safe_demo_preset()
+                }
+            };
 
             tracing::info!("Starting generation...");
-            tracing::info!("Industry: {:?}", generator_config.global.industry);
-            tracing::info!("Period: {} months", generator_config.global.period_months);
-            tracing::info!("Companies: {}", generator_config.companies.len());
+            match &config_or_orchestrator {
+                ConfigOrOrchestrator::Config(cfg) => {
+                    tracing::info!("Industry: {:?}", cfg.global.industry);
+                    tracing::info!("Period: {} months", cfg.global.period_months);
+                    tracing::info!("Companies: {}", cfg.companies.len());
+                }
+                ConfigOrOrchestrator::Orchestrator(_) => {
+                    tracing::info!("Mode: Fingerprint-based generation (scale: {:.2})", scale);
+                }
+            }
 
             // ========================================
             // SIGNAL HANDLING (Unix only)
@@ -356,29 +412,38 @@ fn main() -> Result<()> {
             // ========================================
             // GENERATE DATA
             // ========================================
-            let phase_config = PhaseConfig {
-                generate_banking: banking,
-                generate_audit: audit,
-                show_progress: true,
-                // Wire up anomaly and data quality injection from config
-                inject_anomalies: generator_config.fraud.enabled,
-                inject_data_quality: generator_config.data_quality.enabled,
-                // Use conservative defaults for document generation
-                p2p_chains: 50,
-                o2c_chains: 50,
-                vendors_per_company: 20,
-                customers_per_company: 30,
-                materials_per_company: 50,
-                assets_per_company: 20,
-                employees_per_company: 30,
-                ..PhaseConfig::default()
-            };
-
-            // Capture values before moving config to orchestrator
+            // Capture values for manifest before potentially moving config
             let effective_seed = generator_config.global.seed.unwrap_or(42);
             let config_for_manifest = generator_config.clone();
 
-            let mut orchestrator = EnhancedOrchestrator::new(generator_config, phase_config)?;
+            // Create or use existing orchestrator
+            let mut orchestrator = match config_or_orchestrator {
+                ConfigOrOrchestrator::Orchestrator(orch) => {
+                    tracing::info!("Using orchestrator from fingerprint");
+                    orch
+                }
+                ConfigOrOrchestrator::Config(cfg) => {
+                    let phase_config = PhaseConfig {
+                        generate_banking: banking,
+                        generate_audit: audit,
+                        show_progress: true,
+                        // Wire up anomaly and data quality injection from config
+                        inject_anomalies: cfg.fraud.enabled,
+                        inject_data_quality: cfg.data_quality.enabled,
+                        // Use conservative defaults for document generation
+                        p2p_chains: 50,
+                        o2c_chains: 50,
+                        vendors_per_company: 20,
+                        customers_per_company: 30,
+                        materials_per_company: 50,
+                        assets_per_company: 20,
+                        employees_per_company: 30,
+                        ..PhaseConfig::default()
+                    };
+                    EnhancedOrchestrator::new(cfg, phase_config)?
+                }
+            };
+
             let result = orchestrator.generate()?;
 
             // ========================================
@@ -493,7 +558,11 @@ fn main() -> Result<()> {
                 ) {
                     Ok(results) => {
                         for (path, count) in &results {
-                            tracing::info!("Anomaly labels written to: {} ({} labels)", path, count);
+                            tracing::info!(
+                                "Anomaly labels written to: {} ({} labels)",
+                                path,
+                                count
+                            );
                         }
                     }
                     Err(e) => {
@@ -503,7 +572,8 @@ fn main() -> Result<()> {
 
                 // Write summary
                 let summary = LabelExportSummary::from_labels(&result.anomaly_labels.labels);
-                if let Err(e) = summary.write_to_file(&labels_dir.join("anomaly_labels_summary.json"))
+                if let Err(e) =
+                    summary.write_to_file(&labels_dir.join("anomaly_labels_summary.json"))
                 {
                     tracing::warn!("Failed to write anomaly label summary: {}", e);
                 }
@@ -699,10 +769,15 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
             writer.write_to_file(&fingerprint, &output)?;
 
             tracing::info!("Fingerprint written to: {}", output.display());
-            tracing::info!("Privacy audit: {} actions recorded", fingerprint.privacy_audit.actions.len());
-            tracing::info!("Epsilon spent: {:.3} of {:.3} budget",
+            tracing::info!(
+                "Privacy audit: {} actions recorded",
+                fingerprint.privacy_audit.actions.len()
+            );
+            tracing::info!(
+                "Epsilon spent: {:.3} of {:.3} budget",
                 fingerprint.privacy_audit.total_epsilon_spent,
-                fingerprint.privacy_audit.epsilon_budget);
+                fingerprint.privacy_audit.epsilon_budget
+            );
 
             Ok(())
         }
@@ -761,7 +836,10 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
             println!("Privacy:");
             println!("  Level: {:?}", fingerprint.manifest.privacy.level);
             println!("  Epsilon: {}", fingerprint.manifest.privacy.epsilon);
-            println!("  K-Anonymity: {}", fingerprint.manifest.privacy.k_anonymity);
+            println!(
+                "  K-Anonymity: {}",
+                fingerprint.manifest.privacy.k_anonymity
+            );
             println!();
             println!("Schema:");
             println!("  Tables: {}", fingerprint.schema.tables.len());
@@ -770,8 +848,14 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
             }
             println!();
             println!("Statistics:");
-            println!("  Numeric columns: {}", fingerprint.statistics.numeric_columns.len());
-            println!("  Categorical columns: {}", fingerprint.statistics.categorical_columns.len());
+            println!(
+                "  Numeric columns: {}",
+                fingerprint.statistics.numeric_columns.len()
+            );
+            println!(
+                "  Categorical columns: {}",
+                fingerprint.statistics.categorical_columns.len()
+            );
 
             if detailed {
                 println!();
@@ -793,8 +877,14 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
 
             println!();
             println!("Privacy Audit:");
-            println!("  Total actions: {}", fingerprint.privacy_audit.actions.len());
-            println!("  Epsilon spent: {:.3}", fingerprint.privacy_audit.total_epsilon_spent);
+            println!(
+                "  Total actions: {}",
+                fingerprint.privacy_audit.actions.len()
+            );
+            println!(
+                "  Epsilon spent: {:.3}",
+                fingerprint.privacy_audit.total_epsilon_spent
+            );
             println!("  Warnings: {}", fingerprint.privacy_audit.warnings.len());
 
             Ok(())
@@ -812,15 +902,22 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
             // Compare manifests
             println!("Manifests:");
             if fp1.manifest.version != fp2.manifest.version {
-                println!("  Version: {} vs {}", fp1.manifest.version, fp2.manifest.version);
+                println!(
+                    "  Version: {} vs {}",
+                    fp1.manifest.version, fp2.manifest.version
+                );
             }
             if fp1.manifest.privacy.level != fp2.manifest.privacy.level {
-                println!("  Privacy Level: {:?} vs {:?}",
-                    fp1.manifest.privacy.level, fp2.manifest.privacy.level);
+                println!(
+                    "  Privacy Level: {:?} vs {:?}",
+                    fp1.manifest.privacy.level, fp2.manifest.privacy.level
+                );
             }
             if fp1.manifest.privacy.epsilon != fp2.manifest.privacy.epsilon {
-                println!("  Epsilon: {} vs {}",
-                    fp1.manifest.privacy.epsilon, fp2.manifest.privacy.epsilon);
+                println!(
+                    "  Epsilon: {} vs {}",
+                    fp1.manifest.privacy.epsilon, fp2.manifest.privacy.epsilon
+                );
             }
 
             // Compare schemas
@@ -844,12 +941,16 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
             // Compare statistics
             println!();
             println!("Statistics:");
-            println!("  Numeric columns: {} vs {}",
+            println!(
+                "  Numeric columns: {} vs {}",
                 fp1.statistics.numeric_columns.len(),
-                fp2.statistics.numeric_columns.len());
-            println!("  Categorical columns: {} vs {}",
+                fp2.statistics.numeric_columns.len()
+            );
+            println!(
+                "  Categorical columns: {} vs {}",
                 fp1.statistics.categorical_columns.len(),
-                fp2.statistics.categorical_columns.len());
+                fp2.statistics.categorical_columns.len()
+            );
 
             // Compare numeric stats for common columns
             for col in fp1.statistics.numeric_columns.keys() {
@@ -861,8 +962,14 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
                     let std_diff = (s1.std_dev - s2.std_dev).abs();
                     if mean_diff > 0.01 || std_diff > 0.01 {
                         println!("  {}:", col);
-                        println!("    Mean: {:.2} vs {:.2} (diff: {:.2})", s1.mean, s2.mean, mean_diff);
-                        println!("    StdDev: {:.2} vs {:.2} (diff: {:.2})", s1.std_dev, s2.std_dev, std_diff);
+                        println!(
+                            "    Mean: {:.2} vs {:.2} (diff: {:.2})",
+                            s1.mean, s2.mean, mean_diff
+                        );
+                        println!(
+                            "    StdDev: {:.2} vs {:.2} (diff: {:.2})",
+                            s1.std_dev, s2.std_dev, std_diff
+                        );
                     }
                 }
             }
@@ -892,7 +999,10 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
                 .collect();
 
             if csv_files.is_empty() {
-                anyhow::bail!("No CSV files found in synthetic directory: {}", synthetic.display());
+                anyhow::bail!(
+                    "No CSV files found in synthetic directory: {}",
+                    synthetic.display()
+                );
             }
 
             // Load synthetic data from first CSV (simplified)
@@ -916,14 +1026,36 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
             println!();
             println!("Overall Score: {:.1}%", report.overall_score * 100.0);
             println!("Threshold: {:.1}%", threshold * 100.0);
-            println!("Status: {}", if report.passes { "PASS ✓" } else { "FAIL ✗" });
+            println!(
+                "Status: {}",
+                if report.passes {
+                    "PASS ✓"
+                } else {
+                    "FAIL ✗"
+                }
+            );
             println!();
             println!("Component Scores:");
-            println!("  Statistical Fidelity:  {:.1}%", report.statistical_fidelity * 100.0);
-            println!("  Correlation Fidelity:  {:.1}%", report.correlation_fidelity * 100.0);
-            println!("  Schema Fidelity:       {:.1}%", report.schema_fidelity * 100.0);
-            println!("  Rule Compliance:       {:.1}%", report.rule_compliance * 100.0);
-            println!("  Anomaly Fidelity:      {:.1}%", report.anomaly_fidelity * 100.0);
+            println!(
+                "  Statistical Fidelity:  {:.1}%",
+                report.statistical_fidelity * 100.0
+            );
+            println!(
+                "  Correlation Fidelity:  {:.1}%",
+                report.correlation_fidelity * 100.0
+            );
+            println!(
+                "  Schema Fidelity:       {:.1}%",
+                report.schema_fidelity * 100.0
+            );
+            println!(
+                "  Rule Compliance:       {:.1}%",
+                report.rule_compliance * 100.0
+            );
+            println!(
+                "  Anomaly Fidelity:      {:.1}%",
+                report.anomaly_fidelity * 100.0
+            );
 
             // Write report if output path specified
             if let Some(output_path) = output {
@@ -933,8 +1065,11 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
             }
 
             if !report.passes {
-                anyhow::bail!("Fidelity check failed: {:.1}% < {:.1}%",
-                    report.overall_score * 100.0, threshold * 100.0);
+                anyhow::bail!(
+                    "Fidelity check failed: {:.1}% < {:.1}%",
+                    report.overall_score * 100.0,
+                    threshold * 100.0
+                );
             }
 
             Ok(())

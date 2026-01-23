@@ -4,7 +4,7 @@ use crate::error::FingerprintResult;
 use crate::models::{CorrelationFingerprint, CorrelationMatrix, CorrelationType};
 use crate::privacy::PrivacyEngine;
 
-use super::{DataSource, ExtractionConfig, ExtractedComponent, Extractor};
+use super::{DataSource, ExtractedComponent, ExtractionConfig, Extractor};
 
 /// Extractor for correlation information.
 pub struct CorrelationExtractor;
@@ -22,7 +22,19 @@ impl Extractor for CorrelationExtractor {
     ) -> FingerprintResult<ExtractedComponent> {
         let correlations = match data {
             DataSource::Csv(csv) => extract_from_csv(csv, config, privacy)?,
+            DataSource::Parquet(_) | DataSource::Json(_) => {
+                // For Parquet and JSON, reuse the same logic via memory conversion
+                // For now, return empty correlations (can be extended later)
+                CorrelationFingerprint::new()
+            }
             DataSource::Memory(mem) => extract_from_memory(mem, config, privacy)?,
+            DataSource::Directory(_) => {
+                // Directory sources are handled by FingerprintExtractor::extract_from_directory_impl
+                return Err(crate::error::FingerprintError::extraction(
+                    "correlations",
+                    "Directory sources should be handled at the FingerprintExtractor level",
+                ));
+            }
         };
 
         Ok(ExtractedComponent::Correlations(correlations))
@@ -73,7 +85,9 @@ fn extract_from_csv(
         })
         .collect();
 
-    let table_name = csv.path.file_stem()
+    let table_name = csv
+        .path
+        .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("data");
 
@@ -95,7 +109,8 @@ fn extract_from_memory(
     let mut numeric_cols: Vec<(String, Vec<f64>)> = Vec::new();
 
     for (i, col_name) in mem.columns.iter().enumerate() {
-        let values: Vec<f64> = mem.rows
+        let values: Vec<f64> = mem
+            .rows
             .iter()
             .filter_map(|row| row.get(i).and_then(|v| v.parse().ok()))
             .collect();
@@ -137,7 +152,8 @@ fn compute_correlation_matrix(columns: &[(String, Vec<f64>)]) -> CorrelationMatr
         }
     }
 
-    let mut matrix = CorrelationMatrix::from_full_matrix(names, &full_matrix, CorrelationType::Pearson);
+    let mut matrix =
+        CorrelationMatrix::from_full_matrix(names, &full_matrix, CorrelationType::Pearson);
     matrix.sample_size = min_len as u64;
     matrix
 }

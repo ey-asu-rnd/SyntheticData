@@ -126,7 +126,10 @@ pub enum BalanceExpression {
     Sum { column: String },
 
     /// Sum with filter condition.
-    SumWhere { column: String, filter: FilterCondition },
+    SumWhere {
+        column: String,
+        filter: FilterCondition,
+    },
 
     /// Count of rows.
     Count,

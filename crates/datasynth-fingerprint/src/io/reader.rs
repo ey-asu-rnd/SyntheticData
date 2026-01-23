@@ -13,6 +13,7 @@ use crate::models::{
 };
 
 use super::file_names;
+use super::signing::DsfVerifier;
 
 /// Options for reading fingerprint files.
 #[derive(Debug, Clone, Default)]
@@ -50,6 +51,110 @@ impl FingerprintReader {
         self.read(file)
     }
 
+    /// Read a fingerprint from a file and verify its signature.
+    ///
+    /// Returns an error if:
+    /// - The file has no signature
+    /// - The signature verification fails
+    /// - Any other read error occurs
+    pub fn read_from_file_verified(
+        &self,
+        path: &Path,
+        verifier: &DsfVerifier,
+    ) -> FingerprintResult<Fingerprint> {
+        let file = std::fs::File::open(path)?;
+        self.read_verified(file, verifier)
+    }
+
+    /// Read a fingerprint and verify its signature.
+    pub fn read_verified<R: Read + Seek>(
+        &self,
+        reader: R,
+        verifier: &DsfVerifier,
+    ) -> FingerprintResult<Fingerprint> {
+        let mut archive = ZipArchive::new(reader)?;
+
+        // Read manifest with signature
+        let manifest: Manifest = {
+            let mut file = archive.by_name(file_names::MANIFEST)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+            serde_json::from_str(&contents)?
+        };
+
+        // Verify signature using canonical JSON
+        let is_valid = verifier.verify_manifest(&manifest)?;
+        if !is_valid {
+            if manifest.signature.is_none() {
+                return Err(FingerprintError::InvalidFormat(
+                    "DSF file is not signed".to_string(),
+                ));
+            } else {
+                return Err(FingerprintError::InvalidFormat(
+                    "Signature verification failed".to_string(),
+                ));
+            }
+        }
+
+        // Check version compatibility
+        if manifest.version != FINGERPRINT_VERSION && !self.options.allow_version_mismatch {
+            if !is_compatible_version(&manifest.version, FINGERPRINT_VERSION) {
+                return Err(FingerprintError::UnsupportedVersion(manifest.version));
+            }
+        }
+
+        // Read components (same as regular read)
+        let schema: SchemaFingerprint =
+            self.read_yaml_component(&mut archive, file_names::SCHEMA, &manifest.checksums)?;
+
+        let statistics: StatisticsFingerprint =
+            self.read_yaml_component(&mut archive, file_names::STATISTICS, &manifest.checksums)?;
+
+        let privacy_audit: PrivacyAudit =
+            self.read_json_component(&mut archive, file_names::PRIVACY_AUDIT, &manifest.checksums)?;
+
+        let correlations: Option<CorrelationFingerprint> = self.try_read_yaml_component(
+            &mut archive,
+            file_names::CORRELATIONS,
+            &manifest.checksums,
+        )?;
+
+        let integrity: Option<IntegrityFingerprint> =
+            self.try_read_yaml_component(&mut archive, file_names::INTEGRITY, &manifest.checksums)?;
+
+        let rules: Option<RulesFingerprint> =
+            self.try_read_yaml_component(&mut archive, file_names::RULES, &manifest.checksums)?;
+
+        let anomalies: Option<AnomalyFingerprint> =
+            self.try_read_yaml_component(&mut archive, file_names::ANOMALIES, &manifest.checksums)?;
+
+        Ok(Fingerprint {
+            manifest,
+            schema,
+            statistics,
+            correlations,
+            integrity,
+            rules,
+            anomalies,
+            privacy_audit,
+        })
+    }
+
+    /// Check if a fingerprint file is signed.
+    pub fn is_signed(&self, path: &Path) -> FingerprintResult<bool> {
+        let file = std::fs::File::open(path)?;
+        let mut archive = ZipArchive::new(file)?;
+
+        let manifest: Manifest = {
+            let mut file = archive.by_name(file_names::MANIFEST)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+            serde_json::from_str(&contents)?
+        };
+
+        Ok(manifest.signature.is_some())
+    }
+
     /// Read a fingerprint from any reader.
     pub fn read<R: Read + Seek>(&self, reader: R) -> FingerprintResult<Fingerprint> {
         let mut archive = ZipArchive::new(reader)?;
@@ -84,8 +189,11 @@ impl FingerprintReader {
             self.read_json_component(&mut archive, file_names::PRIVACY_AUDIT, &manifest.checksums)?;
 
         // Read optional components
-        let correlations: Option<CorrelationFingerprint> =
-            self.try_read_yaml_component(&mut archive, file_names::CORRELATIONS, &manifest.checksums)?;
+        let correlations: Option<CorrelationFingerprint> = self.try_read_yaml_component(
+            &mut archive,
+            file_names::CORRELATIONS,
+            &manifest.checksums,
+        )?;
 
         let integrity: Option<IntegrityFingerprint> =
             self.try_read_yaml_component(&mut archive, file_names::INTEGRITY, &manifest.checksums)?;
@@ -115,9 +223,9 @@ impl FingerprintReader {
         name: &str,
         checksums: &std::collections::HashMap<String, String>,
     ) -> FingerprintResult<T> {
-        let mut file = archive.by_name(name).map_err(|_| {
-            FingerprintError::MissingComponent(name.to_string())
-        })?;
+        let mut file = archive
+            .by_name(name)
+            .map_err(|_| FingerprintError::MissingComponent(name.to_string()))?;
 
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
@@ -146,9 +254,9 @@ impl FingerprintReader {
         name: &str,
         checksums: &std::collections::HashMap<String, String>,
     ) -> FingerprintResult<T> {
-        let mut file = archive.by_name(name).map_err(|_| {
-            FingerprintError::MissingComponent(name.to_string())
-        })?;
+        let mut file = archive
+            .by_name(name)
+            .map_err(|_| FingerprintError::MissingComponent(name.to_string()))?;
 
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;

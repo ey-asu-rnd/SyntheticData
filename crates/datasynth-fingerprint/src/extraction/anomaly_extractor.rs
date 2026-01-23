@@ -4,7 +4,7 @@ use crate::error::FingerprintResult;
 use crate::models::{AnomalyFingerprint, AnomalyOverview};
 use crate::privacy::PrivacyEngine;
 
-use super::{DataSource, ExtractionConfig, ExtractedComponent, Extractor};
+use super::{DataSource, ExtractedComponent, ExtractionConfig, Extractor};
 
 /// Extractor for anomaly patterns.
 pub struct AnomalyExtractor;

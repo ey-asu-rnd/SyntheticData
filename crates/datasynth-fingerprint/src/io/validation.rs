@@ -17,11 +17,23 @@ pub fn validate_dsf(path: &Path) -> FingerprintResult<DsfValidationReport> {
     let result = FingerprintValidator::validate_file(path)?;
 
     let components: Vec<String> = if let Some(ref summary) = result.summary {
-        let mut c = vec!["schema".to_string(), "statistics".to_string(), "privacy_audit".to_string()];
-        if summary.has_correlations { c.push("correlations".to_string()); }
-        if summary.has_integrity { c.push("integrity".to_string()); }
-        if summary.has_rules { c.push("rules".to_string()); }
-        if summary.has_anomalies { c.push("anomalies".to_string()); }
+        let mut c = vec![
+            "schema".to_string(),
+            "statistics".to_string(),
+            "privacy_audit".to_string(),
+        ];
+        if summary.has_correlations {
+            c.push("correlations".to_string());
+        }
+        if summary.has_integrity {
+            c.push("integrity".to_string());
+        }
+        if summary.has_rules {
+            c.push("rules".to_string());
+        }
+        if summary.has_anomalies {
+            c.push("anomalies".to_string());
+        }
         c
     } else {
         Vec::new()
@@ -226,10 +238,11 @@ impl FingerprintValidator {
             match serde_json::from_str(&contents) {
                 Ok(m) => m,
                 Err(e) => {
-                    return Ok(ValidationResult::failure(vec![
-                        ValidationError::new("INVALID_MANIFEST", format!("Failed to parse manifest: {}", e))
-                            .with_component(file_names::MANIFEST),
-                    ]));
+                    return Ok(ValidationResult::failure(vec![ValidationError::new(
+                        "INVALID_MANIFEST",
+                        format!("Failed to parse manifest: {}", e),
+                    )
+                    .with_component(file_names::MANIFEST)]));
                 }
             }
         };
@@ -292,10 +305,11 @@ impl FingerprintValidator {
             match serde_yaml::from_str(&contents) {
                 Ok(s) => s,
                 Err(e) => {
-                    return Ok(ValidationResult::failure(vec![
-                        ValidationError::new("INVALID_SCHEMA", format!("Failed to parse schema: {}", e))
-                            .with_component(file_names::SCHEMA),
-                    ]));
+                    return Ok(ValidationResult::failure(vec![ValidationError::new(
+                        "INVALID_SCHEMA",
+                        format!("Failed to parse schema: {}", e),
+                    )
+                    .with_component(file_names::SCHEMA)]));
                 }
             }
         };
@@ -307,10 +321,11 @@ impl FingerprintValidator {
             match serde_json::from_str(&contents) {
                 Ok(p) => p,
                 Err(e) => {
-                    return Ok(ValidationResult::failure(vec![
-                        ValidationError::new("INVALID_PRIVACY_AUDIT", format!("Failed to parse privacy audit: {}", e))
-                            .with_component(file_names::PRIVACY_AUDIT),
-                    ]));
+                    return Ok(ValidationResult::failure(vec![ValidationError::new(
+                        "INVALID_PRIVACY_AUDIT",
+                        format!("Failed to parse privacy audit: {}", e),
+                    )
+                    .with_component(file_names::PRIVACY_AUDIT)]));
                 }
             }
         };
@@ -353,8 +368,14 @@ pub fn diff_fingerprints(a: &Fingerprint, b: &Fingerprint) -> FingerprintDiff {
     let tables_a: HashSet<_> = a.schema.tables.keys().collect();
     let tables_b: HashSet<_> = b.schema.tables.keys().collect();
 
-    diff.tables_added = tables_b.difference(&tables_a).map(|s| (*s).clone()).collect();
-    diff.tables_removed = tables_a.difference(&tables_b).map(|s| (*s).clone()).collect();
+    diff.tables_added = tables_b
+        .difference(&tables_a)
+        .map(|s| (*s).clone())
+        .collect();
+    diff.tables_removed = tables_a
+        .difference(&tables_b)
+        .map(|s| (*s).clone())
+        .collect();
 
     // Compare privacy settings
     if (a.privacy_audit.epsilon_budget - b.privacy_audit.epsilon_budget).abs() > 0.001 {
