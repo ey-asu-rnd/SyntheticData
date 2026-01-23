@@ -392,7 +392,9 @@ impl BenchmarkBuilder {
 
     /// Add metadata.
     pub fn metadata(mut self, key: &str, value: &str) -> Self {
-        self.suite.metadata.insert(key.to_string(), value.to_string());
+        self.suite
+            .metadata
+            .insert(key.to_string(), value.to_string());
         self
     }
 
@@ -784,7 +786,11 @@ mod tests {
 
         // Verify all have baselines
         for bench in &benchmarks {
-            assert!(!bench.baselines.is_empty(), "Benchmark {} has no baselines", bench.id);
+            assert!(
+                !bench.baselines.is_empty(),
+                "Benchmark {} has no baselines",
+                bench.id
+            );
         }
     }
 

@@ -168,10 +168,9 @@ pub struct SapExporter {
 impl SapExporter {
     /// Create a new SAP exporter.
     pub fn new(config: SapExportConfig) -> Self {
-        let mut acdoca_factory =
-            AcdocaFactory::new(&config.ledger, &config.source_system)
-                .with_local_currency(&config.local_currency)
-                .with_client(&config.client);
+        let mut acdoca_factory = AcdocaFactory::new(&config.ledger, &config.source_system)
+            .with_local_currency(&config.local_currency)
+            .with_client(&config.client);
 
         if let Some(ref group_currency) = config.group_currency {
             acdoca_factory = acdoca_factory.with_group_currency(group_currency);
@@ -186,7 +185,10 @@ impl SapExporter {
 
     /// Generate next document number for a company code.
     fn next_document_number(&mut self, company_code: &str) -> String {
-        let counter = self.document_counter.entry(company_code.to_string()).or_insert(0);
+        let counter = self
+            .document_counter
+            .entry(company_code.to_string())
+            .or_insert(0);
         *counter += 1;
         format!("{:010}", *counter)
     }
@@ -219,11 +221,11 @@ impl SapExporter {
     /// Get appropriate transaction code based on document type.
     fn get_transaction_code(&self, je: &JournalEntry) -> String {
         match je.header.document_type.as_str() {
-            "SA" => "FB01".to_string(), // GL posting
-            "RE" => "MIRO".to_string(), // Vendor invoice
-            "RV" => "VF01".to_string(), // Customer invoice
-            "KZ" => "F110".to_string(), // Vendor payment
-            "DZ" => "F28".to_string(),  // Customer payment
+            "SA" => "FB01".to_string(),  // GL posting
+            "RE" => "MIRO".to_string(),  // Vendor invoice
+            "RV" => "VF01".to_string(),  // Customer invoice
+            "KZ" => "F110".to_string(),  // Vendor payment
+            "DZ" => "F28".to_string(),   // Customer payment
             "AB" => "ABZON".to_string(), // Depreciation
             "AA" => "ABSO1".to_string(), // Asset acquisition
             _ => "FB01".to_string(),
@@ -372,12 +374,16 @@ impl SapExporter {
         let mut writer = BufWriter::new(file);
 
         // Write header - includes extension fields if configured
-        let mut header = "RLDNR,RBUKRS,GJAHR,BELNR,DOCLN,BLART,BUDAT,BLDAT,CPUDT,CPUTM,USNAM,POPER,\
-            RACCT,RCNTR,PRCTR,WSL,RWCUR,HSL,RHCUR,DRCRK,BSCHL,SGTXT,ZUONR,AWSYS,AWTYP,AWKEY".to_string();
+        let mut header =
+            "RLDNR,RBUKRS,GJAHR,BELNR,DOCLN,BLART,BUDAT,BLDAT,CPUDT,CPUTM,USNAM,POPER,\
+            RACCT,RCNTR,PRCTR,WSL,RWCUR,HSL,RHCUR,DRCRK,BSCHL,SGTXT,ZUONR,AWSYS,AWTYP,AWKEY"
+                .to_string();
 
         if self.config.include_extension_fields {
-            header.push_str(",ZSIM_BATCH_ID,ZSIM_IS_FRAUD,ZSIM_FRAUD_TYPE,ZSIM_BUSINESS_PROCESS,\
-                ZSIM_CONTROL_IDS,ZSIM_SOX_RELEVANT,ZSIM_SOD_VIOLATION");
+            header.push_str(
+                ",ZSIM_BATCH_ID,ZSIM_IS_FRAUD,ZSIM_FRAUD_TYPE,ZSIM_BUSINESS_PROCESS,\
+                ZSIM_CONTROL_IDS,ZSIM_SOX_RELEVANT,ZSIM_SOD_VIOLATION",
+            );
         }
         writeln!(writer, "{}", header)?;
 
@@ -438,7 +444,10 @@ impl SapExporter {
                 if self.config.include_extension_fields {
                     line.push_str(&format!(
                         ",{},{},{},{},{},{},{}",
-                        entry.sim_batch_id.map(|u| u.to_string()).unwrap_or_default(),
+                        entry
+                            .sim_batch_id
+                            .map(|u| u.to_string())
+                            .unwrap_or_default(),
                         entry.sim_is_fraud,
                         entry.sim_fraud_type.as_deref().unwrap_or(""),
                         entry.sim_business_process.as_deref().unwrap_or(""),

@@ -3,12 +3,12 @@
 use chrono::{Datelike, NaiveDate};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
-use rust_decimal::Decimal;
 use rust_decimal::prelude::*;
+use rust_decimal::Decimal;
 use std::sync::Arc;
 
 use datasynth_config::schema::{FraudConfig, GeneratorConfig, TemplateConfig, TransactionConfig};
-use datasynth_core::distributions::{*, DriftController, DriftConfig, DriftAdjustments};
+use datasynth_core::distributions::{DriftAdjustments, DriftConfig, DriftController, *};
 use datasynth_core::models::*;
 use datasynth_core::templates::{
     descriptions::DescriptionContext, DescriptionGenerator, ReferenceGenerator, ReferenceType,

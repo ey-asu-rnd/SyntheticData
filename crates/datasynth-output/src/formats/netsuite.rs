@@ -228,7 +228,8 @@ impl NetSuiteExporter {
         }
         let id = self.next_account_id;
         self.next_account_id += 1;
-        self.generated_account_ids.insert(gl_account.to_string(), id);
+        self.generated_account_ids
+            .insert(gl_account.to_string(), id);
         id
     }
 
@@ -254,7 +255,10 @@ impl NetSuiteExporter {
     }
 
     /// Convert JournalEntry to NetSuite format.
-    pub fn convert(&mut self, je: &JournalEntry) -> (NetSuiteJournalEntry, Vec<NetSuiteJournalLine>) {
+    pub fn convert(
+        &mut self,
+        je: &JournalEntry,
+    ) -> (NetSuiteJournalEntry, Vec<NetSuiteJournalLine>) {
         self.journal_counter += 1;
 
         // Calculate totals
@@ -271,10 +275,8 @@ impl NetSuiteExporter {
                 if je.header.is_fraud {
                     custom_fields.insert(fraud_field.clone(), "T".to_string());
                     if let Some(fraud_type) = je.header.fraud_type {
-                        custom_fields.insert(
-                            format!("{}_type", fraud_field),
-                            format!("{:?}", fraud_type),
-                        );
+                        custom_fields
+                            .insert(format!("{}_type", fraud_field), format!("{:?}", fraud_type));
                     }
                 }
             }
@@ -316,10 +318,12 @@ impl NetSuiteExporter {
             let mut line_custom_fields = HashMap::new();
             if self.config.include_custom_fields {
                 if let Some(ref cost_center) = je_line.cost_center {
-                    line_custom_fields.insert("custcol_cost_center".to_string(), cost_center.clone());
+                    line_custom_fields
+                        .insert("custcol_cost_center".to_string(), cost_center.clone());
                 }
                 if let Some(ref profit_center) = je_line.profit_center {
-                    line_custom_fields.insert("custcol_profit_center".to_string(), profit_center.clone());
+                    line_custom_fields
+                        .insert("custcol_profit_center".to_string(), profit_center.clone());
                 }
             }
 
@@ -340,12 +344,14 @@ impl NetSuiteExporter {
                 memo: je_line.line_text.clone(),
                 entity: None,
                 entity_type: None,
-                department: je_line.cost_center.as_ref().and_then(|cc| {
-                    self.config.department_map.get(cc).copied()
-                }),
-                class: je_line.profit_center.as_ref().and_then(|pc| {
-                    self.config.class_map.get(pc).copied()
-                }),
+                department: je_line
+                    .cost_center
+                    .as_ref()
+                    .and_then(|cc| self.config.department_map.get(cc).copied()),
+                class: je_line
+                    .profit_center
+                    .as_ref()
+                    .and_then(|pc| self.config.class_map.get(pc).copied()),
                 location: None,
                 eliminate: je_line.trading_partner.is_some(),
                 tax_code: je_line.tax_code.clone(),
@@ -380,7 +386,8 @@ impl NetSuiteExporter {
 
         // Write headers
         let mut je_header = "Internal ID,External ID,Tran ID,Tran Date,Posting Period,Subsidiary,\
-            Currency,Exchange Rate,Memo,Approved,Total Debit,Total Credit".to_string();
+            Currency,Exchange Rate,Memo,Approved,Total Debit,Total Credit"
+            .to_string();
         if self.config.include_custom_fields {
             if let Some(ref fraud_field) = self.config.fraud_custom_field {
                 je_header.push_str(&format!(",{},{}_type", fraud_field, fraud_field));
@@ -392,7 +399,8 @@ impl NetSuiteExporter {
         writeln!(je_writer, "{}", je_header)?;
 
         let mut line_header = "Journal Internal ID,Line,Account,Account Name,Debit,Credit,Memo,\
-            Department,Class,Location,Eliminate,Tax Code,Tax Amount".to_string();
+            Department,Class,Location,Eliminate,Tax Code,Tax Amount"
+            .to_string();
         if self.config.include_custom_fields {
             line_header.push_str(",custcol_cost_center,custcol_profit_center");
         }
@@ -422,14 +430,23 @@ impl NetSuiteExporter {
                 if let Some(ref fraud_field) = self.config.fraud_custom_field {
                     je_row.push_str(&format!(
                         ",{},{}",
-                        header.custom_fields.get(fraud_field).unwrap_or(&String::new()),
-                        header.custom_fields.get(&format!("{}_type", fraud_field)).unwrap_or(&String::new()),
+                        header
+                            .custom_fields
+                            .get(fraud_field)
+                            .unwrap_or(&String::new()),
+                        header
+                            .custom_fields
+                            .get(&format!("{}_type", fraud_field))
+                            .unwrap_or(&String::new()),
                     ));
                 }
                 if let Some(ref process_field) = self.config.process_custom_field {
                     je_row.push_str(&format!(
                         ",{}",
-                        header.custom_fields.get(process_field).unwrap_or(&String::new()),
+                        header
+                            .custom_fields
+                            .get(process_field)
+                            .unwrap_or(&String::new()),
                     ));
                 }
             }
@@ -457,8 +474,12 @@ impl NetSuiteExporter {
                 if self.config.include_custom_fields {
                     line_row.push_str(&format!(
                         ",{},{}",
-                        line.custom_fields.get("custcol_cost_center").unwrap_or(&String::new()),
-                        line.custom_fields.get("custcol_profit_center").unwrap_or(&String::new()),
+                        line.custom_fields
+                            .get("custcol_cost_center")
+                            .unwrap_or(&String::new()),
+                        line.custom_fields
+                            .get("custcol_profit_center")
+                            .unwrap_or(&String::new()),
                     ));
                 }
                 writeln!(lines_writer, "{}", line_row)?;
@@ -637,7 +658,10 @@ mod tests {
         assert!(files.contains_key("journal_lines"));
         assert!(files.contains_key("accounts"));
 
-        assert!(temp_dir.path().join("netsuite_journal_entries.csv").exists());
+        assert!(temp_dir
+            .path()
+            .join("netsuite_journal_entries.csv")
+            .exists());
         assert!(temp_dir.path().join("netsuite_journal_lines.csv").exists());
         assert!(temp_dir.path().join("netsuite_accounts.csv").exists());
     }
@@ -652,7 +676,10 @@ mod tests {
         let result = exporter.export_to_json(&entries, temp_dir.path());
 
         assert!(result.is_ok());
-        assert!(temp_dir.path().join("netsuite_journal_entries.json").exists());
+        assert!(temp_dir
+            .path()
+            .join("netsuite_journal_entries.json")
+            .exists());
     }
 
     #[test]

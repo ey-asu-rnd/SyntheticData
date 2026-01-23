@@ -194,8 +194,7 @@ impl DriftController {
         adjustments.anomaly_rate_adjustment = self.config.anomaly_rate_drift * p;
 
         // Concept drift accumulates but is bounded 0-1
-        adjustments.concept_drift_factor =
-            (self.config.concept_drift_rate * p).min(1.0);
+        adjustments.concept_drift_factor = (self.config.concept_drift_rate * p).min(1.0);
     }
 
     /// Apply sudden drift based on pre-computed events.
@@ -211,10 +210,14 @@ impl DriftController {
             adjustments.sudden_drift_occurred = self.sudden_drift_periods.contains(&period);
 
             // Each sudden event multiplies by the magnitude
-            let cumulative_magnitude = self.config.sudden_drift_magnitude.powi(events_occurred as i32);
+            let cumulative_magnitude = self
+                .config
+                .sudden_drift_magnitude
+                .powi(events_occurred as i32);
 
             adjustments.amount_mean_multiplier *= cumulative_magnitude;
-            adjustments.amount_variance_multiplier *= cumulative_magnitude.sqrt(); // Variance grows slower
+            adjustments.amount_variance_multiplier *= cumulative_magnitude.sqrt();
+            // Variance grows slower
         }
     }
 
@@ -240,15 +243,15 @@ impl DriftController {
 
         // Q4 spike (Oct-Dec), Q1 dip (Jan-Feb)
         match month {
-            0 | 1 => 0.85,  // Jan-Feb: post-holiday slowdown
-            2 => 0.90,      // Mar: recovering
-            3 | 4 => 0.95,  // Apr-May: Q2 start
-            5 => 1.0,       // Jun: mid-year
-            6 | 7 => 0.95,  // Jul-Aug: summer slowdown
-            8 => 1.0,       // Sep: back to business
-            9 => 1.10,      // Oct: Q4 ramp-up
-            10 => 1.20,     // Nov: pre-holiday surge
-            11 => 1.30,     // Dec: year-end close
+            0 | 1 => 0.85, // Jan-Feb: post-holiday slowdown
+            2 => 0.90,     // Mar: recovering
+            3 | 4 => 0.95, // Apr-May: Q2 start
+            5 => 1.0,      // Jun: mid-year
+            6 | 7 => 0.95, // Jul-Aug: summer slowdown
+            8 => 1.0,      // Sep: back to business
+            9 => 1.10,     // Oct: Q4 ramp-up
+            10 => 1.20,    // Nov: pre-holiday surge
+            11 => 1.30,    // Dec: year-end close
             _ => 1.0,
         }
     }

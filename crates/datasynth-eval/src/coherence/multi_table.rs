@@ -317,10 +317,8 @@ impl MultiTableConsistencyEvaluator {
         };
 
         // Build target index
-        let target_index: HashMap<_, _> = target_records
-            .iter()
-            .map(|r| (r.id.clone(), r))
-            .collect();
+        let target_index: HashMap<_, _> =
+            target_records.iter().map(|r| (r.id.clone(), r)).collect();
 
         // Check each source record
         let mut referenced_targets = HashSet::new();
@@ -393,10 +391,7 @@ impl MultiTableConsistencyEvaluator {
                         violation_type: ViolationType::AmountInconsistency,
                         source_record_id: source.id.clone(),
                         target_record_id: Some(target.id.clone()),
-                        description: format!(
-                            "Amount mismatch: source={}, target={}",
-                            s_amt, t_amt
-                        ),
+                        description: format!("Amount mismatch: source={}, target={}", s_amt, t_amt),
                         severity: 3,
                     });
                 }
@@ -859,10 +854,8 @@ mod tests {
             .insert("goods_receipts".to_string(), "GR999".to_string()); // Invalid
         inv.amount = Some(1000.0);
 
-        data.tables
-            .insert("vendor_invoices".to_string(), vec![inv]);
-        data.tables
-            .insert("goods_receipts".to_string(), Vec::new());
+        data.tables.insert("vendor_invoices".to_string(), vec![inv]);
+        data.tables.insert("goods_receipts".to_string(), Vec::new());
 
         data.relationships.push(TableRelationshipDef {
             source_table: "vendor_invoices".to_string(),

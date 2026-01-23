@@ -11,4 +11,4 @@ pub mod sap;
 
 pub use netsuite::{NetSuiteExporter, NetSuiteJournalEntry, NetSuiteJournalLine};
 pub use oracle::{OracleExporter, OracleJeHeader, OracleJeLine};
-pub use sap::{SapExporter, SapExportConfig, SapTableType};
+pub use sap::{SapExportConfig, SapExporter, SapTableType};

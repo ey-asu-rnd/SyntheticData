@@ -109,10 +109,22 @@ impl ClassificationMetrics {
     /// Create metrics from confusion matrix values.
     pub fn from_confusion(tp: u64, tn: u64, fp: u64, fn_: u64) -> Self {
         let total = (tp + tn + fp + fn_) as f64;
-        let accuracy = if total > 0.0 { (tp + tn) as f64 / total } else { 0.0 };
+        let accuracy = if total > 0.0 {
+            (tp + tn) as f64 / total
+        } else {
+            0.0
+        };
 
-        let precision = if tp + fp > 0 { tp as f64 / (tp + fp) as f64 } else { 0.0 };
-        let recall = if tp + fn_ > 0 { tp as f64 / (tp + fn_) as f64 } else { 0.0 };
+        let precision = if tp + fp > 0 {
+            tp as f64 / (tp + fp) as f64
+        } else {
+            0.0
+        };
+        let recall = if tp + fn_ > 0 {
+            tp as f64 / (tp + fn_) as f64
+        } else {
+            0.0
+        };
         let f1_score = if precision + recall > 0.0 {
             2.0 * precision * recall / (precision + recall)
         } else {
@@ -121,8 +133,13 @@ impl ClassificationMetrics {
 
         // Matthews Correlation Coefficient
         let mcc_num = (tp * tn) as f64 - (fp * fn_) as f64;
-        let mcc_denom = ((tp + fp) as f64 * (tp + fn_) as f64 * (tn + fp) as f64 * (tn + fn_) as f64).sqrt();
-        let mcc = if mcc_denom > 0.0 { mcc_num / mcc_denom } else { 0.0 };
+        let mcc_denom =
+            ((tp + fp) as f64 * (tp + fn_) as f64 * (tn + fp) as f64 * (tn + fn_) as f64).sqrt();
+        let mcc = if mcc_denom > 0.0 {
+            mcc_num / mcc_denom
+        } else {
+            0.0
+        };
 
         Self {
             accuracy,
@@ -161,7 +178,8 @@ impl RegressionMetrics {
         let n = predictions.len() as f64;
 
         // Calculate errors
-        let errors: Vec<f64> = predictions.iter()
+        let errors: Vec<f64> = predictions
+            .iter()
             .zip(actuals.iter())
             .map(|(p, a)| p - a)
             .collect();
@@ -171,19 +189,32 @@ impl RegressionMetrics {
         let rmse = mse.sqrt();
 
         // MAPE (avoid division by zero)
-        let mape = predictions.iter()
+        let mape = predictions
+            .iter()
             .zip(actuals.iter())
             .filter(|(_, a)| a.abs() > 1e-10)
             .map(|(p, a)| ((p - a) / a).abs())
-            .sum::<f64>() / n * 100.0;
+            .sum::<f64>()
+            / n
+            * 100.0;
 
         // R-squared
         let actual_mean = actuals.iter().sum::<f64>() / n;
         let ss_tot: f64 = actuals.iter().map(|a| (a - actual_mean).powi(2)).sum();
         let ss_res: f64 = errors.iter().map(|e| e * e).sum();
-        let r2 = if ss_tot > 0.0 { 1.0 - (ss_res / ss_tot) } else { 0.0 };
+        let r2 = if ss_tot > 0.0 {
+            1.0 - (ss_res / ss_tot)
+        } else {
+            0.0
+        };
 
-        Self { mae, mse, rmse, mape, r2 }
+        Self {
+            mae,
+            mse,
+            rmse,
+            mape,
+            r2,
+        }
     }
 }
 
@@ -313,7 +344,9 @@ pub fn get_accounting_baseline_tasks() -> Vec<BaselineTask> {
         BaselineTask {
             id: "anomaly_fraud_detection".to_string(),
             task_type: MLTaskType::AnomalyDetection,
-            description: "Detect fraudulent journal entries based on amount, timing, and user patterns".to_string(),
+            description:
+                "Detect fraudulent journal entries based on amount, timing, and user patterns"
+                    .to_string(),
             required_fields: vec![
                 "amount".to_string(),
                 "posting_date".to_string(),
@@ -355,7 +388,6 @@ pub fn get_accounting_baseline_tasks() -> Vec<BaselineTask> {
                 primary_metric: "f1_score".to_string(),
             },
         },
-
         // Entity Matching Tasks
         BaselineTask {
             id: "entity_vendor_matching".to_string(),
@@ -400,7 +432,6 @@ pub fn get_accounting_baseline_tasks() -> Vec<BaselineTask> {
                 primary_metric: "f1_score".to_string(),
             },
         },
-
         // Link Prediction Tasks
         BaselineTask {
             id: "link_fraud_network".to_string(),
@@ -446,16 +477,12 @@ pub fn get_accounting_baseline_tasks() -> Vec<BaselineTask> {
                 primary_metric: "mrr".to_string(),
             },
         },
-
         // Time Series Forecasting Tasks
         BaselineTask {
             id: "forecast_transaction_volume".to_string(),
             task_type: MLTaskType::TimeSeriesForecasting,
             description: "Forecast daily transaction volume".to_string(),
-            required_fields: vec![
-                "date".to_string(),
-                "transaction_count".to_string(),
-            ],
+            required_fields: vec!["date".to_string(), "transaction_count".to_string()],
             target_field: "transaction_count".to_string(),
             recommended_algorithms: vec![
                 BaselineAlgorithm::Prophet,
@@ -473,10 +500,7 @@ pub fn get_accounting_baseline_tasks() -> Vec<BaselineTask> {
             id: "forecast_transaction_amount".to_string(),
             task_type: MLTaskType::TimeSeriesForecasting,
             description: "Forecast daily transaction amounts".to_string(),
-            required_fields: vec![
-                "date".to_string(),
-                "total_amount".to_string(),
-            ],
+            required_fields: vec!["date".to_string(), "total_amount".to_string()],
             target_field: "total_amount".to_string(),
             recommended_algorithms: vec![
                 BaselineAlgorithm::LSTM,
@@ -560,10 +584,18 @@ mod tests {
         assert!(!tasks.is_empty());
 
         // Check we have all task types
-        let has_anomaly = tasks.iter().any(|t| t.task_type == MLTaskType::AnomalyDetection);
-        let has_entity = tasks.iter().any(|t| t.task_type == MLTaskType::EntityMatching);
-        let has_link = tasks.iter().any(|t| t.task_type == MLTaskType::LinkPrediction);
-        let has_ts = tasks.iter().any(|t| t.task_type == MLTaskType::TimeSeriesForecasting);
+        let has_anomaly = tasks
+            .iter()
+            .any(|t| t.task_type == MLTaskType::AnomalyDetection);
+        let has_entity = tasks
+            .iter()
+            .any(|t| t.task_type == MLTaskType::EntityMatching);
+        let has_link = tasks
+            .iter()
+            .any(|t| t.task_type == MLTaskType::LinkPrediction);
+        let has_ts = tasks
+            .iter()
+            .any(|t| t.task_type == MLTaskType::TimeSeriesForecasting);
 
         assert!(has_anomaly, "Should have anomaly detection tasks");
         assert!(has_entity, "Should have entity matching tasks");

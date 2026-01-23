@@ -102,11 +102,8 @@ impl RunManifest {
     /// Marks the run as complete.
     pub fn complete(&mut self, statistics: EnhancedGenerationStatistics) {
         self.completed_at = Some(Utc::now());
-        self.duration_seconds = Some(
-            (self.completed_at.unwrap() - self.started_at)
-                .num_milliseconds() as f64
-                / 1000.0,
-        );
+        self.duration_seconds =
+            Some((self.completed_at.unwrap() - self.started_at).num_milliseconds() as f64 / 1000.0);
         self.statistics = Some(statistics);
     }
 
@@ -260,7 +257,9 @@ mod tests {
         manifest.add_tag("fraud_detection"); // Duplicate
 
         assert_eq!(manifest.scenario_tags.len(), 2);
-        assert!(manifest.scenario_tags.contains(&"fraud_detection".to_string()));
+        assert!(manifest
+            .scenario_tags
+            .contains(&"fraud_detection".to_string()));
         assert!(manifest.scenario_tags.contains(&"retail".to_string()));
     }
 

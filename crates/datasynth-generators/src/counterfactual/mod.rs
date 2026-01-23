@@ -181,12 +181,8 @@ impl CounterfactualSpec {
             CounterfactualSpec::SetAmount { .. } => {
                 AnomalyType::Statistical(StatisticalAnomalyType::UnusuallyHighAmount)
             }
-            CounterfactualSpec::ShiftDate { .. } => {
-                AnomalyType::Fraud(FraudType::TimingAnomaly)
-            }
-            CounterfactualSpec::ChangePeriod { .. } => {
-                AnomalyType::Fraud(FraudType::TimingAnomaly)
-            }
+            CounterfactualSpec::ShiftDate { .. } => AnomalyType::Fraud(FraudType::TimingAnomaly),
+            CounterfactualSpec::ChangePeriod { .. } => AnomalyType::Fraud(FraudType::TimingAnomaly),
             CounterfactualSpec::ReclassifyAccount { .. } => {
                 AnomalyType::Error(ErrorType::MisclassifiedAccount)
             }
@@ -202,9 +198,7 @@ impl CounterfactualSpec {
             CounterfactualSpec::CreateRoundTrip { .. } => {
                 AnomalyType::Relational(RelationalAnomalyType::CircularTransaction)
             }
-            CounterfactualSpec::SelfApprove => {
-                AnomalyType::Fraud(FraudType::SelfApproval)
-            }
+            CounterfactualSpec::SelfApprove => AnomalyType::Fraud(FraudType::SelfApproval),
             CounterfactualSpec::InjectFraud { fraud_type } => AnomalyType::Fraud(*fraud_type),
             CounterfactualSpec::Custom { .. } => AnomalyType::Custom("custom".to_string()),
         }
@@ -235,7 +229,11 @@ impl CounterfactualSpec {
             CounterfactualSpec::ReclassifyAccount { new_account } => {
                 format!("Reclassify to account {}", new_account)
             }
-            CounterfactualSpec::AddLineItem { account, amount, is_debit } => {
+            CounterfactualSpec::AddLineItem {
+                account,
+                amount,
+                is_debit,
+            } => {
                 format!(
                     "Add {} line for {} to account {}",
                     if *is_debit { "debit" } else { "credit" },
@@ -250,7 +248,10 @@ impl CounterfactualSpec {
                 format!("Split into {} transactions", split_count)
             }
             CounterfactualSpec::CreateRoundTrip { intermediaries } => {
-                format!("Create round-trip through {} entities", intermediaries.len())
+                format!(
+                    "Create round-trip through {} entities",
+                    intermediaries.len()
+                )
             }
             CounterfactualSpec::SelfApprove => "Apply self-approval".to_string(),
             CounterfactualSpec::InjectFraud { fraud_type } => {
@@ -292,12 +293,8 @@ impl CounterfactualGenerator {
         let injection_strategy = self.apply_spec(&mut modified, spec, original);
 
         // Create the anomaly label
-        let anomaly_label = self.create_anomaly_label(
-            &modified,
-            spec,
-            &injection_strategy,
-            original,
-        );
+        let anomaly_label =
+            self.create_anomaly_label(&modified, spec, &injection_strategy, original);
 
         // Mark the modified entry as fraudulent if the anomaly type is fraud
         if let AnomalyType::Fraud(fraud_type) = spec.to_anomaly_type() {
@@ -319,7 +316,10 @@ impl CounterfactualGenerator {
         original: &JournalEntry,
         specs: &[CounterfactualSpec],
     ) -> Vec<CounterfactualPair> {
-        specs.iter().map(|spec| self.generate(original, spec)).collect()
+        specs
+            .iter()
+            .map(|spec| self.generate(original, spec))
+            .collect()
     }
 
     /// Apply a specification to a journal entry.
@@ -335,15 +335,17 @@ impl CounterfactualGenerator {
                 for line in &mut entry.lines {
                     if line.debit_amount > Decimal::ZERO {
                         let new_amount = Decimal::from_f64_retain(
-                            line.debit_amount.to_f64().unwrap_or(0.0) * factor
-                        ).unwrap_or(line.debit_amount);
+                            line.debit_amount.to_f64().unwrap_or(0.0) * factor,
+                        )
+                        .unwrap_or(line.debit_amount);
                         line.debit_amount = new_amount;
                         line.local_amount = new_amount;
                     }
                     if line.credit_amount > Decimal::ZERO {
                         let new_amount = Decimal::from_f64_retain(
-                            line.credit_amount.to_f64().unwrap_or(0.0) * factor
-                        ).unwrap_or(line.credit_amount);
+                            line.credit_amount.to_f64().unwrap_or(0.0) * factor,
+                        )
+                        .unwrap_or(line.credit_amount);
                         line.credit_amount = new_amount;
                         line.local_amount = -new_amount;
                     }
@@ -483,9 +485,7 @@ impl CounterfactualGenerator {
             confidence: 1.0, // Counterfactuals are known anomalies
             severity: anomaly_type.severity(),
             description: spec.description(),
-            related_entities: vec![
-                original.header.document_id.to_string(),
-            ],
+            related_entities: vec![original.header.document_id.to_string()],
             monetary_impact: Some(modified.total_debit()),
             metadata: HashMap::new(),
             is_injected: true,
@@ -507,8 +507,8 @@ impl CounterfactualGenerator {
 
 /// Simple hash function for journal entries (for provenance tracking).
 fn hash_entry(entry: &JournalEntry) -> u64 {
-    use std::hash::{Hash, Hasher};
     use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
 
     let mut hasher = DefaultHasher::new();
     entry.header.document_id.hash(&mut hasher);
@@ -559,7 +559,10 @@ mod tests {
     use datasynth_core::models::{JournalEntryHeader, JournalEntryLine};
 
     fn create_test_entry() -> JournalEntry {
-        let header = JournalEntryHeader::new("TEST".to_string(), NaiveDate::from_ymd_opt(2024, 6, 15).unwrap());
+        let header = JournalEntryHeader::new(
+            "TEST".to_string(),
+            NaiveDate::from_ymd_opt(2024, 6, 15).unwrap(),
+        );
         let mut entry = JournalEntry::new(header);
 
         entry.add_line(JournalEntryLine::debit(
@@ -610,7 +613,10 @@ mod tests {
         let anomaly_type = spec.to_anomaly_type();
 
         // SelfApprove is classified as Fraud (FraudType::SelfApproval)
-        assert!(matches!(anomaly_type, AnomalyType::Fraud(FraudType::SelfApproval)));
+        assert!(matches!(
+            anomaly_type,
+            AnomalyType::Fraud(FraudType::SelfApproval)
+        ));
     }
 
     #[test]

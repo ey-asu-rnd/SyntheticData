@@ -590,7 +590,10 @@ impl OracleExporter {
         let file = File::create(filepath)?;
         let mut writer = BufWriter::new(file);
 
-        writeln!(writer, "CODE_COMBINATION_ID,SEGMENT1,SEGMENT2,SEGMENT3,ENABLED_FLAG")?;
+        writeln!(
+            writer,
+            "CODE_COMBINATION_ID,SEGMENT1,SEGMENT2,SEGMENT3,ENABLED_FLAG"
+        )?;
 
         for (key, ccid) in &self.ccid_map {
             let parts: Vec<&str> = key.split('-').collect();

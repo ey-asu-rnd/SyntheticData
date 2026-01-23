@@ -14,9 +14,10 @@ pub use balance::{BalanceSheetEvaluation, BalanceSheetEvaluator};
 pub use document_chain::{DocumentChainEvaluation, DocumentChainEvaluator};
 pub use intercompany::{ICMatchingEvaluation, ICMatchingEvaluator};
 pub use multi_table::{
-    AnomalyRecord, CascadeAnomalyAnalysis, CascadePath, ConsistencyViolation, MultiTableConsistencyEvaluator,
-    MultiTableData, MultiTableEvaluation, TableConsistencyResult, TableRecord, TableRelationship,
-    TableRelationshipDef, ViolationType, get_o2c_flow_relationships, get_p2p_flow_relationships,
+    get_o2c_flow_relationships, get_p2p_flow_relationships, AnomalyRecord, CascadeAnomalyAnalysis,
+    CascadePath, ConsistencyViolation, MultiTableConsistencyEvaluator, MultiTableData,
+    MultiTableEvaluation, TableConsistencyResult, TableRecord, TableRelationship,
+    TableRelationshipDef, ViolationType,
 };
 pub use referential::{ReferentialIntegrityEvaluation, ReferentialIntegrityEvaluator};
 pub use subledger::{SubledgerEvaluator, SubledgerReconciliationEvaluation};

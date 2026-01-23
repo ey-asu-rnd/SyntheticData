@@ -3149,7 +3149,6 @@ pub enum DataQualityPreset {
     // ========================================
     // ML-Oriented Profiles (Phase 2.1)
     // ========================================
-
     /// Clean profile for ML training - minimal data quality issues
     /// Missing: 0.1%, Typos: 0.05%, Duplicates: 0%, Format: None
     Clean,

@@ -99,19 +99,38 @@ pub struct MigrationConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FormatChange {
     /// Date format change (e.g., MM/DD/YYYY to YYYY-MM-DD)
-    DateFormat { old_format: String, new_format: String },
+    DateFormat {
+        old_format: String,
+        new_format: String,
+    },
     /// Amount precision change
     AmountPrecision { old_decimals: u8, new_decimals: u8 },
     /// Currency code format
-    CurrencyCode { old_format: String, new_format: String },
+    CurrencyCode {
+        old_format: String,
+        new_format: String,
+    },
     /// Account number format
-    AccountFormat { old_pattern: String, new_pattern: String },
+    AccountFormat {
+        old_pattern: String,
+        new_pattern: String,
+    },
     /// Reference number format
-    ReferenceFormat { old_pattern: String, new_pattern: String },
+    ReferenceFormat {
+        old_pattern: String,
+        new_pattern: String,
+    },
     /// Text encoding change
-    TextEncoding { old_encoding: String, new_encoding: String },
+    TextEncoding {
+        old_encoding: String,
+        new_encoding: String,
+    },
     /// Field length change
-    FieldLength { field: String, old_length: usize, new_length: usize },
+    FieldLength {
+        field: String,
+        old_length: usize,
+        new_length: usize,
+    },
 }
 
 /// Issues that can occur during migration.
@@ -122,7 +141,10 @@ pub enum MigrationIssue {
     /// Missing records not migrated
     MissingRecords { affected_count: usize },
     /// Truncated data
-    TruncatedData { field: String, affected_count: usize },
+    TruncatedData {
+        field: String,
+        affected_count: usize,
+    },
     /// Encoding corruption
     EncodingCorruption { affected_count: usize },
     /// Mismatched balances
@@ -153,36 +175,24 @@ pub enum ProcessChangeType {
         new_threshold: f64,
     },
     /// New approval level added
-    NewApprovalLevel {
-        level_name: String,
-        threshold: f64,
-    },
+    NewApprovalLevel { level_name: String, threshold: f64 },
     /// Approval level removed
-    RemovedApprovalLevel {
-        level_name: String,
-    },
+    RemovedApprovalLevel { level_name: String },
     /// Segregation of duties change
     SodPolicyChange {
         new_conflicts: Vec<(String, String)>,
     },
     /// Account posting rules change
-    PostingRuleChange {
-        affected_accounts: Vec<String>,
-    },
+    PostingRuleChange { affected_accounts: Vec<String> },
     /// Vendor management change
-    VendorPolicyChange {
-        policy_name: String,
-    },
+    VendorPolicyChange { policy_name: String },
     /// Period close procedure change
     CloseProcessChange {
         old_close_day: u8,
         new_close_day: u8,
     },
     /// Document retention change
-    RetentionPolicyChange {
-        old_years: u8,
-        new_years: u8,
-    },
+    RetentionPolicyChange { old_years: u8, new_years: u8 },
 }
 
 /// Configuration for data recovery scenarios.
@@ -295,7 +305,13 @@ impl DisruptionManager {
     }
 
     /// Add a disruption event.
-    pub fn add_event(&mut self, disruption_type: DisruptionType, description: &str, severity: u8, affected_companies: Vec<String>) -> String {
+    pub fn add_event(
+        &mut self,
+        disruption_type: DisruptionType,
+        description: &str,
+        severity: u8,
+        affected_companies: Vec<String>,
+    ) -> String {
         self.event_counter += 1;
         let event_id = format!("DISRUPT-{:06}", self.event_counter);
 
@@ -330,19 +346,34 @@ impl DisruptionManager {
                 labels.insert("target_system".to_string(), config.target_system.clone());
             }
             DisruptionType::ProcessChange(config) => {
-                labels.insert("disruption_category".to_string(), "process_change".to_string());
-                labels.insert("change_type".to_string(), format!("{:?}", config.change_type));
+                labels.insert(
+                    "disruption_category".to_string(),
+                    "process_change".to_string(),
+                );
+                labels.insert(
+                    "change_type".to_string(),
+                    format!("{:?}", config.change_type),
+                );
                 labels.insert("retroactive".to_string(), config.retroactive.to_string());
             }
             DisruptionType::DataRecovery(config) => {
                 labels.insert("disruption_category".to_string(), "recovery".to_string());
-                labels.insert("recovery_type".to_string(), format!("{:?}", config.recovery_type));
-                labels.insert("data_quality".to_string(), format!("{:?}", config.data_quality));
+                labels.insert(
+                    "recovery_type".to_string(),
+                    format!("{:?}", config.recovery_type),
+                );
+                labels.insert(
+                    "data_quality".to_string(),
+                    format!("{:?}", config.data_quality),
+                );
             }
             DisruptionType::RegulatoryChange(config) => {
                 labels.insert("disruption_category".to_string(), "regulatory".to_string());
                 labels.insert("regulation".to_string(), config.regulation_name.clone());
-                labels.insert("change_type".to_string(), format!("{:?}", config.change_type));
+                labels.insert(
+                    "change_type".to_string(),
+                    format!("{:?}", config.change_type),
+                );
             }
         }
 
@@ -353,7 +384,8 @@ impl DisruptionManager {
     pub fn is_in_outage(&self, date: NaiveDate, company_code: &str) -> Option<&DisruptionEvent> {
         self.events.iter().find(|event| {
             if !event.affected_companies.contains(&company_code.to_string())
-                && !event.affected_companies.is_empty() {
+                && !event.affected_companies.is_empty()
+            {
                 return false;
             }
 
@@ -370,7 +402,8 @@ impl DisruptionManager {
     pub fn is_in_dual_run(&self, date: NaiveDate, company_code: &str) -> Option<&DisruptionEvent> {
         self.events.iter().find(|event| {
             if !event.affected_companies.contains(&company_code.to_string())
-                && !event.affected_companies.is_empty() {
+                && !event.affected_companies.is_empty()
+            {
                 return false;
             }
 
@@ -391,7 +424,8 @@ impl DisruptionManager {
 
         for event in &self.events {
             if !event.affected_companies.contains(&company_code.to_string())
-                && !event.affected_companies.is_empty() {
+                && !event.affected_companies.is_empty()
+            {
                 continue;
             }
 
@@ -406,19 +440,22 @@ impl DisruptionManager {
     }
 
     /// Get active process changes for a date.
-    pub fn get_active_process_changes(&self, date: NaiveDate, company_code: &str) -> Vec<&ProcessChangeConfig> {
-        self.events.iter()
+    pub fn get_active_process_changes(
+        &self,
+        date: NaiveDate,
+        company_code: &str,
+    ) -> Vec<&ProcessChangeConfig> {
+        self.events
+            .iter()
             .filter(|event| {
                 event.affected_companies.contains(&company_code.to_string())
                     || event.affected_companies.is_empty()
             })
-            .filter_map(|event| {
-                match &event.disruption_type {
-                    DisruptionType::ProcessChange(config) if date >= config.effective_date => {
-                        Some(config)
-                    }
-                    _ => None,
+            .filter_map(|event| match &event.disruption_type {
+                DisruptionType::ProcessChange(config) if date >= config.effective_date => {
+                    Some(config)
                 }
+                _ => None,
             })
             .collect()
     }
@@ -427,7 +464,8 @@ impl DisruptionManager {
     pub fn is_in_recovery(&self, date: NaiveDate, company_code: &str) -> Option<&DisruptionEvent> {
         self.events.iter().find(|event| {
             if !event.affected_companies.contains(&company_code.to_string())
-                && !event.affected_companies.is_empty() {
+                && !event.affected_companies.is_empty()
+            {
                 return false;
             }
 
@@ -447,8 +485,12 @@ impl DisruptionManager {
 
     /// Get events affecting a specific company.
     pub fn events_for_company(&self, company_code: &str) -> Vec<&DisruptionEvent> {
-        self.events.iter()
-            .filter(|e| e.affected_companies.contains(&company_code.to_string()) || e.affected_companies.is_empty())
+        self.events
+            .iter()
+            .filter(|e| {
+                e.affected_companies.contains(&company_code.to_string())
+                    || e.affected_companies.is_empty()
+            })
             .collect()
     }
 }
@@ -505,7 +547,9 @@ pub fn compute_disruption_effect(
             } else {
                 effect.add_recovery_markers = true;
             }
-            effect.labels.insert("outage_event".to_string(), outage_event.event_id.clone());
+            effect
+                .labels
+                .insert("outage_event".to_string(), outage_event.event_id.clone());
         }
     }
 
@@ -513,7 +557,10 @@ pub fn compute_disruption_effect(
     if let Some(migration_event) = manager.is_in_dual_run(date, company_code) {
         if let DisruptionType::SystemMigration(config) = &migration_event.disruption_type {
             effect.duplicate_to_system = Some(config.target_system.clone());
-            effect.labels.insert("migration_event".to_string(), migration_event.event_id.clone());
+            effect.labels.insert(
+                "migration_event".to_string(),
+                migration_event.event_id.clone(),
+            );
         }
     }
 
@@ -525,13 +572,18 @@ pub fn compute_disruption_effect(
 
     // Check for process changes
     for process_change in manager.get_active_process_changes(date, company_code) {
-        effect.process_changes.push(process_change.change_type.clone());
+        effect
+            .process_changes
+            .push(process_change.change_type.clone());
     }
 
     // Check for recovery period
     if let Some(recovery_event) = manager.is_in_recovery(date, company_code) {
         effect.add_recovery_markers = true;
-        effect.labels.insert("recovery_event".to_string(), recovery_event.event_id.clone());
+        effect.labels.insert(
+            "recovery_event".to_string(),
+            recovery_event.event_id.clone(),
+        );
     }
 
     effect
@@ -562,22 +614,19 @@ mod tests {
         );
 
         // During outage
-        assert!(manager.is_in_outage(
-            NaiveDate::from_ymd_opt(2024, 3, 16).unwrap(),
-            "1000"
-        ).is_some());
+        assert!(manager
+            .is_in_outage(NaiveDate::from_ymd_opt(2024, 3, 16).unwrap(), "1000")
+            .is_some());
 
         // Before outage
-        assert!(manager.is_in_outage(
-            NaiveDate::from_ymd_opt(2024, 3, 14).unwrap(),
-            "1000"
-        ).is_none());
+        assert!(manager
+            .is_in_outage(NaiveDate::from_ymd_opt(2024, 3, 14).unwrap(), "1000")
+            .is_none());
 
         // Different company
-        assert!(manager.is_in_outage(
-            NaiveDate::from_ymd_opt(2024, 3, 16).unwrap(),
-            "2000"
-        ).is_none());
+        assert!(manager
+            .is_in_outage(NaiveDate::from_ymd_opt(2024, 3, 16).unwrap(), "2000")
+            .is_none());
     }
 
     #[test]
@@ -590,12 +639,10 @@ mod tests {
             dual_run_end: Some(NaiveDate::from_ymd_opt(2024, 7, 15).unwrap()),
             source_system: "Legacy".to_string(),
             target_system: "S4HANA".to_string(),
-            format_changes: vec![
-                FormatChange::DateFormat {
-                    old_format: "MM/DD/YYYY".to_string(),
-                    new_format: "YYYY-MM-DD".to_string(),
-                },
-            ],
+            format_changes: vec![FormatChange::DateFormat {
+                old_format: "MM/DD/YYYY".to_string(),
+                new_format: "YYYY-MM-DD".to_string(),
+            }],
             account_remapping: HashMap::new(),
             migration_issues: Vec::new(),
         };
@@ -604,20 +651,18 @@ mod tests {
             DisruptionType::SystemMigration(migration),
             "S/4HANA migration",
             4,
-            vec![],  // All companies
+            vec![], // All companies
         );
 
         // During dual-run
-        assert!(manager.is_in_dual_run(
-            NaiveDate::from_ymd_opt(2024, 6, 20).unwrap(),
-            "1000"
-        ).is_some());
+        assert!(manager
+            .is_in_dual_run(NaiveDate::from_ymd_opt(2024, 6, 20).unwrap(), "1000")
+            .is_some());
 
         // After dual-run
-        assert!(manager.is_in_dual_run(
-            NaiveDate::from_ymd_opt(2024, 7, 20).unwrap(),
-            "1000"
-        ).is_none());
+        assert!(manager
+            .is_in_dual_run(NaiveDate::from_ymd_opt(2024, 7, 20).unwrap(), "1000")
+            .is_none());
     }
 
     #[test]
@@ -642,17 +687,13 @@ mod tests {
         );
 
         // After change
-        let changes = manager.get_active_process_changes(
-            NaiveDate::from_ymd_opt(2024, 5, 1).unwrap(),
-            "1000"
-        );
+        let changes = manager
+            .get_active_process_changes(NaiveDate::from_ymd_opt(2024, 5, 1).unwrap(), "1000");
         assert_eq!(changes.len(), 1);
 
         // Before change
-        let changes = manager.get_active_process_changes(
-            NaiveDate::from_ymd_opt(2024, 3, 1).unwrap(),
-            "1000"
-        );
+        let changes = manager
+            .get_active_process_changes(NaiveDate::from_ymd_opt(2024, 3, 1).unwrap(), "1000");
         assert_eq!(changes.len(), 0);
     }
 
@@ -679,7 +720,7 @@ mod tests {
         let effect = compute_disruption_effect(
             &manager,
             NaiveDate::from_ymd_opt(2024, 3, 16).unwrap(),
-            "1000"
+            "1000",
         );
 
         assert!(effect.skip_generation);

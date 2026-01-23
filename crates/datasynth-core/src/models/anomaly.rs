@@ -186,8 +186,14 @@ impl InjectionStrategy {
             InjectionStrategy::ExactDuplicate { original_doc_id } => {
                 format!("Exact duplicate of {}", original_doc_id)
             }
-            InjectionStrategy::NearDuplicate { original_doc_id, varied_fields } => {
-                format!("Near-duplicate of {} (varied: {:?})", original_doc_id, varied_fields)
+            InjectionStrategy::NearDuplicate {
+                original_doc_id,
+                varied_fields,
+            } => {
+                format!(
+                    "Near-duplicate of {} (varied: {:?})",
+                    original_doc_id, varied_fields
+                )
             }
             InjectionStrategy::CircularFlow { entity_chain } => {
                 format!("Circular flow through {} entities", entity_chain.len())
@@ -199,8 +205,14 @@ impl InjectionStrategy {
             InjectionStrategy::TimingManipulation { timing_type, .. } => {
                 format!("Timing manipulation: {}", timing_type)
             }
-            InjectionStrategy::AccountMisclassification { correct_account, incorrect_account } => {
-                format!("Misclassified from {} to {}", correct_account, incorrect_account)
+            InjectionStrategy::AccountMisclassification {
+                correct_account,
+                incorrect_account,
+            } => {
+                format!(
+                    "Misclassified from {} to {}",
+                    correct_account, incorrect_account
+                )
             }
             InjectionStrategy::MissingField { field_name } => {
                 format!("Missing required field: {}", field_name)
@@ -659,7 +671,6 @@ pub struct LabeledAnomaly {
     // ========================================
     // PROVENANCE TRACKING FIELDS (Phase 1.2)
     // ========================================
-
     /// Hash of the original document before modification.
     /// Enables tracking what the document looked like pre-injection.
     #[serde(default, skip_serializing_if = "Option::is_none")]
