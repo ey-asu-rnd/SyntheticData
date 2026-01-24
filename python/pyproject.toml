@@ -9,18 +9,39 @@ description = "Python wrapper for DataSynth synthetic data generation"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
+authors = [
+    { name = "EY ASU RnD", email = "syntheticdata@ey.com" }
+]
+maintainers = [
+    { name = "EY ASU RnD", email = "syntheticdata@ey.com" }
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
     "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Testing :: Mocking",
+    "Typing :: Typed",
 ]
-keywords = ["synthetic-data", "data-generation", "testing", "machine-learning"]
+keywords = [
+    "synthetic-data",
+    "data-generation",
+    "testing",
+    "machine-learning",
+    "financial-data",
+    "accounting",
+    "journal-entries",
+    "fraud-detection",
+]
 
 dependencies = []
 
@@ -44,9 +65,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ey-asu-rnd/RustSyntheticData"
-Documentation = "https://github.com/ey-asu-rnd/RustSyntheticData/tree/main/docs"
-Repository = "https://github.com/ey-asu-rnd/RustSyntheticData"
+Homepage = "https://github.com/ey-asu-rnd/SyntheticData"
+Documentation = "https://ey-asu-rnd.github.io/SyntheticData/"
+Repository = "https://github.com/ey-asu-rnd/SyntheticData"
+Changelog = "https://github.com/ey-asu-rnd/SyntheticData/blob/main/CHANGELOG.md"
+Issues = "https://github.com/ey-asu-rnd/SyntheticData/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

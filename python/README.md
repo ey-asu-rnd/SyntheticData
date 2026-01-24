@@ -4,17 +4,27 @@ Python wrapper for the DataSynth synthetic data generator.
 
 ## Installation
 
+### From PyPI
+
 ```bash
-cd python
-pip install -e ".[all]"
+pip install datasynth-py[all]
 ```
 
 Or install specific extras:
 
 ```bash
-pip install -e ".[cli]"       # CLI generation (PyYAML)
-pip install -e ".[memory]"    # In-memory tables (pandas)
-pip install -e ".[streaming]" # Streaming (websockets)
+pip install datasynth-py           # Core only (no dependencies)
+pip install datasynth-py[cli]      # CLI generation (PyYAML)
+pip install datasynth-py[memory]   # In-memory tables (pandas)
+pip install datasynth-py[streaming] # Streaming (websockets)
+pip install datasynth-py[all]      # All optional dependencies
+```
+
+### From Source
+
+```bash
+cd python
+pip install -e ".[all]"
 ```
 
 ## Quick Start
