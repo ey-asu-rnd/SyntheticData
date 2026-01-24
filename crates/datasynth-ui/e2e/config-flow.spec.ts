@@ -95,8 +95,12 @@ test.describe('Form Interactions', () => {
 		await page.goto('/config/global');
 		await page.waitForLoadState('domcontentloaded');
 
-		// Find a number input and change it
+		// Wait for config to load (loading indicator to disappear)
+		await page.waitForSelector('.loading', { state: 'hidden', timeout: 10000 }).catch(() => {});
+
+		// Find a number input and change it - wait for it to be visible
 		const numberInput = page.locator('input[type="number"]').first();
+		await numberInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
 		const inputExists = (await numberInput.count()) > 0;
 
 		if (inputExists) {
@@ -149,8 +153,12 @@ test.describe('Form Interactions', () => {
 		await page.goto('/config/global');
 		await page.waitForLoadState('domcontentloaded');
 
-		// Find a number input
+		// Wait for config to load
+		await page.waitForSelector('.loading', { state: 'hidden', timeout: 10000 }).catch(() => {});
+
+		// Find a number input - wait for it to be visible
 		const numberInput = page.locator('input[type="number"]').first();
+		await numberInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
 		const inputExists = (await numberInput.count()) > 0;
 
 		if (inputExists) {
@@ -208,8 +216,12 @@ test.describe('Navigation Flow', () => {
 		await page.goto('/config/global');
 		await page.waitForLoadState('domcontentloaded');
 
-		// Make a change
+		// Wait for config to load
+		await page.waitForSelector('.loading', { state: 'hidden', timeout: 10000 }).catch(() => {});
+
+		// Make a change - wait for input to be visible first
 		const numberInput = page.locator('input[type="number"]').first();
+		await numberInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
 		const inputExists = (await numberInput.count()) > 0;
 
 		if (inputExists) {
