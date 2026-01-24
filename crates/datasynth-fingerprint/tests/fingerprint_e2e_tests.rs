@@ -211,7 +211,7 @@ fn test_epsilon_budget_not_exceeded() {
     ] {
         let data_source = DataSource::Csv(CsvDataSource::new(&csv_path));
 
-        let privacy_config = PrivacyConfig::from_level(level.clone());
+        let privacy_config = PrivacyConfig::from_level(level);
         let epsilon_budget = privacy_config.epsilon;
 
         let config = ExtractionConfig {

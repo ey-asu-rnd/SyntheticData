@@ -113,7 +113,7 @@ fn test_extract_with_privacy_levels() {
         let data_source = DataSource::Csv(CsvDataSource::new(csv_path.clone()));
 
         let config = ExtractionConfig {
-            privacy: PrivacyConfig::from_level(level.clone()),
+            privacy: PrivacyConfig::from_level(level),
             ..Default::default()
         };
 

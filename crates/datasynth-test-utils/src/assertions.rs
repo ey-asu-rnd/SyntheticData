@@ -650,7 +650,7 @@ mod tests {
 
     #[test]
     fn test_assert_balance_coherent_macro() {
-        let snapshots = vec![
+        let snapshots = [
             BalanceSnapshot::new(
                 Decimal::new(1000, 0),
                 Decimal::new(600, 0),
@@ -694,7 +694,7 @@ mod tests {
 
     #[test]
     fn test_assert_subledger_reconciled_macro() {
-        let reconciliations = vec![
+        let reconciliations = [
             SubledgerReconciliation::new(
                 "AR",
                 Decimal::new(50000, 0),

@@ -3164,8 +3164,10 @@ impl Default for DataQualitySchemaConfig {
 impl DataQualitySchemaConfig {
     /// Creates a config for a specific preset profile.
     pub fn with_preset(preset: DataQualityPreset) -> Self {
-        let mut config = Self::default();
-        config.preset = preset;
+        let mut config = Self {
+            preset,
+            ..Default::default()
+        };
         config.apply_preset();
         config
     }

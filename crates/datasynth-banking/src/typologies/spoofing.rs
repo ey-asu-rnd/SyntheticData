@@ -315,6 +315,6 @@ mod tests {
         let adjusted = engine.avoid_thresholds(amount);
 
         // Should be moved away from threshold
-        assert!(adjusted < 9_500.0 || adjusted > 10_500.0);
+        assert!(!(9_500.0..=10_500.0).contains(&adjusted));
     }
 }

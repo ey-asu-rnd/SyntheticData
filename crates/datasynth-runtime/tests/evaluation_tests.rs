@@ -192,7 +192,7 @@ fn test_benford_second_digit_analysis() {
             let freq = *count as f64 / total;
             // Second digit should be between 5% and 20% each
             assert!(
-                freq >= 0.05 && freq <= 0.20,
+                (0.05..=0.20).contains(&freq),
                 "Second digit {} has unusual frequency {:.2}%",
                 digit,
                 freq * 100.0
@@ -552,7 +552,7 @@ fn test_document_flow_consistency() {
     let mut by_process: HashMap<Option<_>, Vec<_>> = HashMap::new();
     for entry in &result.journal_entries {
         by_process
-            .entry(entry.header.business_process.clone())
+            .entry(entry.header.business_process)
             .or_default()
             .push(entry);
     }
@@ -714,7 +714,7 @@ fn test_line_item_distribution() {
     // Should be approximately 61% (allow 20% to 80% range)
     if total >= 100.0 {
         assert!(
-            two_line_pct >= 0.20 && two_line_pct <= 0.80,
+            (0.20..=0.80).contains(&two_line_pct),
             "Two-line entry percentage {:.1}% is outside expected range",
             two_line_pct * 100.0
         );
@@ -770,19 +770,8 @@ fn test_amount_distribution() {
 
     if amounts.len() >= 100 {
         // Verify amounts are within configured range
-        // Config values may be Decimal or f64, so we convert to f64 for comparison
-        let min_configured: f64 = config
-            .transactions
-            .amounts
-            .min_amount
-            .try_into()
-            .unwrap_or(0.0);
-        let max_configured: f64 = config
-            .transactions
-            .amounts
-            .max_amount
-            .try_into()
-            .unwrap_or(f64::MAX);
+        let min_configured = config.transactions.amounts.min_amount;
+        let max_configured = config.transactions.amounts.max_amount;
 
         for amount in &amounts {
             assert!(

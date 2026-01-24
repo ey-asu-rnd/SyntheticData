@@ -16,6 +16,7 @@ const TEST_MAX_THREADS: &str = "1";
 const TEST_TIMEOUT_SECS: u64 = 30;
 
 /// Get a Command for our binary with timeout.
+#[allow(deprecated)] // cargo_bin is still functional, just has a new alternative
 fn synth_data() -> Command {
     let mut cmd = Command::cargo_bin("synth-data").unwrap();
     cmd.timeout(Duration::from_secs(TEST_TIMEOUT_SECS));

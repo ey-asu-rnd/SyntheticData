@@ -530,7 +530,7 @@ impl FidelityEvaluator {
         // Combine: table overlap (40%), column match (40%), row ratio (20%)
         let score = 0.4 * effective_table_ratio + 0.4 * column_score + 0.2 * (1.0 - ratio_penalty);
 
-        score.max(0.0).min(1.0)
+        score.clamp(0.0, 1.0)
     }
 
     /// Evaluate rule compliance.

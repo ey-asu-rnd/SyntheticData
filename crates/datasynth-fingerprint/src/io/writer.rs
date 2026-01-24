@@ -204,11 +204,8 @@ impl FingerprintWriter {
         let mut manifest = fingerprint.manifest.clone();
 
         // Write schema
-        let schema_yaml = if self.options.pretty {
-            serde_yaml::to_string(&fingerprint.schema)?
-        } else {
-            serde_yaml::to_string(&fingerprint.schema)?
-        };
+        // Note: serde_yaml always produces human-readable output, so pretty option has no effect
+        let schema_yaml = serde_yaml::to_string(&fingerprint.schema)?;
         checksums.insert(
             file_names::SCHEMA.to_string(),
             compute_checksum(schema_yaml.as_bytes()),

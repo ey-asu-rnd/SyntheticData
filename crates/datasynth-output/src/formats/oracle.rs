@@ -276,6 +276,7 @@ pub struct OracleExporter {
     config: OracleExportConfig,
     header_counter: u64,
     line_counter: u64,
+    #[allow(dead_code)] // Reserved for future batch export feature
     batch_counter: u64,
     /// Maps company code + GL account to code_combination_id
     ccid_map: HashMap<String, u64>,

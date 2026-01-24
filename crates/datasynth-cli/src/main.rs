@@ -235,7 +235,7 @@ fn main() -> Result<()> {
             let available_cpus = num_cpus::get();
             let effective_threads = max_threads.unwrap_or_else(|| {
                 // Default: use half of available cores, minimum 1, maximum 4
-                (available_cpus / 2).max(1).min(4)
+                (available_cpus / 2).clamp(1, 4)
             });
 
             // Configure rayon thread pool with limited threads
@@ -278,9 +278,10 @@ fn main() -> Result<()> {
             // ========================================
             // When generating from fingerprint, we create the orchestrator directly.
             // Otherwise, we load a config and create the orchestrator later.
+            #[allow(clippy::large_enum_variant)] // Temporary local enum, not worth boxing both
             enum ConfigOrOrchestrator {
                 Config(GeneratorConfig),
-                Orchestrator(EnhancedOrchestrator),
+                Orchestrator(Box<EnhancedOrchestrator>),
             }
 
             let config_or_orchestrator = if demo {
@@ -303,7 +304,7 @@ fn main() -> Result<()> {
                 // Create orchestrator directly from fingerprint
                 let orchestrator =
                     EnhancedOrchestrator::from_fingerprint(fp_path, phase_config, scale)?;
-                ConfigOrOrchestrator::Orchestrator(orchestrator)
+                ConfigOrOrchestrator::Orchestrator(Box::new(orchestrator))
             } else if let Some(ref pack) = scenario_pack {
                 tracing::info!("Loading scenario pack: {}", pack);
                 let scenario_path = find_scenario_pack(pack)?;
@@ -432,7 +433,7 @@ fn main() -> Result<()> {
             let mut orchestrator = match config_or_orchestrator {
                 ConfigOrOrchestrator::Orchestrator(orch) => {
                     tracing::info!("Using orchestrator from fingerprint");
-                    orch
+                    *orch
                 }
                 ConfigOrOrchestrator::Config(cfg) => {
                     let phase_config = PhaseConfig {

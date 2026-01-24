@@ -498,10 +498,10 @@ impl NetSuiteExporter {
         for (account_num, &account_id) in &self.config.account_map {
             writeln!(
                 writer,
-                "{},{},{}",
+                "{},{},ACCT_{}",
                 account_id,
                 escape_csv_field(account_num),
-                format!("ACCT_{}", account_num),
+                account_num,
             )?;
         }
 
@@ -509,10 +509,10 @@ impl NetSuiteExporter {
         for (account_num, &account_id) in &self.generated_account_ids {
             writeln!(
                 writer,
-                "{},{},{}",
+                "{},{},ACCT_{}",
                 account_id,
                 escape_csv_field(account_num),
-                format!("ACCT_{}", account_num),
+                account_num,
             )?;
         }
 

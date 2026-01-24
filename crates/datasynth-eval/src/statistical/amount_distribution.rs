@@ -312,7 +312,7 @@ fn kolmogorov_pvalue(lambda: f64) -> f64 {
         }
     }
 
-    (2.0 * sum).max(0.0).min(1.0)
+    (2.0 * sum).clamp(0.0, 1.0)
 }
 
 /// Approximate square root for Decimal.

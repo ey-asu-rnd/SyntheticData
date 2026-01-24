@@ -562,7 +562,7 @@ mod tests {
         let result = gen.execute_dunning_run("1000", run_date, &mut invoices, "USD");
 
         assert_eq!(result.dunning_run.status, DunningRunStatus::Completed);
-        assert!(result.letters.len() > 0);
+        assert!(!result.letters.is_empty());
 
         // Check dunning levels are appropriate (invoices are ~30 days overdue)
         for letter in &result.letters {

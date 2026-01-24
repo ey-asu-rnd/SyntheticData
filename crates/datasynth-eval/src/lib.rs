@@ -1,3 +1,8 @@
+// Allow some clippy lints that are common in test/evaluation code
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::upper_case_acronyms)] // MCAR, MAR, MNAR, ISO are standard abbreviations
+
 //! Synthetic Data Evaluation Framework
 //!
 //! This crate provides comprehensive evaluation capabilities for validating

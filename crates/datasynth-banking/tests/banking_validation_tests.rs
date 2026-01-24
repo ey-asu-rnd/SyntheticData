@@ -99,7 +99,7 @@ fn test_account_feature_validation() {
     let customer_types: HashMap<Uuid, BankingCustomerType> = data
         .customers
         .iter()
-        .map(|c| (c.customer_id, c.customer_type.clone()))
+        .map(|c| (c.customer_id, c.customer_type))
         .collect();
 
     for account in &data.accounts {
@@ -162,9 +162,7 @@ fn test_customer_type_distribution() {
 
     let mut type_counts: HashMap<BankingCustomerType, usize> = HashMap::new();
     for customer in &data.customers {
-        *type_counts
-            .entry(customer.customer_type.clone())
-            .or_default() += 1;
+        *type_counts.entry(customer.customer_type).or_default() += 1;
     }
 
     // Check counts match (with tolerance for generation logic)
@@ -176,12 +174,12 @@ fn test_customer_type_distribution() {
 
     // Verify counts are within expected range (allow 20% variance)
     assert!(
-        retail_count >= 80 && retail_count <= 120,
+        (80..=120).contains(&retail_count),
         "Retail count {} outside expected range [80, 120]",
         retail_count
     );
     assert!(
-        business_count >= 15 && business_count <= 30,
+        (15..=30).contains(&business_count),
         "Business count {} outside expected range [15, 30]",
         business_count
     );

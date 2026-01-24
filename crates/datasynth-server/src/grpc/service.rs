@@ -108,6 +108,7 @@ impl ServerState {
     }
 
     /// Check if resources are available for a new generation.
+    #[allow(clippy::result_large_err)] // tonic::Status is the idiomatic error type for gRPC
     pub fn check_resources(&self) -> Result<DegradationLevel, Status> {
         // Check if too many concurrent generations
         let active = self.active_streams.load(Ordering::Relaxed);
