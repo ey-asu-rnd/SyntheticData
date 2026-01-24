@@ -498,8 +498,11 @@ fn test_master_data_referential_integrity() {
     let result = orchestrator.generate().expect("Generation failed");
 
     // Verify journal entries reference valid company codes from the config
-    let config_company_codes: HashSet<_> =
-        minimal_config().companies.iter().map(|c| c.code.clone()).collect();
+    let config_company_codes: HashSet<_> = minimal_config()
+        .companies
+        .iter()
+        .map(|c| c.code.clone())
+        .collect();
 
     for entry in &result.journal_entries {
         assert!(

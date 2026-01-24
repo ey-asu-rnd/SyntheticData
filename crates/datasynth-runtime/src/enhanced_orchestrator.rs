@@ -39,7 +39,6 @@ use datasynth_fingerprint::{
     models::Fingerprint,
     synthesis::{ConfigSynthesizer, CopulaGeneratorSpec, SynthesisOptions},
 };
-use datasynth_graph::{PyGExportConfig, PyGExporter, TransactionGraphBuilder, TransactionGraphConfig};
 use datasynth_generators::{
     // Anomaly injection
     AnomalyInjector,
@@ -83,6 +82,9 @@ use datasynth_generators::{
     // Master data generators
     VendorGenerator,
     WorkpaperGenerator,
+};
+use datasynth_graph::{
+    PyGExportConfig, PyGExporter, TransactionGraphBuilder, TransactionGraphConfig,
 };
 use datasynth_ocpm::{
     EventLogMetadata, O2cDocuments, OcpmEventGenerator, OcpmEventLog, OcpmGeneratorConfig,
@@ -241,7 +243,7 @@ impl Default for PhaseConfig {
             risks_per_engagement: 15,
             findings_per_engagement: 8,
             judgments_per_engagement: 10,
-            generate_banking: false, // Off by default
+            generate_banking: false,      // Off by default
             generate_graph_export: false, // Off by default
         }
     }
@@ -1067,30 +1069,28 @@ impl EnhancedOrchestrator {
         }
 
         // Phase 10: Export Graphs
-        let graph_export_snapshot =
-            if (self.phase_config.generate_graph_export || self.config.graph_export.enabled)
-                && !entries.is_empty()
-            {
-                info!("Phase 10: Exporting Accounting Network Graphs");
-                match self.export_graphs(&entries, &coa, &mut stats) {
-                    Ok(snapshot) => {
-                        info!(
-                            "Graph export complete: {} graphs ({} nodes, {} edges)",
-                            snapshot.graph_count,
-                            stats.graph_node_count,
-                            stats.graph_edge_count
-                        );
-                        snapshot
-                    }
-                    Err(e) => {
-                        warn!("Phase 10: Graph export failed: {}", e);
-                        GraphExportSnapshot::default()
-                    }
+        let graph_export_snapshot = if (self.phase_config.generate_graph_export
+            || self.config.graph_export.enabled)
+            && !entries.is_empty()
+        {
+            info!("Phase 10: Exporting Accounting Network Graphs");
+            match self.export_graphs(&entries, &coa, &mut stats) {
+                Ok(snapshot) => {
+                    info!(
+                        "Graph export complete: {} graphs ({} nodes, {} edges)",
+                        snapshot.graph_count, stats.graph_node_count, stats.graph_edge_count
+                    );
+                    snapshot
                 }
-            } else {
-                debug!("Phase 10: Skipped (graph export disabled or no entries)");
-                GraphExportSnapshot::default()
-            };
+                Err(e) => {
+                    warn!("Phase 10: Graph export failed: {}", e);
+                    GraphExportSnapshot::default()
+                }
+            }
+        } else {
+            debug!("Phase 10: Skipped (graph export disabled or no entries)");
+            GraphExportSnapshot::default()
+        };
 
         // Log final resource statistics
         let resource_stats = self.resource_guard.stats();
