@@ -749,7 +749,14 @@ impl FingerprintExtractor {
         let mut merged_stats = StatisticsFingerprint::new();
         let mut total_rows: u64 = 0;
         let mut table_names: Vec<String> = Vec::new();
-        let mut privacy = PrivacyEngine::new(self.config.privacy.clone());
+
+        // Track total epsilon spent across all files
+        let mut total_epsilon_spent = 0.0;
+        let mut all_actions = Vec::new();
+
+        // Divide epsilon budget among files to ensure each file gets some budget
+        let num_files = files.len();
+        let per_file_epsilon = self.config.privacy.epsilon / num_files as f64;
 
         for file_path in &files {
             // Determine file type
@@ -767,10 +774,15 @@ impl FingerprintExtractor {
                 _ => continue, // Skip unknown file types
             };
 
+            // Create a fresh privacy engine for each file with proportional budget
+            let mut per_file_config = self.config.privacy.clone();
+            per_file_config.epsilon = per_file_epsilon;
+            let mut file_privacy = PrivacyEngine::new(per_file_config);
+
             // Extract schema
             let schema_extractor = SchemaExtractor;
             if let Ok(ExtractedComponent::Schema(schema)) =
-                schema_extractor.extract(&source, &self.config, &mut privacy)
+                schema_extractor.extract(&source, &self.config, &mut file_privacy)
             {
                 for (name, table) in schema.tables {
                     total_rows += table.row_count;
@@ -782,7 +794,7 @@ impl FingerprintExtractor {
             // Extract statistics
             let stats_extractor = StatsExtractor;
             if let Ok(ExtractedComponent::Statistics(stats)) =
-                stats_extractor.extract(&source, &self.config, &mut privacy)
+                stats_extractor.extract(&source, &self.config, &mut file_privacy)
             {
                 // Merge statistics
                 for (key, numeric) in stats.numeric_columns {
@@ -792,6 +804,11 @@ impl FingerprintExtractor {
                     merged_stats.categorical_columns.insert(key, categorical);
                 }
             }
+
+            // Collect privacy audit from this file
+            let file_audit = file_privacy.into_audit();
+            total_epsilon_spent += file_audit.total_epsilon_spent;
+            all_actions.extend(file_audit.actions);
         }
 
         // Build source metadata
@@ -800,8 +817,15 @@ impl FingerprintExtractor {
         let privacy_meta = PrivacyMetadata::from_level(self.config.privacy.level);
         let manifest = Manifest::new(source_meta, privacy_meta);
 
+        // Build combined privacy audit
+        let mut privacy_audit = crate::models::PrivacyAudit::new(
+            self.config.privacy.epsilon,
+            self.config.privacy.k_anonymity,
+        );
+        privacy_audit.total_epsilon_spent = total_epsilon_spent;
+        privacy_audit.actions = all_actions;
+
         // Build fingerprint
-        let privacy_audit = privacy.into_audit();
         let fingerprint = Fingerprint::new(manifest, merged_schema, merged_stats, privacy_audit);
 
         Ok(fingerprint)

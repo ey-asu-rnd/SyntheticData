@@ -55,8 +55,7 @@ fn create_financial_csv(dir: &TempDir, name: &str, rows: usize) -> PathBuf {
 /// Create a sample customer master data CSV.
 fn create_customers_csv(dir: &TempDir, name: &str, rows: usize) -> PathBuf {
     let path = dir.path().join(name);
-    let mut content =
-        String::from("customer_id,name,credit_limit,country,payment_terms,active\n");
+    let mut content = String::from("customer_id,name,credit_limit,country,payment_terms,active\n");
 
     for i in 1..=rows {
         let credit_limit = (i as f64 * 1000.0) % 100000.0;
@@ -73,7 +72,7 @@ fn create_customers_csv(dir: &TempDir, name: &str, rows: usize) -> PathBuf {
         };
         let active = if i % 10 == 0 { "false" } else { "true" };
         content.push_str(&format!(
-            "CUST{:04},Customer {},{},$,{},{},{}\n",
+            "CUST{:04},Customer {},{:.2},{},{},{}\n",
             i, i, credit_limit, country, terms, active
         ));
     }
@@ -103,7 +102,7 @@ fn create_vendors_csv(dir: &TempDir, name: &str, rows: usize) -> PathBuf {
         };
         let active = if i % 8 == 0 { "false" } else { "true" };
         content.push_str(&format!(
-            "VEND{:04},Vendor {},{},$,{},{}\n",
+            "VEND{:04},Vendor {},{},{},{}\n",
             i, i, country, risk, active
         ));
     }
@@ -267,7 +266,10 @@ fn test_privacy_audit_contains_actions() {
 
     // Actions should have descriptions
     for action in &fingerprint.privacy_audit.actions {
-        assert!(!action.description.is_empty(), "Action should have description");
+        assert!(
+            !action.description.is_empty(),
+            "Action should have description"
+        );
     }
 
     // K-anonymity should be recorded
@@ -471,7 +473,10 @@ fn test_different_data_low_fidelity() {
         "Different data should have low fidelity: {:.4}",
         report.overall_score
     );
-    assert!(!report.passes, "Different data should not pass fidelity check");
+    assert!(
+        !report.passes,
+        "Different data should not pass fidelity check"
+    );
 }
 
 /// Test fidelity threshold configuration.
@@ -607,10 +612,18 @@ fn test_config_synthesis_produces_valid_config() {
         // Numeric values should be reasonable
         match value {
             datasynth_fingerprint::synthesis::ConfigValue::Float(num) => {
-                assert!(num.is_finite(), "Config float value {} should be finite", key);
+                assert!(
+                    num.is_finite(),
+                    "Config float value {} should be finite",
+                    key
+                );
             }
             datasynth_fingerprint::synthesis::ConfigValue::Integer(num) => {
-                assert!(*num >= 0, "Config integer value {} should be non-negative", key);
+                assert!(
+                    *num >= 0,
+                    "Config integer value {} should be non-negative",
+                    key
+                );
             }
             _ => {}
         }
@@ -721,7 +734,9 @@ fn test_round_trip_preserves_schema() {
 
     // Read
     let reader = FingerprintReader::new();
-    let loaded = reader.read_from_file(&dsf_path).expect("Failed to read DSF");
+    let loaded = reader
+        .read_from_file(&dsf_path)
+        .expect("Failed to read DSF");
 
     // Verify schema preserved
     assert_eq!(

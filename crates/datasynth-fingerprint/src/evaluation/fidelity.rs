@@ -146,21 +146,43 @@ impl FidelityEvaluator {
     ) -> FingerprintResult<FidelityReport> {
         let mut details = FidelityDetails::default();
 
+        // Schema fidelity (computed first as it affects other scores)
+        let schema_fidelity = self.evaluate_schema(original, synthetic, &mut details);
+
         // Statistical fidelity
         let statistical_fidelity =
             self.evaluate_statistical(&original.statistics, &synthetic.statistics, &mut details);
 
-        // Correlation fidelity
-        let correlation_fidelity = self.evaluate_correlations(original, synthetic, &mut details);
+        // For correlation, rules, and anomalies:
+        // If schema fidelity is very low (completely different schemas),
+        // don't let "nothing to compare" result in a high score.
+        // Instead, use schema fidelity as the baseline.
 
-        // Schema fidelity
-        let schema_fidelity = self.evaluate_schema(original, synthetic, &mut details);
+        // Correlation fidelity
+        let raw_correlation_fidelity =
+            self.evaluate_correlations(original, synthetic, &mut details);
+        let correlation_fidelity = if raw_correlation_fidelity >= 0.99 && schema_fidelity < 0.5 {
+            // "Nothing to compare" case with schema mismatch
+            schema_fidelity
+        } else {
+            raw_correlation_fidelity
+        };
 
         // Rule compliance
-        let rule_compliance = self.evaluate_rules(original, synthetic, &mut details);
+        let raw_rule_compliance = self.evaluate_rules(original, synthetic, &mut details);
+        let rule_compliance = if raw_rule_compliance >= 0.99 && schema_fidelity < 0.5 {
+            schema_fidelity
+        } else {
+            raw_rule_compliance
+        };
 
         // Anomaly fidelity
-        let anomaly_fidelity = self.evaluate_anomalies(original, synthetic, &mut details);
+        let raw_anomaly_fidelity = self.evaluate_anomalies(original, synthetic, &mut details);
+        let anomaly_fidelity = if raw_anomaly_fidelity >= 0.99 && schema_fidelity < 0.5 {
+            schema_fidelity
+        } else {
+            raw_anomaly_fidelity
+        };
 
         // Calculate overall score
         let overall_score = self.config.statistical_weight * statistical_fidelity
@@ -192,24 +214,73 @@ impl FidelityEvaluator {
     ) -> f64 {
         let mut scores = Vec::new();
 
+        // Count total and matching columns
+        let orig_numeric_count = original.numeric_columns.len();
+        let orig_categorical_count = original.categorical_columns.len();
+        let total_orig_columns = orig_numeric_count + orig_categorical_count;
+
+        let mut matched_numeric = 0;
+        let mut matched_categorical = 0;
+
+        // Build a lookup by stripped column name for synthetic columns
+        // (strip table prefix to match columns with different table names)
+        let syn_numeric_by_stripped: HashMap<String, (&str, &NumericStats)> = synthetic
+            .numeric_columns
+            .iter()
+            .map(|(k, v)| {
+                let stripped = k.split('.').last().unwrap_or(k).to_string();
+                (stripped, (k.as_str(), v))
+            })
+            .collect();
+
+        let syn_categorical_keys: std::collections::HashSet<String> = synthetic
+            .categorical_columns
+            .keys()
+            .map(|k| k.split('.').last().unwrap_or(k).to_string())
+            .collect();
+
         // Compare numeric columns
         for (col_name, orig_stats) in &original.numeric_columns {
-            if let Some(syn_stats) = synthetic.numeric_columns.get(col_name) {
-                let metrics = self.compare_numeric_stats(col_name, orig_stats, syn_stats);
+            let stripped = col_name.split('.').last().unwrap_or(col_name);
 
-                // Compute column score (average of metrics)
+            // First try exact match
+            if let Some(syn_stats) = synthetic.numeric_columns.get(col_name) {
+                matched_numeric += 1;
+                let metrics = self.compare_numeric_stats(col_name, orig_stats, syn_stats);
                 let col_score = 1.0
                     - (metrics.ks_statistic
                         + metrics.mean_diff.abs().min(1.0)
                         + metrics.std_dev_diff.abs().min(1.0))
                         / 3.0;
-
                 scores.push(col_score.max(0.0));
-
                 details
                     .ks_statistics
                     .insert(col_name.clone(), metrics.ks_statistic);
                 details.column_metrics.insert(col_name.clone(), metrics);
+            } else if let Some((_syn_key, syn_stats)) = syn_numeric_by_stripped.get(stripped) {
+                // Match by stripped column name (different table prefix)
+                matched_numeric += 1;
+                let metrics = self.compare_numeric_stats(stripped, orig_stats, syn_stats);
+                let col_score = 1.0
+                    - (metrics.ks_statistic
+                        + metrics.mean_diff.abs().min(1.0)
+                        + metrics.std_dev_diff.abs().min(1.0))
+                        / 3.0;
+                scores.push(col_score.max(0.0));
+                details
+                    .ks_statistics
+                    .insert(col_name.clone(), metrics.ks_statistic);
+                details.column_metrics.insert(col_name.clone(), metrics);
+            }
+        }
+
+        // Compare categorical columns
+        for col_name in original.categorical_columns.keys() {
+            let stripped = col_name.split('.').last().unwrap_or(col_name);
+            if synthetic.categorical_columns.contains_key(col_name)
+                || syn_categorical_keys.contains(stripped)
+            {
+                matched_categorical += 1;
             }
         }
 
@@ -225,8 +296,33 @@ impl FidelityEvaluator {
             scores.push(1.0 - benford_mad.min(0.1) * 10.0); // Scale MAD to score
         }
 
+        // If no columns matched but both fingerprints have columns,
+        // this indicates completely different schemas - return low score
+        if total_orig_columns > 0 {
+            let total_matched = matched_numeric + matched_categorical;
+            let match_ratio = total_matched as f64 / total_orig_columns as f64;
+
+            if total_matched == 0 {
+                // No columns match - completely different schemas
+                details.warnings.push(
+                    "No columns matched between original and synthetic fingerprints".to_string(),
+                );
+                return 0.0;
+            }
+
+            // Weight the scores by column match ratio
+            if scores.is_empty() {
+                // Only categorical columns matched (or numeric columns didn't match)
+                return match_ratio;
+            }
+
+            // Combine column scores with match ratio penalty
+            let avg_score = scores.iter().sum::<f64>() / scores.len() as f64;
+            return avg_score * match_ratio;
+        }
+
         if scores.is_empty() {
-            return 1.0; // No numeric columns to compare
+            return 1.0; // No columns to compare in either fingerprint
         }
 
         scores.iter().sum::<f64>() / scores.len() as f64
@@ -321,19 +417,19 @@ impl FidelityEvaluator {
         synthetic: &Fingerprint,
         details: &mut FidelityDetails,
     ) -> f64 {
-        let mut score = 1.0;
-
         // Check table presence
         let orig_tables: std::collections::HashSet<_> = original.schema.tables.keys().collect();
         let syn_tables: std::collections::HashSet<_> = synthetic.schema.tables.keys().collect();
 
-        if orig_tables != syn_tables {
-            let missing = orig_tables.difference(&syn_tables).count();
-            score -= 0.1 * missing as f64;
-            details
-                .warnings
-                .push(format!("{} tables missing in synthetic data", missing));
+        // Calculate table overlap
+        let common_tables = orig_tables.intersection(&syn_tables).count();
+        let total_tables = orig_tables.len().max(syn_tables.len());
+
+        if total_tables == 0 {
+            return 1.0; // No tables in either
         }
+
+        let table_overlap_ratio = common_tables as f64 / total_tables as f64;
 
         // Check row count ratio
         let orig_rows: u64 = original.schema.tables.values().map(|t| t.row_count).sum();
@@ -347,25 +443,94 @@ impl FidelityEvaluator {
         details.row_count_ratio = ratio;
 
         // Penalize if ratio is too far from 1.0 (unless intentionally scaled)
-        let ratio_penalty = (ratio - 1.0).abs().min(1.0) * 0.1;
-        score -= ratio_penalty;
+        let ratio_penalty = (ratio - 1.0).abs().min(1.0) * 0.2;
 
         // Check column match
-        for (table_name, orig_table) in &original.schema.tables {
-            if let Some(syn_table) = synthetic.schema.tables.get(table_name) {
-                let orig_cols: std::collections::HashSet<_> =
-                    orig_table.columns.iter().map(|c| &c.name).collect();
-                let syn_cols: std::collections::HashSet<_> =
-                    syn_table.columns.iter().map(|c| &c.name).collect();
+        let mut column_match_scores = Vec::new();
 
-                if orig_cols != syn_cols {
-                    let missing = orig_cols.difference(&syn_cols).count();
-                    score -= 0.05 * missing as f64;
+        if common_tables > 0 {
+            // Tables with matching names - compare columns directly
+            for (table_name, orig_table) in &original.schema.tables {
+                if let Some(syn_table) = synthetic.schema.tables.get(table_name) {
+                    let orig_cols: std::collections::HashSet<_> =
+                        orig_table.columns.iter().map(|c| &c.name).collect();
+                    let syn_cols: std::collections::HashSet<_> =
+                        syn_table.columns.iter().map(|c| &c.name).collect();
+
+                    let common_cols = orig_cols.intersection(&syn_cols).count();
+                    let total_cols = orig_cols.len().max(syn_cols.len());
+
+                    if total_cols > 0 {
+                        column_match_scores.push(common_cols as f64 / total_cols as f64);
+                    }
                 }
             }
+        } else if orig_tables.len() == syn_tables.len() {
+            // No matching table names, but same number of tables
+            // Try to match by column structure (common use case: same schema, different file names)
+            let orig_table_list: Vec<_> = original.schema.tables.values().collect();
+            let syn_table_list: Vec<_> = synthetic.schema.tables.values().collect();
+
+            // For each original table, find best matching synthetic table by columns
+            for orig_table in &orig_table_list {
+                let orig_cols: std::collections::HashSet<_> =
+                    orig_table.columns.iter().map(|c| &c.name).collect();
+
+                let mut best_match_score: f64 = 0.0;
+                for syn_table in &syn_table_list {
+                    let syn_cols: std::collections::HashSet<_> =
+                        syn_table.columns.iter().map(|c| &c.name).collect();
+
+                    let common_cols = orig_cols.intersection(&syn_cols).count();
+                    let total_cols = orig_cols.len().max(syn_cols.len());
+
+                    if total_cols > 0 {
+                        let score = common_cols as f64 / total_cols as f64;
+                        best_match_score = best_match_score.max(score);
+                    }
+                }
+                column_match_scores.push(best_match_score);
+            }
+        } else {
+            // Different number of tables and no name overlap - truly different schemas
+            let missing = orig_tables.difference(&syn_tables).count();
+            details.warnings.push(format!(
+                "{} tables missing in synthetic data (no overlap)",
+                missing
+            ));
+            return 0.0;
         }
 
-        score.max(0.0)
+        let missing = orig_tables.difference(&syn_tables).count();
+        if missing > 0 && common_tables > 0 {
+            details
+                .warnings
+                .push(format!("{} tables missing in synthetic data", missing));
+        }
+
+        // Calculate column match score
+        let column_score = if column_match_scores.is_empty() {
+            if common_tables == 0 {
+                0.0 // No tables matched by name and couldn't match by structure
+            } else {
+                1.0 // Tables matched but had no columns (edge case)
+            }
+        } else {
+            column_match_scores.iter().sum::<f64>() / column_match_scores.len() as f64
+        };
+
+        // If table names didn't match but columns did, still consider it a good match
+        let effective_table_ratio = if common_tables == 0 && column_score > 0.8 {
+            // Tables matched by column structure rather than name
+            1.0
+        } else {
+            table_overlap_ratio
+        };
+
+        // Combine: table overlap (40%), column match (40%), row ratio (20%)
+        let score = 0.4 * effective_table_ratio + 0.4 * column_score + 0.2 * (1.0 - ratio_penalty);
+
+        score.max(0.0).min(1.0)
     }
 
     /// Evaluate rule compliance.

@@ -115,25 +115,15 @@ fn test_event_required_fields() {
 #[test]
 fn test_object_required_fields() {
     let mut generator = OcpmEventGenerator::new(42);
-    let documents = P2pDocuments::new(
-        "PO-000002",
-        "V000002",
-        "1000",
-        Decimal::new(5000, 0),
-        "EUR",
-    )
-    .with_goods_receipt("GR-000002")
-    .with_invoice("INV-000002");
+    let documents = P2pDocuments::new("PO-000002", "V000002", "1000", Decimal::new(5000, 0), "EUR")
+        .with_goods_receipt("GR-000002")
+        .with_invoice("INV-000002");
 
     let result = generator.generate_p2p_case(&documents, Utc::now(), &["user001".into()]);
 
     for object in &result.objects {
         // Object ID is required
-        assert_ne!(
-            object.object_id,
-            Uuid::nil(),
-            "Object should have valid ID"
-        );
+        assert_ne!(object.object_id, Uuid::nil(), "Object should have valid ID");
 
         // Object type is required
         assert!(
@@ -165,16 +155,10 @@ fn test_object_required_fields() {
 #[test]
 fn test_event_object_reference_integrity() {
     let mut generator = OcpmEventGenerator::new(42);
-    let documents = P2pDocuments::new(
-        "PO-000003",
-        "V000003",
-        "1000",
-        Decimal::new(7500, 0),
-        "USD",
-    )
-    .with_goods_receipt("GR-000003")
-    .with_invoice("INV-000003")
-    .with_payment("PAY-000003");
+    let documents = P2pDocuments::new("PO-000003", "V000003", "1000", Decimal::new(7500, 0), "USD")
+        .with_goods_receipt("GR-000003")
+        .with_invoice("INV-000003")
+        .with_payment("PAY-000003");
 
     let result = generator.generate_p2p_case(&documents, Utc::now(), &["user001".into()]);
 
@@ -272,15 +256,9 @@ fn test_object_lifecycle_qualifiers() {
 #[test]
 fn test_many_to_many_relationships() {
     let mut generator = OcpmEventGenerator::new(42);
-    let documents = P2pDocuments::new(
-        "PO-000005",
-        "V000005",
-        "1000",
-        Decimal::new(8000, 0),
-        "USD",
-    )
-    .with_goods_receipt("GR-000005")
-    .with_invoice("INV-000005");
+    let documents = P2pDocuments::new("PO-000005", "V000005", "1000", Decimal::new(8000, 0), "USD")
+        .with_goods_receipt("GR-000005")
+        .with_invoice("INV-000005");
 
     let result = generator.generate_p2p_case(&documents, Utc::now(), &["user001".into()]);
 
@@ -330,7 +308,11 @@ fn test_p2p_activity_transitions() {
         let result = generator.generate_p2p_case(&documents, Utc::now(), &[]);
 
         // Extract activity sequence
-        let activities: Vec<_> = result.events.iter().map(|e| e.activity_id.as_str()).collect();
+        let activities: Vec<_> = result
+            .events
+            .iter()
+            .map(|e| e.activity_id.as_str())
+            .collect();
 
         // Verify valid P2P sequence
         // First activity should be create_po
@@ -398,16 +380,10 @@ fn test_event_chronological_order() {
 #[test]
 fn test_object_relationship_integrity() {
     let mut generator = OcpmEventGenerator::new(42);
-    let documents = P2pDocuments::new(
-        "PO-REL1",
-        "V000001",
-        "1000",
-        Decimal::new(12000, 0),
-        "USD",
-    )
-    .with_goods_receipt("GR-REL1")
-    .with_invoice("INV-REL1")
-    .with_payment("PAY-REL1");
+    let documents = P2pDocuments::new("PO-REL1", "V000001", "1000", Decimal::new(12000, 0), "USD")
+        .with_goods_receipt("GR-REL1")
+        .with_invoice("INV-REL1")
+        .with_payment("PAY-REL1");
 
     let result = generator.generate_p2p_case(&documents, Utc::now(), &[]);
 
@@ -583,16 +559,10 @@ fn test_case_trace_timing() {
     let mut generator = OcpmEventGenerator::new(42);
     let start = Utc::now();
 
-    let documents = P2pDocuments::new(
-        "PO-TIME1",
-        "V000001",
-        "1000",
-        Decimal::new(10000, 0),
-        "USD",
-    )
-    .with_goods_receipt("GR-TIME1")
-    .with_invoice("INV-TIME1")
-    .with_payment("PAY-TIME1");
+    let documents = P2pDocuments::new("PO-TIME1", "V000001", "1000", Decimal::new(10000, 0), "USD")
+        .with_goods_receipt("GR-TIME1")
+        .with_invoice("INV-TIME1")
+        .with_payment("PAY-TIME1");
 
     let result = generator.generate_p2p_case(&documents, start, &[]);
 
@@ -655,7 +625,10 @@ fn test_event_log_summary() {
     assert!(summary.object_count > 0, "Should have objects");
     assert_eq!(summary.case_count, 5, "Should have 5 cases");
     assert!(summary.object_type_count > 0, "Should have object types");
-    assert!(summary.activity_type_count > 0, "Should have activity types");
+    assert!(
+        summary.activity_type_count > 0,
+        "Should have activity types"
+    );
 
     println!(
         "Event log summary: {} events, {} objects, {} cases",

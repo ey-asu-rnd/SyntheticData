@@ -9,8 +9,8 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 
 use datasynth_core::models::audit::{
-    AuditEngagement, EngagementPhase, EngagementType, FindingSeverity,
-    FindingType, RiskLevel, WorkpaperSection,
+    AuditEngagement, EngagementPhase, EngagementType, FindingSeverity, FindingType, RiskLevel,
+    WorkpaperSection,
 };
 use datasynth_generators::audit::{
     AuditEngagementConfig, AuditEngagementGenerator, FindingGenerator, FindingGeneratorConfig,
@@ -28,11 +28,20 @@ fn test_engagement_required_fields() {
     let period_end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
     let revenue = Decimal::new(100_000_000, 0);
 
-    let engagement =
-        generator.generate_engagement("ENTITY001", "Test Company Inc.", 2025, period_end, revenue, None);
+    let engagement = generator.generate_engagement(
+        "ENTITY001",
+        "Test Company Inc.",
+        2025,
+        period_end,
+        revenue,
+        None,
+    );
 
     // Required identification fields
-    assert!(!engagement.engagement_ref.is_empty(), "Engagement ref required");
+    assert!(
+        !engagement.engagement_ref.is_empty(),
+        "Engagement ref required"
+    );
     assert_eq!(engagement.fiscal_year, 2025, "Fiscal year should match");
     assert_eq!(
         engagement.client_entity_id, "ENTITY001",
@@ -204,7 +213,9 @@ fn test_engagement_phase_progression() {
     assert!(
         matches!(
             engagement.current_phase,
-            EngagementPhase::ControlTesting | EngagementPhase::SubstantiveTesting | EngagementPhase::RiskAssessment
+            EngagementPhase::ControlTesting
+                | EngagementPhase::SubstantiveTesting
+                | EngagementPhase::RiskAssessment
         ),
         "Should be in fieldwork-related phase during fieldwork"
     );
@@ -305,11 +316,7 @@ fn test_workpaper_unique_references() {
 fn test_workpaper_review_chain() {
     let mut wp_generator = WorkpaperGenerator::new(42);
     let engagement = create_test_engagement();
-    let team = vec![
-        "STAFF001".into(),
-        "SENIOR001".into(),
-        "MANAGER001".into(),
-    ];
+    let team = vec!["STAFF001".into(), "SENIOR001".into(), "MANAGER001".into()];
 
     let workpapers = wp_generator.generate_complete_workpaper_set(&engagement, &team);
 
@@ -422,7 +429,9 @@ fn test_finding_severity_distribution() {
     }
 
     // Critical findings should be rare
-    let critical_count = severity_counts.get(&FindingSeverity::Critical).unwrap_or(&0);
+    let critical_count = severity_counts
+        .get(&FindingSeverity::Critical)
+        .unwrap_or(&0);
     let total = findings.len();
 
     assert!(
@@ -439,10 +448,7 @@ fn test_finding_severity_distribution() {
         severity_counts.len()
     );
 
-    println!(
-        "Finding severity distribution: {:?}",
-        severity_counts
-    );
+    println!("Finding severity distribution: {:?}", severity_counts);
 }
 
 /// Test that finding types match severity expectations.
@@ -707,10 +713,14 @@ fn test_finding_workpaper_references() {
     let team = vec!["STAFF001".into(), "SENIOR001".into(), "MANAGER001".into()];
 
     let workpapers = wp_generator.generate_complete_workpaper_set(&engagement, &team);
-    let findings = finding_generator.generate_findings_for_engagement(&engagement, &workpapers, &team);
+    let findings =
+        finding_generator.generate_findings_for_engagement(&engagement, &workpapers, &team);
 
     // Findings should reference workpapers
-    let findings_with_refs = findings.iter().filter(|f| !f.workpaper_refs.is_empty()).count();
+    let findings_with_refs = findings
+        .iter()
+        .filter(|f| !f.workpaper_refs.is_empty())
+        .count();
 
     assert!(
         findings_with_refs > findings.len() / 2,

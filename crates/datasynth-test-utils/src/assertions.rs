@@ -167,8 +167,7 @@ pub fn check_trial_balance(debit_balances: &[Decimal], credit_balances: &[Decima
 #[macro_export]
 macro_rules! assert_benford_passes {
     ($amounts:expr, $threshold:expr) => {{
-        let (chi_squared, passes) =
-            $crate::assertions::check_benford_distribution(&$amounts);
+        let (chi_squared, passes) = $crate::assertions::check_benford_distribution(&$amounts);
         assert!(
             passes || chi_squared < $threshold,
             "Benford's Law test failed: chi-squared={:.4}, threshold={}",
@@ -177,8 +176,7 @@ macro_rules! assert_benford_passes {
         );
     }};
     ($amounts:expr) => {{
-        let (chi_squared, passes) =
-            $crate::assertions::check_benford_distribution(&$amounts);
+        let (chi_squared, passes) = $crate::assertions::check_benford_distribution(&$amounts);
         assert!(
             passes,
             "Benford's Law test failed: chi-squared={:.4}, p < 0.01 threshold=20.090",
@@ -223,7 +221,8 @@ impl BalanceSnapshot {
 #[macro_export]
 macro_rules! assert_balance_coherent {
     ($snapshots:expr, $tolerance:expr) => {{
-        let tolerance = rust_decimal::Decimal::try_from($tolerance).unwrap_or(rust_decimal::Decimal::ZERO);
+        let tolerance =
+            rust_decimal::Decimal::try_from($tolerance).unwrap_or(rust_decimal::Decimal::ZERO);
         for snapshot in $snapshots.iter() {
             assert!(
                 snapshot.is_coherent(tolerance),
@@ -253,7 +252,12 @@ pub struct SubledgerReconciliation {
 
 impl SubledgerReconciliation {
     /// Create new reconciliation data.
-    pub fn new(subledger: &str, subledger_total: Decimal, gl_balance: Decimal, period: &str) -> Self {
+    pub fn new(
+        subledger: &str,
+        subledger_total: Decimal,
+        gl_balance: Decimal,
+        period: &str,
+    ) -> Self {
         Self {
             subledger: subledger.into(),
             subledger_total,
@@ -278,7 +282,8 @@ impl SubledgerReconciliation {
 #[macro_export]
 macro_rules! assert_subledger_reconciled {
     ($reconciliations:expr, $tolerance:expr) => {{
-        let tolerance = rust_decimal::Decimal::try_from($tolerance).unwrap_or(rust_decimal::Decimal::ZERO);
+        let tolerance =
+            rust_decimal::Decimal::try_from($tolerance).unwrap_or(rust_decimal::Decimal::ZERO);
         for recon in $reconciliations.iter() {
             assert!(
                 recon.is_reconciled(tolerance),
@@ -326,7 +331,12 @@ impl DocumentChainResult {
     }
 
     /// Create an incomplete chain result.
-    pub fn incomplete(chain_id: &str, expected: usize, actual: usize, missing: Vec<String>) -> Self {
+    pub fn incomplete(
+        chain_id: &str,
+        expected: usize,
+        actual: usize,
+        missing: Vec<String>,
+    ) -> Self {
         Self {
             chain_id: chain_id.into(),
             is_complete: false,
@@ -363,7 +373,8 @@ pub fn check_document_chain_completeness(chains: &[DocumentChainResult]) -> (f64
 #[macro_export]
 macro_rules! assert_document_chain_complete {
     ($chains:expr, $threshold:expr) => {{
-        let (rate, complete, total) = $crate::assertions::check_document_chain_completeness(&$chains);
+        let (rate, complete, total) =
+            $crate::assertions::check_document_chain_completeness(&$chains);
         assert!(
             rate >= $threshold,
             "Document chain completeness {:.2}% below threshold {:.2}%: {}/{} complete",
@@ -377,10 +388,7 @@ macro_rules! assert_document_chain_complete {
         for chain in $chains.iter().filter(|c| !c.is_complete) {
             eprintln!(
                 "Incomplete chain {}: {}/{} steps, missing: {:?}",
-                chain.chain_id,
-                chain.actual_steps,
-                chain.expected_steps,
-                chain.missing_steps
+                chain.chain_id, chain.actual_steps, chain.expected_steps, chain.missing_steps
             );
         }
     }};
@@ -405,12 +413,7 @@ pub struct FidelityResult {
 
 impl FidelityResult {
     /// Create a new fidelity result.
-    pub fn new(
-        statistical: f64,
-        schema: f64,
-        correlation: f64,
-        threshold: f64,
-    ) -> Self {
+    pub fn new(statistical: f64, schema: f64, correlation: f64, threshold: f64) -> Self {
         // Weighted average: statistical 50%, schema 25%, correlation 25%
         let overall = statistical * 0.50 + schema * 0.25 + correlation * 0.25;
 
@@ -437,7 +440,12 @@ pub fn check_fidelity(
     correlation_score: f64,
     threshold: f64,
 ) -> FidelityResult {
-    FidelityResult::new(statistical_score, schema_score, correlation_score, threshold)
+    FidelityResult::new(
+        statistical_score,
+        schema_score,
+        correlation_score,
+        threshold,
+    )
 }
 
 /// Assert that fidelity passes the threshold.
@@ -456,7 +464,8 @@ macro_rules! assert_fidelity_passes {
         );
     }};
     ($statistical:expr, $schema:expr, $correlation:expr, $threshold:expr) => {{
-        let result = $crate::assertions::check_fidelity($statistical, $schema, $correlation, $threshold);
+        let result =
+            $crate::assertions::check_fidelity($statistical, $schema, $correlation, $threshold);
         assert!(
             result.passes,
             "Fidelity check failed: overall={:.4} < threshold={:.4}\n  \
@@ -472,7 +481,9 @@ macro_rules! assert_fidelity_passes {
 
 /// Convenience function to compute Mean Absolute Deviation for Benford analysis.
 pub fn benford_mad(amounts: &[Decimal]) -> f64 {
-    let expected = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046];
+    let expected = [
+        0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046,
+    ];
     let mut counts = [0u64; 9];
     let mut total = 0u64;
 
@@ -709,12 +720,8 @@ mod tests {
 
     #[test]
     fn test_document_chain_incomplete() {
-        let chain = DocumentChainResult::incomplete(
-            "PO-002",
-            5,
-            3,
-            vec!["Payment".into(), "Close".into()],
-        );
+        let chain =
+            DocumentChainResult::incomplete("PO-002", 5, 3, vec!["Payment".into(), "Close".into()]);
         assert!(!chain.is_complete);
         assert_eq!(chain.completion_rate(), 0.6);
     }
@@ -793,7 +800,11 @@ mod tests {
         }
 
         let mad = benford_mad(&amounts);
-        assert!(mad < 0.01, "Perfect Benford distribution should have very low MAD: {}", mad);
+        assert!(
+            mad < 0.01,
+            "Perfect Benford distribution should have very low MAD: {}",
+            mad
+        );
     }
 
     #[test]
@@ -807,6 +818,10 @@ mod tests {
         }
 
         let mad = benford_mad(&amounts);
-        assert!(mad > 0.02, "Uniform distribution should have high MAD: {}", mad);
+        assert!(
+            mad > 0.02,
+            "Uniform distribution should have high MAD: {}",
+            mad
+        );
     }
 }
