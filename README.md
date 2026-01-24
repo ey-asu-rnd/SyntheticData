@@ -202,6 +202,9 @@ datasynth-data info
 ```bash
 # Quick demo with default settings
 datasynth-data generate --demo --output ./demo-output
+
+# Generate with graph export for ML training
+datasynth-data generate --demo --output ./demo-output --graph-export
 ```
 
 ---
@@ -379,10 +382,22 @@ pip install -e ".[all]"
 from datasynth_py import DataSynth
 from datasynth_py.config import blueprints
 
+# Basic generation
 config = blueprints.retail_small(companies=4, transactions=10000)
 synth = DataSynth()
 result = synth.generate(config=config, output={"format": "csv", "sink": "temp_dir"})
 print(result.output_dir)
+
+# Fingerprint operations
+synth.fingerprint.extract("./real_data/", "./fingerprint.dsf", privacy_level="standard")
+report = synth.fingerprint.evaluate("./fingerprint.dsf", "./synthetic/")
+print(f"Fidelity score: {report.overall_score}")
+
+# Streaming with pattern triggers
+session = synth.stream(config=config)
+session.trigger_month_end()  # Trigger month-end volume spike
+async for event in session.events():
+    process(event)
 ```
 
 See the [Python Wrapper Guide](docs/src/user-guide/python-wrapper.md) for complete documentation.

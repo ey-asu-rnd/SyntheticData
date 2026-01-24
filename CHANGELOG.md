@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-01-24
+
+### Added
+
+- **Accounting Network Graph Export**: Integrated graph export directly into the generation pipeline
+  - Automatic export of journal entries as directed transaction graphs
+  - Nodes represent GL accounts, edges represent money flows (debit→credit)
+  - 8-dimensional edge features: log_amount, benford_prob, weekday, period, is_month_end, is_year_end, is_anomaly, business_process
+  - Train/validation/test masks for ML training (70/15/15 split)
+  - CLI flag `--graph-export` to enable during generation
+  - PyTorch Geometric format with `.npy` files and auto-generated loader script
+
+- **Python Wrapper Enhancements** (`python/datasynth_py`):
+  - `FingerprintClient` class for fingerprint operations (extract, validate, info, evaluate)
+  - Streaming pattern triggers: `trigger_month_end()`, `trigger_year_end()`, `trigger_fraud_cluster()`
+  - Complete config coverage: `BankingSettings`, `ScenarioSettings`, `TemporalDriftSettings`, `DataQualitySettings`, `GraphExportSettings`
+  - New blueprints: `banking_aml()`, `ml_training()`, `with_graph_export()`
+  - Synchronous event consumption with `sync_events()` callback
+
+- **Desktop UI Improvements**:
+  - Mobile responsive design with hamburger menu for sidebar navigation
+  - Improved config loading UX with proper loading states
+  - Fixed config store initialization with default values
+
+### Fixed
+
+- **Graph Edge Labels**: Fixed bug where `edge_labels.npy` contained all zeros even when anomalies existed
+  - `TransactionGraphBuilder` now propagates `is_anomaly` flag from journal entries to graph edges
+  - Anomaly type is also captured in edge metadata
+
+- **E2E Test Stability**: Added explicit waits for config loading before form interactions
+
+### Changed
+
+- Graph export phase integrated into `EnhancedOrchestrator` workflow (Phase 10)
+- Run manifest now includes graph export statistics (nodes, edges, formats)
+
 ## [0.2.0] - 2026-01-23
 
 ### Added

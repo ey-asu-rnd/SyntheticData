@@ -51,10 +51,27 @@ from datasynth_py import DataSynth
 from datasynth_py.config import blueprints
 
 # List available blueprints
-print(blueprints.list())  # ['banking_medium', 'manufacturing_large', 'retail_small']
+print(blueprints.list())
+# ['retail_small', 'banking_medium', 'manufacturing_large',
+#  'banking_aml', 'ml_training', 'with_graph_export']
 
 # Create a retail configuration with 4 companies
 config = blueprints.retail_small(companies=4, transactions=10000)
+
+# Banking/AML focused configuration
+config = blueprints.banking_aml(customers=1000, typologies=True)
+
+# ML training optimized configuration
+config = blueprints.ml_training(
+    industry="manufacturing",
+    anomaly_ratio=0.05,
+)
+
+# Add graph export to any configuration
+config = blueprints.with_graph_export(
+    base_config=blueprints.retail_small(),
+    formats=["pytorch_geometric", "neo4j"],
+)
 
 synth = DataSynth()
 result = synth.generate(config=config, output={"format": "parquet", "sink": "path", "path": "./output"})
@@ -128,6 +145,61 @@ config = Config(
 - `ten_m` - 10,000,000 transactions/year
 - `hundred_m` - 100,000,000 transactions/year
 
+### Extended configuration
+
+Additional configuration sections for specialized scenarios:
+
+```python
+from datasynth_py.config.models import (
+    Config,
+    GlobalSettings,
+    BankingSettings,
+    ScenarioSettings,
+    TemporalDriftSettings,
+    DataQualitySettings,
+    GraphExportSettings,
+)
+
+config = Config(
+    global_settings=GlobalSettings(industry="financial_services"),
+
+    # Banking/KYC/AML configuration
+    banking=BankingSettings(
+        enabled=True,
+        retail_customers=1000,
+        business_customers=200,
+        typologies_enabled=True,  # Structuring, layering, mule patterns
+    ),
+
+    # ML training scenario
+    scenario=ScenarioSettings(
+        tags=["ml_training", "fraud_detection"],
+        ml_training=True,
+        target_anomaly_ratio=0.05,
+    ),
+
+    # Temporal drift for concept drift testing
+    temporal=TemporalDriftSettings(
+        enabled=True,
+        amount_mean_drift=0.02,
+        drift_type="gradual",  # gradual, sudden, recurring
+    ),
+
+    # Data quality issues for DQ model training
+    data_quality=DataQualitySettings(
+        enabled=True,
+        missing_rate=0.05,
+        typo_rate=0.02,
+    ),
+
+    # Graph export for GNN training
+    graph_export=GraphExportSettings(
+        enabled=True,
+        formats=["pytorch_geometric", "neo4j"],
+    ),
+)
+```
+
 ## Configuration layering
 
 Override configuration values:
@@ -186,6 +258,55 @@ result = synth.generate(
 print(result.tables["journal_entries"].head())
 ```
 
+## Fingerprint Operations
+
+The Python wrapper provides access to fingerprint extraction, validation, and evaluation:
+
+```python
+from datasynth_py import DataSynth
+
+synth = DataSynth()
+
+# Extract fingerprint from real data
+synth.fingerprint.extract(
+    input_path="./real_data/",
+    output_path="./fingerprint.dsf",
+    privacy_level="standard"  # minimal, standard, high, maximum
+)
+
+# Validate fingerprint file
+is_valid, errors = synth.fingerprint.validate("./fingerprint.dsf")
+if not is_valid:
+    print(f"Validation errors: {errors}")
+
+# Get fingerprint info
+info = synth.fingerprint.info("./fingerprint.dsf", detailed=True)
+print(f"Privacy level: {info.privacy_level}")
+print(f"Epsilon spent: {info.epsilon_spent}")
+print(f"Tables: {info.tables}")
+
+# Evaluate synthetic data fidelity
+report = synth.fingerprint.evaluate(
+    fingerprint_path="./fingerprint.dsf",
+    synthetic_path="./synthetic_data/",
+    threshold=0.8
+)
+print(f"Overall score: {report.overall_score}")
+print(f"Statistical fidelity: {report.statistical_fidelity}")
+print(f"Correlation fidelity: {report.correlation_fidelity}")
+print(f"Passes threshold: {report.passes}")
+```
+
+### FidelityReport Fields
+
+| Field | Description |
+|-------|-------------|
+| `overall_score` | Weighted average of all fidelity metrics (0-1) |
+| `statistical_fidelity` | KS statistic, Wasserstein distance, Benford MAD |
+| `correlation_fidelity` | Correlation matrix RMSE |
+| `schema_fidelity` | Column type match, row count ratio |
+| `passes` | Whether the score meets the threshold |
+
 ## Streaming generation
 
 Streaming uses the DataSynth server for real-time event generation. Start the server first:
@@ -222,6 +343,40 @@ asyncio.run(main())
 session.pause()
 session.resume()
 session.stop()
+```
+
+### Pattern triggers
+
+Trigger specific patterns during streaming to simulate real-world scenarios:
+
+```python
+# Trigger temporal patterns
+session.trigger_month_end()    # Month-end volume spike
+session.trigger_year_end()     # Year-end closing entries
+session.trigger_pattern("quarter_end_spike")
+
+# Trigger anomaly patterns
+session.trigger_fraud_cluster()  # Clustered fraud transactions
+session.trigger_pattern("dormant_account_activity")
+
+# Available patterns:
+# - period_end_spike
+# - quarter_end_spike
+# - year_end_spike
+# - fraud_cluster
+# - error_burst
+# - dormant_account_activity
+```
+
+### Synchronous event consumption
+
+For simpler use cases without async/await:
+
+```python
+def process_event(event):
+    print(f"Received: {event['document_id']}")
+
+session.sync_events(callback=process_event, max_events=1000)
 ```
 
 ## Runtime requirements

@@ -6,9 +6,119 @@ Export transaction data as ML-ready graphs.
 
 Graph export transforms financial data into network representations:
 
+- **Accounting Network** (GL accounts as nodes, transactions as edges) - *New in v0.2.1*
 - Transaction networks (accounts and entities)
 - Approval networks (users and approvals)
 - Entity relationship graphs (ownership)
+
+## Accounting Network Graph Export
+
+The accounting network represents money flows between GL accounts, designed for **network reconstruction** and **anomaly detection** algorithms.
+
+### Quick Start
+
+```bash
+# Generate with graph export enabled
+datasynth-data generate --config config.yaml --output ./output --graph-export
+```
+
+### Graph Structure
+
+| Element | Description |
+|---------|-------------|
+| **Nodes** | GL Accounts from Chart of Accounts |
+| **Edges** | Money flows FROM credit accounts TO debit accounts |
+| **Direction** | Directed graph (source→target) |
+
+```
+     ┌──────────────┐
+     │ Credit Acct  │
+     │   (2000)     │
+     └──────┬───────┘
+            │ $1,000
+            ▼
+     ┌──────────────┐
+     │ Debit Acct   │
+     │   (1100)     │
+     └──────────────┘
+```
+
+### Edge Features (8 dimensions)
+
+| Feature | Index | Description |
+|---------|-------|-------------|
+| `log_amount` | F0 | log10(transaction amount) |
+| `benford_prob` | F1 | Expected first-digit probability |
+| `weekday` | F2 | Day of week (normalized 0-1) |
+| `period` | F3 | Fiscal period (normalized 0-1) |
+| `is_month_end` | F4 | Last 3 days of month |
+| `is_year_end` | F5 | Last month of year |
+| `is_anomaly` | F6 | Anomaly flag (0 or 1) |
+| `business_process` | F7 | Encoded business process |
+
+### Output Files
+
+```
+output/graphs/accounting_network/pytorch_geometric/
+├── edge_index.npy      # [2, E] source→target node indices
+├── node_features.npy   # [N, 4] node feature vectors
+├── edge_features.npy   # [E, 8] edge feature vectors
+├── edge_labels.npy     # [E] anomaly labels (0=normal, 1=anomaly)
+├── node_labels.npy     # [N] node labels
+├── train_mask.npy      # [N] boolean training mask
+├── val_mask.npy        # [N] boolean validation mask
+├── test_mask.npy       # [N] boolean test mask
+├── metadata.json       # Graph statistics and configuration
+└── load_graph.py       # Auto-generated Python loader script
+```
+
+### Loading in Python
+
+```python
+import numpy as np
+import json
+
+# Load metadata
+with open('metadata.json') as f:
+    meta = json.load(f)
+print(f"Nodes: {meta['num_nodes']}, Edges: {meta['num_edges']}")
+
+# Load arrays
+edge_index = np.load('edge_index.npy')      # [2, E]
+node_features = np.load('node_features.npy') # [N, F]
+edge_features = np.load('edge_features.npy') # [E, 8]
+edge_labels = np.load('edge_labels.npy')     # [E]
+
+# For PyTorch Geometric
+import torch
+from torch_geometric.data import Data
+
+data = Data(
+    x=torch.from_numpy(node_features).float(),
+    edge_index=torch.from_numpy(edge_index).long(),
+    edge_attr=torch.from_numpy(edge_features).float(),
+    y=torch.from_numpy(edge_labels).long(),
+)
+```
+
+### Configuration
+
+```yaml
+graph_export:
+  enabled: true
+  formats:
+    - pytorch_geometric
+  train_ratio: 0.7
+  validation_ratio: 0.15
+  # test_ratio is automatically 1 - train - val = 0.15
+```
+
+### Use Cases
+
+1. **Anomaly Detection**: Train GNNs to detect anomalous transaction patterns
+2. **Network Reconstruction**: Validate accounting network recovery algorithms
+3. **Fraud Detection**: Identify suspicious money flow patterns
+4. **Link Prediction**: Predict likely transaction relationships
 
 ## Configuration
 
