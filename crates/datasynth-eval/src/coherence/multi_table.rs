@@ -182,7 +182,7 @@ pub struct MultiTableData {
 }
 
 /// A record from any table with its key and references.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TableRecord {
     /// Record identifier.
     pub id: String,
@@ -202,22 +202,6 @@ pub struct TableRecord {
     pub is_anomalous: bool,
     /// Associated anomaly ID if any.
     pub anomaly_id: Option<String>,
-}
-
-impl Default for TableRecord {
-    fn default() -> Self {
-        Self {
-            id: String::new(),
-            table: String::new(),
-            references: HashMap::new(),
-            key_values: HashMap::new(),
-            amount: None,
-            date: None,
-            status: None,
-            is_anomalous: false,
-            anomaly_id: None,
-        }
-    }
 }
 
 /// Definition of a relationship between tables.

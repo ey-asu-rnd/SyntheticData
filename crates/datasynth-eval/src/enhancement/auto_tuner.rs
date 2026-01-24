@@ -316,10 +316,8 @@ impl AutoTuner {
                         }
                     }
                 }
-            } else {
-                if !result.unaddressable_metrics.contains(&gap.metric_name) {
-                    result.unaddressable_metrics.push(gap.metric_name.clone());
-                }
+            } else if !result.unaddressable_metrics.contains(&gap.metric_name) {
+                result.unaddressable_metrics.push(gap.metric_name.clone());
             }
         }
 

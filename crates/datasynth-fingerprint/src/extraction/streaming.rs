@@ -91,7 +91,7 @@ impl StreamingNumericStats {
             for c in s.chars() {
                 if c.is_ascii_digit() && c != '0' {
                     if let Some(digit) = c.to_digit(10) {
-                        if digit >= 1 && digit <= 9 {
+                        if (1..=9).contains(&digit) {
                             self.benford_counts[(digit - 1) as usize] += 1;
                         }
                     }

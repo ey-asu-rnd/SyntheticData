@@ -407,7 +407,7 @@ fn compute_benford_first_digit(values: &[f64]) -> [f64; 9] {
             for c in s.chars() {
                 if c.is_ascii_digit() && c != '0' {
                     let digit = c.to_digit(10).unwrap() as usize;
-                    if digit >= 1 && digit <= 9 {
+                    if (1..=9).contains(&digit) {
                         counts[digit - 1] += 1;
                         total += 1;
                     }

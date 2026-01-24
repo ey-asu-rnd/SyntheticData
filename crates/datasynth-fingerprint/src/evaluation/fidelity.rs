@@ -228,7 +228,7 @@ impl FidelityEvaluator {
             .numeric_columns
             .iter()
             .map(|(k, v)| {
-                let stripped = k.split('.').last().unwrap_or(k).to_string();
+                let stripped = k.split('.').next_back().unwrap_or(k).to_string();
                 (stripped, (k.as_str(), v))
             })
             .collect();
@@ -236,12 +236,12 @@ impl FidelityEvaluator {
         let syn_categorical_keys: std::collections::HashSet<String> = synthetic
             .categorical_columns
             .keys()
-            .map(|k| k.split('.').last().unwrap_or(k).to_string())
+            .map(|k| k.split('.').next_back().unwrap_or(k).to_string())
             .collect();
 
         // Compare numeric columns
         for (col_name, orig_stats) in &original.numeric_columns {
-            let stripped = col_name.split('.').last().unwrap_or(col_name);
+            let stripped = col_name.split('.').next_back().unwrap_or(col_name);
 
             // First try exact match
             if let Some(syn_stats) = synthetic.numeric_columns.get(col_name) {
@@ -276,7 +276,7 @@ impl FidelityEvaluator {
 
         // Compare categorical columns
         for col_name in original.categorical_columns.keys() {
-            let stripped = col_name.split('.').last().unwrap_or(col_name);
+            let stripped = col_name.split('.').next_back().unwrap_or(col_name);
             if synthetic.categorical_columns.contains_key(col_name)
                 || syn_categorical_keys.contains(stripped)
             {

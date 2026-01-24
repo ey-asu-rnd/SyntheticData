@@ -97,10 +97,11 @@ impl FingerprintReader {
         }
 
         // Check version compatibility
-        if manifest.version != FINGERPRINT_VERSION && !self.options.allow_version_mismatch {
-            if !is_compatible_version(&manifest.version, FINGERPRINT_VERSION) {
-                return Err(FingerprintError::UnsupportedVersion(manifest.version));
-            }
+        if manifest.version != FINGERPRINT_VERSION
+            && !self.options.allow_version_mismatch
+            && !is_compatible_version(&manifest.version, FINGERPRINT_VERSION)
+        {
+            return Err(FingerprintError::UnsupportedVersion(manifest.version));
         }
 
         // Read components (same as regular read)

@@ -757,7 +757,7 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
                 // For directories, find CSV files
                 let csv_files: Vec<_> = std::fs::read_dir(&input)?
                     .filter_map(|e| e.ok())
-                    .filter(|e| e.path().extension().map_or(false, |ext| ext == "csv"))
+                    .filter(|e| e.path().extension().is_some_and(|ext| ext == "csv"))
                     .collect();
 
                 if csv_files.is_empty() {
@@ -1007,7 +1007,7 @@ fn handle_fingerprint_command(command: FingerprintCommands) -> Result<()> {
             // Find CSV files in synthetic directory
             let csv_files: Vec<PathBuf> = std::fs::read_dir(&synthetic)?
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().extension().map_or(false, |ext| ext == "csv"))
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "csv"))
                 .map(|e| e.path())
                 .collect();
 

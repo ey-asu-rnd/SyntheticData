@@ -98,7 +98,7 @@ impl UniquenessAnalyzer {
         }
 
         let mut exact_duplicates = 0;
-        for (_hash, indices) in &hash_counts {
+        for indices in hash_counts.values() {
             if indices.len() > 1 {
                 exact_duplicates += indices.len() - 1;
                 if duplicate_groups.len() < self.max_report_duplicates {

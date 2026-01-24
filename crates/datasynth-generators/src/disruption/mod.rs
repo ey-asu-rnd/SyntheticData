@@ -502,7 +502,7 @@ impl Default for DisruptionManager {
 }
 
 /// Effects that a disruption can have on generated data.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DisruptionEffect {
     /// Skip generating data for this date
     pub skip_generation: bool,
@@ -516,19 +516,6 @@ pub struct DisruptionEffect {
     pub process_changes: Vec<ProcessChangeType>,
     /// Labels to add to generated records
     pub labels: HashMap<String, String>,
-}
-
-impl Default for DisruptionEffect {
-    fn default() -> Self {
-        Self {
-            skip_generation: false,
-            format_transform: None,
-            add_recovery_markers: false,
-            duplicate_to_system: None,
-            process_changes: Vec::new(),
-            labels: HashMap::new(),
-        }
-    }
 }
 
 /// Apply disruption effects to determine how data should be generated.

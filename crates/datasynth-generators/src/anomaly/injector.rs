@@ -306,7 +306,7 @@ impl AnomalyInjector {
             if matches!(anomaly_type, AnomalyType::Fraud(_)) {
                 entry.header.is_fraud = true;
                 if let AnomalyType::Fraud(ref ft) = anomaly_type {
-                    entry.header.fraud_type = Some(ft.clone());
+                    entry.header.fraud_type = Some(*ft);
                 }
             }
 

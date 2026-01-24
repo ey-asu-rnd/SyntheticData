@@ -91,7 +91,7 @@ impl Default for NetSuiteJournalEntry {
 }
 
 /// NetSuite journal entry line.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetSuiteJournalLine {
     /// Line number
     pub line: u32,
@@ -123,28 +123,6 @@ pub struct NetSuiteJournalLine {
     pub tax_amount: Option<Decimal>,
     /// Custom fields for the line
     pub custom_fields: HashMap<String, String>,
-}
-
-impl Default for NetSuiteJournalLine {
-    fn default() -> Self {
-        Self {
-            line: 0,
-            account: 0,
-            account_name: None,
-            debit: None,
-            credit: None,
-            memo: None,
-            entity: None,
-            entity_type: None,
-            department: None,
-            class: None,
-            location: None,
-            eliminate: false,
-            tax_code: None,
-            tax_amount: None,
-            custom_fields: HashMap::new(),
-        }
-    }
 }
 
 /// NetSuite export configuration.

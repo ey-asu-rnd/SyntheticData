@@ -133,7 +133,7 @@ impl SigningKey {
         // Outer hash
         let mut outer_hasher = Sha256::new();
         outer_hasher.update(&opad);
-        outer_hasher.update(&inner_hash);
+        outer_hasher.update(inner_hash);
 
         outer_hasher.finalize().to_vec()
     }
