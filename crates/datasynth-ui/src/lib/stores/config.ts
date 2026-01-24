@@ -360,6 +360,222 @@ export interface IntercompanyConfig {
   generate_eliminations: boolean;
 }
 
+// =============================================================================
+// Scenario Configuration
+// =============================================================================
+
+export interface ScenarioConfig {
+  tags: string[];
+  profile: string | null;
+  description: string | null;
+  ml_training: boolean;
+  target_anomaly_ratio: number | null;
+  metadata: Record<string, string>;
+}
+
+// =============================================================================
+// Temporal Drift Configuration
+// =============================================================================
+
+export type DriftType = 'gradual' | 'sudden' | 'recurring' | 'mixed';
+
+export interface TemporalDriftConfig {
+  enabled: boolean;
+  amount_mean_drift: number;
+  amount_variance_drift: number;
+  anomaly_rate_drift: number;
+  concept_drift_rate: number;
+  sudden_drift_probability: number;
+  sudden_drift_magnitude: number;
+  seasonal_drift: boolean;
+  drift_start_period: number;
+  drift_type: DriftType;
+}
+
+// =============================================================================
+// OCPM (Object-Centric Process Mining) Configuration
+// =============================================================================
+
+export interface OcpmProcessConfig {
+  rework_probability: number;
+  skip_step_probability: number;
+  out_of_order_probability: number;
+}
+
+export interface OcpmOutputConfig {
+  ocel_json: boolean;
+  ocel_xml: boolean;
+  flattened_csv: boolean;
+  event_object_csv: boolean;
+  object_relationship_csv: boolean;
+  variants_csv: boolean;
+}
+
+export interface OcpmConfig {
+  enabled: boolean;
+  generate_lifecycle_events: boolean;
+  include_object_relationships: boolean;
+  compute_variants: boolean;
+  max_variants: number;
+  p2p_process: OcpmProcessConfig;
+  o2c_process: OcpmProcessConfig;
+  output: OcpmOutputConfig;
+}
+
+// =============================================================================
+// Audit Generation Configuration
+// =============================================================================
+
+export interface AuditEngagementTypesConfig {
+  financial_statement: number;
+  sox_icfr: number;
+  integrated: number;
+  review: number;
+  agreed_upon_procedures: number;
+}
+
+export interface SamplingConfig {
+  statistical_rate: number;
+  judgmental_rate: number;
+  haphazard_rate: number;
+  complete_examination_rate: number;
+}
+
+export interface WorkpaperConfig {
+  average_per_phase: number;
+  include_isa_references: boolean;
+  include_sample_details: boolean;
+  include_cross_references: boolean;
+  sampling: SamplingConfig;
+}
+
+export interface AuditTeamConfig {
+  min_team_size: number;
+  max_team_size: number;
+  specialist_probability: number;
+}
+
+export interface ReviewWorkflowConfig {
+  average_review_delay_days: number;
+  rework_probability: number;
+  require_partner_signoff: boolean;
+}
+
+export interface AuditGenerationConfig {
+  enabled: boolean;
+  generate_workpapers: boolean;
+  engagement_types: AuditEngagementTypesConfig;
+  workpapers: WorkpaperConfig;
+  team: AuditTeamConfig;
+  review: ReviewWorkflowConfig;
+}
+
+// =============================================================================
+// Banking/KYC/AML Configuration
+// =============================================================================
+
+export type RiskAppetite = 'low' | 'medium' | 'high';
+
+export interface BankingPopulationConfig {
+  retail_customers: number;
+  retail_persona_weights: Record<string, number>;
+  business_customers: number;
+  business_persona_weights: Record<string, number>;
+  trusts: number;
+  household_rate: number;
+  avg_household_size: number;
+  period_months: number;
+  start_date: string;
+}
+
+export interface BankingProductConfig {
+  cash_intensity: number;
+  cross_border_rate: number;
+  card_vs_transfer: number;
+  avg_accounts_retail: number;
+  avg_accounts_business: number;
+  debit_card_rate: number;
+  international_rate: number;
+}
+
+export interface BankingComplianceConfig {
+  risk_appetite: RiskAppetite;
+  kyc_completeness: number;
+  high_risk_tolerance: number;
+  pep_rate: number;
+  edd_threshold: number;
+}
+
+export interface SophisticationDistribution {
+  basic: number;
+  standard: number;
+  professional: number;
+  advanced: number;
+}
+
+export interface BankingTypologyConfig {
+  suspicious_rate: number;
+  structuring_rate: number;
+  funnel_rate: number;
+  layering_rate: number;
+  mule_rate: number;
+  fraud_rate: number;
+  sophistication: SophisticationDistribution;
+  detectability: number;
+  round_tripping_rate: number;
+  trade_based_rate: number;
+}
+
+export interface BankingSpoofingConfig {
+  enabled: boolean;
+  intensity: number;
+  spoof_timing: boolean;
+  spoof_amounts: boolean;
+  spoof_merchants: boolean;
+  spoof_geography: boolean;
+  add_delays: boolean;
+}
+
+export interface BankingOutputConfigSection {
+  directory: string;
+  include_customers: boolean;
+  include_accounts: boolean;
+  include_transactions: boolean;
+  include_counterparties: boolean;
+  include_beneficial_ownership: boolean;
+  include_transaction_labels: boolean;
+  include_entity_labels: boolean;
+  include_relationship_labels: boolean;
+  include_case_narratives: boolean;
+  include_graph: boolean;
+}
+
+export interface BankingConfig {
+  enabled: boolean;
+  population: BankingPopulationConfig;
+  products: BankingProductConfig;
+  compliance: BankingComplianceConfig;
+  typologies: BankingTypologyConfig;
+  spoofing: BankingSpoofingConfig;
+  output: BankingOutputConfigSection;
+}
+
+// =============================================================================
+// Fingerprint Configuration (UI-specific)
+// =============================================================================
+
+export type PrivacyLevel = 'minimal' | 'standard' | 'high' | 'maximum';
+
+export interface FingerprintConfig {
+  enabled: boolean;
+  privacy_level: PrivacyLevel;
+  streaming: boolean;
+  scale: number;
+  preserve_correlations: boolean;
+  input_path: string;
+  output_path: string;
+}
+
 // Full generator config
 export interface GeneratorConfig {
   global: GlobalConfig;
@@ -378,6 +594,13 @@ export interface GeneratorConfig {
   document_flows: DocumentFlowConfig;
   intercompany: IntercompanyConfig;
   balance: BalanceConfig;
+  // New feature areas
+  scenario: ScenarioConfig;
+  temporal: TemporalDriftConfig;
+  ocpm: OcpmConfig;
+  audit: AuditGenerationConfig;
+  banking: BankingConfig;
+  fingerprint: FingerprintConfig;
 }
 
 // Default configuration
@@ -671,6 +894,177 @@ export function createDefaultConfig(): GeneratorConfig {
       validate_balance_equation: true,
       reconcile_subledgers: true,
     },
+    // New feature areas
+    scenario: {
+      tags: [],
+      profile: null,
+      description: null,
+      ml_training: false,
+      target_anomaly_ratio: null,
+      metadata: {},
+    },
+    temporal: {
+      enabled: false,
+      amount_mean_drift: 0.02,
+      amount_variance_drift: 0.0,
+      anomaly_rate_drift: 0.0,
+      concept_drift_rate: 0.01,
+      sudden_drift_probability: 0.0,
+      sudden_drift_magnitude: 2.0,
+      seasonal_drift: false,
+      drift_start_period: 0,
+      drift_type: 'gradual',
+    },
+    ocpm: {
+      enabled: false,
+      generate_lifecycle_events: true,
+      include_object_relationships: true,
+      compute_variants: true,
+      max_variants: 0,
+      p2p_process: {
+        rework_probability: 0.05,
+        skip_step_probability: 0.02,
+        out_of_order_probability: 0.03,
+      },
+      o2c_process: {
+        rework_probability: 0.05,
+        skip_step_probability: 0.02,
+        out_of_order_probability: 0.03,
+      },
+      output: {
+        ocel_json: true,
+        ocel_xml: false,
+        flattened_csv: true,
+        event_object_csv: true,
+        object_relationship_csv: true,
+        variants_csv: true,
+      },
+    },
+    audit: {
+      enabled: false,
+      generate_workpapers: true,
+      engagement_types: {
+        financial_statement: 0.40,
+        sox_icfr: 0.20,
+        integrated: 0.25,
+        review: 0.10,
+        agreed_upon_procedures: 0.05,
+      },
+      workpapers: {
+        average_per_phase: 5,
+        include_isa_references: true,
+        include_sample_details: true,
+        include_cross_references: true,
+        sampling: {
+          statistical_rate: 0.40,
+          judgmental_rate: 0.30,
+          haphazard_rate: 0.20,
+          complete_examination_rate: 0.10,
+        },
+      },
+      team: {
+        min_team_size: 3,
+        max_team_size: 8,
+        specialist_probability: 0.30,
+      },
+      review: {
+        average_review_delay_days: 2,
+        rework_probability: 0.15,
+        require_partner_signoff: true,
+      },
+    },
+    banking: {
+      enabled: false,
+      population: {
+        retail_customers: 10000,
+        retail_persona_weights: {
+          student: 0.15,
+          early_career: 0.25,
+          mid_career: 0.30,
+          retiree: 0.15,
+          high_net_worth: 0.05,
+          gig_worker: 0.10,
+        },
+        business_customers: 1000,
+        business_persona_weights: {
+          small_business: 0.50,
+          mid_market: 0.25,
+          enterprise: 0.05,
+          cash_intensive: 0.10,
+          import_export: 0.05,
+          professional_services: 0.05,
+        },
+        trusts: 100,
+        household_rate: 0.4,
+        avg_household_size: 2.3,
+        period_months: 12,
+        start_date: '2024-01-01',
+      },
+      products: {
+        cash_intensity: 0.15,
+        cross_border_rate: 0.05,
+        card_vs_transfer: 0.6,
+        avg_accounts_retail: 1.5,
+        avg_accounts_business: 2.5,
+        debit_card_rate: 0.85,
+        international_rate: 0.10,
+      },
+      compliance: {
+        risk_appetite: 'medium',
+        kyc_completeness: 0.95,
+        high_risk_tolerance: 0.05,
+        pep_rate: 0.01,
+        edd_threshold: 50000,
+      },
+      typologies: {
+        suspicious_rate: 0.02,
+        structuring_rate: 0.004,
+        funnel_rate: 0.003,
+        layering_rate: 0.003,
+        mule_rate: 0.005,
+        fraud_rate: 0.005,
+        sophistication: {
+          basic: 0.4,
+          standard: 0.35,
+          professional: 0.2,
+          advanced: 0.05,
+        },
+        detectability: 0.5,
+        round_tripping_rate: 0.001,
+        trade_based_rate: 0.001,
+      },
+      spoofing: {
+        enabled: true,
+        intensity: 0.3,
+        spoof_timing: true,
+        spoof_amounts: true,
+        spoof_merchants: true,
+        spoof_geography: false,
+        add_delays: true,
+      },
+      output: {
+        directory: 'banking',
+        include_customers: true,
+        include_accounts: true,
+        include_transactions: true,
+        include_counterparties: true,
+        include_beneficial_ownership: true,
+        include_transaction_labels: true,
+        include_entity_labels: true,
+        include_relationship_labels: true,
+        include_case_narratives: true,
+        include_graph: true,
+      },
+    },
+    fingerprint: {
+      enabled: false,
+      privacy_level: 'standard',
+      streaming: false,
+      scale: 1.0,
+      preserve_correlations: true,
+      input_path: '',
+      output_path: '',
+    },
   };
 }
 
@@ -882,6 +1276,73 @@ function validateConfig(config: GeneratorConfig): ValidationError[] {
     }
   }
 
+  // Temporal drift validation
+  if (config.temporal?.enabled) {
+    if (config.temporal.amount_mean_drift < -1 || config.temporal.amount_mean_drift > 1) {
+      errors.push({ field: 'temporal.amount_mean_drift', message: 'Amount mean drift must be between -100% and 100%' });
+    }
+    if (config.temporal.concept_drift_rate < 0 || config.temporal.concept_drift_rate > 1) {
+      errors.push({ field: 'temporal.concept_drift_rate', message: 'Concept drift rate must be between 0 and 1' });
+    }
+    if (config.temporal.sudden_drift_probability < 0 || config.temporal.sudden_drift_probability > 1) {
+      errors.push({ field: 'temporal.sudden_drift_probability', message: 'Sudden drift probability must be between 0 and 1' });
+    }
+  }
+
+  // OCPM validation
+  if (config.ocpm?.enabled) {
+    if (config.ocpm.p2p_process.rework_probability < 0 || config.ocpm.p2p_process.rework_probability > 1) {
+      errors.push({ field: 'ocpm.p2p_process.rework_probability', message: 'Rework probability must be between 0 and 1' });
+    }
+    if (config.ocpm.o2c_process.rework_probability < 0 || config.ocpm.o2c_process.rework_probability > 1) {
+      errors.push({ field: 'ocpm.o2c_process.rework_probability', message: 'Rework probability must be between 0 and 1' });
+    }
+  }
+
+  // Audit validation
+  if (config.audit?.enabled) {
+    const engagementSum =
+      config.audit.engagement_types.financial_statement +
+      config.audit.engagement_types.sox_icfr +
+      config.audit.engagement_types.integrated +
+      config.audit.engagement_types.review +
+      config.audit.engagement_types.agreed_upon_procedures;
+    if (Math.abs(engagementSum - 1.0) > 0.01) {
+      errors.push({ field: 'audit.engagement_types', message: 'Engagement type weights must sum to 100%' });
+    }
+    if (config.audit.team.min_team_size > config.audit.team.max_team_size) {
+      errors.push({ field: 'audit.team.max_team_size', message: 'Max team size must be >= min team size' });
+    }
+  }
+
+  // Banking validation
+  if (config.banking?.enabled) {
+    if (config.banking.population.retail_customers === 0 &&
+        config.banking.population.business_customers === 0 &&
+        config.banking.population.trusts === 0) {
+      errors.push({ field: 'banking.population', message: 'At least one customer type must have non-zero count' });
+    }
+    if (config.banking.spoofing.intensity < 0 || config.banking.spoofing.intensity > 1) {
+      errors.push({ field: 'banking.spoofing.intensity', message: 'Spoofing intensity must be between 0 and 1' });
+    }
+    // Validate typology rates don't exceed suspicious rate
+    const typologySum = config.banking.typologies.structuring_rate +
+      config.banking.typologies.funnel_rate +
+      config.banking.typologies.layering_rate +
+      config.banking.typologies.mule_rate +
+      config.banking.typologies.fraud_rate;
+    if (typologySum > config.banking.typologies.suspicious_rate + 0.001) {
+      errors.push({ field: 'banking.typologies', message: 'Sum of typology rates exceeds suspicious rate' });
+    }
+  }
+
+  // Fingerprint validation
+  if (config.fingerprint?.enabled) {
+    if (config.fingerprint.scale < 0.1 || config.fingerprint.scale > 10) {
+      errors.push({ field: 'fingerprint.scale', message: 'Scale must be between 0.1 and 10' });
+    }
+  }
+
   return errors;
 }
 
@@ -931,4 +1392,54 @@ export const COMPRESSION_OPTIONS = [
   { value: 'gzip', label: 'GZip' },
   { value: 'zstd', label: 'Zstandard' },
   { value: 'lz4', label: 'LZ4' },
+];
+
+// Privacy level options (for fingerprinting)
+export const PRIVACY_LEVELS = [
+  { value: 'minimal', label: 'Minimal', epsilon: 5.0, k: 3, description: 'Low privacy, high utility' },
+  { value: 'standard', label: 'Standard', epsilon: 1.0, k: 5, description: 'Balanced (recommended)' },
+  { value: 'high', label: 'High', epsilon: 0.5, k: 10, description: 'Higher privacy' },
+  { value: 'maximum', label: 'Maximum', epsilon: 0.1, k: 20, description: 'Maximum privacy' },
+];
+
+// Drift type options
+export const DRIFT_TYPES = [
+  { value: 'gradual', label: 'Gradual', description: 'Continuous drift over time (like inflation)' },
+  { value: 'sudden', label: 'Sudden', description: 'Point-in-time shifts (like policy changes)' },
+  { value: 'recurring', label: 'Recurring', description: 'Cyclic patterns (like seasonal variations)' },
+  { value: 'mixed', label: 'Mixed', description: 'Gradual background with occasional sudden shifts' },
+];
+
+// Scenario profile presets
+export const SCENARIO_PROFILES = [
+  { value: 'clean', label: 'Clean', description: 'Minimal data quality issues' },
+  { value: 'noisy', label: 'Noisy', description: 'Moderate issues (5% missing, 2% typos)' },
+  { value: 'legacy', label: 'Legacy', description: 'Heavy issues simulating legacy systems' },
+];
+
+// Risk appetite options (for banking)
+export const RISK_APPETITES = [
+  { value: 'low', label: 'Low', description: 'Conservative risk tolerance' },
+  { value: 'medium', label: 'Medium', description: 'Balanced risk tolerance' },
+  { value: 'high', label: 'High', description: 'Aggressive risk tolerance' },
+];
+
+// Retail persona options (for banking)
+export const RETAIL_PERSONAS = [
+  { value: 'student', label: 'Student' },
+  { value: 'early_career', label: 'Early Career' },
+  { value: 'mid_career', label: 'Mid Career' },
+  { value: 'retiree', label: 'Retiree' },
+  { value: 'high_net_worth', label: 'High Net Worth' },
+  { value: 'gig_worker', label: 'Gig Worker' },
+];
+
+// Business persona options (for banking)
+export const BUSINESS_PERSONAS = [
+  { value: 'small_business', label: 'Small Business' },
+  { value: 'mid_market', label: 'Mid Market' },
+  { value: 'enterprise', label: 'Enterprise' },
+  { value: 'cash_intensive', label: 'Cash Intensive' },
+  { value: 'import_export', label: 'Import/Export' },
+  { value: 'professional_services', label: 'Professional Services' },
 ];

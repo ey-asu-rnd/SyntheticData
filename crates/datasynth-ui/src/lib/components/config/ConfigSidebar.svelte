@@ -48,6 +48,17 @@
       ],
     },
     {
+      section: 'Specialized',
+      items: [
+        { href: '/config/fingerprint', label: 'Fingerprinting', icon: 'fingerprint' },
+        { href: '/config/banking', label: 'Banking/KYC', icon: 'bank' },
+        { href: '/config/temporal', label: 'Temporal Drift', icon: 'clock' },
+        { href: '/config/audit', label: 'Audit Generation', icon: 'audit' },
+        { href: '/config/ocpm', label: 'Process Mining', icon: 'process' },
+        { href: '/config/scenario', label: 'Scenario', icon: 'scenario' },
+      ],
+    },
+    {
       section: 'Presets',
       items: [
         { href: '/presets', label: 'Manage Presets', icon: 'preset' },
@@ -89,6 +100,12 @@
       shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4',
       analytics: 'M21 21H4.6c-.6 0-1-.4-1-1V3M7 14l4-4 4 4 6-6',
       preset: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8',
+      fingerprint: 'M12 11c0 3.517-1.009 6.799-2.753 9.571M12 11c0-1.657 1.343-3 3-3s3 1.343 3 3c0 2.99-.723 5.815-2.006 8.304M12 11c0-1.657-1.343-3-3-3s-3 1.343-3 3c0 3.517 1.009 6.799 2.753 9.571M12 4c1.657 0 3 1.343 3 3v4M12 4c-1.657 0-3 1.343-3 3v4M12 4V2',
+      bank: 'M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3',
+      clock: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 6v6l4 2',
+      audit: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 14l2 2 4-4',
+      process: 'M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3zM12 6l4 4',
+      scenario: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6M12 12v6M9 15h6',
     };
     return icons[name] || 'M12 12m-10 0a10 10 0 1 0 20 0 10 10 0 1 0-20 0';
   }
