@@ -840,6 +840,7 @@ pub fn default_generator_config() -> GeneratorConfig {
         data_quality: Default::default(),
         scenario: Default::default(),
         temporal: Default::default(),
+        graph_export: Default::default(),
     }
 }
 

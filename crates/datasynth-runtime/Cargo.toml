@@ -14,6 +14,7 @@ datasynth-ocpm = { workspace = true }
 datasynth-output = { workspace = true }
 datasynth-banking = { workspace = true }
 datasynth-fingerprint = { workspace = true }
+datasynth-graph = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 rayon = { workspace = true }

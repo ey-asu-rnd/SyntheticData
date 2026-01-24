@@ -1628,6 +1628,7 @@ dependencies = [
  "datasynth-core",
  "datasynth-fingerprint",
  "datasynth-generators",
+ "datasynth-graph",
  "datasynth-ocpm",
  "datasynth-output",
  "datasynth-test-utils",

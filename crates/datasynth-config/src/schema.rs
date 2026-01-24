@@ -73,6 +73,127 @@ pub struct GeneratorConfig {
     /// Temporal drift configuration for simulating distribution changes over time (Phase 2.2)
     #[serde(default)]
     pub temporal: TemporalDriftConfig,
+    /// Graph export configuration for accounting network export
+    #[serde(default)]
+    pub graph_export: GraphExportConfig,
+}
+
+/// Graph export configuration for accounting network and ML training exports.
+///
+/// This section enables exporting generated data as graphs for:
+/// - Network reconstruction algorithms
+/// - Graph neural network training
+/// - Neo4j graph database import
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphExportConfig {
+    /// Enable graph export.
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Graph types to generate.
+    #[serde(default = "default_graph_types")]
+    pub graph_types: Vec<GraphTypeConfig>,
+
+    /// Export formats to generate.
+    #[serde(default = "default_graph_formats")]
+    pub formats: Vec<GraphExportFormat>,
+
+    /// Train split ratio for ML datasets.
+    #[serde(default = "default_train_ratio")]
+    pub train_ratio: f64,
+
+    /// Validation split ratio for ML datasets.
+    #[serde(default = "default_val_ratio")]
+    pub validation_ratio: f64,
+
+    /// Random seed for train/val/test splits.
+    #[serde(default)]
+    pub split_seed: Option<u64>,
+
+    /// Output subdirectory for graph exports (relative to output directory).
+    #[serde(default = "default_graph_subdir")]
+    pub output_subdirectory: String,
+}
+
+fn default_graph_types() -> Vec<GraphTypeConfig> {
+    vec![GraphTypeConfig::default()]
+}
+
+fn default_graph_formats() -> Vec<GraphExportFormat> {
+    vec![GraphExportFormat::PytorchGeometric]
+}
+
+fn default_train_ratio() -> f64 {
+    0.7
+}
+
+fn default_val_ratio() -> f64 {
+    0.15
+}
+
+fn default_graph_subdir() -> String {
+    "graphs".to_string()
+}
+
+impl Default for GraphExportConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            graph_types: default_graph_types(),
+            formats: default_graph_formats(),
+            train_ratio: 0.7,
+            validation_ratio: 0.15,
+            split_seed: None,
+            output_subdirectory: "graphs".to_string(),
+        }
+    }
+}
+
+/// Configuration for a specific graph type to export.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphTypeConfig {
+    /// Name identifier for this graph configuration.
+    #[serde(default = "default_graph_name")]
+    pub name: String,
+
+    /// Whether to aggregate parallel edges between the same nodes.
+    #[serde(default)]
+    pub aggregate_edges: bool,
+
+    /// Minimum edge weight to include (filters out small transactions).
+    #[serde(default)]
+    pub min_edge_weight: f64,
+
+    /// Whether to include document nodes (creates hub-and-spoke structure).
+    #[serde(default)]
+    pub include_document_nodes: bool,
+}
+
+fn default_graph_name() -> String {
+    "accounting_network".to_string()
+}
+
+impl Default for GraphTypeConfig {
+    fn default() -> Self {
+        Self {
+            name: "accounting_network".to_string(),
+            aggregate_edges: false,
+            min_edge_weight: 0.0,
+            include_document_nodes: false,
+        }
+    }
+}
+
+/// Export format for graph data.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GraphExportFormat {
+    /// PyTorch Geometric format (.npy files + metadata.json).
+    PytorchGeometric,
+    /// Neo4j format (CSV files + Cypher import scripts).
+    Neo4j,
+    /// Deep Graph Library format.
+    Dgl,
 }
 
 /// Scenario configuration for metadata, tagging, and ML training setup.

@@ -51,6 +51,7 @@ pub fn create_preset(
         banking: datasynth_banking::BankingConfig::default(),
         scenario: ScenarioConfig::default(),
         temporal: TemporalDriftConfig::default(),
+        graph_export: GraphExportConfig::default(),
     }
 }
 

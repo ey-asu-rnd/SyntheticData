@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use datasynth_config::schema::{
     AuditGenerationConfig, ChartOfAccountsConfig, CompanyConfig, DataQualitySchemaConfig,
-    FraudConfig, GeneratorConfig, GlobalConfig, OcpmConfig, OutputConfig, ScenarioConfig,
-    TransactionVolume,
+    FraudConfig, GeneratorConfig, GlobalConfig, GraphExportConfig, OcpmConfig, OutputConfig,
+    ScenarioConfig, TransactionVolume,
 };
 use datasynth_core::models::{
     AccountSubType, AccountType, BusinessProcess, CoAComplexity, GLAccount, IndustrySector,
@@ -65,6 +65,7 @@ pub fn minimal_config() -> GeneratorConfig {
         data_quality: DataQualitySchemaConfig::default(),
         scenario: ScenarioConfig::default(),
         temporal: Default::default(),
+        graph_export: GraphExportConfig::default(),
     }
 }
 

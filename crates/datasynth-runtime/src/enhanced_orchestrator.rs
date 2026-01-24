@@ -10,6 +10,7 @@
 //! 7. Data quality injection
 //! 8. Audit data generation (engagements, workpapers, evidence, risks, findings, judgments)
 //! 9. Banking KYC/AML data generation (customers, accounts, transactions, typologies)
+//! 10. Graph export (accounting network for ML training and network reconstruction)
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -38,6 +39,7 @@ use datasynth_fingerprint::{
     models::Fingerprint,
     synthesis::{ConfigSynthesizer, CopulaGeneratorSpec, SynthesisOptions},
 };
+use datasynth_graph::{PyGExportConfig, PyGExporter, TransactionGraphBuilder, TransactionGraphConfig};
 use datasynth_generators::{
     // Anomaly injection
     AnomalyInjector,
@@ -210,6 +212,8 @@ pub struct PhaseConfig {
     pub judgments_per_engagement: usize,
     /// Generate banking KYC/AML data (customers, accounts, transactions, typologies).
     pub generate_banking: bool,
+    /// Generate graph exports (accounting network for ML training).
+    pub generate_graph_export: bool,
 }
 
 impl Default for PhaseConfig {
@@ -238,6 +242,7 @@ impl Default for PhaseConfig {
             findings_per_engagement: 8,
             judgments_per_engagement: 10,
             generate_banking: false, // Off by default
+            generate_graph_export: false, // Off by default
         }
     }
 }
@@ -334,6 +339,32 @@ pub struct BankingSnapshot {
     pub scenario_count: usize,
 }
 
+/// Graph export snapshot containing exported graph metadata.
+#[derive(Debug, Clone, Default)]
+pub struct GraphExportSnapshot {
+    /// Whether graph export was performed.
+    pub exported: bool,
+    /// Number of graphs exported.
+    pub graph_count: usize,
+    /// Exported graph metadata (by format name).
+    pub exports: HashMap<String, GraphExportInfo>,
+}
+
+/// Information about an exported graph.
+#[derive(Debug, Clone)]
+pub struct GraphExportInfo {
+    /// Graph name.
+    pub name: String,
+    /// Export format (pytorch_geometric, neo4j, dgl).
+    pub format: String,
+    /// Output directory path.
+    pub output_path: PathBuf,
+    /// Number of nodes.
+    pub node_count: usize,
+    /// Number of edges.
+    pub edge_count: usize,
+}
+
 /// Anomaly labels generated during injection.
 #[derive(Debug, Clone, Default)]
 pub struct AnomalyLabels {
@@ -385,6 +416,8 @@ pub struct EnhancedGenerationResult {
     pub audit: AuditSnapshot,
     /// Banking KYC/AML data snapshot (if banking generation enabled).
     pub banking: BankingSnapshot,
+    /// Graph export snapshot (if graph export enabled).
+    pub graph_export: GraphExportSnapshot,
     /// Generated journal entries.
     pub journal_entries: Vec<JournalEntry>,
     /// Anomaly labels (if injection enabled).
@@ -442,6 +475,10 @@ pub struct EnhancedGenerationStatistics {
     pub banking_account_count: usize,
     pub banking_transaction_count: usize,
     pub banking_suspicious_count: usize,
+    /// Graph export counts.
+    pub graph_export_count: usize,
+    pub graph_node_count: usize,
+    pub graph_edge_count: usize,
 }
 
 /// Enhanced orchestrator with full feature integration.
@@ -1029,6 +1066,32 @@ impl EnhancedOrchestrator {
             debug!("Phase 9: Skipped (banking generation disabled)");
         }
 
+        // Phase 10: Export Graphs
+        let graph_export_snapshot =
+            if (self.phase_config.generate_graph_export || self.config.graph_export.enabled)
+                && !entries.is_empty()
+            {
+                info!("Phase 10: Exporting Accounting Network Graphs");
+                match self.export_graphs(&entries, &coa, &mut stats) {
+                    Ok(snapshot) => {
+                        info!(
+                            "Graph export complete: {} graphs ({} nodes, {} edges)",
+                            snapshot.graph_count,
+                            stats.graph_node_count,
+                            stats.graph_edge_count
+                        );
+                        snapshot
+                    }
+                    Err(e) => {
+                        warn!("Phase 10: Graph export failed: {}", e);
+                        GraphExportSnapshot::default()
+                    }
+                }
+            } else {
+                debug!("Phase 10: Skipped (graph export disabled or no entries)");
+                GraphExportSnapshot::default()
+            };
+
         // Log final resource statistics
         let resource_stats = self.resource_guard.stats();
         info!(
@@ -1046,6 +1109,7 @@ impl EnhancedOrchestrator {
             ocpm: ocpm_snapshot,
             audit: audit_snapshot,
             banking: banking_snapshot,
+            graph_export: graph_export_snapshot,
             journal_entries: entries,
             anomaly_labels,
             balance_validation,
@@ -2024,6 +2088,130 @@ impl EnhancedOrchestrator {
         Ok(snapshot)
     }
 
+    /// Export journal entries as graph data for ML training and network reconstruction.
+    ///
+    /// Builds a transaction graph where:
+    /// - Nodes are GL accounts
+    /// - Edges are money flows from credit to debit accounts
+    /// - Edge attributes include amount, date, business process, anomaly flags
+    fn export_graphs(
+        &mut self,
+        entries: &[JournalEntry],
+        _coa: &Arc<ChartOfAccounts>,
+        stats: &mut EnhancedGenerationStatistics,
+    ) -> SynthResult<GraphExportSnapshot> {
+        let pb = self.create_progress_bar(100, "Exporting Graphs");
+
+        let mut snapshot = GraphExportSnapshot::default();
+
+        // Get output directory
+        let output_dir = self
+            .output_path
+            .clone()
+            .unwrap_or_else(|| PathBuf::from(&self.config.output.output_directory));
+        let graph_dir = output_dir.join(&self.config.graph_export.output_subdirectory);
+
+        // Process each graph type configuration
+        for graph_type in &self.config.graph_export.graph_types {
+            if let Some(pb) = &pb {
+                pb.inc(10);
+            }
+
+            // Build transaction graph
+            let graph_config = TransactionGraphConfig {
+                include_vendors: false,
+                include_customers: false,
+                create_debit_credit_edges: true,
+                include_document_nodes: graph_type.include_document_nodes,
+                min_edge_weight: graph_type.min_edge_weight,
+                aggregate_parallel_edges: graph_type.aggregate_edges,
+            };
+
+            let mut builder = TransactionGraphBuilder::new(graph_config);
+            builder.add_journal_entries(entries);
+            let graph = builder.build();
+
+            // Update stats
+            stats.graph_node_count += graph.node_count();
+            stats.graph_edge_count += graph.edge_count();
+
+            if let Some(pb) = &pb {
+                pb.inc(40);
+            }
+
+            // Export to each configured format
+            for format in &self.config.graph_export.formats {
+                let format_dir = graph_dir.join(&graph_type.name).join(format_name(*format));
+
+                // Create output directory
+                if let Err(e) = std::fs::create_dir_all(&format_dir) {
+                    warn!("Failed to create graph output directory: {}", e);
+                    continue;
+                }
+
+                match format {
+                    datasynth_config::schema::GraphExportFormat::PytorchGeometric => {
+                        let pyg_config = PyGExportConfig {
+                            export_node_features: true,
+                            export_edge_features: true,
+                            export_node_labels: true,
+                            export_edge_labels: true,
+                            one_hot_categoricals: false,
+                            export_masks: true,
+                            train_ratio: self.config.graph_export.train_ratio,
+                            val_ratio: self.config.graph_export.validation_ratio,
+                            seed: self.config.graph_export.split_seed.unwrap_or(self.seed),
+                        };
+
+                        let exporter = PyGExporter::new(pyg_config);
+                        match exporter.export(&graph, &format_dir) {
+                            Ok(metadata) => {
+                                snapshot.exports.insert(
+                                    format!("{}_{}", graph_type.name, "pytorch_geometric"),
+                                    GraphExportInfo {
+                                        name: graph_type.name.clone(),
+                                        format: "pytorch_geometric".to_string(),
+                                        output_path: format_dir.clone(),
+                                        node_count: metadata.num_nodes,
+                                        edge_count: metadata.num_edges,
+                                    },
+                                );
+                                snapshot.graph_count += 1;
+                            }
+                            Err(e) => {
+                                warn!("Failed to export PyTorch Geometric graph: {}", e);
+                            }
+                        }
+                    }
+                    datasynth_config::schema::GraphExportFormat::Neo4j => {
+                        // Neo4j export will be added in a future update
+                        debug!("Neo4j export not yet implemented for accounting networks");
+                    }
+                    datasynth_config::schema::GraphExportFormat::Dgl => {
+                        // DGL export will be added in a future update
+                        debug!("DGL export not yet implemented for accounting networks");
+                    }
+                }
+            }
+
+            if let Some(pb) = &pb {
+                pb.inc(40);
+            }
+        }
+
+        stats.graph_export_count = snapshot.graph_count;
+        snapshot.exported = snapshot.graph_count > 0;
+
+        if let Some(pb) = pb {
+            pb.finish_with_message(format!(
+                "Graphs exported: {} graphs ({} nodes, {} edges)",
+                snapshot.graph_count, stats.graph_node_count, stats.graph_edge_count
+            ));
+        }
+
+        Ok(snapshot)
+    }
+
     /// Generate banking KYC/AML data.
     ///
     /// Creates banking customers, accounts, and transactions with AML typology injection.
@@ -2112,6 +2300,15 @@ impl EnhancedOrchestrator {
     }
 }
 
+/// Get the directory name for a graph export format.
+fn format_name(format: datasynth_config::schema::GraphExportFormat) -> &'static str {
+    match format {
+        datasynth_config::schema::GraphExportFormat::PytorchGeometric => "pytorch_geometric",
+        datasynth_config::schema::GraphExportFormat::Neo4j => "neo4j",
+        datasynth_config::schema::GraphExportFormat::Dgl => "dgl",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2164,6 +2361,7 @@ mod tests {
             data_quality: DataQualitySchemaConfig::default(),
             scenario: ScenarioConfig::default(),
             temporal: TemporalDriftConfig::default(),
+            graph_export: GraphExportConfig::default(),
         }
     }
 

@@ -617,6 +617,7 @@ mod tests {
             data_quality: DataQualitySchemaConfig::default(),
             scenario: ScenarioConfig::default(),
             temporal: TemporalDriftConfig::default(),
+            graph_export: GraphExportConfig::default(),
         }
     }
 

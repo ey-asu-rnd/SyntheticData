@@ -86,6 +86,10 @@ enum Commands {
         /// Maximum CPU threads to use (default: half of available cores, min 1)
         #[arg(long)]
         max_threads: Option<usize>,
+
+        /// Enable graph export for accounting networks (PyTorch Geometric format)
+        #[arg(long)]
+        graph_export: bool,
     },
 
     /// Validate a configuration file
@@ -223,6 +227,7 @@ fn main() -> Result<()> {
             audit,
             memory_limit,
             max_threads,
+            graph_export,
         } => {
             // ========================================
             // CPU SAFEGUARD: Limit thread pool size
@@ -288,6 +293,7 @@ fn main() -> Result<()> {
                 let phase_config = PhaseConfig {
                     generate_banking: banking,
                     generate_audit: audit,
+                    generate_graph_export: graph_export,
                     show_progress: true,
                     inject_anomalies: true, // Let fingerprint control this
                     inject_data_quality: true,
@@ -333,6 +339,12 @@ fn main() -> Result<()> {
                             cfg.banking.population.business_customers.min(20);
                         cfg.banking.population.trusts = cfg.banking.population.trusts.min(5);
                         tracing::info!("Banking KYC/AML generation enabled (conservative mode)");
+                    }
+
+                    // Enable graph export if flag is set
+                    if graph_export {
+                        cfg.graph_export.enabled = true;
+                        tracing::info!("Graph export enabled (PyTorch Geometric format)");
                     }
 
                     // Apply output and resource settings
@@ -426,6 +438,7 @@ fn main() -> Result<()> {
                     let phase_config = PhaseConfig {
                         generate_banking: banking,
                         generate_audit: audit,
+                        generate_graph_export: graph_export,
                         show_progress: true,
                         // Wire up anomaly and data quality injection from config
                         inject_anomalies: cfg.fraud.enabled,
@@ -1196,6 +1209,7 @@ fn create_safe_demo_preset() -> GeneratorConfig {
         data_quality: DataQualitySchemaConfig::default(),
         scenario: datasynth_config::schema::ScenarioConfig::default(),
         temporal: datasynth_config::schema::TemporalDriftConfig::default(),
+        graph_export: datasynth_config::schema::GraphExportConfig::default(),
     }
 }
 
