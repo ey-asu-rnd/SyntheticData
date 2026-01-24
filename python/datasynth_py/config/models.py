@@ -74,6 +74,80 @@ class FraudSettings:
 
 
 @dataclass(frozen=True)
+class BankingSettings:
+    """Banking KYC/AML generation settings."""
+
+    enabled: bool = False
+    retail_customers: Optional[int] = None
+    business_customers: Optional[int] = None
+    trusts: Optional[int] = None
+    typologies_enabled: Optional[bool] = None
+    spoofing_enabled: Optional[bool] = None
+
+
+@dataclass(frozen=True)
+class ScenarioSettings:
+    """Scenario configuration for metadata and tagging."""
+
+    tags: Optional[List[str]] = None
+    profile: Optional[str] = None
+    ml_training: bool = False
+    target_anomaly_ratio: Optional[float] = None
+    description: Optional[str] = None
+    metadata: Optional[Dict[str, str]] = None
+
+
+@dataclass(frozen=True)
+class TemporalDriftSettings:
+    """Temporal drift configuration for distribution changes over time."""
+
+    enabled: bool = False
+    amount_mean_drift: float = 0.02
+    amount_variance_drift: float = 0.01
+    anomaly_rate_drift: float = 0.0
+    concept_drift_rate: float = 0.0
+    drift_type: str = "gradual"
+    seasonal_drift: bool = True
+    drift_start_period: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class DataQualitySettings:
+    """Data quality injection settings."""
+
+    enabled: bool = False
+    missing_rate: float = 0.05
+    typo_rate: float = 0.02
+    format_variation_rate: float = 0.03
+    duplicate_rate: float = 0.01
+    encoding_issue_rate: float = 0.005
+
+
+@dataclass(frozen=True)
+class GraphExportSettings:
+    """Graph export configuration for accounting network ML training."""
+
+    enabled: bool = False
+    formats: Optional[List[str]] = None
+    graph_types: Optional[List[str]] = None
+    train_ratio: float = 0.7
+    validation_ratio: float = 0.15
+    output_subdirectory: str = "graphs"
+
+
+@dataclass(frozen=True)
+class AuditSettings:
+    """Audit data generation settings."""
+
+    enabled: bool = False
+    engagements: int = 5
+    workpapers_per_engagement: int = 20
+    evidence_per_workpaper: int = 5
+    risks_per_engagement: int = 15
+    findings_per_engagement: int = 8
+
+
+@dataclass(frozen=True)
 class Config:
     """Root configuration container.
 
@@ -86,6 +160,12 @@ class Config:
     transactions: Optional[TransactionSettings] = None
     output: Optional[OutputSettings] = None
     fraud: Optional[FraudSettings] = None
+    banking: Optional[BankingSettings] = None
+    scenario: Optional[ScenarioSettings] = None
+    temporal: Optional[TemporalDriftSettings] = None
+    data_quality: Optional[DataQualitySettings] = None
+    graph_export: Optional[GraphExportSettings] = None
+    audit: Optional[AuditSettings] = None
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -138,6 +218,36 @@ class Config:
             fraud_dict = _strip_none(self.fraud.__dict__)
             if fraud_dict:
                 payload["fraud"] = fraud_dict
+
+        if self.banking is not None:
+            banking_dict = _strip_none(self.banking.__dict__)
+            if banking_dict:
+                payload["banking"] = banking_dict
+
+        if self.scenario is not None:
+            scenario_dict = _strip_none(self.scenario.__dict__)
+            if scenario_dict:
+                payload["scenario"] = scenario_dict
+
+        if self.temporal is not None:
+            temporal_dict = _strip_none(self.temporal.__dict__)
+            if temporal_dict:
+                payload["temporal"] = temporal_dict
+
+        if self.data_quality is not None:
+            dq_dict = _strip_none(self.data_quality.__dict__)
+            if dq_dict:
+                payload["data_quality"] = dq_dict
+
+        if self.graph_export is not None:
+            graph_dict = _strip_none(self.graph_export.__dict__)
+            if graph_dict:
+                payload["graph_export"] = graph_dict
+
+        if self.audit is not None:
+            audit_dict = _strip_none(self.audit.__dict__)
+            if audit_dict:
+                payload["audit"] = audit_dict
 
         # Merge extra fields
         payload.update(self.extra)
@@ -214,8 +324,17 @@ class Config:
         transactions = _build_dataclass(TransactionSettings, data.get("transactions"))
         output = _build_dataclass(OutputSettings, data.get("output"))
         fraud = _build_dataclass(FraudSettings, data.get("fraud"))
+        banking = _build_dataclass(BankingSettings, data.get("banking"))
+        scenario = _build_dataclass(ScenarioSettings, data.get("scenario"))
+        temporal = _build_dataclass(TemporalDriftSettings, data.get("temporal"))
+        data_quality = _build_dataclass(DataQualitySettings, data.get("data_quality"))
+        graph_export = _build_dataclass(GraphExportSettings, data.get("graph_export"))
+        audit = _build_dataclass(AuditSettings, data.get("audit"))
 
-        known_keys = {"global", "companies", "chart_of_accounts", "transactions", "output", "fraud"}
+        known_keys = {
+            "global", "companies", "chart_of_accounts", "transactions", "output",
+            "fraud", "banking", "scenario", "temporal", "data_quality", "graph_export", "audit"
+        }
         extra = {key: value for key, value in data.items() if key not in known_keys}
 
         return Config(
@@ -225,6 +344,12 @@ class Config:
             transactions=transactions,
             output=output,
             fraud=fraud,
+            banking=banking,
+            scenario=scenario,
+            temporal=temporal,
+            data_quality=data_quality,
+            graph_export=graph_export,
+            audit=audit,
             extra=extra,
         )
 

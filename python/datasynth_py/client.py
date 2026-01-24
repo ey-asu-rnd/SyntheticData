@@ -47,6 +47,24 @@ class DataSynth:
         self._server_url = server_url.rstrip("/")
         self._api_key = api_key
         self._request_timeout = request_timeout
+        self._fingerprint_client: Optional["FingerprintClient"] = None
+
+    @property
+    def fingerprint(self) -> "FingerprintClient":
+        """Access fingerprint operations.
+
+        Returns:
+            FingerprintClient for extract, validate, info, evaluate operations.
+
+        Example:
+            >>> synth = DataSynth()
+            >>> synth.fingerprint.extract("./data/", "./fp.dsf")
+            >>> info = synth.fingerprint.info("./fp.dsf")
+        """
+        if self._fingerprint_client is None:
+            from datasynth_py.fingerprint import FingerprintClient
+            self._fingerprint_client = FingerprintClient(self._binary_path)
+        return self._fingerprint_client
 
     def generate(
         self,
@@ -183,6 +201,33 @@ class StreamingSession:
 
     def stop(self) -> Dict[str, Any]:
         return self._control("/api/stream/stop")
+
+    def trigger_pattern(self, pattern: str) -> Dict[str, Any]:
+        """Trigger a pattern in the streaming session.
+
+        Args:
+            pattern: Pattern name (year_end_spike, period_end_spike, fraud_cluster, etc.)
+
+        Returns:
+            Response from the server.
+        """
+        return self._control(f"/api/stream/trigger/{pattern}")
+
+    def trigger_year_end(self) -> Dict[str, Any]:
+        """Trigger year-end closing patterns (high volume, accruals, adjustments)."""
+        return self.trigger_pattern("year_end_spike")
+
+    def trigger_month_end(self) -> Dict[str, Any]:
+        """Trigger month-end/period-end patterns."""
+        return self.trigger_pattern("period_end_spike")
+
+    def trigger_fraud_cluster(self) -> Dict[str, Any]:
+        """Trigger a cluster of fraud-related transactions."""
+        return self.trigger_pattern("fraud_cluster")
+
+    def trigger_quarter_end(self) -> Dict[str, Any]:
+        """Trigger quarter-end closing patterns."""
+        return self.trigger_pattern("quarter_end_spike")
 
     async def events(self) -> AsyncIterator[Dict[str, Any]]:
         websockets_spec = importlib.util.find_spec("websockets")
