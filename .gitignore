@@ -34,6 +34,10 @@ docs/book/
 # Output directories
 output/
 demo-output/
+test_output/
+
+# E2E test artifacts
+crates/datasynth-ui/screenshots/
 
 # Python
 **/__pycache__/
