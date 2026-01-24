@@ -7,12 +7,21 @@
 
   let { children } = $props();
 
+  // Mobile menu state
+  let mobileMenuOpen = $state(false);
+
   // Determine if we should show sidebar based on route
   let showSidebar = $derived(
     $page.url.pathname.startsWith('/config') ||
     $page.url.pathname === '/' ||
     $page.url.pathname === '/stream'
   );
+
+  // Close mobile menu on route change
+  $effect(() => {
+    $page.url.pathname;
+    mobileMenuOpen = false;
+  });
 
   // Load config on mount
   onMount(() => {
@@ -26,13 +35,49 @@
       configStore.save();
     }
   }
+
+  function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
+  }
+
+  function closeMobileMenu() {
+    mobileMenuOpen = false;
+  }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="app-layout" class:with-sidebar={showSidebar}>
   {#if showSidebar}
-    <ConfigSidebar />
+    <!-- Mobile hamburger button -->
+    <button
+      class="mobile-menu-toggle"
+      onclick={toggleMobileMenu}
+      aria-label="Toggle navigation menu"
+      aria-expanded={mobileMenuOpen}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        {#if mobileMenuOpen}
+          <path d="M6 6l12 12M6 18L18 6" />
+        {:else}
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        {/if}
+      </svg>
+    </button>
+
+    <!-- Mobile overlay -->
+    {#if mobileMenuOpen}
+      <button
+        class="mobile-overlay"
+        onclick={closeMobileMenu}
+        aria-label="Close menu"
+      ></button>
+    {/if}
+
+    <!-- Sidebar with mobile class -->
+    <div class="sidebar-container" class:mobile-open={mobileMenuOpen}>
+      <ConfigSidebar />
+    </div>
   {/if}
 
   <div class="main-area">
@@ -52,6 +97,10 @@
   .app-layout {
     display: flex;
     min-height: 100vh;
+  }
+
+  .sidebar-container {
+    display: contents;
   }
 
   .main-area {
@@ -91,5 +140,88 @@
     background-color: var(--color-surface);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
+  }
+
+  /* Mobile menu toggle button */
+  .mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: var(--space-3);
+    left: var(--space-3);
+    z-index: 1001;
+    width: 44px;
+    height: 44px;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .mobile-menu-toggle svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Mobile overlay */
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 768px) {
+    .mobile-menu-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mobile-overlay {
+      display: block;
+    }
+
+    .sidebar-container {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      transform: translateX(-100%);
+      transition: transform 200ms ease;
+    }
+
+    .sidebar-container.mobile-open {
+      transform: translateX(0);
+    }
+
+    .main-content {
+      padding: var(--space-4);
+      padding-top: calc(var(--space-4) + 56px); /* Account for hamburger button */
+    }
+
+    .app-footer {
+      padding: var(--space-2) var(--space-4);
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .footer-text {
+      font-size: 0.6875rem;
+    }
+  }
+
+  /* Tablet responsive styles */
+  @media (max-width: 1024px) and (min-width: 769px) {
+    .main-content {
+      padding: var(--space-4);
+    }
   }
 </style>

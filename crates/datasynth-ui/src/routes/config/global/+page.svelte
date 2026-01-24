@@ -3,6 +3,7 @@
   import { configStore, INDUSTRIES, COA_COMPLEXITIES } from '$lib/stores/config';
 
   const config = configStore.config;
+  const loading = configStore.loading;
   const saving = configStore.saving;
   const error = configStore.error;
   const isDirty = configStore.isDirty;
@@ -247,9 +248,16 @@
         {/snippet}
       </FormSection>
     </div>
-  {:else}
+  {:else if $loading}
     <div class="loading">
       <p>Loading configuration...</p>
+    </div>
+  {:else}
+    <div class="loading">
+      <p>Configuration not available</p>
+      <button class="btn-primary" onclick={() => configStore.load()}>
+        Retry
+      </button>
     </div>
   {/if}
 </div>
@@ -307,8 +315,10 @@
 
   .loading {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: var(--space-4);
     padding: var(--space-10);
     color: var(--color-text-secondary);
   }

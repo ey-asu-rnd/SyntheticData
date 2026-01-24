@@ -6,6 +6,31 @@
 import { writable, derived, get } from 'svelte/store';
 import { invoke } from '@tauri-apps/api/core';
 
+// Check if we're running in Tauri context with working IPC
+function isTauriContext(): boolean {
+  if (typeof window === 'undefined') return false;
+  // Check for Tauri's IPC mechanism
+  const w = window as Record<string, unknown>;
+  return '__TAURI_INTERNALS__' in w && '__TAURI_IPC__' in w;
+}
+
+// Wrap invoke with timeout and Tauri context check
+async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  // Quick check before attempting invoke
+  if (!isTauriContext()) {
+    throw new Error('Not running in Tauri context');
+  }
+
+  // Add aggressive timeout to prevent hanging
+  const timeoutMs = 2000;
+  return Promise.race([
+    invoke<T>(cmd, args),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Tauri invoke timeout')), timeoutMs)
+    )
+  ]);
+}
+
 // Types matching the backend schema
 export interface CompanyConfig {
   code: string;
@@ -1076,11 +1101,14 @@ export interface ValidationError {
 
 // Store state
 function createConfigStore() {
+  // Initialize with default config immediately for browser-only mode
+  const defaultCfg = createDefaultConfig();
+
   // The current configuration being edited
-  const config = writable<GeneratorConfig | null>(null);
+  const config = writable<GeneratorConfig | null>(defaultCfg);
 
   // The original (saved) configuration for dirty tracking
-  const originalConfig = writable<GeneratorConfig | null>(null);
+  const originalConfig = writable<GeneratorConfig | null>(JSON.parse(JSON.stringify(defaultCfg)));
 
   // Loading and saving states
   const loading = writable(false);
@@ -1105,28 +1133,25 @@ function createConfigStore() {
   // Derived: is the config valid?
   const isValid = derived(validationErrors, ($errors) => $errors.length === 0);
 
-  // Load configuration from backend
+  // Load configuration from backend (or keep default in browser mode)
   async function load(): Promise<void> {
     loading.set(true);
     error.set(null);
 
     try {
-      const response = await invoke<{ success: boolean; config: GeneratorConfig | null; message: string }>('get_config');
+      const response = await safeInvoke<{ success: boolean; config: GeneratorConfig | null; message: string }>('get_config');
       if (response.success && response.config) {
         config.set(response.config);
         originalConfig.set(JSON.parse(JSON.stringify(response.config)));
-      } else {
-        // Use default config if backend doesn't have one
-        const defaultCfg = createDefaultConfig();
-        config.set(defaultCfg);
-        originalConfig.set(JSON.parse(JSON.stringify(defaultCfg)));
       }
+      // If backend returns no config, keep the default that was already set
     } catch (e) {
-      error.set(String(e));
-      // Still provide default config on error
-      const defaultCfg = createDefaultConfig();
-      config.set(defaultCfg);
-      originalConfig.set(JSON.parse(JSON.stringify(defaultCfg)));
+      // In browser mode, keep the default config that was already initialized
+      // Only set error if it's not a context/timeout issue (those are expected in browser)
+      const errorMsg = String(e);
+      if (!errorMsg.includes('Tauri context') && !errorMsg.includes('timeout')) {
+        error.set(errorMsg);
+      }
     } finally {
       loading.set(false);
     }
@@ -1148,7 +1173,7 @@ function createConfigStore() {
     error.set(null);
 
     try {
-      const response = await invoke<{ success: boolean; message: string }>('set_config', { config: currentConfig });
+      const response = await safeInvoke<{ success: boolean; message: string }>('set_config', { config: currentConfig });
       if (response.success) {
         originalConfig.set(JSON.parse(JSON.stringify(currentConfig)));
         return true;
@@ -1157,7 +1182,13 @@ function createConfigStore() {
         return false;
       }
     } catch (e) {
-      error.set(String(e));
+      const errorMsg = String(e);
+      // In browser mode, simulate successful save (config is stored in memory)
+      if (errorMsg.includes('Tauri context') || errorMsg.includes('timeout')) {
+        originalConfig.set(JSON.parse(JSON.stringify(currentConfig)));
+        return true;
+      }
+      error.set(errorMsg);
       return false;
     } finally {
       saving.set(false);
