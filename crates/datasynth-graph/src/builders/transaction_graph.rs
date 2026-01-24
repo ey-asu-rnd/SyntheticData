@@ -137,6 +137,14 @@ impl TransactionGraphBuilder {
                     tx_edge.cost_center = debit.cost_center.clone();
                     tx_edge.compute_features();
 
+                    // Propagate anomaly flag from journal entry to graph edge
+                    if entry.header.is_anomaly {
+                        tx_edge.edge.is_anomaly = true;
+                        if let Some(ref anomaly_type) = entry.header.anomaly_type {
+                            tx_edge.edge.anomaly_type = Some(format!("{:?}", anomaly_type));
+                        }
+                    }
+
                     self.graph.add_edge(tx_edge.edge);
                 }
             }
@@ -176,6 +184,14 @@ impl TransactionGraphBuilder {
             tx_edge.company_code = entry.company_code().to_string();
             tx_edge.cost_center = line.cost_center.clone();
             tx_edge.compute_features();
+
+            // Propagate anomaly flag from journal entry to graph edge
+            if entry.header.is_anomaly {
+                tx_edge.edge.is_anomaly = true;
+                if let Some(ref anomaly_type) = entry.header.anomaly_type {
+                    tx_edge.edge.anomaly_type = Some(format!("{:?}", anomaly_type));
+                }
+            }
 
             self.graph.add_edge(tx_edge.edge);
         }
