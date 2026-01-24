@@ -68,6 +68,7 @@
 - [datasynth-eval](crates/datasynth-eval.md)
 - [datasynth-banking](crates/datasynth-banking.md)
 - [datasynth-ocpm](crates/datasynth-ocpm.md)
+- [datasynth-fingerprint](crates/datasynth-fingerprint.md)
 - [datasynth-test-utils](crates/datasynth-test-utils.md)
 
 ---
@@ -80,6 +81,7 @@
 - [Graph Export](advanced/graph-export.md)
 - [Intercompany Processing](advanced/intercompany.md)
 - [Period Close Engine](advanced/period-close.md)
+- [Fingerprinting](advanced/fingerprinting.md)
 - [Performance Tuning](advanced/performance.md)
 
 ---
@@ -91,6 +93,7 @@
 - [Audit Analytics](use-cases/audit-analytics.md)
 - [SOX Compliance Testing](use-cases/sox-compliance.md)
 - [Process Mining](use-cases/process-mining.md)
+- [AML/KYC Testing](use-cases/aml-kyc-testing.md)
 - [ERP Load Testing](use-cases/erp-testing.md)
 
 ---

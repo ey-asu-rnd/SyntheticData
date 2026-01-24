@@ -12,8 +12,11 @@ output/
 ├── period_close/         # Trial balances and closing
 ├── consolidation/        # Elimination entries
 ├── fx/                   # Exchange rates
+├── banking/              # KYC profiles and bank transactions
+├── process_mining/       # OCEL 2.0 event logs
+├── audit/                # Audit engagements and workpapers
 ├── graphs/               # ML-ready graph exports
-├── labels/               # Anomaly/fraud labels
+├── labels/               # Anomaly, fraud, and quality labels
 └── controls/             # Internal control mappings
 ```
 
@@ -26,6 +29,7 @@ Default format with standard conventions:
 - Comma-separated values
 - Header row included
 - Quoted strings when needed
+- Decimal values serialized as strings (prevents floating-point artifacts)
 
 **Example (journal_entries.csv):**
 ```csv
@@ -188,6 +192,10 @@ SAP Universal Journal format with simulation fields:
 - Payment documents
 - Bank references, cleared invoices
 
+**document_references.csv:**
+- Links between documents (FollowOn, Payment, Reversal)
+- Ensures complete document chains
+
 ## Subledger Files
 
 ### ar_open_items.csv
@@ -250,6 +258,197 @@ Accrual entries with reversal dates.
 
 Monthly depreciation entries per asset.
 
+## Banking Files
+
+### banking_customers.csv
+
+| Field | Description |
+|-------|-------------|
+| customer_id | Unique identifier |
+| customer_type | retail, business, trust |
+| name | Customer name |
+| created_at | Account creation date |
+| risk_score | Calculated risk score (0-100) |
+| kyc_status | verified, pending, enhanced_due_diligence |
+| pep_flag | Politically exposed person |
+| sanctions_flag | Sanctions list match |
+
+### bank_accounts.csv
+
+| Field | Description |
+|-------|-------------|
+| account_id | Unique identifier |
+| customer_id | Owner reference |
+| account_type | checking, savings, money_market |
+| currency | Account currency |
+| opened_date | Opening date |
+| balance | Current balance |
+| status | active, dormant, closed |
+
+### bank_transactions.csv
+
+| Field | Description |
+|-------|-------------|
+| transaction_id | Unique identifier |
+| account_id | Account reference |
+| timestamp | Transaction time |
+| amount | Transaction amount |
+| currency | Transaction currency |
+| direction | credit, debit |
+| channel | branch, atm, online, wire, ach |
+| category | Transaction category |
+| counterparty_id | Counterparty reference |
+
+### kyc_profiles.csv
+
+| Field | Description |
+|-------|-------------|
+| customer_id | Customer reference |
+| declared_turnover | Expected monthly volume |
+| transaction_frequency | Expected transactions/month |
+| source_of_funds | Declared income source |
+| geographic_exposure | List of countries |
+| cash_intensity | Expected cash ratio |
+| beneficial_owner_complexity | Ownership layers |
+
+### aml_typology_labels.csv
+
+| Field | Description |
+|-------|-------------|
+| transaction_id | Transaction reference |
+| typology | structuring, funnel, layering, mule, fraud |
+| confidence | Confidence score (0-1) |
+| pattern_id | Related pattern identifier |
+| related_transactions | Comma-separated related IDs |
+
+### entity_risk_labels.csv
+
+| Field | Description |
+|-------|-------------|
+| entity_id | Customer or account ID |
+| entity_type | customer, account |
+| risk_category | high, medium, low |
+| risk_factors | Contributing factors |
+| label_date | Label timestamp |
+
+## Process Mining Files (OCEL 2.0)
+
+### event_log.json
+
+OCEL 2.0 format event log:
+
+```json
+{
+  "ocel:global-log": {
+    "ocel:version": "2.0",
+    "ocel:ordering": "timestamp"
+  },
+  "ocel:events": {
+    "e1": {
+      "ocel:activity": "Create Purchase Order",
+      "ocel:timestamp": "2024-01-15T10:30:00Z",
+      "ocel:typedOmap": [
+        {"ocel:oid": "PO-001", "ocel:qualifier": "order"}
+      ]
+    }
+  },
+  "ocel:objects": {
+    "PO-001": {
+      "ocel:type": "PurchaseOrder",
+      "ocel:attributes": {
+        "vendor": "VEND-001",
+        "amount": "10000.00"
+      }
+    }
+  }
+}
+```
+
+### objects.json
+
+Object instances with types and attributes.
+
+### events.json
+
+Event records with object relationships.
+
+### process_variants.csv
+
+| Field | Description |
+|-------|-------------|
+| variant_id | Unique identifier |
+| activity_sequence | Ordered activity list |
+| frequency | Occurrence count |
+| avg_duration | Average case duration |
+
+## Audit Files
+
+### audit_engagements.csv
+
+| Field | Description |
+|-------|-------------|
+| engagement_id | Unique identifier |
+| client_name | Client entity |
+| engagement_type | Financial, Compliance, Operational |
+| fiscal_year | Audit period |
+| materiality | Materiality threshold |
+| status | Planning, Fieldwork, Completion |
+
+### audit_workpapers.csv
+
+| Field | Description |
+|-------|-------------|
+| workpaper_id | Unique identifier |
+| engagement_id | Engagement reference |
+| workpaper_type | Lead schedule, Substantive, etc. |
+| prepared_by | Preparer ID |
+| reviewed_by | Reviewer ID |
+| status | Draft, Reviewed, Final |
+
+### audit_evidence.csv
+
+| Field | Description |
+|-------|-------------|
+| evidence_id | Unique identifier |
+| workpaper_id | Workpaper reference |
+| evidence_type | Document, Inquiry, Observation, etc. |
+| source | Evidence source |
+| reliability | High, Medium, Low |
+| sufficiency | Sufficient, Insufficient |
+
+### audit_risks.csv
+
+| Field | Description |
+|-------|-------------|
+| risk_id | Unique identifier |
+| engagement_id | Engagement reference |
+| risk_description | Risk narrative |
+| risk_level | High, Significant, Low |
+| likelihood | Probable, Possible, Remote |
+| response | Response strategy |
+
+### audit_findings.csv
+
+| Field | Description |
+|-------|-------------|
+| finding_id | Unique identifier |
+| engagement_id | Engagement reference |
+| finding_type | Deficiency, Significant, Material Weakness |
+| description | Finding narrative |
+| recommendation | Recommended action |
+| management_response | Response text |
+
+### audit_judgments.csv
+
+| Field | Description |
+|-------|-------------|
+| judgment_id | Unique identifier |
+| workpaper_id | Workpaper reference |
+| judgment_area | Revenue recognition, Estimates, etc. |
+| alternatives_considered | Options evaluated |
+| conclusion | Selected approach |
+| rationale | Reasoning documentation |
+
 ## Graph Export Files
 
 ### PyTorch Geometric
@@ -277,6 +476,15 @@ graphs/entity_relationship/neo4j/
 └── import.cypher        # Import script
 ```
 
+### DGL (Deep Graph Library)
+
+```
+graphs/transaction_network/dgl/
+├── graph.bin           # DGL binary format
+├── node_features.npy   # NumPy arrays
+└── edge_features.npy
+```
+
 ## Label Files
 
 ### anomaly_labels.csv
@@ -286,7 +494,7 @@ graphs/entity_relationship/neo4j/
 | document_id | Entry reference |
 | anomaly_id | Unique anomaly ID |
 | anomaly_type | Classification |
-| anomaly_category | Fraud, Error, Process, etc. |
+| anomaly_category | Fraud, Error, Process, Statistical, Relational |
 | severity | Low, Medium, High |
 | description | Human-readable explanation |
 
@@ -295,9 +503,21 @@ graphs/entity_relationship/neo4j/
 | Field | Description |
 |-------|-------------|
 | document_id | Entry reference |
-| fraud_type | Specific fraud pattern |
+| fraud_type | Specific fraud pattern (20+ types) |
 | detection_difficulty | Easy, Medium, Hard |
 | description | Fraud scenario description |
+
+### quality_labels.csv
+
+| Field | Description |
+|-------|-------------|
+| record_id | Record reference |
+| field_name | Affected field |
+| issue_type | MissingValue, Typo, FormatVariation, Duplicate |
+| issue_subtype | Detailed classification |
+| original_value | Value before modification |
+| modified_value | Value after modification |
+| severity | Severity level (1-5) |
 
 ## Control Files
 
@@ -311,9 +531,21 @@ graphs/entity_relationship/neo4j/
 | frequency | Continuous, Daily, etc. |
 | assertions | Completeness, Accuracy, etc. |
 
+### control_account_mappings.csv
+
+| Field | Description |
+|-------|-------------|
+| control_id | Control reference |
+| account_number | GL account |
+| threshold | Monetary threshold |
+
 ### sod_rules.csv
 
 Segregation of duties conflict definitions.
+
+### sod_conflict_pairs.csv
+
+Actual SoD violations detected in generated data.
 
 ## Compression Options
 
@@ -337,3 +569,5 @@ output:
 - [Configuration](../configuration/output-settings.md)
 - [Graph Export](../advanced/graph-export.md)
 - [Anomaly Injection](../advanced/anomaly-injection.md)
+- [AML/KYC Testing](../use-cases/aml-kyc-testing.md)
+- [Process Mining](../use-cases/process-mining.md)

@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `datasynth-data` command-line tool provides commands for generating synthetic financial data.
+The `datasynth-data` command-line tool provides commands for generating synthetic financial data and extracting fingerprints from real data.
 
 ## Installation
 
@@ -112,9 +112,12 @@ datasynth-data validate --config config.yaml
 **Validation Checks:**
 - Required fields present
 - Value ranges (period_months: 1-120)
-- Distribution weights sum to 1.0
+- Distribution weights sum to 1.0 (±0.01 tolerance)
 - Date consistency
 - Company code uniqueness
+- Compression level: 1-9 when enabled
+- All rate/percentage fields: 0.0-1.0
+- Approval thresholds: strictly ascending order
 
 ### info
 
@@ -130,6 +133,184 @@ datasynth-data info
 - Supported output formats
 - Feature capabilities
 
+### fingerprint
+
+Privacy-preserving fingerprint extraction and evaluation. This command has several subcommands.
+
+```bash
+datasynth-data fingerprint <SUBCOMMAND>
+```
+
+#### fingerprint extract
+
+Extract a fingerprint from real data with privacy controls.
+
+```bash
+datasynth-data fingerprint extract [OPTIONS]
+```
+
+**Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--input <PATH>` | Path | Input CSV data file (required) |
+| `--output <PATH>` | Path | Output .dsf fingerprint file (required) |
+| `--privacy-level <LEVEL>` | String | Privacy level: minimal, standard, high, maximum |
+| `--epsilon <FLOAT>` | f64 | Custom differential privacy epsilon (overrides level) |
+| `--k <INT>` | usize | Custom k-anonymity threshold (overrides level) |
+
+**Privacy Levels:**
+
+| Level | Epsilon | k | Outlier % | Use Case |
+|-------|---------|---|-----------|----------|
+| minimal | 5.0 | 3 | 99% | Low privacy, high utility |
+| standard | 1.0 | 5 | 95% | Balanced (default) |
+| high | 0.5 | 10 | 90% | Higher privacy |
+| maximum | 0.1 | 20 | 85% | Maximum privacy |
+
+**Examples:**
+
+```bash
+# Extract with standard privacy
+datasynth-data fingerprint extract \
+    --input ./real_data.csv \
+    --output ./fingerprint.dsf \
+    --privacy-level standard
+
+# Extract with custom privacy parameters
+datasynth-data fingerprint extract \
+    --input ./real_data.csv \
+    --output ./fingerprint.dsf \
+    --epsilon 0.75 \
+    --k 8
+```
+
+#### fingerprint validate
+
+Validate a fingerprint file's integrity and structure.
+
+```bash
+datasynth-data fingerprint validate <PATH>
+```
+
+**Arguments:**
+
+| Argument | Type | Description |
+|----------|------|-------------|
+| `<PATH>` | Path | Path to .dsf fingerprint file |
+
+**Validation Checks:**
+- DSF file structure (ZIP archive with required components)
+- SHA-256 checksums for all components
+- Required fields in manifest, schema, statistics
+- Privacy audit completeness
+
+**Example:**
+
+```bash
+datasynth-data fingerprint validate ./fingerprint.dsf
+```
+
+#### fingerprint info
+
+Display fingerprint metadata and statistics.
+
+```bash
+datasynth-data fingerprint info <PATH> [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Type | Description |
+|----------|------|-------------|
+| `<PATH>` | Path | Path to .dsf fingerprint file |
+
+**Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--detailed` | Flag | Show detailed statistics |
+| `--json` | Flag | Output as JSON |
+
+**Examples:**
+
+```bash
+# Basic info
+datasynth-data fingerprint info ./fingerprint.dsf
+
+# Detailed statistics
+datasynth-data fingerprint info ./fingerprint.dsf --detailed
+
+# JSON output for scripting
+datasynth-data fingerprint info ./fingerprint.dsf --json
+```
+
+#### fingerprint diff
+
+Compare two fingerprints.
+
+```bash
+datasynth-data fingerprint diff <PATH1> <PATH2>
+```
+
+**Arguments:**
+
+| Argument | Type | Description |
+|----------|------|-------------|
+| `<PATH1>` | Path | First .dsf fingerprint file |
+| `<PATH2>` | Path | Second .dsf fingerprint file |
+
+**Output includes:**
+- Schema differences (columns added/removed/changed)
+- Statistical distribution changes
+- Correlation matrix differences
+
+**Example:**
+
+```bash
+datasynth-data fingerprint diff ./fp_v1.dsf ./fp_v2.dsf
+```
+
+#### fingerprint evaluate
+
+Evaluate synthetic data fidelity against a fingerprint.
+
+```bash
+datasynth-data fingerprint evaluate [OPTIONS]
+```
+
+**Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--fingerprint <PATH>` | Path | Reference .dsf fingerprint file (required) |
+| `--synthetic <PATH>` | Path | Directory containing synthetic data (required) |
+| `--threshold <FLOAT>` | f64 | Minimum fidelity score (0.0-1.0, default 0.8) |
+| `--report <PATH>` | Path | Output report file (HTML or JSON based on extension) |
+
+**Fidelity Metrics:**
+- **Statistical**: KS statistic, Wasserstein distance, Benford MAD
+- **Correlation**: Correlation matrix RMSE
+- **Schema**: Column type match, row count ratio
+- **Rules**: Balance equation compliance rate
+
+**Examples:**
+
+```bash
+# Basic evaluation
+datasynth-data fingerprint evaluate \
+    --fingerprint ./fingerprint.dsf \
+    --synthetic ./synthetic_data/ \
+    --threshold 0.8
+
+# Generate HTML report
+datasynth-data fingerprint evaluate \
+    --fingerprint ./fingerprint.dsf \
+    --synthetic ./synthetic_data/ \
+    --threshold 0.85 \
+    --report ./fidelity_report.html
+```
+
 ## Signal Handling (Unix)
 
 On Unix systems, you can pause and resume generation:
@@ -141,7 +322,7 @@ datasynth-data generate --config config.yaml --output ./output &
 # Pause generation
 kill -USR1 $(pgrep datasynth-data)
 
-# Resume generation
+# Resume generation (send SIGUSR1 again)
 kill -USR1 $(pgrep datasynth-data)
 ```
 
@@ -153,6 +334,8 @@ kill -USR1 $(pgrep datasynth-data)
 | 1 | General error |
 | 2 | Configuration error |
 | 3 | I/O error |
+| 4 | Validation error |
+| 5 | Fingerprint error |
 
 ## Environment Variables
 
@@ -180,15 +363,18 @@ Generation creates this structure:
 
 ```
 output/
-├── master_data/
-├── transactions/
-├── subledgers/
-├── period_close/
-├── consolidation/
-├── fx/
-├── graphs/          # If graph_export enabled
-├── labels/          # If anomaly/fraud enabled
-└── controls/
+├── master_data/          Vendors, customers, materials, assets, employees
+├── transactions/         Journal entries, purchase orders, invoices, payments
+├── subledgers/           AR, AP, FA, inventory detail records
+├── period_close/         Trial balances, accruals, closing entries
+├── consolidation/        Eliminations, currency translation
+├── fx/                   Exchange rates, CTA adjustments
+├── banking/              KYC profiles, bank transactions, AML typology labels
+├── process_mining/       OCEL 2.0 event logs, process variants
+├── audit/                Engagements, workpapers, findings, risk assessments
+├── graphs/               PyTorch Geometric, Neo4j, DGL exports (if enabled)
+├── labels/               Anomaly, fraud, and data quality labels for ML
+└── controls/             Internal control mappings, SoD rules
 ```
 
 ## Scripting Examples
@@ -211,6 +397,12 @@ done
   run: |
     cargo build --release
     ./target/release/datasynth-data generate --demo --output ./test-data
+
+- name: Validate Generation
+  run: |
+    # Check output files exist
+    test -f ./test-data/transactions/journal_entries.csv
+    test -f ./test-data/master_data/vendors.csv
 ```
 
 ### Reproducible Generation
@@ -220,6 +412,31 @@ done
 datasynth-data generate --config config.yaml --output ./run1 --seed 42
 datasynth-data generate --config config.yaml --output ./run2 --seed 42
 diff -r run1 run2  # No differences
+```
+
+### Fingerprint Pipeline
+
+```bash
+#!/bin/bash
+# Extract fingerprint from real data
+datasynth-data fingerprint extract \
+    --input ./real_data.csv \
+    --output ./fingerprint.dsf \
+    --privacy-level high
+
+# Validate the fingerprint
+datasynth-data fingerprint validate ./fingerprint.dsf
+
+# Generate synthetic data matching the fingerprint
+# (fingerprint informs config generation)
+datasynth-data generate --config generated_config.yaml --output ./synthetic
+
+# Evaluate fidelity
+datasynth-data fingerprint evaluate \
+    --fingerprint ./fingerprint.dsf \
+    --synthetic ./synthetic \
+    --threshold 0.85 \
+    --report ./fidelity_report.html
 ```
 
 ## Troubleshooting
@@ -248,10 +465,32 @@ chmod 755 ./output
 ```
 
 **"Out of memory"**
-Reduce transaction count or enable streaming in configuration.
+
+The generator includes memory guards that prevent OOM conditions. If you still encounter issues:
+- Reduce transaction count in configuration
+- The system will automatically reduce batch sizes under memory pressure
+- Check `memory_guard` settings in configuration
+
+**"Fingerprint validation failed"**
+```bash
+# Check DSF file integrity
+datasynth-data fingerprint validate ./fingerprint.dsf
+
+# View detailed info
+datasynth-data fingerprint info ./fingerprint.dsf --detailed
+```
+
+**"Low fidelity score"**
+
+If synthetic data fidelity is below threshold:
+- Review the fidelity report for specific metrics
+- Adjust configuration to better match fingerprint statistics
+- Consider using the evaluation framework's auto-tuning recommendations
 
 ## See Also
 
 - [Quick Start](../getting-started/quick-start.md)
 - [Configuration Reference](../configuration/README.md)
 - [Output Formats](output-formats.md)
+- [Fingerprinting Guide](../advanced/fingerprinting.md)
+- [Python Wrapper](python-wrapper.md)
