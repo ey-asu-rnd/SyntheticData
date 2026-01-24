@@ -18,10 +18,10 @@
 #   Tier 1 (no deps):      datasynth-core
 #   Tier 2 (core only):    datasynth-banking, datasynth-ocpm, datasynth-output
 #   Tier 3 (core+banking): datasynth-config, datasynth-graph
-#   Tier 4 (config):       datasynth-generators
+#   Tier 4 (config):       datasynth-generators, datasynth-fingerprint
 #   Tier 5 (config+banking): datasynth-test-utils
 #   Tier 6 (generators+graph+test-utils): datasynth-eval (dev-dep on test-utils)
-#   Tier 7 (runtime):      datasynth-runtime
+#   Tier 7 (runtime):      datasynth-runtime (depends on fingerprint)
 #   Tier 8 (apps):         datasynth-server, datasynth-cli
 #   Note: datasynth-ui is excluded (Tauri desktop app, not published to crates.io)
 #
@@ -112,6 +112,7 @@ CRATES=(
 
     # Tier 4: Depends on config
     "datasynth-generators"   # depends on: core, config
+    "datasynth-fingerprint"  # depends on: core, config
 
     # Tier 5: Depends on config + banking
     "datasynth-test-utils"   # depends on: core, config, banking
@@ -120,11 +121,11 @@ CRATES=(
     "datasynth-eval"         # depends on: core, config, generators, graph; dev-dep: test-utils
 
     # Tier 7: Runtime (orchestration layer)
-    "datasynth-runtime"      # depends on: core, config, generators, ocpm, output, banking
+    "datasynth-runtime"      # depends on: core, config, generators, ocpm, output, banking, fingerprint, graph
 
     # Tier 8: Applications
     "datasynth-server"       # depends on: runtime
-    "datasynth-cli"          # depends on: runtime, banking
+    "datasynth-cli"          # depends on: runtime, fingerprint
 )
 
 # Tier 1 crates can be verified independently
