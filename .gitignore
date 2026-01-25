@@ -42,7 +42,19 @@ crates/datasynth-ui/screenshots/
 # Python
 **/__pycache__/
 *.pyc
+*.pyo
 *.egg-info/
+*.egg
+.eggs/
 python/dist/
 python/build/
-*.egg
+python/.venv/
+.venv/
+venv/
+*.whl
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
