@@ -81,4 +81,4 @@ See the [Python Wrapper Guide](../docs/src/user-guide/python-wrapper.md) for com
 
 ## License
 
-MIT License - see the main project LICENSE file.
+Apache 2.0 License - see the main project LICENSE file.
