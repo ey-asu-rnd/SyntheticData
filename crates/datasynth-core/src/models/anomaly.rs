@@ -1055,6 +1055,426 @@ impl AnomalySummary {
     }
 }
 
+// ============================================================================
+// ENHANCED ANOMALY TAXONOMY (FR-003)
+// ============================================================================
+
+/// High-level anomaly category for multi-class classification.
+///
+/// These categories provide a more granular classification than the base
+/// AnomalyType enum, enabling better ML model training and audit reporting.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AnomalyCategory {
+    // Vendor-related anomalies
+    /// Fictitious or shell vendor.
+    FictitiousVendor,
+    /// Kickback or collusion with vendor.
+    VendorKickback,
+    /// Related party vendor transactions.
+    RelatedPartyVendor,
+
+    // Transaction-related anomalies
+    /// Duplicate payment or invoice.
+    DuplicatePayment,
+    /// Unauthorized transaction.
+    UnauthorizedTransaction,
+    /// Structured transactions to avoid thresholds.
+    StructuredTransaction,
+
+    // Pattern-based anomalies
+    /// Circular flow of funds.
+    CircularFlow,
+    /// Behavioral anomaly (deviation from normal patterns).
+    BehavioralAnomaly,
+    /// Timing-based anomaly.
+    TimingAnomaly,
+
+    // Journal entry anomalies
+    /// Manual journal entry anomaly.
+    JournalAnomaly,
+    /// Manual override of controls.
+    ManualOverride,
+    /// Missing approval in chain.
+    MissingApproval,
+
+    // Statistical anomalies
+    /// Statistical outlier.
+    StatisticalOutlier,
+    /// Distribution anomaly (Benford, etc.).
+    DistributionAnomaly,
+
+    // Custom category
+    /// User-defined category.
+    Custom(String),
+}
+
+impl AnomalyCategory {
+    /// Derives an AnomalyCategory from an AnomalyType.
+    pub fn from_anomaly_type(anomaly_type: &AnomalyType) -> Self {
+        match anomaly_type {
+            AnomalyType::Fraud(fraud_type) => match fraud_type {
+                FraudType::FictitiousVendor | FraudType::ShellCompanyPayment => {
+                    AnomalyCategory::FictitiousVendor
+                }
+                FraudType::Kickback | FraudType::KickbackScheme => AnomalyCategory::VendorKickback,
+                FraudType::DuplicatePayment => AnomalyCategory::DuplicatePayment,
+                FraudType::SplitTransaction | FraudType::JustBelowThreshold => {
+                    AnomalyCategory::StructuredTransaction
+                }
+                FraudType::SelfApproval
+                | FraudType::UnauthorizedApproval
+                | FraudType::CollusiveApproval => AnomalyCategory::UnauthorizedTransaction,
+                FraudType::TimingAnomaly
+                | FraudType::RoundDollarManipulation
+                | FraudType::SuspenseAccountAbuse => AnomalyCategory::JournalAnomaly,
+                _ => AnomalyCategory::BehavioralAnomaly,
+            },
+            AnomalyType::Error(error_type) => match error_type {
+                ErrorType::DuplicateEntry => AnomalyCategory::DuplicatePayment,
+                ErrorType::WrongPeriod
+                | ErrorType::BackdatedEntry
+                | ErrorType::FutureDatedEntry => AnomalyCategory::TimingAnomaly,
+                _ => AnomalyCategory::JournalAnomaly,
+            },
+            AnomalyType::ProcessIssue(process_type) => match process_type {
+                ProcessIssueType::SkippedApproval | ProcessIssueType::IncompleteApprovalChain => {
+                    AnomalyCategory::MissingApproval
+                }
+                ProcessIssueType::ManualOverride | ProcessIssueType::SystemBypass => {
+                    AnomalyCategory::ManualOverride
+                }
+                ProcessIssueType::AfterHoursPosting | ProcessIssueType::WeekendPosting => {
+                    AnomalyCategory::TimingAnomaly
+                }
+                _ => AnomalyCategory::BehavioralAnomaly,
+            },
+            AnomalyType::Statistical(stat_type) => match stat_type {
+                StatisticalAnomalyType::BenfordViolation | StatisticalAnomalyType::DistributionShift => {
+                    AnomalyCategory::DistributionAnomaly
+                }
+                _ => AnomalyCategory::StatisticalOutlier,
+            },
+            AnomalyType::Relational(rel_type) => match rel_type {
+                RelationalAnomalyType::CircularTransaction | RelationalAnomalyType::CircularIntercompany => {
+                    AnomalyCategory::CircularFlow
+                }
+                _ => AnomalyCategory::BehavioralAnomaly,
+            },
+            AnomalyType::Custom(s) => AnomalyCategory::Custom(s.clone()),
+        }
+    }
+
+    /// Returns the category name as a string.
+    pub fn name(&self) -> &str {
+        match self {
+            AnomalyCategory::FictitiousVendor => "fictitious_vendor",
+            AnomalyCategory::VendorKickback => "vendor_kickback",
+            AnomalyCategory::RelatedPartyVendor => "related_party_vendor",
+            AnomalyCategory::DuplicatePayment => "duplicate_payment",
+            AnomalyCategory::UnauthorizedTransaction => "unauthorized_transaction",
+            AnomalyCategory::StructuredTransaction => "structured_transaction",
+            AnomalyCategory::CircularFlow => "circular_flow",
+            AnomalyCategory::BehavioralAnomaly => "behavioral_anomaly",
+            AnomalyCategory::TimingAnomaly => "timing_anomaly",
+            AnomalyCategory::JournalAnomaly => "journal_anomaly",
+            AnomalyCategory::ManualOverride => "manual_override",
+            AnomalyCategory::MissingApproval => "missing_approval",
+            AnomalyCategory::StatisticalOutlier => "statistical_outlier",
+            AnomalyCategory::DistributionAnomaly => "distribution_anomaly",
+            AnomalyCategory::Custom(s) => s.as_str(),
+        }
+    }
+
+    /// Returns the ordinal value for ML encoding.
+    pub fn ordinal(&self) -> u8 {
+        match self {
+            AnomalyCategory::FictitiousVendor => 0,
+            AnomalyCategory::VendorKickback => 1,
+            AnomalyCategory::RelatedPartyVendor => 2,
+            AnomalyCategory::DuplicatePayment => 3,
+            AnomalyCategory::UnauthorizedTransaction => 4,
+            AnomalyCategory::StructuredTransaction => 5,
+            AnomalyCategory::CircularFlow => 6,
+            AnomalyCategory::BehavioralAnomaly => 7,
+            AnomalyCategory::TimingAnomaly => 8,
+            AnomalyCategory::JournalAnomaly => 9,
+            AnomalyCategory::ManualOverride => 10,
+            AnomalyCategory::MissingApproval => 11,
+            AnomalyCategory::StatisticalOutlier => 12,
+            AnomalyCategory::DistributionAnomaly => 13,
+            AnomalyCategory::Custom(_) => 14,
+        }
+    }
+
+    /// Returns the total number of categories (excluding Custom).
+    pub fn category_count() -> usize {
+        15 // 14 fixed categories + Custom
+    }
+}
+
+/// Type of contributing factor for anomaly confidence/severity calculation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum FactorType {
+    /// Amount deviation from expected value.
+    AmountDeviation,
+    /// Proximity to approval/reporting threshold.
+    ThresholdProximity,
+    /// Timing-related anomaly indicator.
+    TimingAnomaly,
+    /// Entity risk score contribution.
+    EntityRisk,
+    /// Pattern match confidence.
+    PatternMatch,
+    /// Frequency deviation from normal.
+    FrequencyDeviation,
+    /// Relationship-based anomaly indicator.
+    RelationshipAnomaly,
+    /// Control bypass indicator.
+    ControlBypass,
+    /// Benford's Law violation.
+    BenfordViolation,
+    /// Duplicate indicator.
+    DuplicateIndicator,
+    /// Approval chain issue.
+    ApprovalChainIssue,
+    /// Documentation gap.
+    DocumentationGap,
+    /// Custom factor type.
+    Custom,
+}
+
+impl FactorType {
+    /// Returns the factor type name.
+    pub fn name(&self) -> &'static str {
+        match self {
+            FactorType::AmountDeviation => "amount_deviation",
+            FactorType::ThresholdProximity => "threshold_proximity",
+            FactorType::TimingAnomaly => "timing_anomaly",
+            FactorType::EntityRisk => "entity_risk",
+            FactorType::PatternMatch => "pattern_match",
+            FactorType::FrequencyDeviation => "frequency_deviation",
+            FactorType::RelationshipAnomaly => "relationship_anomaly",
+            FactorType::ControlBypass => "control_bypass",
+            FactorType::BenfordViolation => "benford_violation",
+            FactorType::DuplicateIndicator => "duplicate_indicator",
+            FactorType::ApprovalChainIssue => "approval_chain_issue",
+            FactorType::DocumentationGap => "documentation_gap",
+            FactorType::Custom => "custom",
+        }
+    }
+}
+
+/// Evidence supporting a contributing factor.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FactorEvidence {
+    /// Source of the evidence (e.g., "transaction_history", "entity_registry").
+    pub source: String,
+    /// Raw evidence data.
+    pub data: HashMap<String, String>,
+}
+
+/// A contributing factor to anomaly confidence/severity.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContributingFactor {
+    /// Type of factor.
+    pub factor_type: FactorType,
+    /// Observed value.
+    pub value: f64,
+    /// Threshold or expected value.
+    pub threshold: f64,
+    /// Direction of comparison (true = value > threshold is anomalous).
+    pub direction_greater: bool,
+    /// Weight of this factor in overall calculation (0.0 - 1.0).
+    pub weight: f64,
+    /// Human-readable description.
+    pub description: String,
+    /// Optional supporting evidence.
+    pub evidence: Option<FactorEvidence>,
+}
+
+impl ContributingFactor {
+    /// Creates a new contributing factor.
+    pub fn new(
+        factor_type: FactorType,
+        value: f64,
+        threshold: f64,
+        direction_greater: bool,
+        weight: f64,
+        description: &str,
+    ) -> Self {
+        Self {
+            factor_type,
+            value,
+            threshold,
+            direction_greater,
+            weight,
+            description: description.to_string(),
+            evidence: None,
+        }
+    }
+
+    /// Adds evidence to the factor.
+    pub fn with_evidence(mut self, source: &str, data: HashMap<String, String>) -> Self {
+        self.evidence = Some(FactorEvidence {
+            source: source.to_string(),
+            data,
+        });
+        self
+    }
+
+    /// Calculates the factor's contribution to anomaly score.
+    pub fn contribution(&self) -> f64 {
+        let deviation = if self.direction_greater {
+            (self.value - self.threshold).max(0.0)
+        } else {
+            (self.threshold - self.value).max(0.0)
+        };
+
+        // Normalize by threshold to get relative deviation
+        let relative_deviation = if self.threshold.abs() > 0.001 {
+            deviation / self.threshold.abs()
+        } else {
+            deviation
+        };
+
+        // Apply weight and cap at 1.0
+        (relative_deviation * self.weight).min(1.0)
+    }
+}
+
+/// Enhanced anomaly label with dynamic confidence and severity.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnhancedAnomalyLabel {
+    /// Base labeled anomaly (backward compatible).
+    pub base: LabeledAnomaly,
+    /// Enhanced category classification.
+    pub category: AnomalyCategory,
+    /// Dynamically calculated confidence (0.0 - 1.0).
+    pub enhanced_confidence: f64,
+    /// Contextually calculated severity (0.0 - 1.0).
+    pub enhanced_severity: f64,
+    /// Factors contributing to confidence/severity.
+    pub contributing_factors: Vec<ContributingFactor>,
+    /// Secondary categories (for multi-label classification).
+    pub secondary_categories: Vec<AnomalyCategory>,
+}
+
+impl EnhancedAnomalyLabel {
+    /// Creates an enhanced label from a base labeled anomaly.
+    pub fn from_base(base: LabeledAnomaly) -> Self {
+        let category = AnomalyCategory::from_anomaly_type(&base.anomaly_type);
+        let enhanced_confidence = base.confidence;
+        let enhanced_severity = base.severity as f64 / 5.0;
+
+        Self {
+            base,
+            category,
+            enhanced_confidence,
+            enhanced_severity,
+            contributing_factors: Vec::new(),
+            secondary_categories: Vec::new(),
+        }
+    }
+
+    /// Sets the enhanced confidence.
+    pub fn with_confidence(mut self, confidence: f64) -> Self {
+        self.enhanced_confidence = confidence.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Sets the enhanced severity.
+    pub fn with_severity(mut self, severity: f64) -> Self {
+        self.enhanced_severity = severity.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Adds a contributing factor.
+    pub fn with_factor(mut self, factor: ContributingFactor) -> Self {
+        self.contributing_factors.push(factor);
+        self
+    }
+
+    /// Adds a secondary category.
+    pub fn with_secondary_category(mut self, category: AnomalyCategory) -> Self {
+        if !self.secondary_categories.contains(&category) && category != self.category {
+            self.secondary_categories.push(category);
+        }
+        self
+    }
+
+    /// Converts to an extended feature vector.
+    ///
+    /// Returns base features (15) + enhanced features (10) = 25 features.
+    pub fn to_features(&self) -> Vec<f64> {
+        let mut features = self.base.to_features();
+
+        // Enhanced features
+        features.push(self.enhanced_confidence);
+        features.push(self.enhanced_severity);
+        features.push(self.category.ordinal() as f64 / AnomalyCategory::category_count() as f64);
+        features.push(self.secondary_categories.len() as f64);
+        features.push(self.contributing_factors.len() as f64);
+
+        // Max factor weight
+        let max_weight = self
+            .contributing_factors
+            .iter()
+            .map(|f| f.weight)
+            .fold(0.0, f64::max);
+        features.push(max_weight);
+
+        // Factor type indicators (binary flags for key factor types)
+        let has_control_bypass = self
+            .contributing_factors
+            .iter()
+            .any(|f| f.factor_type == FactorType::ControlBypass);
+        features.push(if has_control_bypass { 1.0 } else { 0.0 });
+
+        let has_amount_deviation = self
+            .contributing_factors
+            .iter()
+            .any(|f| f.factor_type == FactorType::AmountDeviation);
+        features.push(if has_amount_deviation { 1.0 } else { 0.0 });
+
+        let has_timing = self
+            .contributing_factors
+            .iter()
+            .any(|f| f.factor_type == FactorType::TimingAnomaly);
+        features.push(if has_timing { 1.0 } else { 0.0 });
+
+        let has_pattern_match = self
+            .contributing_factors
+            .iter()
+            .any(|f| f.factor_type == FactorType::PatternMatch);
+        features.push(if has_pattern_match { 1.0 } else { 0.0 });
+
+        features
+    }
+
+    /// Returns the number of features in the enhanced feature vector.
+    pub fn feature_count() -> usize {
+        25 // 15 base + 10 enhanced
+    }
+
+    /// Returns feature names for the enhanced feature vector.
+    pub fn feature_names() -> Vec<&'static str> {
+        let mut names = LabeledAnomaly::feature_names();
+        names.extend(vec![
+            "enhanced_confidence",
+            "enhanced_severity",
+            "category_ordinal",
+            "secondary_category_count",
+            "contributing_factor_count",
+            "max_factor_weight",
+            "has_control_bypass",
+            "has_amount_deviation",
+            "has_timing_factor",
+            "has_pattern_match",
+        ]);
+        names
+    }
+}
+
 /// Configuration for anomaly rates.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnomalyRateConfig {
@@ -1370,5 +1790,222 @@ mod tests {
 
         assert_eq!(anomaly.run_id, deserialized.run_id);
         assert_eq!(anomaly.generation_seed, deserialized.generation_seed);
+    }
+
+    // ========================================
+    // FR-003 ENHANCED TAXONOMY TESTS
+    // ========================================
+
+    #[test]
+    fn test_anomaly_category_from_anomaly_type() {
+        // Fraud mappings
+        let fraud_vendor = AnomalyType::Fraud(FraudType::FictitiousVendor);
+        assert_eq!(
+            AnomalyCategory::from_anomaly_type(&fraud_vendor),
+            AnomalyCategory::FictitiousVendor
+        );
+
+        let fraud_kickback = AnomalyType::Fraud(FraudType::KickbackScheme);
+        assert_eq!(
+            AnomalyCategory::from_anomaly_type(&fraud_kickback),
+            AnomalyCategory::VendorKickback
+        );
+
+        let fraud_structured = AnomalyType::Fraud(FraudType::SplitTransaction);
+        assert_eq!(
+            AnomalyCategory::from_anomaly_type(&fraud_structured),
+            AnomalyCategory::StructuredTransaction
+        );
+
+        // Error mappings
+        let error_duplicate = AnomalyType::Error(ErrorType::DuplicateEntry);
+        assert_eq!(
+            AnomalyCategory::from_anomaly_type(&error_duplicate),
+            AnomalyCategory::DuplicatePayment
+        );
+
+        // Process issue mappings
+        let process_skip = AnomalyType::ProcessIssue(ProcessIssueType::SkippedApproval);
+        assert_eq!(
+            AnomalyCategory::from_anomaly_type(&process_skip),
+            AnomalyCategory::MissingApproval
+        );
+
+        // Relational mappings
+        let relational_circular = AnomalyType::Relational(RelationalAnomalyType::CircularTransaction);
+        assert_eq!(
+            AnomalyCategory::from_anomaly_type(&relational_circular),
+            AnomalyCategory::CircularFlow
+        );
+    }
+
+    #[test]
+    fn test_anomaly_category_ordinal() {
+        assert_eq!(AnomalyCategory::FictitiousVendor.ordinal(), 0);
+        assert_eq!(AnomalyCategory::VendorKickback.ordinal(), 1);
+        assert_eq!(AnomalyCategory::Custom("test".to_string()).ordinal(), 14);
+    }
+
+    #[test]
+    fn test_contributing_factor() {
+        let factor = ContributingFactor::new(
+            FactorType::AmountDeviation,
+            15000.0,
+            10000.0,
+            true,
+            0.5,
+            "Amount exceeds threshold",
+        );
+
+        assert_eq!(factor.factor_type, FactorType::AmountDeviation);
+        assert_eq!(factor.value, 15000.0);
+        assert_eq!(factor.threshold, 10000.0);
+        assert!(factor.direction_greater);
+
+        // Contribution: (15000 - 10000) / 10000 * 0.5 = 0.25
+        let contribution = factor.contribution();
+        assert!((contribution - 0.25).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_contributing_factor_with_evidence() {
+        let mut data = HashMap::new();
+        data.insert("expected".to_string(), "10000".to_string());
+        data.insert("actual".to_string(), "15000".to_string());
+
+        let factor = ContributingFactor::new(
+            FactorType::AmountDeviation,
+            15000.0,
+            10000.0,
+            true,
+            0.5,
+            "Amount deviation detected",
+        )
+        .with_evidence("transaction_history", data);
+
+        assert!(factor.evidence.is_some());
+        let evidence = factor.evidence.unwrap();
+        assert_eq!(evidence.source, "transaction_history");
+        assert_eq!(evidence.data.get("expected"), Some(&"10000".to_string()));
+    }
+
+    #[test]
+    fn test_enhanced_anomaly_label() {
+        let base = LabeledAnomaly::new(
+            "ANO001".to_string(),
+            AnomalyType::Fraud(FraudType::DuplicatePayment),
+            "JE001".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        );
+
+        let enhanced = EnhancedAnomalyLabel::from_base(base)
+            .with_confidence(0.85)
+            .with_severity(0.7)
+            .with_factor(ContributingFactor::new(
+                FactorType::DuplicateIndicator,
+                1.0,
+                0.5,
+                true,
+                0.4,
+                "Duplicate payment detected",
+            ))
+            .with_secondary_category(AnomalyCategory::StructuredTransaction);
+
+        assert_eq!(enhanced.category, AnomalyCategory::DuplicatePayment);
+        assert_eq!(enhanced.enhanced_confidence, 0.85);
+        assert_eq!(enhanced.enhanced_severity, 0.7);
+        assert_eq!(enhanced.contributing_factors.len(), 1);
+        assert_eq!(enhanced.secondary_categories.len(), 1);
+    }
+
+    #[test]
+    fn test_enhanced_anomaly_label_features() {
+        let base = LabeledAnomaly::new(
+            "ANO001".to_string(),
+            AnomalyType::Fraud(FraudType::SelfApproval),
+            "JE001".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        );
+
+        let enhanced = EnhancedAnomalyLabel::from_base(base)
+            .with_confidence(0.9)
+            .with_severity(0.8)
+            .with_factor(ContributingFactor::new(
+                FactorType::ControlBypass,
+                1.0,
+                0.0,
+                true,
+                0.5,
+                "Control bypass detected",
+            ));
+
+        let features = enhanced.to_features();
+
+        // Should have 25 features (15 base + 10 enhanced)
+        assert_eq!(features.len(), EnhancedAnomalyLabel::feature_count());
+        assert_eq!(features.len(), 25);
+
+        // Check enhanced confidence is in features
+        assert_eq!(features[15], 0.9); // enhanced_confidence
+
+        // Check has_control_bypass flag
+        assert_eq!(features[21], 1.0); // has_control_bypass
+    }
+
+    #[test]
+    fn test_enhanced_anomaly_label_feature_names() {
+        let names = EnhancedAnomalyLabel::feature_names();
+        assert_eq!(names.len(), 25);
+        assert!(names.contains(&"enhanced_confidence"));
+        assert!(names.contains(&"enhanced_severity"));
+        assert!(names.contains(&"has_control_bypass"));
+    }
+
+    #[test]
+    fn test_factor_type_names() {
+        assert_eq!(FactorType::AmountDeviation.name(), "amount_deviation");
+        assert_eq!(FactorType::ThresholdProximity.name(), "threshold_proximity");
+        assert_eq!(FactorType::ControlBypass.name(), "control_bypass");
+    }
+
+    #[test]
+    fn test_anomaly_category_serialization() {
+        let category = AnomalyCategory::CircularFlow;
+        let json = serde_json::to_string(&category).unwrap();
+        let deserialized: AnomalyCategory = serde_json::from_str(&json).unwrap();
+        assert_eq!(category, deserialized);
+
+        let custom = AnomalyCategory::Custom("custom_type".to_string());
+        let json = serde_json::to_string(&custom).unwrap();
+        let deserialized: AnomalyCategory = serde_json::from_str(&json).unwrap();
+        assert_eq!(custom, deserialized);
+    }
+
+    #[test]
+    fn test_enhanced_label_secondary_category_dedup() {
+        let base = LabeledAnomaly::new(
+            "ANO001".to_string(),
+            AnomalyType::Fraud(FraudType::DuplicatePayment),
+            "JE001".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
+        );
+
+        let enhanced = EnhancedAnomalyLabel::from_base(base)
+            // Try to add the primary category as secondary (should be ignored)
+            .with_secondary_category(AnomalyCategory::DuplicatePayment)
+            // Add a valid secondary
+            .with_secondary_category(AnomalyCategory::TimingAnomaly)
+            // Try to add duplicate secondary (should be ignored)
+            .with_secondary_category(AnomalyCategory::TimingAnomaly);
+
+        // Should only have 1 secondary category (TimingAnomaly)
+        assert_eq!(enhanced.secondary_categories.len(), 1);
+        assert_eq!(enhanced.secondary_categories[0], AnomalyCategory::TimingAnomaly);
     }
 }
