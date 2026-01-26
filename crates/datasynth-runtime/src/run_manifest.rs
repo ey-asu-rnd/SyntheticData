@@ -205,6 +205,10 @@ mod tests {
             scenario: ScenarioConfig::default(),
             temporal: TemporalDriftConfig::default(),
             graph_export: GraphExportConfig::default(),
+            streaming: StreamingSchemaConfig::default(),
+            rate_limit: RateLimitSchemaConfig::default(),
+            temporal_attributes: TemporalAttributeSchemaConfig::default(),
+            relationships: RelationshipSchemaConfig::default(),
         }
     }
 

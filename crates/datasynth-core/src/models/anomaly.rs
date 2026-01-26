@@ -1149,15 +1149,13 @@ impl AnomalyCategory {
                 _ => AnomalyCategory::BehavioralAnomaly,
             },
             AnomalyType::Statistical(stat_type) => match stat_type {
-                StatisticalAnomalyType::BenfordViolation | StatisticalAnomalyType::DistributionShift => {
-                    AnomalyCategory::DistributionAnomaly
-                }
+                StatisticalAnomalyType::BenfordViolation
+                | StatisticalAnomalyType::DistributionShift => AnomalyCategory::DistributionAnomaly,
                 _ => AnomalyCategory::StatisticalOutlier,
             },
             AnomalyType::Relational(rel_type) => match rel_type {
-                RelationalAnomalyType::CircularTransaction | RelationalAnomalyType::CircularIntercompany => {
-                    AnomalyCategory::CircularFlow
-                }
+                RelationalAnomalyType::CircularTransaction
+                | RelationalAnomalyType::CircularIntercompany => AnomalyCategory::CircularFlow,
                 _ => AnomalyCategory::BehavioralAnomaly,
             },
             AnomalyType::Custom(s) => AnomalyCategory::Custom(s.clone()),
@@ -1832,7 +1830,8 @@ mod tests {
         );
 
         // Relational mappings
-        let relational_circular = AnomalyType::Relational(RelationalAnomalyType::CircularTransaction);
+        let relational_circular =
+            AnomalyType::Relational(RelationalAnomalyType::CircularTransaction);
         assert_eq!(
             AnomalyCategory::from_anomaly_type(&relational_circular),
             AnomalyCategory::CircularFlow
@@ -2006,6 +2005,9 @@ mod tests {
 
         // Should only have 1 secondary category (TimingAnomaly)
         assert_eq!(enhanced.secondary_categories.len(), 1);
-        assert_eq!(enhanced.secondary_categories[0], AnomalyCategory::TimingAnomaly);
+        assert_eq!(
+            enhanced.secondary_categories[0],
+            AnomalyCategory::TimingAnomaly
+        );
     }
 }

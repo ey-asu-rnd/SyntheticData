@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-01-26
+
+### Added
+
+- **RustGraph JSON Export** (`datasynth-graph`): New export format for RustAssureTwin integration
+  - `RustGraphNodeOutput` and `RustGraphEdgeOutput` structures compatible with RustGraph CreateNodeRequest/CreateEdgeRequest
+  - Rich metadata including temporal validity (valid_from/valid_to), transaction time, labels, and ML features
+  - JSONL and JSON array output formats for streaming and batch consumption
+  - `RustGraphExporter` with configurable options (include_features, include_temporal, include_labels)
+  - Automatic metadata generation with source tracking, batch IDs, and generation timestamps
+
+- **Streaming Output API** (`datasynth-core`, `datasynth-runtime`): Async streaming generation with backpressure
+  - `StreamingGenerator` trait with async `stream()` and `stream_with_progress()` methods
+  - `StreamingSink` trait for processing stream events
+  - `StreamEvent` enum: Data, Progress, BatchComplete, Error, Complete variants
+  - Backpressure strategies: Block, DropOldest, DropNewest, Buffer with overflow
+  - `BoundedChannel` with adaptive backpressure and statistics tracking
+  - `StreamingOrchestrator` wrapping EnhancedOrchestrator for streaming generation
+  - Progress reporting with items_generated, items_per_second, elapsed_ms, memory_usage
+  - Stream control: pause, resume, cancel via `StreamHandle`
+
+- **Temporal Attribute Generation** (`datasynth-generators`): Bi-temporal data support
+  - `TemporalAttributeGenerator` for adding temporal dimensions to entities
+  - Valid time generation with configurable closed probability and validity duration
+  - Transaction time generation with optional backdating support
+  - Version chain generation for entity history tracking
+  - Integration with existing `BiTemporal<T>` and `TemporalVersionChain<T>` models
+
+- **Relationship Generation** (`datasynth-generators`): Configurable entity relationships
+  - `RelationshipGenerator` for creating edges between generated entities
+  - Cardinality rules: OneToOne, OneToMany, ManyToOne, ManyToMany with configurable min/max
+  - Property generation: Constant, RandomChoice, Range, FromSourceProperty, FromTargetProperty
+  - Circular reference detection with configurable max depth
+  - Orphan entity support with configurable probability
+
+- **Rate Limiting** (`datasynth-core`): Token bucket rate limiter for controlled generation
+  - `RateLimiter` with configurable entities_per_second and burst_size
+  - Backpressure modes: Block, Drop, Buffer with max_buffered
+  - `RateLimitedStream<G>` wrapper for rate-limiting any StreamingGenerator
+  - Statistics tracking: total_acquired, total_dropped, total_waited, avg_wait_time
+
+- **New Configuration Sections** (`datasynth-config`):
+  - `streaming`: buffer_size, enable_progress, progress_interval, backpressure strategy
+  - `rate_limit`: enabled, entities_per_second, burst_size, backpressure mode
+  - `temporal_attributes`: valid_time config, transaction_time config, version chain options
+  - `relationships`: relationship types with cardinality rules, orphan settings, circular detection
+
+### Changed
+
+- `GraphExportFormat` enum extended with `RustGraph` variant
+- `GeneratorConfig` now includes streaming, rate_limit, temporal_attributes, and relationships sections
+- All presets, fixtures, and config validation updated for new configuration fields
+
 ## [0.2.1] - 2026-01-24
 
 ### Added

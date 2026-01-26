@@ -842,6 +842,10 @@ pub fn default_generator_config() -> GeneratorConfig {
         scenario: Default::default(),
         temporal: Default::default(),
         graph_export: Default::default(),
+        streaming: Default::default(),
+        rate_limit: Default::default(),
+        temporal_attributes: Default::default(),
+        relationships: Default::default(),
     }
 }
 

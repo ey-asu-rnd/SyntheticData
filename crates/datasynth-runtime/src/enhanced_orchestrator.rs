@@ -2191,6 +2191,43 @@ impl EnhancedOrchestrator {
                         // DGL export will be added in a future update
                         debug!("DGL export not yet implemented for accounting networks");
                     }
+                    datasynth_config::schema::GraphExportFormat::RustGraph => {
+                        use datasynth_graph::{
+                            RustGraphExportConfig, RustGraphExporter, RustGraphOutputFormat,
+                        };
+
+                        let rustgraph_config = RustGraphExportConfig {
+                            include_features: true,
+                            include_temporal: true,
+                            include_labels: true,
+                            source_name: "datasynth".to_string(),
+                            batch_id: None,
+                            output_format: RustGraphOutputFormat::JsonLines,
+                            export_node_properties: true,
+                            export_edge_properties: true,
+                            pretty_print: false,
+                        };
+
+                        let exporter = RustGraphExporter::new(rustgraph_config);
+                        match exporter.export(&graph, &format_dir) {
+                            Ok(metadata) => {
+                                snapshot.exports.insert(
+                                    format!("{}_{}", graph_type.name, "rustgraph"),
+                                    GraphExportInfo {
+                                        name: graph_type.name.clone(),
+                                        format: "rustgraph".to_string(),
+                                        output_path: format_dir.clone(),
+                                        node_count: metadata.num_nodes,
+                                        edge_count: metadata.num_edges,
+                                    },
+                                );
+                                snapshot.graph_count += 1;
+                            }
+                            Err(e) => {
+                                warn!("Failed to export RustGraph: {}", e);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -2306,6 +2343,7 @@ fn format_name(format: datasynth_config::schema::GraphExportFormat) -> &'static 
         datasynth_config::schema::GraphExportFormat::PytorchGeometric => "pytorch_geometric",
         datasynth_config::schema::GraphExportFormat::Neo4j => "neo4j",
         datasynth_config::schema::GraphExportFormat::Dgl => "dgl",
+        datasynth_config::schema::GraphExportFormat::RustGraph => "rustgraph",
     }
 }
 
@@ -2362,6 +2400,10 @@ mod tests {
             scenario: ScenarioConfig::default(),
             temporal: TemporalDriftConfig::default(),
             graph_export: GraphExportConfig::default(),
+            streaming: StreamingSchemaConfig::default(),
+            rate_limit: RateLimitSchemaConfig::default(),
+            temporal_attributes: TemporalAttributeSchemaConfig::default(),
+            relationships: RelationshipSchemaConfig::default(),
         }
     }
 

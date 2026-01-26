@@ -26,13 +26,13 @@ pub use entity_groups::{
 pub use features::*;
 pub use motifs::{
     compute_motif_features, detect_motifs, find_back_and_forth, find_circular_flows,
-    find_star_patterns, CircularFlow, GraphMotif, MotifConfig, MotifDetectionResult,
-    MotifInstance,
+    find_star_patterns, CircularFlow, GraphMotif, MotifConfig, MotifDetectionResult, MotifInstance,
 };
 pub use relationship_features::{
-    compute_all_combined_features, compute_all_counterparty_risk, compute_all_relationship_features,
-    compute_counterparty_risk, compute_relationship_features, CombinedRelationshipFeatures,
-    CounterpartyRisk, RelationshipFeatureConfig, RelationshipFeatures,
+    compute_all_combined_features, compute_all_counterparty_risk,
+    compute_all_relationship_features, compute_counterparty_risk, compute_relationship_features,
+    CombinedRelationshipFeatures, CounterpartyRisk, RelationshipFeatureConfig,
+    RelationshipFeatures,
 };
 pub use splits::*;
 pub use temporal::{

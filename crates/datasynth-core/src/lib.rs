@@ -10,6 +10,7 @@
 //! - Statistical distribution samplers based on empirical research
 //! - Templates for realistic data generation (names, descriptions, references)
 //! - Resource management (memory, disk, CPU) with graceful degradation
+//! - Streaming infrastructure for real-time data generation
 
 pub mod accounts;
 pub mod cpu_monitor;
@@ -19,7 +20,9 @@ pub mod distributions;
 pub mod error;
 pub mod memory_guard;
 pub mod models;
+pub mod rate_limit;
 pub mod resource_guard;
+pub mod streaming;
 pub mod templates;
 pub mod traits;
 pub mod uuid_factory;
@@ -31,7 +34,9 @@ pub use distributions::*;
 pub use error::*;
 pub use memory_guard::*;
 pub use models::*;
+pub use rate_limit::*;
 pub use resource_guard::*;
+pub use streaming::*;
 pub use templates::*;
 pub use traits::*;
 pub use uuid_factory::*;

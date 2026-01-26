@@ -21,6 +21,8 @@ pub use confidence::{ConfidenceCalculator, ConfidenceConfig, ConfidenceContext};
 pub use document_flow_anomalies::*;
 pub use injector::*;
 pub use patterns::*;
-pub use severity::{AnomalyScoreCalculator, AnomalyScores, SeverityCalculator, SeverityConfig, SeverityContext};
+pub use severity::{
+    AnomalyScoreCalculator, AnomalyScores, SeverityCalculator, SeverityConfig, SeverityContext,
+};
 pub use strategies::*;
 pub use types::*;

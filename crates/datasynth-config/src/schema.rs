@@ -76,6 +76,18 @@ pub struct GeneratorConfig {
     /// Graph export configuration for accounting network export
     #[serde(default)]
     pub graph_export: GraphExportConfig,
+    /// Streaming output API configuration
+    #[serde(default)]
+    pub streaming: StreamingSchemaConfig,
+    /// Rate limiting configuration
+    #[serde(default)]
+    pub rate_limit: RateLimitSchemaConfig,
+    /// Temporal attribute generation configuration
+    #[serde(default)]
+    pub temporal_attributes: TemporalAttributeSchemaConfig,
+    /// Relationship generation configuration
+    #[serde(default)]
+    pub relationships: RelationshipSchemaConfig,
 }
 
 /// Graph export configuration for accounting network and ML training exports.
@@ -194,6 +206,8 @@ pub enum GraphExportFormat {
     Neo4j,
     /// Deep Graph Library format.
     Dgl,
+    /// RustGraph/RustAssureTwin JSON format.
+    RustGraph,
 }
 
 /// Scenario configuration for metadata, tagging, and ML training setup.
@@ -351,6 +365,350 @@ pub enum DriftType {
     Recurring,
     /// Combination of gradual background drift with occasional sudden shifts.
     Mixed,
+}
+
+// ============================================================================
+// Streaming Output API Configuration (Phase 2)
+// ============================================================================
+
+/// Configuration for streaming output API.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StreamingSchemaConfig {
+    /// Enable streaming output.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Buffer size for streaming (number of items).
+    #[serde(default = "default_buffer_size")]
+    pub buffer_size: usize,
+    /// Enable progress reporting.
+    #[serde(default = "default_true")]
+    pub enable_progress: bool,
+    /// Progress reporting interval (number of items).
+    #[serde(default = "default_progress_interval")]
+    pub progress_interval: u64,
+    /// Backpressure strategy.
+    #[serde(default)]
+    pub backpressure: BackpressureSchemaStrategy,
+}
+
+fn default_buffer_size() -> usize {
+    1000
+}
+
+fn default_progress_interval() -> u64 {
+    100
+}
+
+impl Default for StreamingSchemaConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            buffer_size: 1000,
+            enable_progress: true,
+            progress_interval: 100,
+            backpressure: BackpressureSchemaStrategy::Block,
+        }
+    }
+}
+
+/// Backpressure strategy for streaming output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum BackpressureSchemaStrategy {
+    /// Block until space is available in the buffer.
+    #[default]
+    Block,
+    /// Drop oldest items when buffer is full.
+    DropOldest,
+    /// Drop newest items when buffer is full.
+    DropNewest,
+    /// Buffer overflow items up to a limit, then block.
+    Buffer,
+}
+
+// ============================================================================
+// Rate Limiting Configuration (Phase 5)
+// ============================================================================
+
+/// Configuration for rate limiting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RateLimitSchemaConfig {
+    /// Enable rate limiting.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Entities per second limit.
+    #[serde(default = "default_entities_per_second")]
+    pub entities_per_second: f64,
+    /// Burst size (number of tokens in bucket).
+    #[serde(default = "default_burst_size")]
+    pub burst_size: u32,
+    /// Backpressure strategy for rate limiting.
+    #[serde(default)]
+    pub backpressure: RateLimitBackpressureSchema,
+}
+
+fn default_entities_per_second() -> f64 {
+    1000.0
+}
+
+fn default_burst_size() -> u32 {
+    100
+}
+
+impl Default for RateLimitSchemaConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            entities_per_second: 1000.0,
+            burst_size: 100,
+            backpressure: RateLimitBackpressureSchema::Block,
+        }
+    }
+}
+
+/// Backpressure strategy for rate limiting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RateLimitBackpressureSchema {
+    /// Block until rate allows.
+    #[default]
+    Block,
+    /// Drop items that exceed rate.
+    Drop,
+    /// Buffer items and process when rate allows.
+    Buffer,
+}
+
+// ============================================================================
+// Temporal Attribute Generation Configuration (Phase 3)
+// ============================================================================
+
+/// Configuration for temporal attribute generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemporalAttributeSchemaConfig {
+    /// Enable temporal attribute generation.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Valid time configuration.
+    #[serde(default)]
+    pub valid_time: ValidTimeSchemaConfig,
+    /// Transaction time configuration.
+    #[serde(default)]
+    pub transaction_time: TransactionTimeSchemaConfig,
+    /// Generate version chains for entities.
+    #[serde(default)]
+    pub generate_version_chains: bool,
+    /// Average number of versions per entity.
+    #[serde(default = "default_avg_versions")]
+    pub avg_versions_per_entity: f64,
+}
+
+fn default_avg_versions() -> f64 {
+    1.5
+}
+
+impl Default for TemporalAttributeSchemaConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            valid_time: ValidTimeSchemaConfig::default(),
+            transaction_time: TransactionTimeSchemaConfig::default(),
+            generate_version_chains: false,
+            avg_versions_per_entity: 1.5,
+        }
+    }
+}
+
+/// Configuration for valid time (business time) generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidTimeSchemaConfig {
+    /// Probability that valid_to is set (entity has ended validity).
+    #[serde(default = "default_closed_probability")]
+    pub closed_probability: f64,
+    /// Average validity duration in days.
+    #[serde(default = "default_avg_validity_days")]
+    pub avg_validity_days: u32,
+    /// Standard deviation of validity duration in days.
+    #[serde(default = "default_validity_stddev")]
+    pub validity_stddev_days: u32,
+}
+
+fn default_closed_probability() -> f64 {
+    0.1
+}
+
+fn default_avg_validity_days() -> u32 {
+    365
+}
+
+fn default_validity_stddev() -> u32 {
+    90
+}
+
+impl Default for ValidTimeSchemaConfig {
+    fn default() -> Self {
+        Self {
+            closed_probability: 0.1,
+            avg_validity_days: 365,
+            validity_stddev_days: 90,
+        }
+    }
+}
+
+/// Configuration for transaction time (system time) generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionTimeSchemaConfig {
+    /// Average recording delay in seconds (0 = immediate).
+    #[serde(default)]
+    pub avg_recording_delay_seconds: u32,
+    /// Allow backdating (recording time before valid time).
+    #[serde(default)]
+    pub allow_backdating: bool,
+    /// Probability of backdating if allowed.
+    #[serde(default = "default_backdating_probability")]
+    pub backdating_probability: f64,
+    /// Maximum backdate days.
+    #[serde(default = "default_max_backdate_days")]
+    pub max_backdate_days: u32,
+}
+
+fn default_backdating_probability() -> f64 {
+    0.01
+}
+
+fn default_max_backdate_days() -> u32 {
+    30
+}
+
+impl Default for TransactionTimeSchemaConfig {
+    fn default() -> Self {
+        Self {
+            avg_recording_delay_seconds: 0,
+            allow_backdating: false,
+            backdating_probability: 0.01,
+            max_backdate_days: 30,
+        }
+    }
+}
+
+// ============================================================================
+// Relationship Generation Configuration (Phase 4)
+// ============================================================================
+
+/// Configuration for relationship generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelationshipSchemaConfig {
+    /// Relationship type definitions.
+    #[serde(default)]
+    pub relationship_types: Vec<RelationshipTypeSchemaConfig>,
+    /// Allow orphan entities (entities with no relationships).
+    #[serde(default = "default_true")]
+    pub allow_orphans: bool,
+    /// Probability of creating an orphan entity.
+    #[serde(default = "default_orphan_probability")]
+    pub orphan_probability: f64,
+    /// Allow circular relationships.
+    #[serde(default)]
+    pub allow_circular: bool,
+    /// Maximum depth for circular relationship detection.
+    #[serde(default = "default_max_circular_depth")]
+    pub max_circular_depth: u32,
+}
+
+fn default_orphan_probability() -> f64 {
+    0.01
+}
+
+fn default_max_circular_depth() -> u32 {
+    3
+}
+
+impl Default for RelationshipSchemaConfig {
+    fn default() -> Self {
+        Self {
+            relationship_types: Vec::new(),
+            allow_orphans: true,
+            orphan_probability: 0.01,
+            allow_circular: false,
+            max_circular_depth: 3,
+        }
+    }
+}
+
+/// Configuration for a specific relationship type.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelationshipTypeSchemaConfig {
+    /// Name of the relationship type (e.g., "debits", "credits", "created").
+    pub name: String,
+    /// Source entity type (e.g., "journal_entry").
+    pub source_type: String,
+    /// Target entity type (e.g., "account").
+    pub target_type: String,
+    /// Cardinality rule for this relationship.
+    #[serde(default)]
+    pub cardinality: CardinalitySchemaRule,
+    /// Weight for this relationship in random selection.
+    #[serde(default = "default_relationship_weight")]
+    pub weight: f64,
+    /// Whether this relationship is required.
+    #[serde(default)]
+    pub required: bool,
+    /// Whether this relationship is directed.
+    #[serde(default = "default_true")]
+    pub directed: bool,
+}
+
+fn default_relationship_weight() -> f64 {
+    1.0
+}
+
+impl Default for RelationshipTypeSchemaConfig {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            source_type: String::new(),
+            target_type: String::new(),
+            cardinality: CardinalitySchemaRule::default(),
+            weight: 1.0,
+            required: false,
+            directed: true,
+        }
+    }
+}
+
+/// Cardinality rule for relationships in schema config.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CardinalitySchemaRule {
+    /// One source to one target.
+    OneToOne,
+    /// One source to many targets.
+    OneToMany {
+        /// Minimum number of targets.
+        min: u32,
+        /// Maximum number of targets.
+        max: u32,
+    },
+    /// Many sources to one target.
+    ManyToOne {
+        /// Minimum number of sources.
+        min: u32,
+        /// Maximum number of sources.
+        max: u32,
+    },
+    /// Many sources to many targets.
+    ManyToMany {
+        /// Minimum targets per source.
+        min_per_source: u32,
+        /// Maximum targets per source.
+        max_per_source: u32,
+    },
+}
+
+impl Default for CardinalitySchemaRule {
+    fn default() -> Self {
+        Self::OneToMany { min: 1, max: 5 }
+    }
 }
 
 /// Global configuration settings.

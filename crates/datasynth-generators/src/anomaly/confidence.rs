@@ -216,21 +216,20 @@ impl ConfidenceCalculator {
         context: &ConfidenceContext,
     ) -> f64 {
         // Amount-based strength
-        let amount_strength = if let (Some(amount), Some(expected)) =
-            (context.amount, context.expected_amount)
-        {
-            let deviation = (amount - expected).abs();
-            let expected_f64: f64 = expected.try_into().unwrap_or(1.0);
-            let deviation_f64: f64 = deviation.try_into().unwrap_or(0.0);
+        let amount_strength =
+            if let (Some(amount), Some(expected)) = (context.amount, context.expected_amount) {
+                let deviation = (amount - expected).abs();
+                let expected_f64: f64 = expected.try_into().unwrap_or(1.0);
+                let deviation_f64: f64 = deviation.try_into().unwrap_or(0.0);
 
-            if expected_f64.abs() > 0.01 {
-                (deviation_f64 / expected_f64.abs()).min(2.0) / 2.0 // Normalize to [0, 1]
+                if expected_f64.abs() > 0.01 {
+                    (deviation_f64 / expected_f64.abs()).min(2.0) / 2.0 // Normalize to [0, 1]
+                } else {
+                    0.5
+                }
             } else {
-                0.5
-            }
-        } else {
-            0.5 // Default when no amount context
-        };
+                0.5 // Default when no amount context
+            };
 
         // Type-based strength modifier
         let type_modifier = match anomaly_type {

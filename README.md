@@ -84,9 +84,10 @@ The generator produces statistically accurate data based on empirical research f
 
 ### Machine Learning & Analytics
 
-- **Graph Export**: PyTorch Geometric, Neo4j, and DGL formats with train/val/test splits
+- **Graph Export**: PyTorch Geometric, Neo4j, DGL, and RustGraph formats with train/val/test splits
 - **Anomaly Injection**: 20+ fraud types, errors, process issues with full labeling
 - **Data Quality Variations**: Missing values, format variations, duplicates, typos
+- **Relationship Generation**: Configurable entity relationships with cardinality rules
 
 ### Privacy-Preserving Fingerprinting
 
@@ -99,6 +100,9 @@ The generator produces statistically accurate data based on empirical research f
 ### Production Features
 
 - **REST & gRPC APIs**: Streaming generation with authentication and rate limiting
+- **Streaming Output API**: Async generation with backpressure handling (Block, DropOldest, DropNewest, Buffer)
+- **Rate Limiting**: Token bucket rate limiter for controlled generation throughput
+- **Temporal Attributes**: Bi-temporal data support (valid time + transaction time) with version chains
 - **Desktop UI**: Cross-platform Tauri/SvelteKit application
 - **Resource Guards**: Memory, disk, and CPU monitoring with graceful degradation
 - **Evaluation Framework**: Auto-tuning with configuration recommendations
@@ -247,6 +251,17 @@ graph_export:
   formats:
     - pytorch_geometric
     - neo4j
+    - rustgraph               # RustGraph/RustAssureTwin compatible JSON
+
+streaming:
+  enabled: true
+  buffer_size: 1000
+  backpressure: block         # block, drop_oldest, drop_newest, buffer
+
+rate_limit:
+  enabled: true
+  entities_per_second: 10000
+  burst_size: 100
 
 output:
   format: csv
@@ -270,7 +285,7 @@ output/
 ├── banking/              KYC profiles, bank transactions, AML typology labels
 ├── process_mining/       OCEL 2.0 event logs, process variants
 ├── audit/                Engagements, workpapers, findings, risk assessments
-├── graphs/               PyTorch Geometric, Neo4j, DGL exports
+├── graphs/               PyTorch Geometric, Neo4j, DGL, RustGraph exports
 ├── labels/               Anomaly, fraud, and data quality labels for ML
 └── controls/             Internal control mappings, SoD rules
 ```
@@ -289,6 +304,7 @@ output/
 | **ERP Testing** | Load testing with realistic transaction volumes |
 | **SOX Compliance** | Test internal control monitoring systems |
 | **Data Quality ML** | Train models to detect missing values, typos, duplicates |
+| **RustGraph Integration** | Stream data directly to RustAssureTwin knowledge graphs |
 
 ---
 

@@ -13,9 +13,8 @@ use rust_decimal_macros::dec;
 use std::collections::HashMap;
 
 use datasynth_core::models::{
-    AnomalyCategory, AnomalyType, ContributingFactor, EnhancedAnomalyLabel, ErrorType,
-    FactorType, FraudType, LabeledAnomaly, ProcessIssueType, RelationalAnomalyType,
-    StatisticalAnomalyType,
+    AnomalyCategory, AnomalyType, ContributingFactor, EnhancedAnomalyLabel, ErrorType, FactorType,
+    FraudType, LabeledAnomaly, ProcessIssueType, RelationalAnomalyType, StatisticalAnomalyType,
 };
 use datasynth_generators::anomaly::{
     confidence::{ConfidenceCalculator, ConfidenceConfig, ConfidenceContext},
@@ -115,10 +114,7 @@ fn test_confidence_contributing_factors() {
     let (confidence, factors) = calculator.calculate(&anomaly_type, &context);
 
     // Should have at least some factors
-    assert!(
-        !factors.is_empty(),
-        "Should generate contributing factors"
-    );
+    assert!(!factors.is_empty(), "Should generate contributing factors");
 
     // All factors should have valid values
     for factor in &factors {
@@ -139,14 +135,20 @@ fn test_confidence_contributing_factors() {
     }
 
     // Confidence should be consistent with factors
-    assert!(confidence > 0.0, "Confidence should be positive with this context");
+    assert!(
+        confidence > 0.0,
+        "Confidence should be positive with this context"
+    );
 }
 
 /// Test config validation.
 #[test]
 fn test_confidence_config_validation() {
     let valid_config = ConfidenceConfig::default();
-    assert!(valid_config.validate().is_ok(), "Default config should be valid");
+    assert!(
+        valid_config.validate().is_ok(),
+        "Default config should be valid"
+    );
 
     let invalid_config = ConfidenceConfig {
         pattern_clarity_weight: 0.5,
@@ -213,12 +215,12 @@ fn test_severity_monetary_impact_ordering() {
 
     // Test increasing monetary impacts
     let impacts = [
-        dec!(100),       // Immaterial
-        dec!(1_000),     // Low
-        dec!(5_000),     // Approaching
-        dec!(10_000),    // At materiality
-        dec!(50_000),    // Significant
-        dec!(100_000),   // Highly material
+        dec!(100),     // Immaterial
+        dec!(1_000),   // Low
+        dec!(5_000),   // Approaching
+        dec!(10_000),  // At materiality
+        dec!(50_000),  // Significant
+        dec!(100_000), // Highly material
     ];
 
     let mut prev_severity = 0.0;
@@ -358,7 +360,10 @@ fn test_severity_context_date_detection() {
 #[test]
 fn test_severity_config_validation() {
     let valid_config = SeverityConfig::default();
-    assert!(valid_config.validate().is_ok(), "Default config should be valid");
+    assert!(
+        valid_config.validate().is_ok(),
+        "Default config should be valid"
+    );
 
     let invalid_config = SeverityConfig {
         base_type_weight: 0.5,
@@ -473,7 +478,9 @@ fn test_combined_factors_completeness() {
     assert!(has_pattern_match, "Should have pattern match factor");
 
     // Should have at least some severity factors
-    let has_amount_deviation = factor_types.iter().any(|t| *t == FactorType::AmountDeviation);
+    let has_amount_deviation = factor_types
+        .iter()
+        .any(|t| *t == FactorType::AmountDeviation);
     let has_timing = factor_types.iter().any(|t| *t == FactorType::TimingAnomaly);
     assert!(
         has_amount_deviation || has_timing,
@@ -529,7 +536,10 @@ fn test_anomaly_category_display() {
 
     for category in categories {
         let display = format!("{:?}", category);
-        assert!(!display.is_empty(), "Category should have display representation");
+        assert!(
+            !display.is_empty(),
+            "Category should have display representation"
+        );
     }
 }
 
@@ -596,7 +606,10 @@ fn test_enhanced_anomaly_label_bounds() {
         document_type: "JE".to_string(),
         company_code: "C001".to_string(),
         anomaly_date: NaiveDate::from_ymd_opt(2024, 6, 15).unwrap(),
-        detection_timestamp: NaiveDate::from_ymd_opt(2024, 6, 15).unwrap().and_hms_opt(12, 0, 0).unwrap(),
+        detection_timestamp: NaiveDate::from_ymd_opt(2024, 6, 15)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap(),
         confidence: 0.85,
         severity: 4,
         description: "Fictitious entry detected".to_string(),
@@ -622,8 +635,22 @@ fn test_enhanced_anomaly_label_bounds() {
         enhanced_confidence: 0.92,
         enhanced_severity: 0.78,
         contributing_factors: vec![
-            ContributingFactor::new(FactorType::PatternMatch, 1.0, 0.5, true, 0.4, "Pattern match found"),
-            ContributingFactor::new(FactorType::AmountDeviation, 0.5, 0.1, true, 0.3, "Amount deviation"),
+            ContributingFactor::new(
+                FactorType::PatternMatch,
+                1.0,
+                0.5,
+                true,
+                0.4,
+                "Pattern match found",
+            ),
+            ContributingFactor::new(
+                FactorType::AmountDeviation,
+                0.5,
+                0.1,
+                true,
+                0.3,
+                "Amount deviation",
+            ),
         ],
         secondary_categories: vec![AnomalyCategory::UnauthorizedTransaction],
     };
@@ -654,7 +681,10 @@ fn test_enhanced_label_feature_vector() {
         document_type: "JE".to_string(),
         company_code: "C001".to_string(),
         anomaly_date: NaiveDate::from_ymd_opt(2024, 6, 15).unwrap(),
-        detection_timestamp: NaiveDate::from_ymd_opt(2024, 6, 15).unwrap().and_hms_opt(12, 0, 0).unwrap(),
+        detection_timestamp: NaiveDate::from_ymd_opt(2024, 6, 15)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap(),
         confidence: 0.75,
         severity: 3,
         description: "Account misclassification".to_string(),
@@ -680,8 +710,22 @@ fn test_enhanced_label_feature_vector() {
         enhanced_confidence: 0.82,
         enhanced_severity: 0.65,
         contributing_factors: vec![
-            ContributingFactor::new(FactorType::PatternMatch, 0.7, 0.5, true, 0.25, "Pattern match"),
-            ContributingFactor::new(FactorType::ControlBypass, 0.3, 0.5, false, 0.15, "Control check"),
+            ContributingFactor::new(
+                FactorType::PatternMatch,
+                0.7,
+                0.5,
+                true,
+                0.25,
+                "Pattern match",
+            ),
+            ContributingFactor::new(
+                FactorType::ControlBypass,
+                0.3,
+                0.5,
+                false,
+                0.15,
+                "Control check",
+            ),
         ],
         secondary_categories: vec![],
     };

@@ -29,7 +29,9 @@ pub mod intercompany;
 pub mod je_generator;
 pub mod master_data;
 pub mod period_close;
+pub mod relationships;
 pub mod subledger;
+pub mod temporal;
 pub mod user_generator;
 
 pub use anomaly::*;
@@ -47,5 +49,7 @@ pub use intercompany::*;
 pub use je_generator::*;
 pub use master_data::*;
 pub use period_close::*;
+pub use relationships::*;
 pub use subledger::*;
+pub use temporal::*;
 pub use user_generator::*;

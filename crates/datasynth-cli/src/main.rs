@@ -1211,6 +1211,10 @@ fn create_safe_demo_preset() -> GeneratorConfig {
         scenario: datasynth_config::schema::ScenarioConfig::default(),
         temporal: datasynth_config::schema::TemporalDriftConfig::default(),
         graph_export: datasynth_config::schema::GraphExportConfig::default(),
+        streaming: datasynth_config::schema::StreamingSchemaConfig::default(),
+        rate_limit: datasynth_config::schema::RateLimitSchemaConfig::default(),
+        temporal_attributes: datasynth_config::schema::TemporalAttributeSchemaConfig::default(),
+        relationships: datasynth_config::schema::RelationshipSchemaConfig::default(),
     }
 }
 

@@ -213,7 +213,8 @@ pub fn compute_relationship_features(
     }
 
     // Calculate new relationship ratio
-    let new_threshold = config.reference_date - chrono::Duration::days(config.new_relationship_days);
+    let new_threshold =
+        config.reference_date - chrono::Duration::days(config.new_relationship_days);
     let new_count = counterparties
         .values()
         .filter(|info| {
@@ -358,15 +359,18 @@ pub fn compute_counterparty_risk(
             .filter(|e| e.source == cp_id || e.target == cp_id)
             .collect();
 
-        let anomalous_edge_ratio = cp_edges.iter().filter(|e| e.is_anomaly).count() as f64
-            / cp_edges.len().max(1) as f64;
+        let anomalous_edge_ratio =
+            cp_edges.iter().filter(|e| e.is_anomaly).count() as f64 / cp_edges.len().max(1) as f64;
         risk += anomalous_edge_ratio * 0.3;
 
         // Risk from having suspicious labels
         if let Some(node) = cp_node {
             let suspicious_labels = ["fraud", "suspicious", "high_risk", "flagged"];
             for label in &node.labels {
-                if suspicious_labels.iter().any(|s| label.to_lowercase().contains(s)) {
+                if suspicious_labels
+                    .iter()
+                    .any(|s| label.to_lowercase().contains(s))
+                {
                     risk += 0.2;
                     break;
                 }
@@ -438,7 +442,10 @@ pub fn compute_all_relationship_features(
     let mut features = HashMap::new();
 
     for &node_id in graph.nodes.keys() {
-        features.insert(node_id, compute_relationship_features(node_id, graph, config));
+        features.insert(
+            node_id,
+            compute_relationship_features(node_id, graph, config),
+        );
     }
 
     features
@@ -655,7 +662,10 @@ mod tests {
         assert_eq!(CombinedRelationshipFeatures::feature_count(), 13);
 
         let features = RelationshipFeatures::default();
-        assert_eq!(features.to_features().len(), RelationshipFeatures::feature_count());
+        assert_eq!(
+            features.to_features().len(),
+            RelationshipFeatures::feature_count()
+        );
 
         let risk = CounterpartyRisk::default();
         assert_eq!(risk.to_features().len(), CounterpartyRisk::feature_count());
@@ -679,7 +689,10 @@ mod tests {
         let combined = compute_all_combined_features(&graph, &config);
 
         for (_node_id, features) in combined {
-            assert_eq!(features.to_features().len(), CombinedRelationshipFeatures::feature_count());
+            assert_eq!(
+                features.to_features().len(),
+                CombinedRelationshipFeatures::feature_count()
+            );
         }
     }
 }

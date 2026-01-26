@@ -310,7 +310,10 @@ fn detect_connected_components(
             let (internal, external, cohesion) = calculate_group_metrics(graph, &component);
             if cohesion >= config.min_cohesion {
                 let hub = find_hub_node(graph, &component);
-                group = group.with_hub(hub).with_volumes(internal, external).with_cohesion(cohesion);
+                group = group
+                    .with_hub(hub)
+                    .with_volumes(internal, external)
+                    .with_cohesion(cohesion);
                 groups.push(group);
             }
         }
@@ -331,7 +334,11 @@ fn detect_label_propagation(
     }
 
     // Initialize each node with its own label
-    let mut labels: HashMap<NodeId, u64> = nodes.iter().enumerate().map(|(i, &n)| (n, i as u64)).collect();
+    let mut labels: HashMap<NodeId, u64> = nodes
+        .iter()
+        .enumerate()
+        .map(|(i, &n)| (n, i as u64))
+        .collect();
 
     // Simple deterministic iteration (not randomized for reproducibility)
     for _ in 0..10 {
@@ -407,11 +414,8 @@ fn detect_dense_subgraphs(
     let mut groups = Vec::new();
 
     // Find high-degree nodes as seeds
-    let mut nodes_by_degree: Vec<(NodeId, usize)> = graph
-        .nodes
-        .keys()
-        .map(|&n| (n, graph.degree(n)))
-        .collect();
+    let mut nodes_by_degree: Vec<(NodeId, usize)> =
+        graph.nodes.keys().map(|&n| (n, graph.degree(n))).collect();
     nodes_by_degree.sort_by_key(|(_, d)| std::cmp::Reverse(*d));
 
     let mut used_nodes: HashSet<NodeId> = HashSet::new();
@@ -502,8 +506,14 @@ fn detect_cliques(
     // Build adjacency set for faster lookup
     let mut adjacency: HashMap<NodeId, HashSet<NodeId>> = HashMap::new();
     for edge in graph.edges.values() {
-        adjacency.entry(edge.source).or_default().insert(edge.target);
-        adjacency.entry(edge.target).or_default().insert(edge.source);
+        adjacency
+            .entry(edge.source)
+            .or_default()
+            .insert(edge.target);
+        adjacency
+            .entry(edge.target)
+            .or_default()
+            .insert(edge.source);
     }
 
     // Find triangles first
@@ -548,7 +558,8 @@ fn detect_cliques(
                             GroupType::TransactionCluster
                         };
 
-                        let (internal, external, cohesion) = calculate_group_metrics(graph, &clique);
+                        let (internal, external, cohesion) =
+                            calculate_group_metrics(graph, &clique);
                         let hub = find_hub_node(graph, &clique);
 
                         let group = EntityGroup::new(*next_id, clique, group_type)
@@ -597,9 +608,15 @@ fn classify_group_type(graph: &Graph, members: &[NodeId]) -> GroupType {
     });
 
     // Check anomaly rate
-    let anomalous_nodes = members.iter().filter(|&&n| {
-        graph.get_node(n).map(|node| node.is_anomaly).unwrap_or(false)
-    }).count();
+    let anomalous_nodes = members
+        .iter()
+        .filter(|&&n| {
+            graph
+                .get_node(n)
+                .map(|node| node.is_anomaly)
+                .unwrap_or(false)
+        })
+        .count();
     let anomaly_rate = anomalous_nodes as f64 / members.len() as f64;
 
     // Classify based on characteristics
@@ -683,18 +700,48 @@ mod tests {
 
         // Create two connected components
         // Component 1: n1 - n2 - n3 (triangle)
-        let n1 = graph.add_node(GraphNode::new(0, NodeType::Account, "A".to_string(), "A".to_string()));
-        let n2 = graph.add_node(GraphNode::new(0, NodeType::Account, "B".to_string(), "B".to_string()));
-        let n3 = graph.add_node(GraphNode::new(0, NodeType::Account, "C".to_string(), "C".to_string()));
+        let n1 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "A".to_string(),
+            "A".to_string(),
+        ));
+        let n2 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "B".to_string(),
+            "B".to_string(),
+        ));
+        let n3 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "C".to_string(),
+            "C".to_string(),
+        ));
 
         graph.add_edge(GraphEdge::new(0, n1, n2, EdgeType::Transaction).with_weight(100.0));
         graph.add_edge(GraphEdge::new(0, n2, n3, EdgeType::Transaction).with_weight(100.0));
         graph.add_edge(GraphEdge::new(0, n3, n1, EdgeType::Transaction).with_weight(100.0));
 
         // Component 2: n4 - n5 - n6 (chain)
-        let n4 = graph.add_node(GraphNode::new(0, NodeType::Account, "D".to_string(), "D".to_string()));
-        let n5 = graph.add_node(GraphNode::new(0, NodeType::Account, "E".to_string(), "E".to_string()));
-        let n6 = graph.add_node(GraphNode::new(0, NodeType::Account, "F".to_string(), "F".to_string()));
+        let n4 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "D".to_string(),
+            "D".to_string(),
+        ));
+        let n5 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "E".to_string(),
+            "E".to_string(),
+        ));
+        let n6 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "F".to_string(),
+            "F".to_string(),
+        ));
 
         graph.add_edge(GraphEdge::new(0, n4, n5, EdgeType::Transaction).with_weight(200.0));
         graph.add_edge(GraphEdge::new(0, n5, n6, EdgeType::Transaction).with_weight(200.0));
@@ -771,10 +818,30 @@ mod tests {
         let mut graph = Graph::new("test", GraphType::Transaction);
 
         // Create star pattern with hub at n1
-        let n1 = graph.add_node(GraphNode::new(0, NodeType::Account, "Hub".to_string(), "Hub".to_string()));
-        let n2 = graph.add_node(GraphNode::new(0, NodeType::Account, "A".to_string(), "A".to_string()));
-        let n3 = graph.add_node(GraphNode::new(0, NodeType::Account, "B".to_string(), "B".to_string()));
-        let n4 = graph.add_node(GraphNode::new(0, NodeType::Account, "C".to_string(), "C".to_string()));
+        let n1 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "Hub".to_string(),
+            "Hub".to_string(),
+        ));
+        let n2 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "A".to_string(),
+            "A".to_string(),
+        ));
+        let n3 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "B".to_string(),
+            "B".to_string(),
+        ));
+        let n4 = graph.add_node(GraphNode::new(
+            0,
+            NodeType::Account,
+            "C".to_string(),
+            "C".to_string(),
+        ));
 
         graph.add_edge(GraphEdge::new(0, n1, n2, EdgeType::Transaction));
         graph.add_edge(GraphEdge::new(0, n1, n3, EdgeType::Transaction));

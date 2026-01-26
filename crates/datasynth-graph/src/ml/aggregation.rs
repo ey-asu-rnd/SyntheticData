@@ -90,8 +90,7 @@ pub fn aggregate_features(
     graph: &Graph,
     _agg_type: AggregationType,
 ) -> AggregatedFeatures {
-    let member_set: std::collections::HashSet<NodeId> =
-        group.members.iter().copied().collect();
+    let member_set: std::collections::HashSet<NodeId> = group.members.iter().copied().collect();
 
     let mut total_volume = 0.0;
     let mut internal_volume = 0.0;
@@ -167,14 +166,31 @@ pub fn aggregate_features(
     let anomalous_members = group
         .members
         .iter()
-        .filter(|&&n| graph.get_node(n).map(|node| node.is_anomaly).unwrap_or(false))
+        .filter(|&&n| {
+            graph
+                .get_node(n)
+                .map(|node| node.is_anomaly)
+                .unwrap_or(false)
+        })
         .count();
 
-    let anomalous_edges = group.members.iter().flat_map(|&n| {
-        graph.outgoing_edges(n).into_iter().chain(graph.incoming_edges(n))
-    }).filter(|e| e.is_anomaly).count();
+    let anomalous_edges = group
+        .members
+        .iter()
+        .flat_map(|&n| {
+            graph
+                .outgoing_edges(n)
+                .into_iter()
+                .chain(graph.incoming_edges(n))
+        })
+        .filter(|e| e.is_anomaly)
+        .count();
 
-    let total_edges = group.members.iter().map(|&n| graph.degree(n)).sum::<usize>();
+    let total_edges = group
+        .members
+        .iter()
+        .map(|&n| graph.degree(n))
+        .sum::<usize>();
 
     let member_risk = anomalous_members as f64 / group.members.len().max(1) as f64;
     let edge_risk = anomalous_edges as f64 / total_edges.max(1) as f64;
@@ -230,11 +246,7 @@ pub fn aggregate_weighted(values: &[f64], weights: &[f64], agg_type: Aggregation
         AggregationType::WeightedMean => {
             let total_weight: f64 = weights.iter().sum();
             if total_weight > 0.0 {
-                let weighted_sum: f64 = values
-                    .iter()
-                    .zip(weights.iter())
-                    .map(|(v, w)| v * w)
-                    .sum();
+                let weighted_sum: f64 = values.iter().zip(weights.iter()).map(|(v, w)| v * w).sum();
                 weighted_sum / total_weight
             } else {
                 aggregate_values(values, AggregationType::Mean)
@@ -309,7 +321,10 @@ pub fn aggregate_node_features(
     // Aggregate each dimension
     let aggregated: Vec<f64> = (0..dim)
         .map(|d| {
-            let values: Vec<f64> = node_features.iter().map(|f| f.get(d).copied().unwrap_or(0.0)).collect();
+            let values: Vec<f64> = node_features
+                .iter()
+                .map(|f| f.get(d).copied().unwrap_or(0.0))
+                .collect();
             aggregate_values(&values, agg_type)
         })
         .collect();
@@ -397,7 +412,11 @@ mod tests {
     #[test]
     fn test_aggregate_features() {
         let graph = create_test_graph();
-        let group = EntityGroup::new(1, vec![1, 2, 3], super::super::entity_groups::GroupType::TransactionCluster);
+        let group = EntityGroup::new(
+            1,
+            vec![1, 2, 3],
+            super::super::entity_groups::GroupType::TransactionCluster,
+        );
 
         let features = aggregate_features(&group, &graph, AggregationType::Sum);
 

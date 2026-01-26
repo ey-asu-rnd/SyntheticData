@@ -10,25 +10,26 @@
 use std::collections::HashSet;
 
 use chrono::NaiveDate;
-use datasynth_graph::models::{Graph, GraphEdge, GraphNode, GraphType, NodeType};
 use datasynth_graph::ml::{
     aggregation::{
         aggregate_all_groups, aggregate_features, aggregate_node_features, aggregate_values,
         aggregate_weighted, AggregatedFeatures, AggregationType,
     },
-    entity_groups::{
-        detect_entity_groups, GroupDetectionAlgorithm, GroupDetectionConfig,
+    entity_groups::{detect_entity_groups, GroupDetectionAlgorithm, GroupDetectionConfig},
+    motifs::{
+        detect_motifs, find_back_and_forth, find_circular_flows, find_star_patterns, MotifConfig,
     },
-    motifs::{detect_motifs, find_back_and_forth, find_circular_flows, find_star_patterns, MotifConfig},
     relationship_features::{
-        compute_all_relationship_features, compute_counterparty_risk, compute_relationship_features,
-        CounterpartyRisk, RelationshipFeatureConfig, RelationshipFeatures,
+        compute_all_relationship_features, compute_counterparty_risk,
+        compute_relationship_features, CounterpartyRisk, RelationshipFeatureConfig,
+        RelationshipFeatures,
     },
     temporal::{
         compute_all_temporal_features, compute_temporal_sequence_features, TemporalConfig,
         TemporalFeatures, TemporalIndex,
     },
 };
+use datasynth_graph::models::{Graph, GraphEdge, GraphNode, GraphType, NodeType};
 use datasynth_graph::EdgeType;
 
 // =============================================================================
@@ -166,7 +167,12 @@ fn test_temporal_features_batch_consistency() {
 
     // Feature vectors should have consistent length
     let window_sizes = &config.window_sizes;
-    let first_len = all_features.values().next().unwrap().to_features(window_sizes).len();
+    let first_len = all_features
+        .values()
+        .next()
+        .unwrap()
+        .to_features(window_sizes)
+        .len();
     for (node_id, features) in &all_features {
         assert_eq!(
             features.to_features(window_sizes).len(),
@@ -282,10 +288,7 @@ fn test_star_pattern_validity() {
 
     for star in &stars {
         // Star should have nodes (hub + spokes)
-        assert!(
-            !star.nodes.is_empty(),
-            "Star pattern should have nodes"
-        );
+        assert!(!star.nodes.is_empty(), "Star pattern should have nodes");
 
         // Star should have at least min_spokes + 1 nodes (hub + spokes)
         assert!(
@@ -296,10 +299,7 @@ fn test_star_pattern_validity() {
         );
 
         // Total weight should be positive
-        assert!(
-            star.total_weight > 0.0,
-            "Star should have positive weight"
-        );
+        assert!(star.total_weight > 0.0, "Star should have positive weight");
 
         // Confidence should be in [0, 1]
         assert!(
@@ -876,7 +876,10 @@ fn test_node_feature_aggregation() {
 
     assert_eq!(result.features.len(), 3, "Should have 3 features");
     assert_eq!(result.features[0], 4.0, "First feature mean: (1+4+7)/3 = 4");
-    assert_eq!(result.features[1], 5.0, "Second feature mean: (2+5+8)/3 = 5");
+    assert_eq!(
+        result.features[1], 5.0,
+        "Second feature mean: (2+5+8)/3 = 5"
+    );
     assert_eq!(result.features[2], 6.0, "Third feature mean: (3+6+9)/3 = 6");
 }
 
@@ -915,17 +918,26 @@ fn test_feature_vector_dimensions() {
     // Temporal features
     let temporal = TemporalFeatures::default();
     let temporal_vec = temporal.to_features(&[7, 30, 90]);
-    assert!(temporal_vec.len() >= 7, "Temporal features should have at least 7 base features");
+    assert!(
+        temporal_vec.len() >= 7,
+        "Temporal features should have at least 7 base features"
+    );
 
     // Relationship features
     let relationship = RelationshipFeatures::default();
     let relationship_vec = relationship.to_features();
-    assert!(relationship_vec.len() >= 8, "Relationship features should have at least 8 features");
+    assert!(
+        relationship_vec.len() >= 8,
+        "Relationship features should have at least 8 features"
+    );
 
     // Counterparty risk
     let risk = CounterpartyRisk::default();
     let risk_vec = risk.to_features();
-    assert!(risk_vec.len() >= 5, "Counterparty risk should have at least 5 features");
+    assert!(
+        risk_vec.len() >= 5,
+        "Counterparty risk should have at least 5 features"
+    );
 
     // Aggregated features
     let aggregated = AggregatedFeatures::default();

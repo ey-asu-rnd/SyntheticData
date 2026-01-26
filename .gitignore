@@ -58,3 +58,4 @@ venv/
 htmlcov/
 .coverage
 coverage.xml
+.env

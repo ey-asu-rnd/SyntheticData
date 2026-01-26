@@ -2,9 +2,10 @@
 //!
 //! Runtime orchestration, parallel execution, and memory management.
 //!
-//! This crate provides two orchestrators:
+//! This crate provides orchestrators:
 //! - `GenerationOrchestrator`: Basic orchestrator for CoA and journal entries
 //! - `EnhancedOrchestrator`: Full-featured orchestrator with all phases
+//! - `StreamingOrchestrator`: Streaming orchestrator for real-time generation
 //!
 //! And support modules for:
 //! - `run_manifest`: Run metadata and reproducibility tracking
@@ -14,8 +15,10 @@ pub mod enhanced_orchestrator;
 pub mod label_export;
 pub mod orchestrator;
 pub mod run_manifest;
+pub mod streaming_orchestrator;
 
 pub use enhanced_orchestrator::*;
 pub use label_export::*;
 pub use orchestrator::*;
 pub use run_manifest::*;
+pub use streaming_orchestrator::*;

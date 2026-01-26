@@ -195,12 +195,7 @@ impl MotifDetectionResult {
     pub fn node_features(&self, node_id: NodeId) -> Vec<f64> {
         let counts = self.node_motif_counts.get(&node_id);
 
-        let get_count = |name: &str| {
-            counts
-                .and_then(|c| c.get(name))
-                .copied()
-                .unwrap_or(0) as f64
-        };
+        let get_count = |name: &str| counts.and_then(|c| c.get(name)).copied().unwrap_or(0) as f64;
 
         vec![
             get_count("circular_flow"),
@@ -268,11 +263,7 @@ fn add_motifs_to_result(result: &mut MotifDetectionResult, motifs: Vec<MotifInst
         }
 
         // Add to motif collection
-        result
-            .motifs
-            .entry(type_name)
-            .or_default()
-            .push(motif);
+        result.motifs.entry(type_name).or_default().push(motif);
     }
 }
 
@@ -366,10 +357,12 @@ fn dfs_find_cycles(
             if !seen_cycles.contains(&canonical) {
                 seen_cycles.insert(canonical);
 
-                let total_weight: f64 = path_edges.iter()
+                let total_weight: f64 = path_edges
+                    .iter()
                     .filter_map(|&id| graph.get_edge(id))
                     .map(|e| e.weight)
-                    .sum::<f64>() + edge.weight;
+                    .sum::<f64>()
+                    + edge.weight;
 
                 let mut edges = path_edges.clone();
                 edges.push(edge.id);
@@ -544,8 +537,7 @@ pub fn find_back_and_forth(graph: &Graph, config: &MotifConfig) -> Vec<MotifInst
             let mut edges = vec![edge_id];
             edges.extend(reverse_edges.iter().map(|e| e.id));
 
-            let total_weight = edge.weight
-                + reverse_edges.iter().map(|e| e.weight).sum::<f64>();
+            let total_weight = edge.weight + reverse_edges.iter().map(|e| e.weight).sum::<f64>();
 
             let motif = MotifInstance::new(
                 GraphMotif::BackAndForth,
@@ -579,8 +571,14 @@ pub fn find_cliques(graph: &Graph, config: &MotifConfig) -> Vec<MotifInstance> {
     let mut adjacency: HashMap<NodeId, HashSet<NodeId>> = HashMap::new();
 
     for edge in graph.edges.values() {
-        adjacency.entry(edge.source).or_default().insert(edge.target);
-        adjacency.entry(edge.target).or_default().insert(edge.source);
+        adjacency
+            .entry(edge.source)
+            .or_default()
+            .insert(edge.target);
+        adjacency
+            .entry(edge.target)
+            .or_default()
+            .insert(edge.source);
     }
 
     // Find triangles first (cliques of size 3)
@@ -771,15 +769,9 @@ mod tests {
             "C".to_string(),
         ));
 
-        graph.add_edge(
-            GraphEdge::new(0, n1, n2, EdgeType::Transaction).with_weight(100.0),
-        );
-        graph.add_edge(
-            GraphEdge::new(0, n2, n3, EdgeType::Transaction).with_weight(100.0),
-        );
-        graph.add_edge(
-            GraphEdge::new(0, n3, n1, EdgeType::Transaction).with_weight(100.0),
-        );
+        graph.add_edge(GraphEdge::new(0, n1, n2, EdgeType::Transaction).with_weight(100.0));
+        graph.add_edge(GraphEdge::new(0, n2, n3, EdgeType::Transaction).with_weight(100.0));
+        graph.add_edge(GraphEdge::new(0, n3, n1, EdgeType::Transaction).with_weight(100.0));
 
         graph
     }
@@ -802,9 +794,7 @@ mod tests {
                 format!("Spoke{}", i),
                 format!("Spoke{}", i),
             ));
-            graph.add_edge(
-                GraphEdge::new(0, hub, spoke, EdgeType::Transaction).with_weight(100.0),
-            );
+            graph.add_edge(GraphEdge::new(0, hub, spoke, EdgeType::Transaction).with_weight(100.0));
         }
 
         graph
@@ -827,12 +817,8 @@ mod tests {
         ));
 
         // Bidirectional edges
-        graph.add_edge(
-            GraphEdge::new(0, n1, n2, EdgeType::Transaction).with_weight(100.0),
-        );
-        graph.add_edge(
-            GraphEdge::new(0, n2, n1, EdgeType::Transaction).with_weight(100.0),
-        );
+        graph.add_edge(GraphEdge::new(0, n1, n2, EdgeType::Transaction).with_weight(100.0));
+        graph.add_edge(GraphEdge::new(0, n2, n1, EdgeType::Transaction).with_weight(100.0));
 
         graph
     }

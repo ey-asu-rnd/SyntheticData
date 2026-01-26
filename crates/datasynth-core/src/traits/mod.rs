@@ -3,7 +3,9 @@
 mod generator;
 mod post_processor;
 mod sink;
+mod streaming;
 
 pub use generator::*;
 pub use post_processor::*;
 pub use sink::*;
+pub use streaming::*;
