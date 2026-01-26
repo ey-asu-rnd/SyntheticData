@@ -585,12 +585,10 @@ pub fn find_cliques(graph: &Graph, config: &MotifConfig) -> Vec<MotifInstance> {
     let mut seen_cliques: HashSet<Vec<NodeId>> = HashSet::new();
     let nodes: Vec<NodeId> = graph.nodes.keys().copied().collect();
 
-    for i in 0..nodes.len() {
+    for &a in &nodes {
         if cliques.len() >= config.max_results_per_type {
             break;
         }
-
-        let a = nodes[i];
         let neighbors_a = match adjacency.get(&a) {
             Some(n) => n,
             None => continue,

@@ -519,12 +519,10 @@ fn detect_cliques(
     // Find triangles first
     let nodes: Vec<NodeId> = graph.nodes.keys().copied().collect();
 
-    for i in 0..nodes.len() {
+    for &a in &nodes {
         if groups.len() >= config.max_groups {
             break;
         }
-
-        let a = nodes[i];
         let neighbors_a = match adjacency.get(&a) {
             Some(n) => n,
             None => continue,
