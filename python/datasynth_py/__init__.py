@@ -5,6 +5,7 @@ from datasynth_py.config import blueprints
 from datasynth_py.config.models import (
     AuditSettings,
     BankingSettings,
+    CardinalityRule,
     ChartOfAccountsSettings,
     CompanyConfig,
     CompanySettings,
@@ -14,9 +15,16 @@ from datasynth_py.config.models import (
     GlobalSettings,
     GraphExportSettings,
     OutputSettings,
+    RateLimitSettings,
+    RelationshipSettings,
+    RelationshipTypeConfig,
     ScenarioSettings,
+    StreamingSettings,
+    TemporalAttributeSettings,
     TemporalDriftSettings,
     TransactionSettings,
+    TransactionTimeSettings,
+    ValidTimeSettings,
 )
 from datasynth_py.config.validation import ConfigValidationError
 from datasynth_py.fingerprint import FidelityReport, FingerprintClient, FingerprintInfo
@@ -24,6 +32,7 @@ from datasynth_py.fingerprint import FidelityReport, FingerprintClient, Fingerpr
 __all__ = [
     "AuditSettings",
     "BankingSettings",
+    "CardinalityRule",
     "ChartOfAccountsSettings",
     "CompanyConfig",
     "CompanySettings",
@@ -40,9 +49,16 @@ __all__ = [
     "GraphExportSettings",
     "OutputSettings",
     "OutputSpec",
+    "RateLimitSettings",
+    "RelationshipSettings",
+    "RelationshipTypeConfig",
     "ScenarioSettings",
     "StreamingSession",
+    "StreamingSettings",
+    "TemporalAttributeSettings",
     "TemporalDriftSettings",
     "TransactionSettings",
+    "TransactionTimeSettings",
+    "ValidTimeSettings",
     "blueprints",
 ]

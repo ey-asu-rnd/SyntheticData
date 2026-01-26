@@ -148,6 +148,88 @@ class AuditSettings:
 
 
 @dataclass(frozen=True)
+class StreamingSettings:
+    """Streaming output API configuration."""
+
+    enabled: bool = False
+    buffer_size: int = 1000
+    enable_progress: bool = True
+    progress_interval: int = 100
+    backpressure: str = "block"  # block, drop_oldest, drop_newest, buffer
+
+
+@dataclass(frozen=True)
+class RateLimitSettings:
+    """Rate limiting configuration for controlled generation throughput."""
+
+    enabled: bool = False
+    entities_per_second: float = 10000.0
+    burst_size: int = 100
+    backpressure: str = "block"  # block, drop, buffer
+
+
+@dataclass(frozen=True)
+class ValidTimeSettings:
+    """Valid time configuration for temporal attributes."""
+
+    closed_probability: float = 0.1
+    avg_validity_days: int = 365
+    validity_stddev_days: int = 90
+
+
+@dataclass(frozen=True)
+class TransactionTimeSettings:
+    """Transaction time configuration for temporal attributes."""
+
+    avg_recording_delay_seconds: int = 0
+    allow_backdating: bool = False
+    backdating_probability: float = 0.01
+
+
+@dataclass(frozen=True)
+class TemporalAttributeSettings:
+    """Temporal attribute generation configuration for bi-temporal data."""
+
+    enabled: bool = False
+    valid_time: Optional[ValidTimeSettings] = None
+    transaction_time: Optional[TransactionTimeSettings] = None
+    generate_version_chains: bool = False
+    avg_versions_per_entity: float = 1.5
+
+
+@dataclass(frozen=True)
+class CardinalityRule:
+    """Cardinality rule for relationship generation."""
+
+    rule_type: str  # one_to_one, one_to_many, many_to_one, many_to_many
+    min_count: Optional[int] = None
+    max_count: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class RelationshipTypeConfig:
+    """Configuration for a single relationship type."""
+
+    name: str
+    source_type: str
+    target_type: str
+    cardinality: Optional[CardinalityRule] = None
+    weight: float = 1.0
+
+
+@dataclass(frozen=True)
+class RelationshipSettings:
+    """Relationship generation configuration."""
+
+    enabled: bool = False
+    relationship_types: Optional[List[RelationshipTypeConfig]] = None
+    allow_orphans: bool = True
+    orphan_probability: float = 0.01
+    allow_circular: bool = False
+    max_circular_depth: int = 3
+
+
+@dataclass(frozen=True)
 class Config:
     """Root configuration container.
 
@@ -166,6 +248,10 @@ class Config:
     data_quality: Optional[DataQualitySettings] = None
     graph_export: Optional[GraphExportSettings] = None
     audit: Optional[AuditSettings] = None
+    streaming: Optional[StreamingSettings] = None
+    rate_limit: Optional[RateLimitSettings] = None
+    temporal_attributes: Optional[TemporalAttributeSettings] = None
+    relationships: Optional[RelationshipSettings] = None
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -249,6 +335,57 @@ class Config:
             if audit_dict:
                 payload["audit"] = audit_dict
 
+        if self.streaming is not None:
+            streaming_dict = _strip_none(self.streaming.__dict__)
+            if streaming_dict:
+                payload["streaming"] = streaming_dict
+
+        if self.rate_limit is not None:
+            rate_limit_dict = _strip_none(self.rate_limit.__dict__)
+            if rate_limit_dict:
+                payload["rate_limit"] = rate_limit_dict
+
+        if self.temporal_attributes is not None:
+            ta_dict: Dict[str, Any] = {"enabled": self.temporal_attributes.enabled}
+            if self.temporal_attributes.valid_time is not None:
+                ta_dict["valid_time"] = _strip_none(self.temporal_attributes.valid_time.__dict__)
+            if self.temporal_attributes.transaction_time is not None:
+                ta_dict["transaction_time"] = _strip_none(
+                    self.temporal_attributes.transaction_time.__dict__
+                )
+            ta_dict["generate_version_chains"] = self.temporal_attributes.generate_version_chains
+            ta_dict["avg_versions_per_entity"] = self.temporal_attributes.avg_versions_per_entity
+            payload["temporal_attributes"] = ta_dict
+
+        if self.relationships is not None:
+            rel_dict: Dict[str, Any] = {"enabled": self.relationships.enabled}
+            if self.relationships.relationship_types is not None:
+                rel_dict["relationship_types"] = [
+                    {
+                        "name": rt.name,
+                        "source_type": rt.source_type,
+                        "target_type": rt.target_type,
+                        "weight": rt.weight,
+                        **(
+                            {
+                                "cardinality": {
+                                    "rule_type": rt.cardinality.rule_type,
+                                    **({"min": rt.cardinality.min_count} if rt.cardinality.min_count else {}),
+                                    **({"max": rt.cardinality.max_count} if rt.cardinality.max_count else {}),
+                                }
+                            }
+                            if rt.cardinality
+                            else {}
+                        ),
+                    }
+                    for rt in self.relationships.relationship_types
+                ]
+            rel_dict["allow_orphans"] = self.relationships.allow_orphans
+            rel_dict["orphan_probability"] = self.relationships.orphan_probability
+            rel_dict["allow_circular"] = self.relationships.allow_circular
+            rel_dict["max_circular_depth"] = self.relationships.max_circular_depth
+            payload["relationships"] = rel_dict
+
         # Merge extra fields
         payload.update(self.extra)
         return payload
@@ -330,10 +467,62 @@ class Config:
         data_quality = _build_dataclass(DataQualitySettings, data.get("data_quality"))
         graph_export = _build_dataclass(GraphExportSettings, data.get("graph_export"))
         audit = _build_dataclass(AuditSettings, data.get("audit"))
+        streaming = _build_dataclass(StreamingSettings, data.get("streaming"))
+        rate_limit = _build_dataclass(RateLimitSettings, data.get("rate_limit"))
+
+        # Build temporal_attributes with nested structures
+        temporal_attributes = None
+        ta_data = data.get("temporal_attributes")
+        if ta_data is not None:
+            valid_time = _build_dataclass(ValidTimeSettings, ta_data.get("valid_time"))
+            transaction_time = _build_dataclass(
+                TransactionTimeSettings, ta_data.get("transaction_time")
+            )
+            temporal_attributes = TemporalAttributeSettings(
+                enabled=ta_data.get("enabled", False),
+                valid_time=valid_time,
+                transaction_time=transaction_time,
+                generate_version_chains=ta_data.get("generate_version_chains", False),
+                avg_versions_per_entity=ta_data.get("avg_versions_per_entity", 1.5),
+            )
+
+        # Build relationships with nested structures
+        relationships = None
+        rel_data = data.get("relationships")
+        if rel_data is not None:
+            rel_types = None
+            if rel_data.get("relationship_types"):
+                rel_types = []
+                for rt in rel_data["relationship_types"]:
+                    cardinality = None
+                    if rt.get("cardinality"):
+                        cardinality = CardinalityRule(
+                            rule_type=rt["cardinality"].get("rule_type", "one_to_many"),
+                            min_count=rt["cardinality"].get("min"),
+                            max_count=rt["cardinality"].get("max"),
+                        )
+                    rel_types.append(
+                        RelationshipTypeConfig(
+                            name=rt["name"],
+                            source_type=rt["source_type"],
+                            target_type=rt["target_type"],
+                            cardinality=cardinality,
+                            weight=rt.get("weight", 1.0),
+                        )
+                    )
+            relationships = RelationshipSettings(
+                enabled=rel_data.get("enabled", False),
+                relationship_types=rel_types,
+                allow_orphans=rel_data.get("allow_orphans", True),
+                orphan_probability=rel_data.get("orphan_probability", 0.01),
+                allow_circular=rel_data.get("allow_circular", False),
+                max_circular_depth=rel_data.get("max_circular_depth", 3),
+            )
 
         known_keys = {
             "global", "companies", "chart_of_accounts", "transactions", "output",
-            "fraud", "banking", "scenario", "temporal", "data_quality", "graph_export", "audit"
+            "fraud", "banking", "scenario", "temporal", "data_quality", "graph_export",
+            "audit", "streaming", "rate_limit", "temporal_attributes", "relationships"
         }
         extra = {key: value for key, value in data.items() if key not in known_keys}
 
@@ -350,6 +539,10 @@ class Config:
             data_quality=data_quality,
             graph_export=graph_export,
             audit=audit,
+            streaming=streaming,
+            rate_limit=rate_limit,
+            temporal_attributes=temporal_attributes,
+            relationships=relationships,
             extra=extra,
         )
 

@@ -60,6 +60,57 @@ synth = DataSynth()
 result = synth.generate(config=config, output={"format": "parquet", "sink": "path", "path": "./output"})
 ```
 
+## Integration Features (v0.2.2+)
+
+```python
+from datasynth_py import (
+    Config,
+    StreamingSettings,
+    RateLimitSettings,
+    TemporalAttributeSettings,
+    RelationshipSettings,
+    GraphExportSettings,
+)
+
+config = Config(
+    # ... other settings ...
+
+    # Streaming output with backpressure
+    streaming=StreamingSettings(
+        enabled=True,
+        buffer_size=1000,
+        backpressure="block",  # block, drop_oldest, drop_newest, buffer
+    ),
+
+    # Rate limiting for controlled throughput
+    rate_limit=RateLimitSettings(
+        enabled=True,
+        entities_per_second=10000.0,
+        burst_size=100,
+    ),
+
+    # Bi-temporal data support
+    temporal_attributes=TemporalAttributeSettings(
+        enabled=True,
+        generate_version_chains=True,
+        avg_versions_per_entity=1.5,
+    ),
+
+    # Relationship generation with cardinality rules
+    relationships=RelationshipSettings(
+        enabled=True,
+        allow_orphans=True,
+        orphan_probability=0.01,
+    ),
+
+    # Graph export including RustGraph format
+    graph_export=GraphExportSettings(
+        enabled=True,
+        formats=["pytorch_geometric", "rustgraph"],
+    ),
+)
+```
+
 ## Requirements
 
 The wrapper shells out to the `datasynth-data` CLI binary. Build it with:
