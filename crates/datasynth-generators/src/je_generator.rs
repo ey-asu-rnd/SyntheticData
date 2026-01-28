@@ -420,6 +420,29 @@ impl JournalEntryGenerator {
             | FraudType::AssetMisappropriation
             | FraudType::InventoryTheft
             | FraudType::GhostEmployee => FraudAmountPattern::Normal,
+            // Accounting Standards Fraud Types (ASC 606/IFRS 15 - Revenue)
+            FraudType::ImproperRevenueRecognition
+            | FraudType::ImproperPoAllocation
+            | FraudType::VariableConsiderationManipulation
+            | FraudType::ContractModificationMisstatement => {
+                FraudAmountPattern::StatisticallyImprobable
+            }
+            // Accounting Standards Fraud Types (ASC 842/IFRS 16 - Leases)
+            FraudType::LeaseClassificationManipulation
+            | FraudType::OffBalanceSheetLease
+            | FraudType::LeaseLiabilityUnderstatement
+            | FraudType::RouAssetMisstatement => FraudAmountPattern::StatisticallyImprobable,
+            // Accounting Standards Fraud Types (ASC 820/IFRS 13 - Fair Value)
+            FraudType::FairValueHierarchyManipulation
+            | FraudType::Level3InputManipulation
+            | FraudType::ValuationTechniqueManipulation => {
+                FraudAmountPattern::StatisticallyImprobable
+            }
+            // Accounting Standards Fraud Types (ASC 360/IAS 36 - Impairment)
+            FraudType::DelayedImpairment
+            | FraudType::ImpairmentTestAvoidance
+            | FraudType::CashFlowProjectionManipulation
+            | FraudType::ImproperImpairmentReversal => FraudAmountPattern::StatisticallyImprobable,
         }
     }
 

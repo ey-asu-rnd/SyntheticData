@@ -15,6 +15,7 @@ members = [
     "crates/datasynth-ocpm",
     "crates/datasynth-banking",
     "crates/datasynth-fingerprint",
+    "crates/datasynth-standards",
 ]
 
 # Root package for workspace-level benchmarks
@@ -66,6 +67,7 @@ datasynth-eval = { version = "0.2.3", path = "crates/datasynth-eval" }
 datasynth-ocpm = { version = "0.2.3", path = "crates/datasynth-ocpm" }
 datasynth-banking = { version = "0.2.3", path = "crates/datasynth-banking" }
 datasynth-fingerprint = { version = "0.2.3", path = "crates/datasynth-fingerprint" }
+datasynth-standards = { version = "0.2.3", path = "crates/datasynth-standards" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

@@ -846,6 +846,8 @@ pub fn default_generator_config() -> GeneratorConfig {
         rate_limit: Default::default(),
         temporal_attributes: Default::default(),
         relationships: Default::default(),
+        accounting_standards: Default::default(),
+        audit_standards: Default::default(),
     }
 }
 

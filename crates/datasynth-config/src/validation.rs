@@ -19,6 +19,8 @@ pub fn validate_config(config: &GeneratorConfig) -> SynthResult<()> {
     validate_document_flows(config)?;
     validate_intercompany(config)?;
     validate_balance(config)?;
+    validate_accounting_standards(config)?;
+    validate_audit_standards(config)?;
     Ok(())
 }
 
@@ -562,6 +564,178 @@ fn validate_rate(field_name: &str, value: f64) -> SynthResult<()> {
     Ok(())
 }
 
+/// Validate accounting standards configuration (IFRS, US GAAP).
+fn validate_accounting_standards(config: &GeneratorConfig) -> SynthResult<()> {
+    let standards = &config.accounting_standards;
+
+    if !standards.enabled {
+        return Ok(());
+    }
+
+    // Validate revenue recognition settings
+    if standards.revenue_recognition.enabled {
+        let rev = &standards.revenue_recognition;
+
+        if rev.avg_obligations_per_contract < 1.0 {
+            return Err(SynthError::validation(
+                "avg_obligations_per_contract must be >= 1.0",
+            ));
+        }
+
+        validate_rate(
+            "revenue_recognition.variable_consideration_rate",
+            rev.variable_consideration_rate,
+        )?;
+
+        validate_rate(
+            "revenue_recognition.over_time_recognition_rate",
+            rev.over_time_recognition_rate,
+        )?;
+    }
+
+    // Validate lease accounting settings
+    if standards.leases.enabled {
+        let lease = &standards.leases;
+
+        if lease.avg_lease_term_months == 0 {
+            return Err(SynthError::validation(
+                "lease.avg_lease_term_months must be > 0",
+            ));
+        }
+
+        validate_rate("lease.finance_lease_percent", lease.finance_lease_percent)?;
+        validate_rate("lease.real_estate_percent", lease.real_estate_percent)?;
+    }
+
+    // Validate fair value settings
+    if standards.fair_value.enabled {
+        let fv = &standards.fair_value;
+
+        // Level distributions should sum to approximately 1.0
+        let level_sum = fv.level1_percent + fv.level2_percent + fv.level3_percent;
+        if (level_sum - 1.0).abs() > 0.01 {
+            return Err(SynthError::validation(format!(
+                "fair_value level percentages must sum to 1.0, got {}",
+                level_sum
+            )));
+        }
+
+        validate_rate("fair_value.level1_percent", fv.level1_percent)?;
+        validate_rate("fair_value.level2_percent", fv.level2_percent)?;
+        validate_rate("fair_value.level3_percent", fv.level3_percent)?;
+    }
+
+    // Validate impairment settings
+    if standards.impairment.enabled {
+        let imp = &standards.impairment;
+
+        validate_rate("impairment.impairment_rate", imp.impairment_rate)?;
+    }
+
+    Ok(())
+}
+
+/// Validate audit standards configuration (ISA, PCAOB, SOX).
+fn validate_audit_standards(config: &GeneratorConfig) -> SynthResult<()> {
+    let standards = &config.audit_standards;
+
+    if !standards.enabled {
+        return Ok(());
+    }
+
+    // Validate ISA compliance settings
+    if standards.isa_compliance.enabled {
+        let valid_levels = ["basic", "standard", "comprehensive"];
+        if !valid_levels.contains(&standards.isa_compliance.compliance_level.as_str()) {
+            return Err(SynthError::validation(format!(
+                "isa_compliance.compliance_level must be one of {:?}, got '{}'",
+                valid_levels, standards.isa_compliance.compliance_level
+            )));
+        }
+
+        let valid_frameworks = ["isa", "pcaob", "dual"];
+        if !valid_frameworks.contains(&standards.isa_compliance.framework.as_str()) {
+            return Err(SynthError::validation(format!(
+                "isa_compliance.framework must be one of {:?}, got '{}'",
+                valid_frameworks, standards.isa_compliance.framework
+            )));
+        }
+    }
+
+    // Validate analytical procedures settings
+    if standards.analytical_procedures.enabled {
+        let ap = &standards.analytical_procedures;
+
+        if ap.procedures_per_account == 0 {
+            return Err(SynthError::validation(
+                "analytical_procedures.procedures_per_account must be > 0",
+            ));
+        }
+
+        validate_rate(
+            "analytical_procedures.variance_probability",
+            ap.variance_probability,
+        )?;
+    }
+
+    // Validate confirmations settings
+    if standards.confirmations.enabled {
+        let conf = &standards.confirmations;
+
+        validate_rate(
+            "confirmations.positive_response_rate",
+            conf.positive_response_rate,
+        )?;
+
+        validate_rate("confirmations.exception_rate", conf.exception_rate)?;
+
+        // Positive + non-response + exception should make sense
+        let total_rate = conf.positive_response_rate + conf.exception_rate;
+        if total_rate > 1.0 {
+            return Err(SynthError::validation(
+                "confirmations: positive_response_rate + exception_rate cannot exceed 1.0",
+            ));
+        }
+    }
+
+    // Validate opinion settings
+    if standards.opinion.enabled {
+        let op = &standards.opinion;
+
+        if op.generate_kam && op.average_kam_count == 0 {
+            return Err(SynthError::validation(
+                "opinion.average_kam_count must be > 0 when generate_kam is true",
+            ));
+        }
+    }
+
+    // Validate SOX settings
+    if standards.sox.enabled {
+        let sox = &standards.sox;
+
+        if sox.materiality_threshold < 0.0 {
+            return Err(SynthError::validation(
+                "sox.materiality_threshold must be >= 0",
+            ));
+        }
+    }
+
+    // Validate PCAOB settings
+    if standards.pcaob.enabled {
+        // PCAOB requires ISA dual framework or PCAOB-only
+        if standards.isa_compliance.enabled
+            && standards.isa_compliance.framework != "pcaob"
+            && standards.isa_compliance.framework != "dual"
+        {
+            return Err(SynthError::validation(
+                "When PCAOB is enabled, ISA framework must be 'pcaob' or 'dual'",
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -622,6 +796,8 @@ mod tests {
             rate_limit: RateLimitSchemaConfig::default(),
             temporal_attributes: TemporalAttributeSchemaConfig::default(),
             relationships: RelationshipSchemaConfig::default(),
+            accounting_standards: AccountingStandardsConfig::default(),
+            audit_standards: AuditStandardsConfig::default(),
         }
     }
 

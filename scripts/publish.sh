@@ -105,6 +105,7 @@ CRATES=(
     "datasynth-banking"      # depends on: core
     "datasynth-ocpm"         # depends on: core
     "datasynth-output"       # depends on: core
+    "datasynth-standards"    # depends on: core
 
     # Tier 3: Depends on core + banking
     "datasynth-config"       # depends on: core, banking

@@ -1215,6 +1215,8 @@ fn create_safe_demo_preset() -> GeneratorConfig {
         rate_limit: datasynth_config::schema::RateLimitSchemaConfig::default(),
         temporal_attributes: datasynth_config::schema::TemporalAttributeSchemaConfig::default(),
         relationships: datasynth_config::schema::RelationshipSchemaConfig::default(),
+        accounting_standards: datasynth_config::schema::AccountingStandardsConfig::default(),
+        audit_standards: datasynth_config::schema::AuditStandardsConfig::default(),
     }
 }
 

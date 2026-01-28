@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Accounting & Audit Standards Framework** (`datasynth-standards`): New crate providing comprehensive accounting and auditing standards support
+  - **Accounting Standards**:
+    - `AccountingFramework` enum: US GAAP, IFRS, and Dual Reporting modes
+    - `FrameworkSettings`: Framework-specific accounting policies with validation
+    - Revenue Recognition (ASC 606/IFRS 15): `CustomerContract`, `PerformanceObligation`, `VariableConsideration`
+    - Lease Accounting (ASC 842/IFRS 16): `Lease`, `ROUAsset`, `LeaseLiability`, amortization schedules
+    - Fair Value Measurement (ASC 820/IFRS 13): `FairValueMeasurement`, hierarchy levels
+    - Impairment Testing (ASC 360/IAS 36): `ImpairmentTest`, US GAAP two-step and IFRS one-step tests
+    - Framework differences tracking for dual reporting reconciliation
+  - **Audit Standards**:
+    - ISA References: 34 ISA standards (ISA 200-720) with `IsaRequirement` and `IsaProcedureMapping`
+    - Analytical Procedures (ISA 520): `AnalyticalProcedure`, variance investigation, threshold checking
+    - External Confirmations (ISA 505): `ExternalConfirmation`, response tracking, exception handling
+    - Audit Opinion (ISA 700/705/706/701): `AuditOpinion`, `KeyAuditMatter`, modifications
+    - Audit Trail: Complete traceability with gap analysis
+    - PCAOB Standards: 19+ PCAOB standards with ISA mapping
+  - **Regulatory Frameworks**:
+    - SOX Section 302: CEO/CFO certifications with material weakness tracking
+    - SOX Section 404: ICFR assessment with deficiency classification matrix
+    - `DeficiencyMatrix`: Likelihood × Magnitude classification for MW/SD determination
+
+- **Standards Compliance Evaluation** (`datasynth-eval`): New evaluators for standards compliance
+  - `StandardsComplianceEvaluation`: Comprehensive standards validation
+  - `RevenueRecognitionEvaluator`: ASC 606/IFRS 15 compliance checking
+  - `LeaseAccountingEvaluator`: Classification accuracy, ROU asset validation
+  - `FairValueEvaluation`, `ImpairmentEvaluation`, `IsaComplianceEvaluation`
+  - `SoxComplianceEvaluation`, `PcaobComplianceEvaluation`, `AuditTrailEvaluation`
+  - `StandardsThresholds`: Configurable compliance thresholds
+
+- **Standards Configuration** (`datasynth-config`): Configuration sections for standards generation
+  - `AccountingStandardsConfig`: Framework selection, revenue recognition, leases, fair value, impairment
+  - `AuditStandardsConfig`: ISA compliance, analytical procedures, confirmations, opinions, SOX, PCAOB
+  - Configuration validation for framework-specific rules
+  - Integration with existing presets and templates
+
 - **COSO 2013 Framework Integration** (`datasynth-core`): Full COSO Internal Control-Integrated Framework support
   - `CosoComponent` enum: 5 COSO components (Control Environment, Risk Assessment, Control Activities, Information & Communication, Monitoring Activities)
   - `CosoPrinciple` enum: 17 COSO principles with `component()` and `principle_number()` helper methods
@@ -37,6 +72,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `CoherenceEvaluation` now includes `StandardsComplianceEvaluation` field
+- All industry presets include default `AccountingStandardsConfig` and `AuditStandardsConfig`
+- Added 73 new tests (55 unit + 18 integration) for standards crate
 - All 12 existing transaction-level controls (C001-C060) now include COSO component and principle mappings
 - `ExportSummary` includes `coso_mappings_count` field
 - `ControlExporter::export_all()` and `export_standard()` now export COSO mapping file

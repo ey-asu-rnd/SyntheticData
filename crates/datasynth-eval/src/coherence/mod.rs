@@ -8,6 +8,7 @@ mod document_chain;
 mod intercompany;
 mod multi_table;
 mod referential;
+mod standards;
 mod subledger;
 
 pub use balance::{BalanceSheetEvaluation, BalanceSheetEvaluator};
@@ -20,6 +21,14 @@ pub use multi_table::{
     TableRelationshipDef, ViolationType,
 };
 pub use referential::{ReferentialIntegrityEvaluation, ReferentialIntegrityEvaluator};
+pub use standards::{
+    AuditTrailEvaluation, AuditTrailGap, FairValueEvaluation, FrameworkViolation,
+    ImpairmentEvaluation, IsaComplianceEvaluation, LeaseAccountingEvaluation,
+    LeaseAccountingEvaluator, LeaseEvaluation, PcaobComplianceEvaluation, PerformanceObligation,
+    RevenueContract, RevenueRecognitionEvaluation, RevenueRecognitionEvaluator,
+    SoxComplianceEvaluation, StandardsComplianceEvaluation, StandardsThresholds,
+    VariableConsideration, ViolationSeverity,
+};
 pub use subledger::{SubledgerEvaluator, SubledgerReconciliationEvaluation};
 
 use serde::{Deserialize, Serialize};
@@ -39,6 +48,8 @@ pub struct CoherenceEvaluation {
     pub referential: Option<ReferentialIntegrityEvaluation>,
     /// Multi-table consistency results.
     pub multi_table: Option<MultiTableEvaluation>,
+    /// Accounting and audit standards compliance results.
+    pub standards: Option<StandardsComplianceEvaluation>,
     /// Overall pass/fail status.
     pub passes: bool,
     /// Summary of failed checks.
@@ -55,6 +66,7 @@ impl CoherenceEvaluation {
             intercompany: None,
             referential: None,
             multi_table: None,
+            standards: None,
             passes: true,
             failures: Vec::new(),
         }
@@ -126,6 +138,13 @@ impl CoherenceEvaluation {
             }
             // Add any issues from the multi-table evaluation
             self.failures.extend(multi_table.issues.clone());
+        }
+
+        if let Some(ref mut standards_eval) = self.standards.clone() {
+            // Use default standards thresholds
+            let standards_thresholds = StandardsThresholds::default();
+            standards_eval.check_thresholds(&standards_thresholds);
+            self.failures.extend(standards_eval.failures.clone());
         }
 
         self.passes = self.failures.is_empty();

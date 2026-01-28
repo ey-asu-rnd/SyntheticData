@@ -88,6 +88,12 @@ pub struct GeneratorConfig {
     /// Relationship generation configuration
     #[serde(default)]
     pub relationships: RelationshipSchemaConfig,
+    /// Accounting standards framework configuration (IFRS, US GAAP)
+    #[serde(default)]
+    pub accounting_standards: AccountingStandardsConfig,
+    /// Audit standards framework configuration (ISA, PCAOB)
+    #[serde(default)]
+    pub audit_standards: AuditStandardsConfig,
 }
 
 /// Graph export configuration for accounting network and ML training exports.
@@ -4162,6 +4168,607 @@ pub struct SinkQualityOverride {
     pub duplicate_rate: Option<f64>,
 }
 
+// =============================================================================
+// Accounting Standards Configuration
+// =============================================================================
+
+/// Accounting standards framework configuration for generating standards-compliant data.
+///
+/// Supports US GAAP and IFRS frameworks with specific standards:
+/// - ASC 606/IFRS 15: Revenue Recognition
+/// - ASC 842/IFRS 16: Leases
+/// - ASC 820/IFRS 13: Fair Value Measurement
+/// - ASC 360/IAS 36: Impairment
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AccountingStandardsConfig {
+    /// Enable accounting standards generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Accounting framework to use
+    #[serde(default)]
+    pub framework: AccountingFrameworkConfig,
+
+    /// Revenue recognition configuration (ASC 606/IFRS 15)
+    #[serde(default)]
+    pub revenue_recognition: RevenueRecognitionConfig,
+
+    /// Lease accounting configuration (ASC 842/IFRS 16)
+    #[serde(default)]
+    pub leases: LeaseAccountingConfig,
+
+    /// Fair value measurement configuration (ASC 820/IFRS 13)
+    #[serde(default)]
+    pub fair_value: FairValueConfig,
+
+    /// Impairment testing configuration (ASC 360/IAS 36)
+    #[serde(default)]
+    pub impairment: ImpairmentConfig,
+
+    /// Generate framework differences for dual reporting
+    #[serde(default)]
+    pub generate_differences: bool,
+}
+
+/// Accounting framework selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum AccountingFrameworkConfig {
+    /// US Generally Accepted Accounting Principles
+    #[default]
+    UsGaap,
+    /// International Financial Reporting Standards
+    Ifrs,
+    /// Generate data for both frameworks with reconciliation
+    DualReporting,
+}
+
+/// Revenue recognition configuration (ASC 606/IFRS 15).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RevenueRecognitionConfig {
+    /// Enable revenue recognition generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Generate customer contracts
+    #[serde(default = "default_true")]
+    pub generate_contracts: bool,
+
+    /// Average number of performance obligations per contract
+    #[serde(default = "default_avg_obligations")]
+    pub avg_obligations_per_contract: f64,
+
+    /// Rate of contracts with variable consideration
+    #[serde(default = "default_variable_consideration_rate")]
+    pub variable_consideration_rate: f64,
+
+    /// Rate of over-time revenue recognition (vs point-in-time)
+    #[serde(default = "default_over_time_rate")]
+    pub over_time_recognition_rate: f64,
+
+    /// Number of contracts to generate
+    #[serde(default = "default_contract_count")]
+    pub contract_count: usize,
+}
+
+fn default_avg_obligations() -> f64 {
+    2.0
+}
+
+fn default_variable_consideration_rate() -> f64 {
+    0.15
+}
+
+fn default_over_time_rate() -> f64 {
+    0.30
+}
+
+fn default_contract_count() -> usize {
+    100
+}
+
+impl Default for RevenueRecognitionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            generate_contracts: true,
+            avg_obligations_per_contract: default_avg_obligations(),
+            variable_consideration_rate: default_variable_consideration_rate(),
+            over_time_recognition_rate: default_over_time_rate(),
+            contract_count: default_contract_count(),
+        }
+    }
+}
+
+/// Lease accounting configuration (ASC 842/IFRS 16).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LeaseAccountingConfig {
+    /// Enable lease accounting generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Number of leases to generate
+    #[serde(default = "default_lease_count")]
+    pub lease_count: usize,
+
+    /// Percentage of finance leases (vs operating)
+    #[serde(default = "default_finance_lease_pct")]
+    pub finance_lease_percent: f64,
+
+    /// Average lease term in months
+    #[serde(default = "default_avg_lease_term")]
+    pub avg_lease_term_months: u32,
+
+    /// Generate amortization schedules
+    #[serde(default = "default_true")]
+    pub generate_amortization: bool,
+
+    /// Real estate lease percentage
+    #[serde(default = "default_real_estate_pct")]
+    pub real_estate_percent: f64,
+}
+
+fn default_lease_count() -> usize {
+    50
+}
+
+fn default_finance_lease_pct() -> f64 {
+    0.30
+}
+
+fn default_avg_lease_term() -> u32 {
+    60
+}
+
+fn default_real_estate_pct() -> f64 {
+    0.40
+}
+
+impl Default for LeaseAccountingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            lease_count: default_lease_count(),
+            finance_lease_percent: default_finance_lease_pct(),
+            avg_lease_term_months: default_avg_lease_term(),
+            generate_amortization: true,
+            real_estate_percent: default_real_estate_pct(),
+        }
+    }
+}
+
+/// Fair value measurement configuration (ASC 820/IFRS 13).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FairValueConfig {
+    /// Enable fair value measurement generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Number of fair value measurements to generate
+    #[serde(default = "default_fv_count")]
+    pub measurement_count: usize,
+
+    /// Level 1 (quoted prices) percentage
+    #[serde(default = "default_level1_pct")]
+    pub level1_percent: f64,
+
+    /// Level 2 (observable inputs) percentage
+    #[serde(default = "default_level2_pct")]
+    pub level2_percent: f64,
+
+    /// Level 3 (unobservable inputs) percentage
+    #[serde(default = "default_level3_pct")]
+    pub level3_percent: f64,
+
+    /// Include sensitivity analysis for Level 3
+    #[serde(default)]
+    pub include_sensitivity_analysis: bool,
+}
+
+fn default_fv_count() -> usize {
+    25
+}
+
+fn default_level1_pct() -> f64 {
+    0.40
+}
+
+fn default_level2_pct() -> f64 {
+    0.35
+}
+
+fn default_level3_pct() -> f64 {
+    0.25
+}
+
+impl Default for FairValueConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            measurement_count: default_fv_count(),
+            level1_percent: default_level1_pct(),
+            level2_percent: default_level2_pct(),
+            level3_percent: default_level3_pct(),
+            include_sensitivity_analysis: false,
+        }
+    }
+}
+
+/// Impairment testing configuration (ASC 360/IAS 36).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImpairmentConfig {
+    /// Enable impairment testing generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Number of impairment tests to generate
+    #[serde(default = "default_impairment_count")]
+    pub test_count: usize,
+
+    /// Rate of tests resulting in impairment
+    #[serde(default = "default_impairment_rate")]
+    pub impairment_rate: f64,
+
+    /// Generate cash flow projections
+    #[serde(default = "default_true")]
+    pub generate_projections: bool,
+
+    /// Include goodwill impairment tests
+    #[serde(default)]
+    pub include_goodwill: bool,
+}
+
+fn default_impairment_count() -> usize {
+    15
+}
+
+fn default_impairment_rate() -> f64 {
+    0.10
+}
+
+impl Default for ImpairmentConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            test_count: default_impairment_count(),
+            impairment_rate: default_impairment_rate(),
+            generate_projections: true,
+            include_goodwill: false,
+        }
+    }
+}
+
+// =============================================================================
+// Audit Standards Configuration
+// =============================================================================
+
+/// Audit standards framework configuration for generating standards-compliant audit data.
+///
+/// Supports ISA (International Standards on Auditing) and PCAOB standards:
+/// - ISA 200-720: Complete coverage of audit standards
+/// - ISA 520: Analytical Procedures
+/// - ISA 505: External Confirmations
+/// - ISA 700/705/706/701: Audit Reports
+/// - PCAOB AS 2201: ICFR Auditing
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AuditStandardsConfig {
+    /// Enable audit standards generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// ISA compliance configuration
+    #[serde(default)]
+    pub isa_compliance: IsaComplianceConfig,
+
+    /// Analytical procedures configuration (ISA 520)
+    #[serde(default)]
+    pub analytical_procedures: AnalyticalProceduresConfig,
+
+    /// External confirmations configuration (ISA 505)
+    #[serde(default)]
+    pub confirmations: ConfirmationsConfig,
+
+    /// Audit opinion configuration (ISA 700/705/706/701)
+    #[serde(default)]
+    pub opinion: AuditOpinionConfig,
+
+    /// Generate complete audit trail with traceability
+    #[serde(default)]
+    pub generate_audit_trail: bool,
+
+    /// SOX 302/404 compliance configuration
+    #[serde(default)]
+    pub sox: SoxComplianceConfig,
+
+    /// PCAOB-specific configuration
+    #[serde(default)]
+    pub pcaob: PcaobConfig,
+}
+
+/// ISA compliance level configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IsaComplianceConfig {
+    /// Enable ISA compliance tracking
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Compliance level: "basic", "standard", "comprehensive"
+    #[serde(default = "default_compliance_level")]
+    pub compliance_level: String,
+
+    /// Generate ISA requirement mappings
+    #[serde(default = "default_true")]
+    pub generate_isa_mappings: bool,
+
+    /// Generate ISA coverage summary
+    #[serde(default = "default_true")]
+    pub generate_coverage_summary: bool,
+
+    /// Include PCAOB standard mappings (for dual framework)
+    #[serde(default)]
+    pub include_pcaob: bool,
+
+    /// Framework to use: "isa", "pcaob", "dual"
+    #[serde(default = "default_audit_framework")]
+    pub framework: String,
+}
+
+fn default_compliance_level() -> String {
+    "standard".to_string()
+}
+
+fn default_audit_framework() -> String {
+    "isa".to_string()
+}
+
+impl Default for IsaComplianceConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            compliance_level: default_compliance_level(),
+            generate_isa_mappings: true,
+            generate_coverage_summary: true,
+            include_pcaob: false,
+            framework: default_audit_framework(),
+        }
+    }
+}
+
+/// Analytical procedures configuration (ISA 520).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnalyticalProceduresConfig {
+    /// Enable analytical procedures generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Number of procedures per account/area
+    #[serde(default = "default_procedures_per_account")]
+    pub procedures_per_account: usize,
+
+    /// Probability of variance exceeding threshold
+    #[serde(default = "default_variance_probability")]
+    pub variance_probability: f64,
+
+    /// Include variance investigations
+    #[serde(default = "default_true")]
+    pub generate_investigations: bool,
+
+    /// Include financial ratio analysis
+    #[serde(default = "default_true")]
+    pub include_ratio_analysis: bool,
+}
+
+fn default_procedures_per_account() -> usize {
+    3
+}
+
+fn default_variance_probability() -> f64 {
+    0.20
+}
+
+impl Default for AnalyticalProceduresConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            procedures_per_account: default_procedures_per_account(),
+            variance_probability: default_variance_probability(),
+            generate_investigations: true,
+            include_ratio_analysis: true,
+        }
+    }
+}
+
+/// External confirmations configuration (ISA 505).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfirmationsConfig {
+    /// Enable confirmation generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Number of confirmations to generate
+    #[serde(default = "default_confirmation_count")]
+    pub confirmation_count: usize,
+
+    /// Positive response rate
+    #[serde(default = "default_positive_response_rate")]
+    pub positive_response_rate: f64,
+
+    /// Exception rate (responses with differences)
+    #[serde(default = "default_exception_rate_confirm")]
+    pub exception_rate: f64,
+
+    /// Non-response rate
+    #[serde(default = "default_non_response_rate")]
+    pub non_response_rate: f64,
+
+    /// Generate alternative procedures for non-responses
+    #[serde(default = "default_true")]
+    pub generate_alternative_procedures: bool,
+}
+
+fn default_confirmation_count() -> usize {
+    50
+}
+
+fn default_positive_response_rate() -> f64 {
+    0.85
+}
+
+fn default_exception_rate_confirm() -> f64 {
+    0.10
+}
+
+fn default_non_response_rate() -> f64 {
+    0.05
+}
+
+impl Default for ConfirmationsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            confirmation_count: default_confirmation_count(),
+            positive_response_rate: default_positive_response_rate(),
+            exception_rate: default_exception_rate_confirm(),
+            non_response_rate: default_non_response_rate(),
+            generate_alternative_procedures: true,
+        }
+    }
+}
+
+/// Audit opinion configuration (ISA 700/705/706/701).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditOpinionConfig {
+    /// Enable audit opinion generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Generate Key Audit Matters (KAM) / Critical Audit Matters (CAM)
+    #[serde(default = "default_true")]
+    pub generate_kam: bool,
+
+    /// Average number of KAMs/CAMs per opinion
+    #[serde(default = "default_kam_count")]
+    pub average_kam_count: usize,
+
+    /// Rate of modified opinions
+    #[serde(default = "default_modified_opinion_rate")]
+    pub modified_opinion_rate: f64,
+
+    /// Include emphasis of matter paragraphs
+    #[serde(default)]
+    pub include_emphasis_of_matter: bool,
+
+    /// Include going concern conclusions
+    #[serde(default = "default_true")]
+    pub include_going_concern: bool,
+}
+
+fn default_kam_count() -> usize {
+    3
+}
+
+fn default_modified_opinion_rate() -> f64 {
+    0.05
+}
+
+impl Default for AuditOpinionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            generate_kam: true,
+            average_kam_count: default_kam_count(),
+            modified_opinion_rate: default_modified_opinion_rate(),
+            include_emphasis_of_matter: false,
+            include_going_concern: true,
+        }
+    }
+}
+
+/// SOX compliance configuration (Sections 302/404).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SoxComplianceConfig {
+    /// Enable SOX compliance generation
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Generate Section 302 CEO/CFO certifications
+    #[serde(default = "default_true")]
+    pub generate_302_certifications: bool,
+
+    /// Generate Section 404 ICFR assessments
+    #[serde(default = "default_true")]
+    pub generate_404_assessments: bool,
+
+    /// Materiality threshold for SOX testing
+    #[serde(default = "default_sox_materiality_threshold")]
+    pub materiality_threshold: f64,
+
+    /// Rate of material weaknesses
+    #[serde(default = "default_material_weakness_rate")]
+    pub material_weakness_rate: f64,
+
+    /// Rate of significant deficiencies
+    #[serde(default = "default_significant_deficiency_rate")]
+    pub significant_deficiency_rate: f64,
+}
+
+fn default_material_weakness_rate() -> f64 {
+    0.02
+}
+
+fn default_significant_deficiency_rate() -> f64 {
+    0.08
+}
+
+impl Default for SoxComplianceConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            generate_302_certifications: true,
+            generate_404_assessments: true,
+            materiality_threshold: default_sox_materiality_threshold(),
+            material_weakness_rate: default_material_weakness_rate(),
+            significant_deficiency_rate: default_significant_deficiency_rate(),
+        }
+    }
+}
+
+/// PCAOB-specific configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PcaobConfig {
+    /// Enable PCAOB-specific elements
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Treat as PCAOB audit (vs ISA-only)
+    #[serde(default)]
+    pub is_pcaob_audit: bool,
+
+    /// Generate Critical Audit Matters (CAM)
+    #[serde(default = "default_true")]
+    pub generate_cam: bool,
+
+    /// Include ICFR opinion (for integrated audits)
+    #[serde(default)]
+    pub include_icfr_opinion: bool,
+
+    /// Generate PCAOB-ISA standard mappings
+    #[serde(default)]
+    pub generate_standard_mappings: bool,
+}
+
+impl Default for PcaobConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            is_pcaob_audit: false,
+            generate_cam: true,
+            include_icfr_opinion: false,
+            generate_standard_mappings: false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4572,5 +5179,266 @@ mod tests {
         assert!(config.custom_accounts.is_none());
         assert_eq!(config.min_hierarchy_depth, 2); // Default
         assert_eq!(config.max_hierarchy_depth, 5); // Default
+    }
+
+    // ==========================================================================
+    // Accounting Standards Config Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_accounting_standards_config_defaults() {
+        let config = AccountingStandardsConfig::default();
+        assert!(!config.enabled);
+        assert!(matches!(
+            config.framework,
+            AccountingFrameworkConfig::UsGaap
+        ));
+        assert!(!config.revenue_recognition.enabled);
+        assert!(!config.leases.enabled);
+        assert!(!config.fair_value.enabled);
+        assert!(!config.impairment.enabled);
+        assert!(!config.generate_differences);
+    }
+
+    #[test]
+    fn test_accounting_standards_config_yaml() {
+        let yaml = r#"
+            enabled: true
+            framework: ifrs
+            revenue_recognition:
+              enabled: true
+              generate_contracts: true
+              avg_obligations_per_contract: 2.5
+              variable_consideration_rate: 0.20
+              over_time_recognition_rate: 0.35
+              contract_count: 150
+            leases:
+              enabled: true
+              lease_count: 75
+              finance_lease_percent: 0.25
+              avg_lease_term_months: 48
+            generate_differences: true
+        "#;
+
+        let config: AccountingStandardsConfig =
+            serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert!(config.enabled);
+        assert!(matches!(config.framework, AccountingFrameworkConfig::Ifrs));
+        assert!(config.revenue_recognition.enabled);
+        assert_eq!(config.revenue_recognition.contract_count, 150);
+        assert_eq!(config.revenue_recognition.avg_obligations_per_contract, 2.5);
+        assert!(config.leases.enabled);
+        assert_eq!(config.leases.lease_count, 75);
+        assert_eq!(config.leases.finance_lease_percent, 0.25);
+        assert!(config.generate_differences);
+    }
+
+    #[test]
+    fn test_accounting_framework_serialization() {
+        let frameworks = [
+            AccountingFrameworkConfig::UsGaap,
+            AccountingFrameworkConfig::Ifrs,
+            AccountingFrameworkConfig::DualReporting,
+        ];
+
+        for framework in frameworks {
+            let json = serde_json::to_string(&framework).expect("Failed to serialize");
+            let deserialized: AccountingFrameworkConfig =
+                serde_json::from_str(&json).expect("Failed to deserialize");
+            assert!(format!("{:?}", framework) == format!("{:?}", deserialized));
+        }
+    }
+
+    #[test]
+    fn test_revenue_recognition_config_defaults() {
+        let config = RevenueRecognitionConfig::default();
+        assert!(!config.enabled);
+        assert!(config.generate_contracts);
+        assert_eq!(config.avg_obligations_per_contract, 2.0);
+        assert_eq!(config.variable_consideration_rate, 0.15);
+        assert_eq!(config.over_time_recognition_rate, 0.30);
+        assert_eq!(config.contract_count, 100);
+    }
+
+    #[test]
+    fn test_lease_accounting_config_defaults() {
+        let config = LeaseAccountingConfig::default();
+        assert!(!config.enabled);
+        assert_eq!(config.lease_count, 50);
+        assert_eq!(config.finance_lease_percent, 0.30);
+        assert_eq!(config.avg_lease_term_months, 60);
+        assert!(config.generate_amortization);
+        assert_eq!(config.real_estate_percent, 0.40);
+    }
+
+    #[test]
+    fn test_fair_value_config_defaults() {
+        let config = FairValueConfig::default();
+        assert!(!config.enabled);
+        assert_eq!(config.measurement_count, 25);
+        assert_eq!(config.level1_percent, 0.40);
+        assert_eq!(config.level2_percent, 0.35);
+        assert_eq!(config.level3_percent, 0.25);
+        assert!(!config.include_sensitivity_analysis);
+    }
+
+    #[test]
+    fn test_impairment_config_defaults() {
+        let config = ImpairmentConfig::default();
+        assert!(!config.enabled);
+        assert_eq!(config.test_count, 15);
+        assert_eq!(config.impairment_rate, 0.10);
+        assert!(config.generate_projections);
+        assert!(!config.include_goodwill);
+    }
+
+    // ==========================================================================
+    // Audit Standards Config Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_audit_standards_config_defaults() {
+        let config = AuditStandardsConfig::default();
+        assert!(!config.enabled);
+        assert!(!config.isa_compliance.enabled);
+        assert!(!config.analytical_procedures.enabled);
+        assert!(!config.confirmations.enabled);
+        assert!(!config.opinion.enabled);
+        assert!(!config.generate_audit_trail);
+        assert!(!config.sox.enabled);
+        assert!(!config.pcaob.enabled);
+    }
+
+    #[test]
+    fn test_audit_standards_config_yaml() {
+        let yaml = r#"
+            enabled: true
+            isa_compliance:
+              enabled: true
+              compliance_level: comprehensive
+              generate_isa_mappings: true
+              include_pcaob: true
+              framework: dual
+            analytical_procedures:
+              enabled: true
+              procedures_per_account: 5
+              variance_probability: 0.25
+            confirmations:
+              enabled: true
+              confirmation_count: 75
+              positive_response_rate: 0.90
+              exception_rate: 0.08
+            opinion:
+              enabled: true
+              generate_kam: true
+              average_kam_count: 4
+            sox:
+              enabled: true
+              generate_302_certifications: true
+              generate_404_assessments: true
+              material_weakness_rate: 0.03
+            pcaob:
+              enabled: true
+              is_pcaob_audit: true
+              include_icfr_opinion: true
+            generate_audit_trail: true
+        "#;
+
+        let config: AuditStandardsConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert!(config.enabled);
+        assert!(config.isa_compliance.enabled);
+        assert_eq!(config.isa_compliance.compliance_level, "comprehensive");
+        assert!(config.isa_compliance.include_pcaob);
+        assert_eq!(config.isa_compliance.framework, "dual");
+        assert!(config.analytical_procedures.enabled);
+        assert_eq!(config.analytical_procedures.procedures_per_account, 5);
+        assert!(config.confirmations.enabled);
+        assert_eq!(config.confirmations.confirmation_count, 75);
+        assert!(config.opinion.enabled);
+        assert_eq!(config.opinion.average_kam_count, 4);
+        assert!(config.sox.enabled);
+        assert!(config.sox.generate_302_certifications);
+        assert_eq!(config.sox.material_weakness_rate, 0.03);
+        assert!(config.pcaob.enabled);
+        assert!(config.pcaob.is_pcaob_audit);
+        assert!(config.pcaob.include_icfr_opinion);
+        assert!(config.generate_audit_trail);
+    }
+
+    #[test]
+    fn test_isa_compliance_config_defaults() {
+        let config = IsaComplianceConfig::default();
+        assert!(!config.enabled);
+        assert_eq!(config.compliance_level, "standard");
+        assert!(config.generate_isa_mappings);
+        assert!(config.generate_coverage_summary);
+        assert!(!config.include_pcaob);
+        assert_eq!(config.framework, "isa");
+    }
+
+    #[test]
+    fn test_sox_compliance_config_defaults() {
+        let config = SoxComplianceConfig::default();
+        assert!(!config.enabled);
+        assert!(config.generate_302_certifications);
+        assert!(config.generate_404_assessments);
+        assert_eq!(config.materiality_threshold, 10000.0);
+        assert_eq!(config.material_weakness_rate, 0.02);
+        assert_eq!(config.significant_deficiency_rate, 0.08);
+    }
+
+    #[test]
+    fn test_pcaob_config_defaults() {
+        let config = PcaobConfig::default();
+        assert!(!config.enabled);
+        assert!(!config.is_pcaob_audit);
+        assert!(config.generate_cam);
+        assert!(!config.include_icfr_opinion);
+        assert!(!config.generate_standard_mappings);
+    }
+
+    #[test]
+    fn test_config_with_standards_enabled() {
+        let yaml = r#"
+            global:
+              industry: financial_services
+              start_date: "2024-01-01"
+              period_months: 12
+            companies:
+              - code: "BANK"
+                name: "Test Bank"
+                currency: "USD"
+                country: "US"
+                annual_transaction_volume: hundred_k
+            chart_of_accounts:
+              complexity: large
+            output:
+              output_directory: "./output"
+            accounting_standards:
+              enabled: true
+              framework: us_gaap
+              revenue_recognition:
+                enabled: true
+              leases:
+                enabled: true
+            audit_standards:
+              enabled: true
+              isa_compliance:
+                enabled: true
+              sox:
+                enabled: true
+        "#;
+
+        let config: GeneratorConfig = serde_yaml::from_str(yaml).expect("Failed to parse");
+        assert!(config.accounting_standards.enabled);
+        assert!(matches!(
+            config.accounting_standards.framework,
+            AccountingFrameworkConfig::UsGaap
+        ));
+        assert!(config.accounting_standards.revenue_recognition.enabled);
+        assert!(config.accounting_standards.leases.enabled);
+        assert!(config.audit_standards.enabled);
+        assert!(config.audit_standards.isa_compliance.enabled);
+        assert!(config.audit_standards.sox.enabled);
     }
 }

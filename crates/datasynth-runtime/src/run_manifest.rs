@@ -209,6 +209,8 @@ mod tests {
             rate_limit: RateLimitSchemaConfig::default(),
             temporal_attributes: TemporalAttributeSchemaConfig::default(),
             relationships: RelationshipSchemaConfig::default(),
+            accounting_standards: AccountingStandardsConfig::default(),
+            audit_standards: AuditStandardsConfig::default(),
         }
     }
 

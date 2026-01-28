@@ -69,6 +69,7 @@
 - [datasynth-banking](crates/datasynth-banking.md)
 - [datasynth-ocpm](crates/datasynth-ocpm.md)
 - [datasynth-fingerprint](crates/datasynth-fingerprint.md)
+- [datasynth-standards](crates/datasynth-standards.md)
 - [datasynth-test-utils](crates/datasynth-test-utils.md)
 
 ---
@@ -82,6 +83,7 @@
 - [Intercompany Processing](advanced/intercompany.md)
 - [Period Close Engine](advanced/period-close.md)
 - [Fingerprinting](advanced/fingerprinting.md)
+- [Accounting & Audit Standards](advanced/accounting-standards.md)
 - [Performance Tuning](advanced/performance.md)
 
 ---

@@ -15,6 +15,7 @@ datasynth-graph = { workspace = true }
 
 # Numeric
 rust_decimal = { workspace = true }
+rust_decimal_macros = { workspace = true }
 
 # Statistics
 statrs = "0.17"

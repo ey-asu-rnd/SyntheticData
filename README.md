@@ -82,6 +82,8 @@ The generator produces statistically accurate data based on empirical research f
 - **Process Mining**: OCEL 2.0 event logs with object-centric relationships
 - **Audit Simulation**: ISA-compliant engagements, workpapers, findings, risk assessments
 - **COSO 2013 Framework**: Full internal control framework with 5 components, 17 principles, and maturity levels
+- **Accounting Standards**: US GAAP and IFRS support with ASC 606/IFRS 15 (revenue), ASC 842/IFRS 16 (leases), ASC 820/IFRS 13 (fair value), ASC 360/IAS 36 (impairment)
+- **Audit Standards**: ISA (34 standards), PCAOB (19+ standards), SOX 302/404 compliance with deficiency classification
 
 ### Machine Learning & Analytics
 
@@ -113,7 +115,7 @@ The generator produces statistically accurate data based on empirical research f
 
 ## Architecture
 
-SyntheticData is organized as a Rust workspace with 15 modular crates:
+SyntheticData is organized as a Rust workspace with 16 modular crates:
 
 ```
 datasynth-cli          Command-line interface (binary: datasynth-data)
@@ -126,6 +128,7 @@ datasynth-generators   Data generators (JE, documents, subledgers, anomalies, au
 datasynth-banking      KYC/AML banking transaction generator
 datasynth-ocpm         Object-Centric Process Mining (OCEL 2.0)
 datasynth-fingerprint  Privacy-preserving fingerprint extraction and synthesis
+datasynth-standards    Accounting/audit standards (IFRS, US GAAP, ISA, SOX, PCAOB)
     │
 datasynth-graph        Graph/network export (PyTorch Geometric, Neo4j, DGL)
 datasynth-eval         Evaluation framework with auto-tuning
@@ -173,6 +176,7 @@ The binary is available at `target/release/datasynth-data`.
 | [`datasynth-generators`](https://crates.io/crates/datasynth-generators) | Data generators |
 | [`datasynth-banking`](https://crates.io/crates/datasynth-banking) | KYC/AML banking transactions |
 | [`datasynth-fingerprint`](https://crates.io/crates/datasynth-fingerprint) | Privacy-preserving fingerprint extraction |
+| [`datasynth-standards`](https://crates.io/crates/datasynth-standards) | Accounting/audit standards (IFRS, US GAAP, ISA, SOX, PCAOB) |
 | [`datasynth-graph`](https://crates.io/crates/datasynth-graph) | Graph/network export |
 | [`datasynth-eval`](https://crates.io/crates/datasynth-eval) | Evaluation framework |
 | [`datasynth-runtime`](https://crates.io/crates/datasynth-runtime) | Orchestration layer |
@@ -264,6 +268,26 @@ rate_limit:
   entities_per_second: 10000
   burst_size: 100
 
+accounting_standards:
+  enabled: true
+  framework: us_gaap              # us_gaap, ifrs, dual_reporting
+  revenue_recognition:
+    enabled: true
+    generate_contracts: true
+  leases:
+    enabled: true
+    finance_lease_percent: 0.30
+
+audit_standards:
+  enabled: true
+  isa_compliance:
+    enabled: true
+    compliance_level: comprehensive
+    framework: dual               # isa, pcaob, dual
+  sox:
+    enabled: true
+    materiality_threshold: 10000.0
+
 output:
   format: csv
   compression: none
@@ -288,7 +312,10 @@ output/
 ├── audit/                Engagements, workpapers, findings, risk assessments
 ├── graphs/               PyTorch Geometric, Neo4j, DGL, RustGraph exports
 ├── labels/               Anomaly, fraud, and data quality labels for ML
-└── controls/             Internal controls, COSO mappings, SoD rules
+├── controls/             Internal controls, COSO mappings, SoD rules
+└── standards/            Accounting & audit standards outputs
+    ├── accounting/       Contracts, leases, fair value, impairment tests
+    └── audit/            ISA mappings, confirmations, opinions, SOX assessments
 ```
 
 ---
@@ -305,6 +332,8 @@ output/
 | **ERP Testing** | Load testing with realistic transaction volumes |
 | **SOX Compliance** | Test internal control monitoring systems |
 | **COSO Framework** | COSO 2013 control mapping with 5 components, 17 principles, maturity levels |
+| **Standards Compliance** | IFRS/US GAAP revenue recognition, lease accounting, fair value, impairment testing |
+| **Audit Standards** | ISA/PCAOB procedure mapping, analytical procedures, confirmations, audit opinions |
 | **Data Quality ML** | Train models to detect missing values, typos, duplicates |
 | **RustGraph Integration** | Stream data directly to RustAssureTwin knowledge graphs |
 

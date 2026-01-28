@@ -34,7 +34,7 @@ cargo run -p datasynth-server -- --port 3000 --worker-threads 4
 
 ## Architecture
 
-Rust workspace with 15 crates:
+Rust workspace with 16 crates:
 
 ```
 datasynth-cli          → Binary (generate, validate, init, info, fingerprint)
@@ -45,6 +45,7 @@ datasynth-generators   → Data generators (JE, Document Flows, Subledgers, Anom
 datasynth-banking      → KYC/AML banking with fraud typologies
 datasynth-ocpm         → OCEL 2.0 process mining
 datasynth-fingerprint  → Privacy-preserving fingerprint extraction/synthesis
+datasynth-standards    → Accounting/audit standards (IFRS, US GAAP, ISA, SOX, PCAOB)
 datasynth-graph        → Graph export (PyTorch Geometric, Neo4j, DGL)
 datasynth-eval         → Evaluation framework with auto-tuning
 datasynth-config       → Configuration schema, validation, presets
@@ -145,6 +146,59 @@ COSO 2013 Internal Control-Integrated Framework:
 
 Standard controls include 12 transaction-level (C001-C060) and 6 entity-level (C070-C081) controls with full COSO mappings.
 
+### Standards Module (datasynth-standards/src/)
+
+Accounting and audit standards framework:
+
+| Directory | Purpose |
+|-----------|---------|
+| framework.rs | `AccountingFramework` (UsGaap, Ifrs, DualReporting), `FrameworkSettings` |
+| accounting/ | Revenue (ASC 606/IFRS 15), Leases (ASC 842/IFRS 16), Fair Value (ASC 820/IFRS 13), Impairment (ASC 360/IAS 36) |
+| audit/ | ISA references (34 standards), Analytical procedures (ISA 520), Confirmations (ISA 505), Opinions (ISA 700/705/706/701), Audit trail, PCAOB mappings |
+| regulatory/ | SOX 302/404 compliance, `DeficiencyMatrix`, Material weakness classification |
+
+Key types:
+- **Accounting**: `CustomerContract`, `PerformanceObligation`, `Lease`, `ROUAsset`, `LeaseLiability`, `FairValueMeasurement`, `ImpairmentTest`
+- **Audit**: `IsaStandard`, `IsaRequirement`, `AnalyticalProcedure`, `ExternalConfirmation`, `AuditOpinion`, `KeyAuditMatter`, `AuditTrail`
+- **Regulatory**: `Sox302Certification`, `Sox404Assessment`, `DeficiencyMatrix`, `MaterialWeakness`
+
+### Standards Configuration
+
+```yaml
+accounting_standards:
+  enabled: true
+  framework: us_gaap  # us_gaap, ifrs, dual_reporting
+  revenue_recognition:
+    enabled: true
+    generate_contracts: true
+    avg_obligations_per_contract: 2.0
+  leases:
+    enabled: true
+    lease_count: 50
+    finance_lease_percent: 0.30
+  fair_value:
+    enabled: true
+    level1_percent: 0.60
+    level2_percent: 0.30
+    level3_percent: 0.10
+
+audit_standards:
+  enabled: true
+  isa_compliance:
+    enabled: true
+    compliance_level: comprehensive  # basic, standard, comprehensive
+    framework: dual  # isa, pcaob, dual
+  analytical_procedures:
+    enabled: true
+    procedures_per_account: 3
+  confirmations:
+    enabled: true
+    positive_response_rate: 0.85
+  sox:
+    enabled: true
+    materiality_threshold: 10000.0
+```
+
 ### Distributions (datasynth-core/src/distributions/)
 
 LineItemSampler, AmountSampler (log-normal + Benford), TemporalSampler (seasonality), BenfordSampler, FraudAmountGenerator, IndustrySeasonality, HolidayCalendar
@@ -163,7 +217,7 @@ LineItemSampler, AmountSampler (log-normal + Benford), TemporalSampler (seasonal
 
 ## Configuration
 
-YAML sections: `global`, `companies`, `chart_of_accounts`, `transactions`, `output`, `fraud`, `internal_controls`, `enterprise`, `master_data`, `document_flows`, `intercompany`, `balance`, `subledger`, `fx`, `period_close`, `graph_export`, `anomaly_injection`, `data_quality`, `business_processes`, `templates`, `approval`, `departments`
+YAML sections: `global`, `companies`, `chart_of_accounts`, `transactions`, `output`, `fraud`, `internal_controls`, `enterprise`, `master_data`, `document_flows`, `intercompany`, `balance`, `subledger`, `fx`, `period_close`, `graph_export`, `anomaly_injection`, `data_quality`, `business_processes`, `templates`, `approval`, `departments`, `accounting_standards`, `audit_standards`
 
 Presets: manufacturing, retail, financial_services, healthcare, technology
 Complexity: small (~100 accounts), medium (~400), large (~2500)
@@ -218,6 +272,7 @@ internal_controls:
 | Banking | banking_customers, bank_accounts, bank_transactions, kyc_profiles, aml_typology_labels |
 | Process Mining | event_log.json (OCEL 2.0), objects.json, events.json, process_variants |
 | Audit | audit_engagements, audit_workpapers, audit_evidence, audit_risks, audit_findings, audit_judgments |
+| Standards | customer_contracts, performance_obligations, leases, rou_assets, lease_liabilities, fair_value_measurements, impairment_tests, isa_mappings, confirmations, audit_opinions, sox_assessments |
 
 ## Performance
 

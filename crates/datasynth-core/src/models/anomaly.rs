@@ -374,6 +374,44 @@ pub enum FraudType {
     OverstatedAssets,
     /// Channel stuffing.
     ChannelStuffing,
+
+    // Accounting Standards Violations (ASC 606 / IFRS 15 - Revenue)
+    /// Improper revenue recognition timing (ASC 606/IFRS 15).
+    ImproperRevenueRecognition,
+    /// Multiple performance obligations not properly separated.
+    ImproperPoAllocation,
+    /// Variable consideration not properly estimated.
+    VariableConsiderationManipulation,
+    /// Contract modifications not properly accounted for.
+    ContractModificationMisstatement,
+
+    // Accounting Standards Violations (ASC 842 / IFRS 16 - Leases)
+    /// Lease classification manipulation (operating vs finance).
+    LeaseClassificationManipulation,
+    /// Off-balance sheet lease fraud.
+    OffBalanceSheetLease,
+    /// Lease liability understatement.
+    LeaseLiabilityUnderstatement,
+    /// ROU asset misstatement.
+    RouAssetMisstatement,
+
+    // Accounting Standards Violations (ASC 820 / IFRS 13 - Fair Value)
+    /// Fair value hierarchy misclassification.
+    FairValueHierarchyManipulation,
+    /// Level 3 input manipulation.
+    Level3InputManipulation,
+    /// Valuation technique manipulation.
+    ValuationTechniqueManipulation,
+
+    // Accounting Standards Violations (ASC 360 / IAS 36 - Impairment)
+    /// Delayed impairment recognition.
+    DelayedImpairment,
+    /// Improperly avoiding impairment testing.
+    ImpairmentTestAvoidance,
+    /// Cash flow projection manipulation for impairment.
+    CashFlowProjectionManipulation,
+    /// Improper impairment reversal (IFRS only).
+    ImproperImpairmentReversal,
 }
 
 impl FraudType {
@@ -392,6 +430,25 @@ impl FraudType {
             FraudType::AssetMisappropriation => 5,
             FraudType::SegregationOfDutiesViolation => 4,
             FraudType::CollusiveApproval => 5,
+            // Accounting Standards Violations (Revenue - ASC 606/IFRS 15)
+            FraudType::ImproperRevenueRecognition => 5,
+            FraudType::ImproperPoAllocation => 4,
+            FraudType::VariableConsiderationManipulation => 4,
+            FraudType::ContractModificationMisstatement => 3,
+            // Accounting Standards Violations (Leases - ASC 842/IFRS 16)
+            FraudType::LeaseClassificationManipulation => 4,
+            FraudType::OffBalanceSheetLease => 5,
+            FraudType::LeaseLiabilityUnderstatement => 4,
+            FraudType::RouAssetMisstatement => 3,
+            // Accounting Standards Violations (Fair Value - ASC 820/IFRS 13)
+            FraudType::FairValueHierarchyManipulation => 4,
+            FraudType::Level3InputManipulation => 5,
+            FraudType::ValuationTechniqueManipulation => 4,
+            // Accounting Standards Violations (Impairment - ASC 360/IAS 36)
+            FraudType::DelayedImpairment => 4,
+            FraudType::ImpairmentTestAvoidance => 4,
+            FraudType::CashFlowProjectionManipulation => 5,
+            FraudType::ImproperImpairmentReversal => 3,
             _ => 4,
         }
     }
@@ -441,6 +498,24 @@ pub enum ErrorType {
     CurrencyError,
     /// Tax calculation error.
     TaxCalculationError,
+
+    // Accounting Standards Errors (Non-Fraudulent)
+    /// Wrong revenue recognition timing (honest mistake).
+    RevenueTimingError,
+    /// Performance obligation allocation error.
+    PoAllocationError,
+    /// Lease classification error (operating vs finance).
+    LeaseClassificationError,
+    /// Lease calculation error (PV, amortization).
+    LeaseCalculationError,
+    /// Fair value measurement error.
+    FairValueError,
+    /// Impairment calculation error.
+    ImpairmentCalculationError,
+    /// Discount rate error.
+    DiscountRateError,
+    /// Framework application error (IFRS vs GAAP).
+    FrameworkApplicationError,
 }
 
 impl ErrorType {
@@ -456,6 +531,15 @@ impl ErrorType {
             ErrorType::WrongPeriod => 4,
             ErrorType::UnbalancedEntry => 5,
             ErrorType::CurrencyError => 4,
+            // Accounting Standards Errors
+            ErrorType::RevenueTimingError => 4,
+            ErrorType::PoAllocationError => 3,
+            ErrorType::LeaseClassificationError => 3,
+            ErrorType::LeaseCalculationError => 3,
+            ErrorType::FairValueError => 4,
+            ErrorType::ImpairmentCalculationError => 4,
+            ErrorType::DiscountRateError => 3,
+            ErrorType::FrameworkApplicationError => 4,
             _ => 3,
         }
     }
@@ -2008,6 +2092,203 @@ mod tests {
         assert_eq!(
             enhanced.secondary_categories[0],
             AnomalyCategory::TimingAnomaly
+        );
+    }
+
+    // ==========================================================================
+    // Accounting Standards Fraud Type Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_revenue_recognition_fraud_types() {
+        // Test ASC 606/IFRS 15 related fraud types
+        let fraud_types = [
+            FraudType::ImproperRevenueRecognition,
+            FraudType::ImproperPoAllocation,
+            FraudType::VariableConsiderationManipulation,
+            FraudType::ContractModificationMisstatement,
+        ];
+
+        for fraud_type in fraud_types {
+            let anomaly_type = AnomalyType::Fraud(fraud_type);
+            assert_eq!(anomaly_type.category(), "Fraud");
+            assert!(anomaly_type.is_intentional());
+            assert!(anomaly_type.severity() >= 3);
+        }
+    }
+
+    #[test]
+    fn test_lease_accounting_fraud_types() {
+        // Test ASC 842/IFRS 16 related fraud types
+        let fraud_types = [
+            FraudType::LeaseClassificationManipulation,
+            FraudType::OffBalanceSheetLease,
+            FraudType::LeaseLiabilityUnderstatement,
+            FraudType::RouAssetMisstatement,
+        ];
+
+        for fraud_type in fraud_types {
+            let anomaly_type = AnomalyType::Fraud(fraud_type);
+            assert_eq!(anomaly_type.category(), "Fraud");
+            assert!(anomaly_type.is_intentional());
+            assert!(anomaly_type.severity() >= 3);
+        }
+
+        // Off-balance sheet lease fraud should be high severity
+        assert_eq!(FraudType::OffBalanceSheetLease.severity(), 5);
+    }
+
+    #[test]
+    fn test_fair_value_fraud_types() {
+        // Test ASC 820/IFRS 13 related fraud types
+        let fraud_types = [
+            FraudType::FairValueHierarchyManipulation,
+            FraudType::Level3InputManipulation,
+            FraudType::ValuationTechniqueManipulation,
+        ];
+
+        for fraud_type in fraud_types {
+            let anomaly_type = AnomalyType::Fraud(fraud_type);
+            assert_eq!(anomaly_type.category(), "Fraud");
+            assert!(anomaly_type.is_intentional());
+            assert!(anomaly_type.severity() >= 4);
+        }
+
+        // Level 3 manipulation is highest severity (unobservable inputs)
+        assert_eq!(FraudType::Level3InputManipulation.severity(), 5);
+    }
+
+    #[test]
+    fn test_impairment_fraud_types() {
+        // Test ASC 360/IAS 36 related fraud types
+        let fraud_types = [
+            FraudType::DelayedImpairment,
+            FraudType::ImpairmentTestAvoidance,
+            FraudType::CashFlowProjectionManipulation,
+            FraudType::ImproperImpairmentReversal,
+        ];
+
+        for fraud_type in fraud_types {
+            let anomaly_type = AnomalyType::Fraud(fraud_type);
+            assert_eq!(anomaly_type.category(), "Fraud");
+            assert!(anomaly_type.is_intentional());
+            assert!(anomaly_type.severity() >= 3);
+        }
+
+        // Cash flow manipulation has highest severity
+        assert_eq!(FraudType::CashFlowProjectionManipulation.severity(), 5);
+    }
+
+    // ==========================================================================
+    // Accounting Standards Error Type Tests
+    // ==========================================================================
+
+    #[test]
+    fn test_standards_error_types() {
+        // Test non-fraudulent accounting standards errors
+        let error_types = [
+            ErrorType::RevenueTimingError,
+            ErrorType::PoAllocationError,
+            ErrorType::LeaseClassificationError,
+            ErrorType::LeaseCalculationError,
+            ErrorType::FairValueError,
+            ErrorType::ImpairmentCalculationError,
+            ErrorType::DiscountRateError,
+            ErrorType::FrameworkApplicationError,
+        ];
+
+        for error_type in error_types {
+            let anomaly_type = AnomalyType::Error(error_type);
+            assert_eq!(anomaly_type.category(), "Error");
+            assert!(!anomaly_type.is_intentional());
+            assert!(anomaly_type.severity() >= 3);
+        }
+    }
+
+    #[test]
+    fn test_framework_application_error() {
+        // Test IFRS vs GAAP confusion errors
+        let error_type = ErrorType::FrameworkApplicationError;
+        assert_eq!(error_type.severity(), 4);
+
+        let anomaly = LabeledAnomaly::new(
+            "ERR001".to_string(),
+            AnomalyType::Error(error_type),
+            "JE100".to_string(),
+            "JE".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 6, 30).unwrap(),
+        )
+        .with_description("LIFO inventory method used under IFRS (not permitted)")
+        .with_metadata("framework", "IFRS")
+        .with_metadata("standard_violated", "IAS 2");
+
+        assert_eq!(anomaly.anomaly_type.category(), "Error");
+        assert_eq!(
+            anomaly.metadata.get("standard_violated"),
+            Some(&"IAS 2".to_string())
+        );
+    }
+
+    #[test]
+    fn test_standards_anomaly_serialization() {
+        // Test that new fraud types serialize/deserialize correctly
+        let fraud_types = [
+            FraudType::ImproperRevenueRecognition,
+            FraudType::LeaseClassificationManipulation,
+            FraudType::FairValueHierarchyManipulation,
+            FraudType::DelayedImpairment,
+        ];
+
+        for fraud_type in fraud_types {
+            let json = serde_json::to_string(&fraud_type).expect("Failed to serialize");
+            let deserialized: FraudType =
+                serde_json::from_str(&json).expect("Failed to deserialize");
+            assert_eq!(fraud_type, deserialized);
+        }
+
+        // Test error types
+        let error_types = [
+            ErrorType::RevenueTimingError,
+            ErrorType::LeaseCalculationError,
+            ErrorType::FairValueError,
+            ErrorType::FrameworkApplicationError,
+        ];
+
+        for error_type in error_types {
+            let json = serde_json::to_string(&error_type).expect("Failed to serialize");
+            let deserialized: ErrorType =
+                serde_json::from_str(&json).expect("Failed to deserialize");
+            assert_eq!(error_type, deserialized);
+        }
+    }
+
+    #[test]
+    fn test_standards_labeled_anomaly() {
+        // Test creating a labeled anomaly for a standards violation
+        let anomaly = LabeledAnomaly::new(
+            "STD001".to_string(),
+            AnomalyType::Fraud(FraudType::ImproperRevenueRecognition),
+            "CONTRACT-2024-001".to_string(),
+            "Revenue".to_string(),
+            "1000".to_string(),
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+        )
+        .with_description("Revenue recognized before performance obligation satisfied (ASC 606)")
+        .with_monetary_impact(dec!(500000))
+        .with_metadata("standard", "ASC 606")
+        .with_metadata("paragraph", "606-10-25-1")
+        .with_metadata("contract_id", "C-2024-001")
+        .with_related_entity("CONTRACT-2024-001")
+        .with_related_entity("CUSTOMER-500");
+
+        assert_eq!(anomaly.severity, 5); // ImproperRevenueRecognition has severity 5
+        assert!(anomaly.is_injected);
+        assert_eq!(anomaly.monetary_impact, Some(dec!(500000)));
+        assert_eq!(anomaly.related_entities.len(), 2);
+        assert_eq!(
+            anomaly.metadata.get("standard"),
+            Some(&"ASC 606".to_string())
         );
     }
 }

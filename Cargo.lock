@@ -1687,6 +1687,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "datasynth-standards"
+version = "0.2.3"
+dependencies = [
+ "chrono",
+ "datasynth-core",
+ "proptest",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
 name = "datasynth-test-utils"
 version = "0.2.3"
 dependencies = [
