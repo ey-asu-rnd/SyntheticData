@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::coso::{ControlScope, CosoComponent, CosoMaturityLevel, CosoPrinciple};
 use super::user::UserPersona;
 
 /// Control type based on SOX 404 framework.
@@ -162,6 +163,14 @@ pub struct InternalControl {
     pub is_key_control: bool,
     /// SOX assertion this control addresses
     pub sox_assertion: SoxAssertion,
+    /// COSO 2013 component this control maps to
+    pub coso_component: CosoComponent,
+    /// COSO 2013 principles this control addresses
+    pub coso_principles: Vec<CosoPrinciple>,
+    /// Control scope (entity-level vs transaction-level)
+    pub control_scope: ControlScope,
+    /// Control maturity level
+    pub maturity_level: CosoMaturityLevel,
 }
 
 impl InternalControl {
@@ -183,6 +192,10 @@ impl InternalControl {
             description: String::new(),
             is_key_control: false,
             sox_assertion: SoxAssertion::Existence,
+            coso_component: CosoComponent::ControlActivities,
+            coso_principles: vec![CosoPrinciple::ControlActions],
+            control_scope: ControlScope::TransactionLevel,
+            maturity_level: CosoMaturityLevel::Defined,
         }
     }
 
@@ -222,9 +235,40 @@ impl InternalControl {
         self
     }
 
+    /// Builder method to set COSO component.
+    pub fn with_coso_component(mut self, component: CosoComponent) -> Self {
+        self.coso_component = component;
+        self
+    }
+
+    /// Builder method to set COSO principles.
+    pub fn with_coso_principles(mut self, principles: Vec<CosoPrinciple>) -> Self {
+        self.coso_principles = principles;
+        self
+    }
+
+    /// Builder method to set control scope.
+    pub fn with_control_scope(mut self, scope: ControlScope) -> Self {
+        self.control_scope = scope;
+        self
+    }
+
+    /// Builder method to set maturity level.
+    pub fn with_maturity_level(mut self, level: CosoMaturityLevel) -> Self {
+        self.maturity_level = level;
+        self
+    }
+
     /// Generate standard controls for a typical organization.
+    ///
+    /// Includes both transaction-level controls (C001-C060) and
+    /// entity-level controls (C070-C081) with full COSO 2013 mappings.
     pub fn standard_controls() -> Vec<Self> {
         vec![
+            // ========================================
+            // TRANSACTION-LEVEL CONTROLS (C001-C060)
+            // ========================================
+
             // Cash controls
             Self::new(
                 "C001",
@@ -239,7 +283,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Existence)
             .with_description(
                 "Daily reconciliation of cash accounts with bank statements and review of unusual transactions",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::ControlActions,
+                CosoPrinciple::OngoingMonitoring,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
 
             // Large transaction approval
             Self::new(
@@ -255,7 +306,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Valuation)
             .with_description(
                 "Multi-level approval workflow for transactions exceeding defined thresholds",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::ControlActions,
+                CosoPrinciple::PoliciesAndProcedures,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Defined),
 
             // P2P Three-Way Match
             Self::new(
@@ -271,7 +329,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Completeness)
             .with_description(
                 "Automated matching of PO, goods receipt, and vendor invoice prior to payment release",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::ControlActions,
+                CosoPrinciple::TechnologyControls,
+            ])
+            .with_control_scope(ControlScope::ItApplicationControl)
+            .with_maturity_level(CosoMaturityLevel::Managed),
 
             // Vendor Master Maintenance
             Self::new(
@@ -287,7 +352,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Existence)
             .with_description(
                 "Restricted access to vendor master data with dual-approval for bank account changes",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::ControlActions,
+                CosoPrinciple::FraudRisk,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Defined),
 
             // O2C Revenue Recognition
             Self::new(
@@ -303,7 +375,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Valuation)
             .with_description(
                 "Monthly review of revenue recognition to ensure compliance with ASC 606",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::ControlActions,
+                CosoPrinciple::ClearObjectives,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
 
             // Credit Limit Enforcement
             Self::new(
@@ -318,7 +397,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Valuation)
             .with_description(
                 "System-enforced credit limit validation at order entry",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::TechnologyControls,
+                CosoPrinciple::ControlActions,
+            ])
+            .with_control_scope(ControlScope::ItApplicationControl)
+            .with_maturity_level(CosoMaturityLevel::Optimized),
 
             // GL Account Reconciliation
             Self::new(
@@ -334,7 +420,11 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Completeness)
             .with_description(
                 "Complete reconciliation of all balance sheet accounts with supporting documentation",
-            ),
+            )
+            .with_coso_component(CosoComponent::MonitoringActivities)
+            .with_coso_principles(vec![CosoPrinciple::OngoingMonitoring])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
 
             // Journal Entry Review
             Self::new(
@@ -350,7 +440,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Existence)
             .with_description(
                 "Daily review of manual journal entries with supporting documentation",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::ControlActions,
+                CosoPrinciple::FraudRisk,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
 
             // Period Close Review
             Self::new(
@@ -365,7 +462,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Completeness)
             .with_description(
                 "Standardized period-end close checklist ensuring all procedures completed",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::PoliciesAndProcedures,
+                CosoPrinciple::ControlActions,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Defined),
 
             // Payroll Processing
             Self::new(
@@ -381,7 +485,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Valuation)
             .with_description(
                 "Monthly review of payroll journals and reconciliation to HR records",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::ControlActions,
+                CosoPrinciple::FraudRisk,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
 
             // Fixed Asset Additions
             Self::new(
@@ -396,7 +507,14 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Existence)
             .with_description(
                 "Approval workflow for capital asset additions based on dollar thresholds",
-            ),
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::ControlActions,
+                CosoPrinciple::PoliciesAndProcedures,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Defined),
 
             // Intercompany Reconciliation
             Self::new(
@@ -412,7 +530,164 @@ impl InternalControl {
             .with_assertion(SoxAssertion::Completeness)
             .with_description(
                 "Full reconciliation of intercompany accounts between all entities",
-            ),
+            )
+            .with_coso_component(CosoComponent::MonitoringActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::OngoingMonitoring,
+                CosoPrinciple::DeficiencyEvaluation,
+            ])
+            .with_control_scope(ControlScope::TransactionLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
+
+            // ========================================
+            // ENTITY-LEVEL CONTROLS (C070-C081)
+            // ========================================
+
+            // Code of Conduct
+            Self::new(
+                "C070",
+                "Code of Conduct and Ethics",
+                ControlType::Preventive,
+                "Establish and communicate ethical values and standards of conduct",
+            )
+            .with_frequency(ControlFrequency::Annual)
+            .with_owner(UserPersona::Controller)
+            .with_risk_level(RiskLevel::High)
+            .as_key_control()
+            .with_assertion(SoxAssertion::PresentationAndDisclosure)
+            .with_description(
+                "Annual review and acknowledgment of code of conduct by all employees; \
+                 includes ethics hotline and whistleblower protections",
+            )
+            .with_coso_component(CosoComponent::ControlEnvironment)
+            .with_coso_principles(vec![
+                CosoPrinciple::IntegrityAndEthics,
+                CosoPrinciple::Accountability,
+            ])
+            .with_control_scope(ControlScope::EntityLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
+
+            // Audit Committee Oversight
+            Self::new(
+                "C071",
+                "Audit Committee Oversight",
+                ControlType::Monitoring,
+                "Board and audit committee exercise independent oversight of internal control",
+            )
+            .with_frequency(ControlFrequency::Quarterly)
+            .with_owner(UserPersona::Controller)
+            .with_risk_level(RiskLevel::Critical)
+            .as_key_control()
+            .with_assertion(SoxAssertion::PresentationAndDisclosure)
+            .with_description(
+                "Quarterly audit committee meetings with review of internal control effectiveness, \
+                 external auditor findings, and management representations",
+            )
+            .with_coso_component(CosoComponent::ControlEnvironment)
+            .with_coso_principles(vec![
+                CosoPrinciple::BoardOversight,
+                CosoPrinciple::OrganizationalStructure,
+            ])
+            .with_control_scope(ControlScope::EntityLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
+
+            // Risk Assessment Process
+            Self::new(
+                "C075",
+                "Enterprise Risk Assessment",
+                ControlType::Detective,
+                "Identify and assess risks to achievement of organizational objectives",
+            )
+            .with_frequency(ControlFrequency::Annual)
+            .with_owner(UserPersona::Controller)
+            .with_risk_level(RiskLevel::High)
+            .as_key_control()
+            .with_assertion(SoxAssertion::Completeness)
+            .with_description(
+                "Annual enterprise risk assessment process including fraud risk evaluation; \
+                 risk register maintained and updated quarterly",
+            )
+            .with_coso_component(CosoComponent::RiskAssessment)
+            .with_coso_principles(vec![
+                CosoPrinciple::IdentifyRisks,
+                CosoPrinciple::FraudRisk,
+                CosoPrinciple::ChangeIdentification,
+            ])
+            .with_control_scope(ControlScope::EntityLevel)
+            .with_maturity_level(CosoMaturityLevel::Defined),
+
+            // IT General Controls
+            Self::new(
+                "C077",
+                "IT General Controls Program",
+                ControlType::Preventive,
+                "General controls over IT environment supporting financial reporting systems",
+            )
+            .with_frequency(ControlFrequency::Transactional)
+            .with_owner(UserPersona::AutomatedSystem)
+            .with_risk_level(RiskLevel::High)
+            .as_key_control()
+            .with_assertion(SoxAssertion::Existence)
+            .with_description(
+                "IT general controls including access management, change management, \
+                 computer operations, and program development for systems supporting \
+                 financial reporting",
+            )
+            .with_coso_component(CosoComponent::ControlActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::TechnologyControls,
+                CosoPrinciple::PoliciesAndProcedures,
+            ])
+            .with_control_scope(ControlScope::ItGeneralControl)
+            .with_maturity_level(CosoMaturityLevel::Managed),
+
+            // Information Quality
+            Self::new(
+                "C078",
+                "Financial Information Quality",
+                ControlType::Detective,
+                "Obtain and use quality information for internal control",
+            )
+            .with_frequency(ControlFrequency::Monthly)
+            .with_owner(UserPersona::Controller)
+            .with_risk_level(RiskLevel::Medium)
+            .with_assertion(SoxAssertion::Valuation)
+            .with_description(
+                "Monthly data quality reviews for key financial reports; validation of \
+                 data inputs, processing, and outputs supporting management decisions",
+            )
+            .with_coso_component(CosoComponent::InformationCommunication)
+            .with_coso_principles(vec![
+                CosoPrinciple::QualityInformation,
+                CosoPrinciple::InternalCommunication,
+            ])
+            .with_control_scope(ControlScope::EntityLevel)
+            .with_maturity_level(CosoMaturityLevel::Defined),
+
+            // Monitoring Program
+            Self::new(
+                "C081",
+                "Internal Control Monitoring Program",
+                ControlType::Monitoring,
+                "Ongoing and periodic evaluations of internal control effectiveness",
+            )
+            .with_frequency(ControlFrequency::Quarterly)
+            .with_owner(UserPersona::Controller)
+            .with_risk_level(RiskLevel::High)
+            .as_key_control()
+            .with_assertion(SoxAssertion::Completeness)
+            .with_description(
+                "Continuous monitoring program with quarterly control testing, \
+                 deficiency tracking, and remediation management; annual SOX 404 \
+                 assessment and certification",
+            )
+            .with_coso_component(CosoComponent::MonitoringActivities)
+            .with_coso_principles(vec![
+                CosoPrinciple::OngoingMonitoring,
+                CosoPrinciple::DeficiencyEvaluation,
+            ])
+            .with_control_scope(ControlScope::EntityLevel)
+            .with_maturity_level(CosoMaturityLevel::Managed),
         ]
     }
 }

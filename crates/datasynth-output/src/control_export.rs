@@ -36,6 +36,7 @@ impl ControlExporter {
     /// - control_doctype_mappings.csv
     /// - sod_conflict_pairs.csv
     /// - sod_rules.csv
+    /// - coso_control_mapping.csv
     pub fn export_all(
         &self,
         controls: &[InternalControl],
@@ -54,6 +55,7 @@ impl ControlExporter {
             doctype_mappings_count: self.export_doctype_mappings(&registry.doc_type_mappings)?,
             sod_conflicts_count: self.export_sod_conflicts(sod_conflicts)?,
             sod_rules_count: self.export_sod_rules(sod_rules)?,
+            coso_mappings_count: self.export_coso_mapping(controls)?,
         };
 
         Ok(summary)
@@ -69,13 +71,20 @@ impl ControlExporter {
         writeln!(
             writer,
             "control_id,control_name,control_type,objective,frequency,owner_role,\
-             risk_level,is_key_control,sox_assertion"
+             risk_level,is_key_control,sox_assertion,coso_component,coso_principles,control_scope,maturity_level"
         )?;
 
         for control in controls {
+            // Format COSO principles as semicolon-separated list
+            let principles: Vec<String> = control
+                .coso_principles
+                .iter()
+                .map(|p| format!("{}", p))
+                .collect();
+
             writeln!(
                 writer,
-                "{},{},{:?},{},{:?},{:?},{:?},{},{:?}",
+                "{},{},{:?},{},{:?},{:?},{:?},{},{:?},{},{},{},{}",
                 escape_csv(&control.control_id),
                 escape_csv(&control.control_name),
                 control.control_type,
@@ -85,6 +94,10 @@ impl ControlExporter {
                 control.risk_level,
                 control.is_key_control,
                 control.sox_assertion,
+                escape_csv(&control.coso_component.to_string()),
+                escape_csv(&principles.join(";")),
+                escape_csv(&control.control_scope.to_string()),
+                escape_csv(&control.maturity_level.to_string()),
             )?;
         }
 
@@ -268,6 +281,41 @@ impl ControlExporter {
         Ok(rules.len())
     }
 
+    /// Export COSO control mapping.
+    ///
+    /// Creates a detailed mapping of controls to COSO components and principles.
+    /// Each row represents one principle mapped to a control.
+    pub fn export_coso_mapping(&self, controls: &[InternalControl]) -> SynthResult<usize> {
+        let path = self.output_dir.join("coso_control_mapping.csv");
+        let file = File::create(&path)?;
+        let mut writer = BufWriter::new(file);
+
+        // Header
+        writeln!(
+            writer,
+            "control_id,coso_component,principle_number,principle_name,control_scope"
+        )?;
+
+        let mut row_count = 0;
+        for control in controls {
+            for principle in &control.coso_principles {
+                writeln!(
+                    writer,
+                    "{},{},{},{},{}",
+                    escape_csv(&control.control_id),
+                    escape_csv(&control.coso_component.to_string()),
+                    principle.principle_number(),
+                    escape_csv(&principle.to_string()),
+                    escape_csv(&control.control_scope.to_string()),
+                )?;
+                row_count += 1;
+            }
+        }
+
+        writer.flush()?;
+        Ok(row_count)
+    }
+
     /// Export standard control master data.
     ///
     /// This is a convenience method that exports standard controls,
@@ -299,6 +347,8 @@ pub struct ExportSummary {
     pub sod_conflicts_count: usize,
     /// Number of SoD rules exported.
     pub sod_rules_count: usize,
+    /// Number of COSO control-principle mappings exported.
+    pub coso_mappings_count: usize,
 }
 
 impl ExportSummary {
@@ -311,6 +361,7 @@ impl ExportSummary {
             + self.doctype_mappings_count
             + self.sod_conflicts_count
             + self.sod_rules_count
+            + self.coso_mappings_count
     }
 }
 
@@ -340,6 +391,7 @@ mod tests {
         assert!(summary.process_mappings_count > 0);
         assert!(summary.sod_conflicts_count > 0);
         assert!(summary.sod_rules_count > 0);
+        assert!(summary.coso_mappings_count > 0);
 
         // Verify files were created
         assert!(temp_dir.path().join("internal_controls.csv").exists());
@@ -353,6 +405,7 @@ mod tests {
             .exists());
         assert!(temp_dir.path().join("sod_conflict_pairs.csv").exists());
         assert!(temp_dir.path().join("sod_rules.csv").exists());
+        assert!(temp_dir.path().join("coso_control_mapping.csv").exists());
     }
 
     #[test]

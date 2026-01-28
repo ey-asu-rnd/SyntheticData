@@ -81,6 +81,7 @@ The generator produces statistically accurate data based on empirical research f
 - **Banking/KYC/AML**: Customer personas, KYC profiles, AML typologies (structuring, funnel, mule, layering)
 - **Process Mining**: OCEL 2.0 event logs with object-centric relationships
 - **Audit Simulation**: ISA-compliant engagements, workpapers, findings, risk assessments
+- **COSO 2013 Framework**: Full internal control framework with 5 components, 17 principles, and maturity levels
 
 ### Machine Learning & Analytics
 
@@ -287,7 +288,7 @@ output/
 ├── audit/                Engagements, workpapers, findings, risk assessments
 ├── graphs/               PyTorch Geometric, Neo4j, DGL, RustGraph exports
 ├── labels/               Anomaly, fraud, and data quality labels for ML
-└── controls/             Internal control mappings, SoD rules
+└── controls/             Internal controls, COSO mappings, SoD rules
 ```
 
 ---
@@ -303,6 +304,7 @@ output/
 | **Process Mining** | OCEL 2.0 event logs for process discovery |
 | **ERP Testing** | Load testing with realistic transaction volumes |
 | **SOX Compliance** | Test internal control monitoring systems |
+| **COSO Framework** | COSO 2013 control mapping with 5 components, 17 principles, maturity levels |
 | **Data Quality ML** | Train models to detect missing values, typos, duplicates |
 | **RustGraph Integration** | Stream data directly to RustAssureTwin knowledge graphs |
 

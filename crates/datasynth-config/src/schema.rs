@@ -1141,6 +1141,16 @@ pub struct InternalControlsConfig {
     /// SOX materiality threshold for marking transactions as SOX-relevant
     #[serde(default = "default_sox_materiality_threshold")]
     pub sox_materiality_threshold: f64,
+    /// Enable COSO 2013 framework integration
+    #[serde(default = "default_true")]
+    pub coso_enabled: bool,
+    /// Include entity-level controls in generation
+    #[serde(default)]
+    pub include_entity_level_controls: bool,
+    /// Target maturity level for controls
+    /// Valid values: "ad_hoc", "repeatable", "defined", "managed", "optimized", "mixed"
+    #[serde(default = "default_target_maturity_level")]
+    pub target_maturity_level: String,
 }
 
 fn default_exception_rate() -> f64 {
@@ -1155,6 +1165,10 @@ fn default_sox_materiality_threshold() -> f64 {
     10000.0
 }
 
+fn default_target_maturity_level() -> String {
+    "mixed".to_string()
+}
+
 impl Default for InternalControlsConfig {
     fn default() -> Self {
         Self {
@@ -1163,6 +1177,9 @@ impl Default for InternalControlsConfig {
             sod_violation_rate: default_sod_violation_rate(),
             export_control_master_data: true,
             sox_materiality_threshold: default_sox_materiality_threshold(),
+            coso_enabled: true,
+            include_entity_level_controls: false,
+            target_maturity_level: default_target_maturity_level(),
         }
     }
 }
@@ -4339,6 +4356,10 @@ mod tests {
         assert_eq!(config.sod_violation_rate, 0.01);
         assert!(config.export_control_master_data);
         assert_eq!(config.sox_materiality_threshold, 10000.0);
+        // COSO fields
+        assert!(config.coso_enabled);
+        assert!(!config.include_entity_level_controls);
+        assert_eq!(config.target_maturity_level, "mixed");
     }
 
     #[test]

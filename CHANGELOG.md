@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-01-28
+
+### Added
+
+- **COSO 2013 Framework Integration** (`datasynth-core`): Full COSO Internal Control-Integrated Framework support
+  - `CosoComponent` enum: 5 COSO components (Control Environment, Risk Assessment, Control Activities, Information & Communication, Monitoring Activities)
+  - `CosoPrinciple` enum: 17 COSO principles with `component()` and `principle_number()` helper methods
+  - `ControlScope` enum: Entity-level, Transaction-level, IT General Control, IT Application Control
+  - `CosoMaturityLevel` enum: 6-level maturity model (Non-Existent through Optimized)
+  - Extended `InternalControl` struct with COSO fields: `coso_component`, `coso_principles`, `control_scope`, `maturity_level`
+  - Builder methods: `with_coso_component()`, `with_coso_principles()`, `with_control_scope()`, `with_maturity_level()`
+
+- **Entity-Level Controls** (`datasynth-core`): 6 new organization-wide controls
+  - C070: Code of Conduct and Ethics (Control Environment)
+  - C071: Audit Committee Oversight (Control Environment)
+  - C075: Enterprise Risk Assessment (Risk Assessment)
+  - C077: IT General Controls Program (Control Activities)
+  - C078: Financial Information Quality (Information & Communication)
+  - C081: Internal Control Monitoring Program (Monitoring Activities)
+
+- **COSO Control Mapping Export** (`datasynth-output`): New export file `coso_control_mapping.csv`
+  - Maps each control to COSO component, principle number, principle name, and control scope
+  - One row per control-principle pair for granular analysis
+  - Extended `internal_controls.csv` with COSO columns
+
+- **COSO Configuration Options** (`datasynth-config`): New `InternalControlsConfig` fields
+  - `coso_enabled`: Enable/disable COSO framework integration (default: true)
+  - `include_entity_level_controls`: Include entity-level controls in generation (default: false)
+  - `target_maturity_level`: Target maturity level ("ad_hoc", "repeatable", "defined", "managed", "optimized", "mixed")
+
+### Changed
+
+- All 12 existing transaction-level controls (C001-C060) now include COSO component and principle mappings
+- `ExportSummary` includes `coso_mappings_count` field
+- `ControlExporter::export_all()` and `export_standard()` now export COSO mapping file
+
 ## [0.2.2] - 2026-01-26
 
 ### Added
