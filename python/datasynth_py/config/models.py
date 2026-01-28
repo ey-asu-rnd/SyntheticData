@@ -229,6 +229,176 @@ class RelationshipSettings:
     max_circular_depth: int = 3
 
 
+# ============================================================================
+# Accounting Standards Configuration (ASC 606, ASC 842, ASC 820, ASC 360)
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class RevenueRecognitionConfig:
+    """Revenue recognition configuration (ASC 606/IFRS 15)."""
+
+    enabled: bool = False
+    generate_contracts: bool = True
+    avg_obligations_per_contract: float = 2.0
+    variable_consideration_rate: float = 0.15
+    over_time_recognition_rate: float = 0.30
+    contract_count: int = 100
+
+
+@dataclass(frozen=True)
+class LeaseAccountingConfig:
+    """Lease accounting configuration (ASC 842/IFRS 16)."""
+
+    enabled: bool = False
+    lease_count: int = 50
+    finance_lease_percent: float = 0.30
+    avg_lease_term_months: int = 60
+    generate_amortization: bool = True
+    real_estate_percent: float = 0.40
+
+
+@dataclass(frozen=True)
+class FairValueConfig:
+    """Fair value measurement configuration (ASC 820/IFRS 13)."""
+
+    enabled: bool = False
+    measurement_count: int = 30
+    level1_percent: float = 0.60
+    level2_percent: float = 0.30
+    level3_percent: float = 0.10
+    include_sensitivity_analysis: bool = True
+
+
+@dataclass(frozen=True)
+class ImpairmentConfig:
+    """Impairment testing configuration (ASC 360/IAS 36)."""
+
+    enabled: bool = False
+    test_count: int = 15
+    impairment_rate: float = 0.20
+    generate_projections: bool = True
+    include_goodwill: bool = True
+
+
+@dataclass(frozen=True)
+class AccountingStandardsConfig:
+    """Accounting standards framework configuration.
+
+    Supports US GAAP and IFRS with dual reporting mode:
+    - ASC 606/IFRS 15: Revenue Recognition
+    - ASC 842/IFRS 16: Lease Accounting
+    - ASC 820/IFRS 13: Fair Value Measurement
+    - ASC 360/IAS 36: Impairment Testing
+    """
+
+    enabled: bool = False
+    framework: str = "us_gaap"  # us_gaap, ifrs, dual_reporting
+    revenue_recognition: Optional[RevenueRecognitionConfig] = None
+    leases: Optional[LeaseAccountingConfig] = None
+    fair_value: Optional[FairValueConfig] = None
+    impairment: Optional[ImpairmentConfig] = None
+    generate_differences: bool = False
+
+
+# ============================================================================
+# Audit Standards Configuration (ISA, PCAOB, SOX)
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class IsaComplianceConfig:
+    """ISA compliance tracking configuration."""
+
+    enabled: bool = False
+    compliance_level: str = "standard"  # basic, standard, comprehensive
+    generate_isa_mappings: bool = True
+    generate_coverage_summary: bool = True
+    include_pcaob: bool = False
+    framework: str = "isa"  # isa, pcaob, dual
+
+
+@dataclass(frozen=True)
+class AnalyticalProceduresConfig:
+    """Analytical procedures configuration (ISA 520)."""
+
+    enabled: bool = False
+    procedures_per_account: int = 3
+    variance_probability: float = 0.20
+    generate_investigations: bool = True
+    include_ratio_analysis: bool = True
+
+
+@dataclass(frozen=True)
+class ConfirmationsConfig:
+    """External confirmations configuration (ISA 505)."""
+
+    enabled: bool = False
+    confirmation_count: int = 50
+    positive_response_rate: float = 0.85
+    exception_rate: float = 0.10
+    non_response_rate: float = 0.05
+    generate_alternative_procedures: bool = True
+
+
+@dataclass(frozen=True)
+class AuditOpinionConfig:
+    """Audit opinion configuration (ISA 700/705/706/701)."""
+
+    enabled: bool = False
+    generate_kam: bool = True
+    average_kam_count: int = 3
+    modified_opinion_rate: float = 0.05
+    include_emphasis_of_matter: bool = True
+    include_going_concern: bool = True
+
+
+@dataclass(frozen=True)
+class SoxComplianceConfig:
+    """SOX 302/404 compliance configuration."""
+
+    enabled: bool = False
+    generate_302_certifications: bool = True
+    generate_404_assessments: bool = True
+    materiality_threshold: float = 10000.0
+    material_weakness_rate: float = 0.02
+    significant_deficiency_rate: float = 0.05
+
+
+@dataclass(frozen=True)
+class PcaobConfig:
+    """PCAOB-specific audit configuration."""
+
+    enabled: bool = False
+    is_pcaob_audit: bool = False
+    generate_cam: bool = True
+    include_icfr_opinion: bool = True
+    generate_standard_mappings: bool = True
+
+
+@dataclass(frozen=True)
+class AuditStandardsConfig:
+    """Audit standards framework configuration.
+
+    Supports ISA and PCAOB standards:
+    - ISA 200-720: International Standards on Auditing
+    - ISA 520: Analytical Procedures
+    - ISA 505: External Confirmations
+    - ISA 700/705/706/701: Audit Reports
+    - PCAOB AS: US Auditing Standards
+    - SOX 302/404: Sarbanes-Oxley Compliance
+    """
+
+    enabled: bool = False
+    isa_compliance: Optional[IsaComplianceConfig] = None
+    analytical_procedures: Optional[AnalyticalProceduresConfig] = None
+    confirmations: Optional[ConfirmationsConfig] = None
+    opinion: Optional[AuditOpinionConfig] = None
+    generate_audit_trail: bool = False
+    sox: Optional[SoxComplianceConfig] = None
+    pcaob: Optional[PcaobConfig] = None
+
+
 @dataclass(frozen=True)
 class Config:
     """Root configuration container.
@@ -252,6 +422,8 @@ class Config:
     rate_limit: Optional[RateLimitSettings] = None
     temporal_attributes: Optional[TemporalAttributeSettings] = None
     relationships: Optional[RelationshipSettings] = None
+    accounting_standards: Optional[AccountingStandardsConfig] = None
+    audit_standards: Optional[AuditStandardsConfig] = None
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -386,6 +558,55 @@ class Config:
             rel_dict["max_circular_depth"] = self.relationships.max_circular_depth
             payload["relationships"] = rel_dict
 
+        if self.accounting_standards is not None:
+            acct_dict: Dict[str, Any] = {
+                "enabled": self.accounting_standards.enabled,
+                "framework": self.accounting_standards.framework,
+                "generate_differences": self.accounting_standards.generate_differences,
+            }
+            if self.accounting_standards.revenue_recognition is not None:
+                acct_dict["revenue_recognition"] = _strip_none(
+                    self.accounting_standards.revenue_recognition.__dict__
+                )
+            if self.accounting_standards.leases is not None:
+                acct_dict["leases"] = _strip_none(self.accounting_standards.leases.__dict__)
+            if self.accounting_standards.fair_value is not None:
+                acct_dict["fair_value"] = _strip_none(
+                    self.accounting_standards.fair_value.__dict__
+                )
+            if self.accounting_standards.impairment is not None:
+                acct_dict["impairment"] = _strip_none(
+                    self.accounting_standards.impairment.__dict__
+                )
+            payload["accounting_standards"] = acct_dict
+
+        if self.audit_standards is not None:
+            audit_std_dict: Dict[str, Any] = {
+                "enabled": self.audit_standards.enabled,
+                "generate_audit_trail": self.audit_standards.generate_audit_trail,
+            }
+            if self.audit_standards.isa_compliance is not None:
+                audit_std_dict["isa_compliance"] = _strip_none(
+                    self.audit_standards.isa_compliance.__dict__
+                )
+            if self.audit_standards.analytical_procedures is not None:
+                audit_std_dict["analytical_procedures"] = _strip_none(
+                    self.audit_standards.analytical_procedures.__dict__
+                )
+            if self.audit_standards.confirmations is not None:
+                audit_std_dict["confirmations"] = _strip_none(
+                    self.audit_standards.confirmations.__dict__
+                )
+            if self.audit_standards.opinion is not None:
+                audit_std_dict["opinion"] = _strip_none(
+                    self.audit_standards.opinion.__dict__
+                )
+            if self.audit_standards.sox is not None:
+                audit_std_dict["sox"] = _strip_none(self.audit_standards.sox.__dict__)
+            if self.audit_standards.pcaob is not None:
+                audit_std_dict["pcaob"] = _strip_none(self.audit_standards.pcaob.__dict__)
+            payload["audit_standards"] = audit_std_dict
+
         # Merge extra fields
         payload.update(self.extra)
         return payload
@@ -519,10 +740,48 @@ class Config:
                 max_circular_depth=rel_data.get("max_circular_depth", 3),
             )
 
+        # Build accounting_standards with nested structures
+        accounting_standards = None
+        acct_data = data.get("accounting_standards")
+        if acct_data is not None:
+            accounting_standards = AccountingStandardsConfig(
+                enabled=acct_data.get("enabled", False),
+                framework=acct_data.get("framework", "us_gaap"),
+                revenue_recognition=_build_dataclass(
+                    RevenueRecognitionConfig, acct_data.get("revenue_recognition")
+                ),
+                leases=_build_dataclass(LeaseAccountingConfig, acct_data.get("leases")),
+                fair_value=_build_dataclass(FairValueConfig, acct_data.get("fair_value")),
+                impairment=_build_dataclass(ImpairmentConfig, acct_data.get("impairment")),
+                generate_differences=acct_data.get("generate_differences", False),
+            )
+
+        # Build audit_standards with nested structures
+        audit_standards = None
+        audit_std_data = data.get("audit_standards")
+        if audit_std_data is not None:
+            audit_standards = AuditStandardsConfig(
+                enabled=audit_std_data.get("enabled", False),
+                isa_compliance=_build_dataclass(
+                    IsaComplianceConfig, audit_std_data.get("isa_compliance")
+                ),
+                analytical_procedures=_build_dataclass(
+                    AnalyticalProceduresConfig, audit_std_data.get("analytical_procedures")
+                ),
+                confirmations=_build_dataclass(
+                    ConfirmationsConfig, audit_std_data.get("confirmations")
+                ),
+                opinion=_build_dataclass(AuditOpinionConfig, audit_std_data.get("opinion")),
+                generate_audit_trail=audit_std_data.get("generate_audit_trail", False),
+                sox=_build_dataclass(SoxComplianceConfig, audit_std_data.get("sox")),
+                pcaob=_build_dataclass(PcaobConfig, audit_std_data.get("pcaob")),
+            )
+
         known_keys = {
             "global", "companies", "chart_of_accounts", "transactions", "output",
             "fraud", "banking", "scenario", "temporal", "data_quality", "graph_export",
-            "audit", "streaming", "rate_limit", "temporal_attributes", "relationships"
+            "audit", "streaming", "rate_limit", "temporal_attributes", "relationships",
+            "accounting_standards", "audit_standards"
         }
         extra = {key: value for key, value in data.items() if key not in known_keys}
 
@@ -543,6 +802,8 @@ class Config:
             rate_limit=rate_limit,
             temporal_attributes=temporal_attributes,
             relationships=relationships,
+            accounting_standards=accounting_standards,
+            audit_standards=audit_standards,
             extra=extra,
         )
 
