@@ -31,6 +31,13 @@ crates/datasynth-ui/test-results/
 # mdBook build output
 docs/book/
 
+# LaTeX temporary files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+
 # Output directories
 output/
 demo-output/
